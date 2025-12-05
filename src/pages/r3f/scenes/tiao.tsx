@@ -2,13 +2,12 @@ import {
   DndContext,
   DragEndEvent,
   PointerSensor,
-  UniqueIdentifier,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 export default function Page() {
   return (
@@ -21,6 +20,18 @@ export default function Page() {
 
 type TileState = "black" | "white" | null;
 
+type Jump = {
+  from: { x: number; y: number };
+  over: { x: number; y: number };
+  to: { x: number; y: number };
+  color: "black" | "white";
+};
+
+type Move = {
+  position: { x: number; y: number };
+  color: "black" | "white";
+};
+
 type History = {
   moves: { x: number; y: number; color: "black" | "white" }[];
 };
@@ -30,7 +41,12 @@ type BoardState = {
   highlightedCluster: { x: number; y: number }[] | null;
   currentTurn: "black" | "white";
   selectedPiece: { x: number; y: number } | null;
-  selectedPiecePaths: { x: number; y: number }[] | null;
+  selectedPiecePaths: { x: number; y: number }[];
+  markedForRemoval: { x: number; y: number }[];
+  score: {
+    black: number;
+    white: number;
+  };
   history: History;
 };
 
@@ -39,7 +55,9 @@ const initialBoardState: BoardState = {
   highlightedCluster: null,
   currentTurn: "white",
   selectedPiece: null,
-  selectedPiecePaths: null,
+  selectedPiecePaths: [],
+  markedForRemoval: [],
+  score: { black: 0, white: 0 },
   history: { moves: [] },
 };
 
@@ -57,12 +75,15 @@ const TiaoBoard = () => {
     const connectedCluster = findConnectedCluster(x, y, boardState);
 
     setBoardState((prevState) => ({
-      positions: prevState.positions,
+      ...prevState,
       highlightedCluster: connectedCluster,
-      currentTurn: prevState.currentTurn,
       selectedPiece: { x, y },
-      selectedPiecePaths: findJumpingPaths(x, y, boardState.positions[y][x]!),
-      history: prevState.history,
+      selectedPiecePaths: findJumpingPaths(
+        x,
+        y,
+        boardState,
+        boardState.positions[y][x]!
+      ),
     }));
   };
 
@@ -86,74 +107,17 @@ const TiaoBoard = () => {
       }
 
       return {
+        ...state,
         positions: newPositions,
         highlightedCluster: null,
         currentTurn: state.currentTurn === "white" ? "black" : "white",
         selectedPiece: null,
-        selectedPiecePaths: null,
+        selectedPiecePaths: [],
         history: {
           moves: [...state.history.moves, { x, y, color: state.currentTurn }],
         },
       };
     });
-  };
-
-  const findJumpingPaths = (x: number, y: number, color: "black" | "white") => {
-    const directions = [
-      { dx: 2, dy: 0 },
-      { dx: -2, dy: 0 },
-      { dx: 0, dy: 2 },
-      { dx: 0, dy: -2 },
-
-      // diagonals
-      { dx: 2, dy: 2 },
-      { dx: -2, dy: -2 },
-      { dx: 2, dy: -2 },
-      { dx: -2, dy: 2 },
-    ];
-
-    const paths = [] as { x: number; y: number }[];
-    for (const { dx, dy } of directions) {
-      const midX = x + dx / 2;
-      const midY = y + dy / 2;
-
-      if (midX < 0 || midX >= 19 || midY < 0 || midY >= 19) {
-        continue;
-      }
-
-      const midPiece = boardState.positions[midY][midX];
-      if (midPiece === null || midPiece === color) {
-        continue;
-      }
-
-      const newX = x + dx;
-      const newY = y + dy;
-      if (
-        newX >= 0 &&
-        newX < 19 &&
-        newY >= 0 &&
-        newY < 19 &&
-        boardState.positions[newY][newX] === null
-      ) {
-        paths.push({ x: newX, y: newY });
-
-        // const tempPiece = boardState.positions[y][x];
-        // const tempMidPiece = boardState.positions[midY][midX];
-        // boardState.positions[y][x] = null;
-        // boardState.positions[midY][midX] = null;
-        // const furtherPaths = findJumpingPaths(newX, newY, color);
-        // boardState.positions[y][x] = tempPiece;
-        // boardState.positions[midY][midX] = tempMidPiece;
-
-        // for (const path of furtherPaths) {
-        //   if (!paths.find((p) => p.x === path.x && p.y === path.y)) {
-        //     paths.push(path);
-        //   }
-        // }
-      }
-    }
-
-    return paths;
   };
 
   const sensors = useSensors(
@@ -163,6 +127,22 @@ const TiaoBoard = () => {
       },
     })
   );
+
+  const confirmJump = () => {
+    setBoardState((state) => {
+      const newPositions = state.positions.map((row) => row.slice());
+
+      for (const pos of state.markedForRemoval) {
+        newPositions[pos.y][pos.x] = null;
+      }
+      return {
+        ...state,
+        positions: newPositions,
+        markedForRemoval: [],
+        currentTurn: state.currentTurn === "white" ? "black" : "white",
+      };
+    });
+  };
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -220,21 +200,24 @@ const TiaoBoard = () => {
         const middleX = movingStone.position.x + movementDirection.dx / 2;
         const middleY = movingStone.position.y + movementDirection.dy / 2;
 
-        state.positions[middleY][middleX] = null;
+        // state.positions[middleY][middleX] = null;
+
+        state.markedForRemoval = [
+          ...state.markedForRemoval,
+          { x: middleX, y: middleY },
+        ];
 
         return {
-          positions: state.positions,
-          highlightedCluster: null,
-          currentTurn: state.currentTurn === "white" ? "black" : "white",
-          selectedPiece: null,
-          selectedPiecePaths: null,
+          ...state,
+          selectedPiece: { x, y },
+          selectedPiecePaths: findJumpingPaths(x, y, state, state.currentTurn),
           history: {
             moves: [...state.history.moves, { x, y, color: state.currentTurn }],
           },
         };
       });
     },
-    [boardState.selectedPiecePaths]
+    [boardState]
   );
 
   return (
@@ -270,10 +253,64 @@ const TiaoBoard = () => {
         ))}
       </div>
 
+      {<button onClick={confirmJump}>Confirm Jump?</button>}
+
       <h2>Current Turn: {boardState.currentTurn}</h2>
       <p>{boardState.history.moves.length} moves made.</p>
     </DndContext>
   );
+};
+
+const findJumpingPaths = (
+  x: number,
+  y: number,
+  boardState: BoardState,
+  color: "black" | "white"
+) => {
+  const directions = [
+    { dx: 2, dy: 0 },
+    { dx: -2, dy: 0 },
+    { dx: 0, dy: 2 },
+    { dx: 0, dy: -2 },
+
+    // diagonals
+    { dx: 2, dy: 2 },
+    { dx: -2, dy: -2 },
+    { dx: 2, dy: -2 },
+    { dx: -2, dy: 2 },
+  ];
+
+  const paths = [] as { x: number; y: number }[];
+  for (const { dx, dy } of directions) {
+    const midX = x + dx / 2;
+    const midY = y + dy / 2;
+
+    if (midX < 0 || midX >= 19 || midY < 0 || midY >= 19) {
+      continue;
+    }
+
+    const midPiece = boardState.positions[midY][midX];
+    const midPieceAlreadyTaken = boardState.markedForRemoval.find(
+      (pos) => pos.x === midX && pos.y === midY
+    );
+    if (midPiece === null || midPiece === color || midPieceAlreadyTaken) {
+      continue;
+    }
+
+    const newX = x + dx;
+    const newY = y + dy;
+    if (
+      newX >= 0 &&
+      newX < 19 &&
+      newY >= 0 &&
+      newY < 19 &&
+      boardState.positions[newY][newX] === null
+    ) {
+      paths.push({ x: newX, y: newY });
+    }
+  }
+
+  return paths;
 };
 
 const GameBoardSlot = ({
@@ -344,7 +381,11 @@ const GamePiece = ({
   } = useDraggable({
     id: `piece-${rowIndex}-${colIndex}`,
     data: { position: { x: colIndex, y: rowIndex }, color },
-    disabled: color !== boardState.currentTurn,
+    disabled:
+      color !== boardState.currentTurn ||
+      color === null ||
+      boardState.selectedPiece?.x !== colIndex ||
+      boardState.selectedPiece?.y !== rowIndex,
   });
 
   const style = transform
@@ -385,6 +426,11 @@ const GamePiece = ({
             : color === "white"
             ? "white"
             : "transparent",
+        opacity: boardState.markedForRemoval.find(
+          (pos) => pos.x === colIndex && pos.y === rowIndex
+        )
+          ? 0.7
+          : 1,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
