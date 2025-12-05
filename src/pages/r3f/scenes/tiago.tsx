@@ -3,8 +3,8 @@ import { useState } from "react";
 export default function Page() {
   return (
     <div className="w-screen h-screen bg-orange-300">
-      <h1 className="text-black">Tiago 天高</h1>
-      <TiagoBoard />
+      <h1 className="text-black">Tiao 天高</h1>
+      <TiaoBoard />
     </div>
   );
 }
@@ -20,6 +20,7 @@ type BoardState = {
   highlightedCluster: { x: number; y: number }[] | null;
   currentTurn: "black" | "white";
   selectedPiece: { x: number; y: number } | null;
+  selectedPiecePaths: { x: number; y: number }[] | null;
   history: History;
 };
 
@@ -28,24 +29,34 @@ const initialBoardState: BoardState = {
   highlightedCluster: null,
   currentTurn: "white",
   selectedPiece: null,
+  selectedPiecePaths: null,
   history: { moves: [] },
 };
 
-const TiagoBoard = () => {
+const TiaoBoard = () => {
   const [boardState, setBoardState] = useState(initialBoardState);
+
+  const hoverPosition = (x: number, y: number) => () => {
+    if (
+      boardState.positions[y][x] === null ||
+      boardState.currentTurn !== boardState.positions[y][x]
+    ) {
+      return;
+    }
+
+    const connectedCluster = findConnectedCluster(x, y);
+    setBoardState((prevState) => ({
+      positions: prevState.positions,
+      highlightedCluster: connectedCluster,
+      currentTurn: prevState.currentTurn,
+      selectedPiece: { x, y },
+      selectedPiecePaths: findJumpingPaths(x, y, boardState.positions[y][x]!),
+      history: prevState.history,
+    }));
+  };
 
   const clickPosition = (x: number, y: number) => () => {
     if (boardState.positions[y][x] !== null) {
-      const connectedCluster = findConnectedCluster(x, y);
-
-      setBoardState((prevState) => ({
-        positions: prevState.positions,
-        highlightedCluster: connectedCluster,
-        currentTurn: prevState.currentTurn,
-        selectedPiece: { x, y },
-        history: prevState.history,
-      }));
-
       return;
     }
 
@@ -59,11 +70,69 @@ const TiagoBoard = () => {
         highlightedCluster: null,
         currentTurn: state.currentTurn === "white" ? "black" : "white",
         selectedPiece: null,
+        selectedPiecePaths: null,
         history: {
           moves: [...state.history.moves, { x, y, color: state.currentTurn }],
         },
       };
     });
+  };
+
+  const findJumpingPaths = (x: number, y: number, color: "black" | "white") => {
+    const directions = [
+      { dx: 2, dy: 0 },
+      { dx: -2, dy: 0 },
+      { dx: 0, dy: 2 },
+      { dx: 0, dy: -2 },
+
+      // diagonals
+      { dx: 2, dy: 2 },
+      { dx: -2, dy: -2 },
+      { dx: 2, dy: -2 },
+      { dx: -2, dy: 2 },
+    ];
+
+    const paths = [] as { x: number; y: number }[];
+    for (const { dx, dy } of directions) {
+      const midX = x + dx / 2;
+      const midY = y + dy / 2;
+
+      if (midX < 0 || midX >= 19 || midY < 0 || midY >= 19) {
+        continue;
+      }
+
+      const midPiece = boardState.positions[midY][midX];
+      if (midPiece === null || midPiece === color) {
+        continue;
+      }
+
+      const newX = x + dx;
+      const newY = y + dy;
+      if (
+        newX >= 0 &&
+        newX < 19 &&
+        newY >= 0 &&
+        newY < 19 &&
+        boardState.positions[newY][newX] === null
+      ) {
+        paths.push({ x: newX, y: newY });
+        const tempPiece = boardState.positions[y][x];
+        const tempMidPiece = boardState.positions[midY][midX];
+        boardState.positions[y][x] = null;
+        boardState.positions[midY][midX] = null;
+        const furtherPaths = findJumpingPaths(newX, newY, color);
+        boardState.positions[y][x] = tempPiece;
+        boardState.positions[midY][midX] = tempMidPiece;
+
+        for (const path of furtherPaths) {
+          if (!paths.find((p) => p.x === path.x && p.y === path.y)) {
+            paths.push(path);
+          }
+        }
+      }
+    }
+
+    return paths;
   };
 
   const findConnectedCluster = (x: number, y: number) => {
@@ -130,6 +199,17 @@ const TiagoBoard = () => {
                 position: "relative",
               }}
               onClick={clickPosition(colIndex, rowIndex)}
+              onMouseEnter={hoverPosition(colIndex, rowIndex)}
+              onMouseLeave={() => {
+                setBoardState((prevState) => ({
+                  positions: prevState.positions,
+                  highlightedCluster: null,
+                  currentTurn: prevState.currentTurn,
+                  selectedPiece: null,
+                  selectedPiecePaths: null,
+                  history: prevState.history,
+                }));
+              }}
             >
               <div
                 style={{
@@ -146,6 +226,10 @@ const TiagoBoard = () => {
                           ({ x, y }) => x === colIndex && y === rowIndex
                         ).length
                       ? "3px solid green"
+                      : boardState.selectedPiecePaths?.filter(
+                          ({ x, y }) => x === colIndex && y === rowIndex
+                        ).length
+                      ? "3px solid orange"
                       : "none",
                   backgroundColor:
                     cell === "black"
@@ -165,10 +249,6 @@ const TiagoBoard = () => {
       ))}
     </div>
   );
-};
-
-const positionIsOnEdge = (x: number, y: number) => {
-  return x === 0 || x === 18 || y === 0 || y === 18;
 };
 
 const positionOnTopEdge = (x: number, y: number) => {
