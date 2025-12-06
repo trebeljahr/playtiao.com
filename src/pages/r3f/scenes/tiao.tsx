@@ -18,6 +18,15 @@ export default function Page() {
   );
 }
 
+const scoreNecessaryToWin = 10;
+
+const xyDirections = [
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 0 },
+  { dx: 0, dy: 1 },
+  { dx: 0, dy: -1 },
+];
+
 type TileState = "black" | "white" | null;
 
 type Jump = {
@@ -34,10 +43,6 @@ type Put = {
 
 type Move = Jump | Put | Jump[];
 
-type History = {
-  moves: Move[];
-};
-
 type BoardState = {
   positions: TileState[][];
   highlightedCluster: { x: number; y: number }[] | null;
@@ -50,7 +55,7 @@ type BoardState = {
     black: number;
     white: number;
   };
-  history: History;
+  history: Move[];
 };
 
 const initialBoardState: BoardState = {
@@ -62,7 +67,7 @@ const initialBoardState: BoardState = {
   selectedPiecePaths: [],
   markedForRemoval: [],
   score: { black: 0, white: 0 },
-  history: { moves: [] },
+  history: [],
 };
 
 const TiaoBoard = () => {
@@ -106,11 +111,31 @@ const TiaoBoard = () => {
     setBoardState((state) => {
       const newPositions = state.positions.map((row) => row.slice());
 
-      const cluster = findConnectedCluster(x, y, state, state.currentTurn);
+      for (const dir of xyDirections) {
+        const adjX = x + dir.dx;
+        const adjY = y + dir.dy;
+        if (adjX >= 0 && adjX < 19 && adjY >= 0 && adjY < 19) {
+          if (
+            newPositions[adjY][adjX] === null ||
+            newPositions[adjY][adjX] !== state.currentTurn
+          ) {
+            continue;
+          }
 
-      if (cluster.length > 10) {
-        console.log("cluster too big, cannot place piece");
-        return state;
+          const adjacentCluster = findConnectedCluster(
+            adjX,
+            adjY,
+            state,
+            state.currentTurn
+          );
+
+          if (adjacentCluster.length >= 10) {
+            console.log("adjacentCluster", adjacentCluster.length);
+
+            console.log("cluster too big, cannot place piece");
+            return state;
+          }
+        }
       }
 
       if (newPositions[y][x] === null) {
@@ -127,9 +152,7 @@ const TiaoBoard = () => {
         selectedPiecePaths: [],
         ongoingJump: [],
         markedForRemoval: [],
-        history: {
-          moves: [...state.history.moves, putMove],
-        },
+        history: [...state.history, putMove],
       };
     });
   };
@@ -156,6 +179,19 @@ const TiaoBoard = () => {
       return {
         ...state,
         positions: newPositions,
+        score: {
+          black:
+            state.score.black +
+            state.markedForRemoval.filter(
+              (pos) => state.positions[pos.y][pos.x] === "white"
+            ).length,
+          white:
+            state.score.white +
+            state.markedForRemoval.filter(
+              (pos) => state.positions[pos.y][pos.x] === "black"
+            ).length,
+        },
+        history: [...state.history, state.ongoingJump],
         markedForRemoval: [],
         currentTurn: state.currentTurn === "white" ? "black" : "white",
         ongoingJump: [],
@@ -250,6 +286,35 @@ const TiaoBoard = () => {
     [boardState]
   );
 
+  const undoLastJump = () => {
+    setBoardState((state) => {
+      if (state.ongoingJump.length === 0) {
+        return state;
+      }
+
+      const lastJump = state.ongoingJump[state.ongoingJump.length - 1];
+
+      state.positions[lastJump.from.y][lastJump.from.x] = lastJump.color;
+      state.positions[lastJump.to.y][lastJump.to.x] = null;
+
+      state.markedForRemoval = state.markedForRemoval.filter(
+        (pos) => !(pos.x === lastJump.over.x && pos.y === lastJump.over.y)
+      );
+
+      return {
+        ...state,
+        selectedPiece: { x: lastJump.from.x, y: lastJump.from.y },
+        selectedPiecePaths: findJumpingPaths(
+          lastJump.from.x,
+          lastJump.from.y,
+          state,
+          state.currentTurn
+        ),
+        ongoingJump: state.ongoingJump.slice(0, -1),
+      };
+    });
+  };
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div
@@ -284,11 +349,25 @@ const TiaoBoard = () => {
       </div>
 
       {boardState.ongoingJump.length > 0 && (
-        <button onClick={confirmJump}>Confirm Jump?</button>
+        <>
+          <button onClick={confirmJump}>Confirm Jump?</button>
+          <button onClick={undoLastJump}>Undo last Jump?</button>
+        </>
       )}
 
-      <h2>Current Turn: {boardState.currentTurn}</h2>
-      <p>{boardState.history.moves.length} moves made.</p>
+      <h2>Score</h2>
+      <p>Black: {boardState.score.black}</p>
+      <p>White: {boardState.score.white}</p>
+      <p>Current Turn: {boardState.currentTurn}</p>
+
+      <p>
+        {boardState.score.black >= scoreNecessaryToWin
+          ? "Black wins!"
+          : boardState.score.white >= scoreNecessaryToWin
+          ? "White wins!"
+          : ""}
+      </p>
+      <p>{boardState.history.length} moves made.</p>
     </DndContext>
   );
 };
@@ -299,7 +378,7 @@ const findJumpingPaths = (
   boardState: BoardState,
   color: "black" | "white"
 ) => {
-  const directions = [
+  const allDirections = [
     { dx: 2, dy: 0 },
     { dx: -2, dy: 0 },
     { dx: 0, dy: 2 },
@@ -313,7 +392,7 @@ const findJumpingPaths = (
   ];
 
   const paths = [] as { x: number; y: number }[];
-  for (const { dx, dy } of directions) {
+  for (const { dx, dy } of allDirections) {
     const midX = x + dx / 2;
     const midY = y + dy / 2;
 
@@ -504,14 +583,12 @@ const findConnectedCluster = (
     const key = `${currX},${currY}`;
     if (visited.has(key)) continue;
     visited.add(key);
-    cluster.push({ x: currX, y: currY });
-    const directions = [
-      { dx: 1, dy: 0 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 0, dy: -1 },
-    ];
-    for (const { dx, dy } of directions) {
+
+    if (boardState.positions[currY][currX] === targetColor) {
+      cluster.push({ x: currX, y: currY });
+    }
+
+    for (const { dx, dy } of xyDirections) {
       const newX = currX + dx;
       const newY = currY + dy;
       if (
