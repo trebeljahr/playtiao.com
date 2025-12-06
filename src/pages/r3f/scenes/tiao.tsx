@@ -99,6 +99,105 @@ const initialBoardState: BoardState = {
   history: [],
 };
 
+const positionIsOnBorder = (x: number, y: number) => {
+  return (
+    positionOnTopEdge(x, y) ||
+    positionOnBottomEdge(x, y) ||
+    positionOnLeftEdge(x, y) ||
+    positionOnRightEdge(x, y)
+  );
+};
+
+const allDirections = [
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 0 },
+  { dx: 0, dy: 1 },
+  { dx: 0, dy: -1 },
+  { dx: 1, dy: 1 },
+  { dx: -1, dy: -1 },
+  { dx: 1, dy: -1 },
+  { dx: -1, dy: 1 },
+];
+
+const allJumpDirections = allDirections.map(({ dx, dy }) => ({
+  dx: dx * 2,
+  dy: dy * 2,
+}));
+
+const checkForBorderRule = (boardState: BoardState, x: number, y: number) => {
+  if (!positionIsOnBorder(x, y)) {
+    console.log("position not on border, therefore *can* place piece!");
+    return false;
+  }
+
+  if (posCouldBeJumpedByEnemy(x, y, boardState)) {
+    console.log("position can be jumped to, therefore *can* place piece!");
+    return false;
+  }
+
+  console.log(
+    "position on border and cannot be jumped to, therefore *cannot* place piece!"
+  );
+  return true;
+};
+
+const posIsInBounds = (x: number, y: number) => {
+  return x >= 0 && x < 19 && y >= 0 && y < 19;
+};
+
+const posCouldBeJumpedByEnemy = (
+  x: number,
+  y: number,
+  boardState: BoardState
+) => {
+  for (const { dx, dy } of allJumpDirections) {
+    const jumpX = x + dx;
+    const jumpY = y + dy;
+
+    const midX = x + dx / 2;
+    const midY = y + dy / 2;
+
+    if (!posIsInBounds(jumpX, jumpY)) continue;
+    if (!posIsInBounds(midX, midY)) continue;
+
+    const midPiece = boardState.positions[midY][midX];
+    const jumpingPiece = boardState.positions[jumpY][jumpX];
+
+    const midPieceAlreadyTaken = boardState.markedForRemoval.find(
+      (pos) => pos.x === midX && pos.y === midY
+    );
+
+    if (midPiece !== boardState.currentTurn || midPieceAlreadyTaken) {
+      continue;
+    }
+
+    const jumpingPosIsEnemy =
+      jumpingPiece !== null && jumpingPiece !== boardState.currentTurn;
+
+    if (jumpingPosIsEnemy) {
+      return true;
+    }
+
+    if (jumpingPiece === null) {
+      const markedForRemoval = [
+        ...boardState.markedForRemoval,
+        { x: midX, y: midY },
+      ];
+
+      const resultOfRecursion = posCouldBeJumpedByEnemy(jumpX, jumpY, {
+        ...boardState,
+        markedForRemoval,
+      });
+
+      if (resultOfRecursion) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const TiaoBoard = () => {
   const [boardState, setBoardState] = useState(initialBoardState);
 
@@ -137,16 +236,17 @@ const TiaoBoard = () => {
       return;
     }
 
+    if (checkForClusterRule(boardState, x, y)) {
+      return;
+    }
+
+    if (checkForBorderRule(boardState, x, y)) {
+      return;
+    }
+
     setBoardState((state) => {
-      if (checkForClusterRule(state, x, y)) {
-        return state;
-      }
-
-      if (state.positions[y][x] !== null) {
-        return state;
-      }
-
-      state.positions[y][x] = state.currentTurn;
+      const newPositions = state.positions.map((row) => row.slice());
+      newPositions[y][x] = state.currentTurn;
 
       const moveRecord: Put = {
         position: { x, y },
@@ -155,7 +255,7 @@ const TiaoBoard = () => {
 
       return {
         ...state,
-        positions: [...state.positions],
+        positions: newPositions,
         highlightedCluster: null,
         currentTurn: state.currentTurn === "white" ? "black" : "white",
         selectedPiece: null,
@@ -181,14 +281,12 @@ const TiaoBoard = () => {
     }
 
     setBoardState((state) => {
-      const newPositions = state.positions.map((row) => row.slice());
-
       for (const pos of state.markedForRemoval) {
-        newPositions[pos.y][pos.x] = null;
+        state.positions[pos.y][pos.x] = null;
       }
       return {
         ...state,
-        positions: newPositions,
+        positions: [...state.positions],
         score: {
           black:
             state.score.black +
@@ -375,19 +473,8 @@ const findJumpingPaths = (
   boardState: BoardState,
   color: "black" | "white"
 ) => {
-  const allDirections = [
-    { dx: 2, dy: 0 },
-    { dx: -2, dy: 0 },
-    { dx: 0, dy: 2 },
-    { dx: 0, dy: -2 },
-    { dx: 2, dy: 2 },
-    { dx: -2, dy: -2 },
-    { dx: 2, dy: -2 },
-    { dx: -2, dy: 2 },
-  ];
-
   const paths = [] as { x: number; y: number }[];
-  for (const { dx, dy } of allDirections) {
+  for (const { dx, dy } of allJumpDirections) {
     const midX = x + dx / 2;
     const midY = y + dy / 2;
 
