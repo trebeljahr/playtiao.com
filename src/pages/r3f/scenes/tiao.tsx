@@ -10,12 +10,7 @@ import {
 import { useCallback, useState } from "react";
 
 export default function Page() {
-  return (
-    <div className="w-screen h-screen bg-orange-300">
-      <h1 className="text-black">Tiao 条</h1>
-      <TiaoBoard />
-    </div>
-  );
+  return <TiaoBoard />;
 }
 
 const scoreNecessaryToWin = 10;
@@ -62,7 +57,7 @@ const checkForClusterRule = (state: BoardState, x: number, y: number) => {
   for (const dir of xyDirections) {
     const adjX = x + dir.dx;
     const adjY = y + dir.dy;
-    if (adjX >= 0 && adjX < 19 && adjY >= 0 && adjY < 19) {
+    if (adjX >= 0 && adjX < boardSize && adjY >= 0 && adjY < boardSize) {
       if (
         state.positions[adjY][adjX] === null ||
         state.positions[adjY][adjX] !== state.currentTurn
@@ -87,9 +82,11 @@ const checkForClusterRule = (state: BoardState, x: number, y: number) => {
   }
 };
 
+const boardSize = 19;
+
 const initialBoardState: BoardState = {
   ongoingJump: [],
-  positions: Array(19).fill(Array(19).fill(null)),
+  positions: Array(boardSize).fill(Array(boardSize).fill(null)),
   highlightedCluster: null,
   currentTurn: "white",
   selectedPiece: null,
@@ -142,7 +139,7 @@ const checkForBorderRule = (boardState: BoardState, x: number, y: number) => {
 };
 
 const posIsInBounds = (x: number, y: number) => {
-  return x >= 0 && x < 19 && y >= 0 && y < 19;
+  return x >= 0 && x < boardSize && y >= 0 && y < boardSize;
 };
 
 const posCouldBeJumpedByEnemy = (
@@ -281,24 +278,27 @@ const TiaoBoard = () => {
     }
 
     setBoardState((state) => {
+      const newScore = {
+        black:
+          state.score.black +
+          state.markedForRemoval.filter(
+            (pos) => state.positions[pos.y][pos.x] === "white"
+          ).length,
+        white:
+          state.score.white +
+          state.markedForRemoval.filter(
+            (pos) => state.positions[pos.y][pos.x] === "black"
+          ).length,
+      };
+
       for (const pos of state.markedForRemoval) {
         state.positions[pos.y][pos.x] = null;
       }
+
       return {
         ...state,
         positions: [...state.positions],
-        score: {
-          black:
-            state.score.black +
-            state.markedForRemoval.filter(
-              (pos) => state.positions[pos.y][pos.x] === "white"
-            ).length,
-          white:
-            state.score.white +
-            state.markedForRemoval.filter(
-              (pos) => state.positions[pos.y][pos.x] === "black"
-            ).length,
-        },
+        score: newScore,
         history: [...state.history, state.ongoingJump],
         markedForRemoval: [],
         currentTurn: state.currentTurn === "white" ? "black" : "white",
@@ -413,56 +413,78 @@ const TiaoBoard = () => {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div
-        style={{
-          gridTemplateRows: "repeat(19, 1fr)",
-          gridTemplateColumns: "repeat(19, 1fr)",
-          width: "90vmin",
-          height: "90vmin",
-        }}
-      >
-        {boardState.positions.map((row, rowIndex) => (
-          <div
-            key={rowIndex}
-            style={{
-              display: "flex",
-            }}
-          >
-            {row.map((color, colIndex) => (
-              <GameBoardSlot
-                colIndex={colIndex}
-                rowIndex={rowIndex}
-                boardState={boardState}
-                hoverPosition={hoverPosition}
-                clickPosition={clickPosition}
-                color={color}
-                key={colIndex}
-              />
-            ))}
-          </div>
-        ))}
+      <div className="flex w-screen min-h-screen flex-col sm:flex-row sm:items-center bg-orange-300">
+        <div
+          className="h-[90vmin] w-[90vmin]"
+          style={{
+            gridTemplateRows: `repeat(${boardSize}, 1fr)`,
+            gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
+          }}
+        >
+          {boardState.positions.map((row, rowIndex) => (
+            <div key={rowIndex} className="flex">
+              {row.map((color, colIndex) => (
+                <GameBoardSlot
+                  colIndex={colIndex}
+                  rowIndex={rowIndex}
+                  boardState={boardState}
+                  hoverPosition={hoverPosition}
+                  clickPosition={clickPosition}
+                  color={color}
+                  key={colIndex}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="text-gray-950 not-prose sm:h-[90vmin]"
+          style={{
+            paddingTop: `calc(90vmin / ${boardSize} / 2)`,
+            paddingLeft: `calc(90vmin / ${boardSize} / 2)`,
+          }}
+        >
+          <h1 className="text-black font-bold text-5xl">条 Tiao</h1>
+
+          <h2 className="text-gray-950 text-3xl">Score</h2>
+          <p>Black: {boardState.score.black}</p>
+          <p>White: {boardState.score.white}</p>
+          <p>
+            Current Turn: {boardState.currentTurn}{" "}
+            <div
+              className="w-3 h-3 rounded-full inline-block"
+              style={{ backgroundColor: boardState.currentTurn }}
+            />
+          </p>
+
+          <p>
+            {boardState.score.black >= scoreNecessaryToWin
+              ? "Black wins!"
+              : boardState.score.white >= scoreNecessaryToWin
+              ? "White wins!"
+              : ""}
+          </p>
+          <p>{boardState.history.length} moves made.</p>
+
+          {boardState.ongoingJump.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <button
+                className="p-2 border-zinc-950 border border-solid"
+                onClick={confirmJump}
+              >
+                Confirm Jump?
+              </button>
+              <button
+                className="p-2 border-zinc-950 border border-solid"
+                onClick={undoLastJump}
+              >
+                Undo last Jump?
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-
-      {boardState.ongoingJump.length > 0 && (
-        <>
-          <button onClick={confirmJump}>Confirm Jump?</button>
-          <button onClick={undoLastJump}>Undo last Jump?</button>
-        </>
-      )}
-
-      <h2>Score</h2>
-      <p>Black: {boardState.score.black}</p>
-      <p>White: {boardState.score.white}</p>
-      <p>Current Turn: {boardState.currentTurn}</p>
-
-      <p>
-        {boardState.score.black >= scoreNecessaryToWin
-          ? "Black wins!"
-          : boardState.score.white >= scoreNecessaryToWin
-          ? "White wins!"
-          : ""}
-      </p>
-      <p>{boardState.history.length} moves made.</p>
     </DndContext>
   );
 };
@@ -478,7 +500,7 @@ const findJumpingPaths = (
     const midX = x + dx / 2;
     const midY = y + dy / 2;
 
-    if (midX < 0 || midX >= 19 || midY < 0 || midY >= 19) {
+    if (midX < 0 || midX >= boardSize || midY < 0 || midY >= boardSize) {
       continue;
     }
 
@@ -494,9 +516,9 @@ const findJumpingPaths = (
     const newY = y + dy;
     if (
       newX >= 0 &&
-      newX < 19 &&
+      newX < boardSize &&
       newY >= 0 &&
-      newY < 19 &&
+      newY < boardSize &&
       boardState.positions[newY][newX] === null
     ) {
       paths.push({ x: newX, y: newY });
@@ -610,7 +632,7 @@ const GamePiece = ({
       style={{
         cursor: active ? "grabbing" : isDisabled ? "default" : "grab",
         position: "absolute",
-        zIndex: 20,
+        zIndex: 10,
         borderRadius: 50,
         width: "100%",
         height: "100%",
@@ -673,9 +695,9 @@ const findConnectedCluster = (
       const newY = currY + dy;
       if (
         newX >= 0 &&
-        newX < 19 &&
+        newX < boardSize &&
         newY >= 0 &&
-        newY < 19 &&
+        newY < boardSize &&
         boardState.positions[newY][newX] === targetColor &&
         !visited.has(`${newX},${newY}`)
       ) {
