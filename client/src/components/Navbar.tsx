@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type AuthDialogMode = "login" | "signup";
-export type NavbarMode = "lobby" | "local" | "multiplayer" | "profile";
+export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "profile";
 
 type NavbarProps = {
   mode: NavbarMode;
@@ -13,9 +13,9 @@ type NavbarProps = {
   onToggleNav: () => void;
   onCloseNav: () => void;
   onGoLobby: () => void;
-  onGoMultiplayer: () => void;
   onGoOverTheBoard: () => void;
-  onGoLocal: () => void;
+  onGoMultiplayer: () => void;
+  onGoComputer: () => void;
   onGoProfile: () => void;
   onOpenAuth: (mode: AuthDialogMode) => void;
   onLogout: () => void;
@@ -95,7 +95,7 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
   const isAnonymous = !auth || auth.player.kind !== "account";
 
   return (
-    <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#3a2818] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
+    <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
       <PlayerAvatar auth={auth} />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">
@@ -109,18 +109,40 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
   );
 }
 
-function Brand({ onClick }: { onClick: () => void }) {
+function Brand({
+  onClick,
+  compact = false,
+  className,
+}: {
+  onClick: () => void;
+  compact?: boolean;
+  className?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+      className={cn(
+        "flex items-center text-left transition-opacity hover:opacity-90",
+        compact ? "gap-2.5" : "gap-3",
+        className
+      )}
       aria-label="Go to lobby"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-2xl text-[#25170d] shadow-[0_14px_28px_-18px_rgba(37,23,13,0.85)]">
+      <span
+        className={cn(
+          "flex items-center justify-center rounded-2xl border border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-[#25170d] shadow-[0_14px_28px_-18px_rgba(37,23,13,0.85)]",
+          compact ? "h-11 w-11 text-[1.72rem]" : "h-11 w-11 text-2xl"
+        )}
+      >
         跳
       </span>
-      <span className="font-display text-3xl tracking-tight text-[#3a2818]">
+      <span
+        className={cn(
+          "font-display tracking-tight text-[#3a2818]",
+          compact ? "text-[2.05rem]" : "text-3xl"
+        )}
+      >
         Tiao
       </span>
     </button>
@@ -134,14 +156,20 @@ export function Navbar({
   onToggleNav,
   onCloseNav,
   onGoLobby,
-  onGoMultiplayer,
   onGoOverTheBoard,
-  onGoLocal,
+  onGoMultiplayer,
+  onGoComputer,
   onGoProfile,
   onOpenAuth,
   onLogout,
 }: NavbarProps) {
-  const gameMode = mode === "local" || mode === "multiplayer";
+  const gameMode =
+    mode === "local" || mode === "computer" || mode === "multiplayer";
+  const minimalMode = gameMode || mode === "lobby";
+  const navItemClasses =
+    "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";
+  const activeNavItemClasses =
+    "bg-[rgba(255,248,232,0.94)] text-[#20120a] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] hover:text-[#20120a] active:translate-y-0";
   const navItems = [
     {
       label: "Lobby",
@@ -149,19 +177,19 @@ export function Navbar({
       onClick: onGoLobby,
     },
     {
-      label: "Multiplayer",
-      active: mode === "multiplayer",
-      onClick: onGoMultiplayer,
-    },
-    {
       label: "Over the Board",
       active: mode === "local",
       onClick: onGoOverTheBoard,
     },
     {
-      label: "Local",
-      active: false,
-      onClick: onGoLocal,
+      label: "Multiplayer",
+      active: mode === "multiplayer",
+      onClick: onGoMultiplayer,
+    },
+    {
+      label: "Against computer",
+      active: mode === "computer",
+      onClick: onGoComputer,
     },
   ];
 
@@ -172,9 +200,10 @@ export function Navbar({
           key={item.label}
           variant="ghost"
           size="sm"
+          disabled={item.active}
           className={cn(
-            "text-[#3a2818]",
-            item.active && "bg-[rgba(255,248,232,0.78)] text-[#24170f]"
+            "justify-start px-3 text-[#28170e] disabled:opacity-100",
+            item.active ? activeNavItemClasses : navItemClasses
           )}
           onClick={item.onClick}
         >
@@ -190,13 +219,13 @@ export function Navbar({
         <Button variant="secondary" size="sm" onClick={onGoProfile}>
           Profile
         </Button>
-        <Button variant="ghost" size="sm" className="text-[#3a2818]" onClick={onLogout}>
+        <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={onLogout}>
           Logout
         </Button>
       </>
     ) : (
       <>
-        <Button variant="ghost" size="sm" className="text-[#3a2818]" onClick={() => onOpenAuth("login")}>
+        <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={() => onOpenAuth("login")}>
           Sign in
         </Button>
         <Button size="sm" onClick={() => onOpenAuth("signup")}>
@@ -210,36 +239,47 @@ export function Navbar({
       initial={false}
       animate={{ x: navOpen ? 0 : -36, opacity: navOpen ? 1 : 0 }}
       transition={navMotionTransition}
-      className="absolute left-0 top-0 h-full w-full max-w-sm border-r border-[#a88252]/30 bg-[linear-gradient(180deg,rgba(243,220,173,0.98),rgba(224,187,117,0.98))] px-5 py-5 text-[#362414] shadow-[0_30px_80px_-28px_rgba(95,59,21,0.48)]"
+      className="absolute left-0 top-0 h-full w-full max-w-[18.75rem] border-r border-[#b69261]/24 bg-[linear-gradient(180deg,rgba(251,238,210,0.985),rgba(239,213,161,0.975))] px-4 py-3 text-[#2b1a10] shadow-[0_30px_80px_-28px_rgba(95,59,21,0.34)] lg:max-w-[16.4rem] lg:px-3.5"
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="flex items-center justify-between gap-4">
-        <Brand onClick={() => {
-          onCloseNav();
-          onGoLobby();
-        }} />
-        {!gameMode ? (
+      <div
+        className={cn(
+          "flex items-center gap-4",
+          minimalMode
+            ? "min-h-11 pl-[4.15rem] pr-2 sm:pl-[4.2rem]"
+            : "justify-between"
+        )}
+      >
+        <Brand
+          compact={gameMode}
+          className={cn("shrink-0", minimalMode && "-translate-y-[2px]")}
+          onClick={() => {
+            onCloseNav();
+            onGoLobby();
+          }}
+        />
+        {!minimalMode ? (
           <Button
             variant="ghost"
             size="icon"
-            className="text-[#3a2818]"
+            className="text-[#28170e]"
             onClick={onCloseNav}
           >
             <HamburgerIcon open />
           </Button>
-        ) : (
-          <span className="h-10 w-10 shrink-0" aria-hidden="true" />
-        )}
+        ) : null}
       </div>
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-6 space-y-2.5 text-left">
         {navItems.map((item) => (
           <Button
             key={item.label}
-            variant={item.active ? "secondary" : "ghost"}
+            variant="ghost"
+            disabled={item.active}
             className={cn(
-              "w-full justify-start text-left",
-              !item.active && "text-[#3a2818]"
+              navItemClasses,
+              "disabled:opacity-100",
+              item.active && activeNavItemClasses
             )}
             onClick={() => {
               onCloseNav();
@@ -251,8 +291,8 @@ export function Navbar({
         ))}
       </div>
 
-      <div className="mt-8 rounded-3xl border border-[#a88252]/25 bg-[rgba(255,248,232,0.6)] p-4">
-        <div className="flex items-center gap-3">
+      <div className="mt-6 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4 text-left">
+        <div className="flex items-center gap-3 text-left">
           <PlayerAvatar auth={auth} />
           <div className="min-w-0">
             <p className="truncate text-base font-semibold">
@@ -269,13 +309,13 @@ export function Navbar({
         <div className="mt-4 grid gap-2">
           {auth?.player.kind === "account" ? (
             <>
-              <Button variant="secondary" className="w-full" onClick={() => {
+              <Button variant="secondary" className="w-full justify-start" onClick={() => {
                 onCloseNav();
                 onGoProfile();
               }}>
                 Profile
               </Button>
-              <Button variant="ghost" className="w-full justify-center text-[#3a2818]" onClick={() => {
+              <Button variant="ghost" className="w-full justify-start text-[#28170e]" onClick={() => {
                 onCloseNav();
                 onLogout();
               }}>
@@ -284,13 +324,13 @@ export function Navbar({
             </>
           ) : (
             <>
-              <Button variant="ghost" className="w-full justify-center text-[#3a2818]" onClick={() => {
+              <Button variant="ghost" className="w-full justify-start text-[#28170e]" onClick={() => {
                 onCloseNav();
                 onOpenAuth("login");
               }}>
                 Sign in
               </Button>
-              <Button className="w-full" onClick={() => {
+              <Button className="w-full justify-start" onClick={() => {
                 onCloseNav();
                 onOpenAuth("signup");
               }}>
@@ -305,10 +345,10 @@ export function Navbar({
 
   return (
     <>
-      {gameMode ? (
+      {minimalMode ? (
         <button
           type="button"
-          className="fixed left-3 top-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#3a2818] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur transition-colors hover:bg-[rgba(255,252,245,0.96)]"
+          className="fixed left-3 top-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur transition-colors hover:bg-[rgba(255,252,245,0.96)]"
           aria-label="Open navigation"
           aria-expanded={navOpen}
           onClick={onToggleNav}
@@ -332,7 +372,7 @@ export function Navbar({
 
               <button
                 type="button"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.75)] text-[#3a2818] transition-colors hover:bg-[rgba(255,252,245,0.9)] lg:hidden"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.75)] text-[#28170e] transition-colors hover:bg-[rgba(255,252,245,0.9)] lg:hidden"
                 aria-label="Open navigation"
                 aria-expanded={navOpen}
                 onClick={onToggleNav}

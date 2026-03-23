@@ -23,16 +23,19 @@ import { cn } from "@/lib/utils";
 import { Navbar, type AuthDialogMode } from "@/components/Navbar";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  BOARD_SIZE,
   ClientToServerMessage,
   GameState,
   MultiplayerSnapshot,
   PlayerColor,
   Position,
   arePositionsEqual,
+  canPlacePiece,
   confirmPendingJump,
   createInitialGameState,
   getJumpTargets,
   getPendingJumpDestination,
+  getSelectableJumpOrigins,
   getWinner,
   isGameOver,
   jumpPiece,
@@ -43,15 +46,41 @@ import {
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
 
-type Mode = "menu" | "local" | "multiplayer";
+type Mode = "menu" | "local" | "computer" | "multiplayer";
 type ConnectionState = "idle" | "connecting" | "connected" | "disconnected";
-type MenuTarget = "local" | "multiplayer" | null;
+type MenuTarget = "local" | "computer" | "multiplayer" | null;
 
 type HomePageProps = {
   auth: AuthResponse | null;
   onOpenAuth: (mode: AuthDialogMode) => void;
   onLogout: () => void;
 };
+
+type ComputerTurnPlan =
+  | {
+      type: "place";
+      position: Position;
+      score: number;
+    }
+  | {
+      type: "jump";
+      from: Position;
+      path: Position[];
+      score: number;
+    };
+
+const COMPUTER_COLOR: PlayerColor = "black";
+const COMPUTER_THINK_MS = 440;
+const ADJACENT_DIRECTIONS = [
+  { dx: -1, dy: -1 },
+  { dx: 0, dy: -1 },
+  { dx: 1, dy: -1 },
+  { dx: -1, dy: 0 },
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 1 },
+  { dx: 0, dy: 1 },
+  { dx: 1, dy: 1 },
+] as const;
 
 function getPlayerSeat(
   snapshot: MultiplayerSnapshot | null,
@@ -161,6 +190,170 @@ function AnimatedScoreTile({
   );
 }
 
+function distanceFromBoardCenter(position: Position) {
+  const center = (BOARD_SIZE - 1) / 2;
+  return Math.abs(position.x - center) + Math.abs(position.y - center);
+}
+
+function countAdjacentPieces(
+  state: GameState,
+  position: Position,
+  targetColor: PlayerColor
+) {
+  return ADJACENT_DIRECTIONS.reduce((count, { dx, dy }) => {
+    const nextX = position.x + dx;
+    const nextY = position.y + dy;
+
+    if (
+      nextX < 0 ||
+      nextX >= BOARD_SIZE ||
+      nextY < 0 ||
+      nextY >= BOARD_SIZE
+    ) {
+      return count;
+    }
+
+    return state.positions[nextY][nextX] === targetColor ? count + 1 : count;
+  }, 0);
+}
+
+function scoreComputerPlacement(state: GameState, position: Position) {
+  const centerBias = 24 - distanceFromBoardCenter(position) * 1.85;
+  const enemyAdjacency = countAdjacentPieces(state, position, "white") * 2.6;
+  const allyAdjacency = countAdjacentPieces(state, position, COMPUTER_COLOR) * 0.9;
+
+  return centerBias + enemyAdjacency + allyAdjacency;
+}
+
+function collectComputerJumpPlans(
+  state: GameState,
+  from: Position
+): Array<{ path: Position[]; score: number }> {
+  const targets = getJumpTargets(state, from, state.currentTurn);
+
+  if (targets.length === 0) {
+    return [];
+  }
+
+  return targets.flatMap((target) => {
+    const jumped = jumpPiece(state, from, target);
+    if (!jumped.ok) {
+      return [];
+    }
+
+    const continuations = collectComputerJumpPlans(jumped.value, target);
+    if (continuations.length > 0) {
+      return continuations.map((continuation) => ({
+        path: [target, ...continuation.path],
+        score: continuation.score,
+      }));
+    }
+
+    const confirmed = confirmPendingJump(jumped.value);
+    if (!confirmed.ok) {
+      return [];
+    }
+
+    const captures = jumped.value.pendingJump.length;
+    const landingPressure = countAdjacentPieces(
+      confirmed.value,
+      target,
+      "white"
+    );
+
+    return [
+      {
+        path: [target],
+        score:
+          captures * 120 +
+          landingPressure * 2.1 -
+          distanceFromBoardCenter(target) * 0.9,
+      },
+    ];
+  });
+}
+
+function chooseComputerTurn(state: GameState): ComputerTurnPlan | null {
+  const jumpOrigins = getSelectableJumpOrigins(state, COMPUTER_COLOR);
+
+  if (jumpOrigins.length > 0) {
+    let bestJump: ComputerTurnPlan | null = null;
+
+    for (const origin of jumpOrigins) {
+      const plans = collectComputerJumpPlans(state, origin);
+
+      for (const plan of plans) {
+        if (!bestJump || plan.score > bestJump.score) {
+          bestJump = {
+            type: "jump",
+            from: origin,
+            path: plan.path,
+            score: plan.score,
+          };
+        }
+      }
+    }
+
+    if (bestJump) {
+      return bestJump;
+    }
+  }
+
+  let bestPlacement: ComputerTurnPlan | null = null;
+
+  for (let y = 0; y < BOARD_SIZE; y += 1) {
+    for (let x = 0; x < BOARD_SIZE; x += 1) {
+      const position = { x, y };
+      const placement = canPlacePiece(state, position);
+
+      if (!placement.ok) {
+        continue;
+      }
+
+      const score = scoreComputerPlacement(state, position);
+      if (!bestPlacement || score > bestPlacement.score) {
+        bestPlacement = {
+          type: "place",
+          position,
+          score,
+        };
+      }
+    }
+  }
+
+  return bestPlacement;
+}
+
+function applyComputerTurn(state: GameState) {
+  const plan = chooseComputerTurn(state);
+
+  if (!plan) {
+    return {
+      ok: false as const,
+      reason: "The computer could not find a legal move.",
+    };
+  }
+
+  if (plan.type === "place") {
+    return placePiece(state, plan.position);
+  }
+
+  let nextState = state;
+  let from = plan.from;
+
+  for (const destination of plan.path) {
+    const jumped = jumpPiece(nextState, from, destination);
+    if (!jumped.ok) {
+      return jumped;
+    }
+
+    nextState = jumped.value;
+    from = destination;
+  }
+
+  return confirmPendingJump(nextState);
+}
+
 export function HomePage({
   auth,
   onOpenAuth,
@@ -191,6 +384,7 @@ export function HomePage({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [localConfirmReady, setLocalConfirmReady] = useState(true);
   const [multiplayerConfirmReady, setMultiplayerConfirmReady] = useState(true);
+  const [computerThinking, setComputerThinking] = useState(false);
   const [localScorePulse, setLocalScorePulse] = useState<Record<PlayerColor, number>>(
     { black: 0, white: 0 }
   );
@@ -200,6 +394,7 @@ export function HomePage({
 
   const socketRef = useRef<WebSocket | null>(null);
   const localCardRef = useRef<HTMLDivElement | null>(null);
+  const computerCardRef = useRef<HTMLDivElement | null>(null);
   const multiplayerCardRef = useRef<HTMLDivElement | null>(null);
   const localHistoryLengthRef = useRef(localGame.history.length);
   const multiplayerHistoryMetaRef = useRef<{ gameId: string | null; length: number }>({
@@ -207,7 +402,10 @@ export function HomePage({
     length: 0,
   });
 
-  useStonePlacementSound(mode === "local" ? localGame : null);
+  const localBoardMode = mode === "local" || mode === "computer";
+  const computerMode = mode === "computer";
+
+  useStonePlacementSound(localBoardMode ? localGame : null);
   useStonePlacementSound(
     mode === "multiplayer" ? multiplayerSnapshot?.state ?? null : null
   );
@@ -322,7 +520,11 @@ export function HomePage({
     }
 
     const targetRef =
-      menuTarget === "local" ? localCardRef.current : multiplayerCardRef.current;
+      menuTarget === "local"
+        ? localCardRef.current
+        : menuTarget === "computer"
+          ? computerCardRef.current
+          : multiplayerCardRef.current;
 
     const frame = window.requestAnimationFrame(() => {
       targetRef?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -341,8 +543,8 @@ export function HomePage({
 
     if (view === "multiplayer") {
       openMenuSection("multiplayer");
-    } else if (view === "local") {
-      openMenuSection("local");
+    } else if (view === "computer" || view === "local") {
+      openMenuSection("computer");
     } else if (view === "over-the-board") {
       enterLocalMode();
     }
@@ -355,6 +557,8 @@ export function HomePage({
   const localJumpTargets = localActiveOrigin
     ? getJumpTargets(localGame, localActiveOrigin, localGame.currentTurn)
     : [];
+  const localBoardDisabled =
+    computerMode && (computerThinking || localGame.currentTurn === COMPUTER_COLOR);
 
   const playerSeat = getPlayerSeat(multiplayerSnapshot, auth?.player.playerId);
   const multiplayerForcedOrigin = multiplayerSnapshot
@@ -392,9 +596,47 @@ export function HomePage({
   const localWinnerLabel = formatPlayerColor(localWinner);
   const multiplayerWinnerLabel = formatPlayerColor(multiplayerWinner);
   const localTurnLabel = formatPlayerColor(localGame.currentTurn);
+  const localStatusTitle = localGameOver
+    ? `${localWinnerLabel} wins`
+    : computerMode
+      ? computerThinking || localGame.currentTurn === COMPUTER_COLOR
+        ? "Computer to move"
+        : "Your turn"
+      : `${localTurnLabel} to move`;
 
-  useWinConfetti(mode === "local" ? localWinner : null);
+  useWinConfetti(localBoardMode ? localWinner : null);
   useWinConfetti(mode === "multiplayer" ? multiplayerWinner : null);
+
+  useEffect(() => {
+    if (
+      !computerMode ||
+      localGame.currentTurn !== COMPUTER_COLOR ||
+      localGame.pendingJump.length > 0 ||
+      isGameOver(localGame) ||
+      computerThinking
+    ) {
+      return undefined;
+    }
+
+    setComputerThinking(true);
+    const timeout = window.setTimeout(() => {
+      const result = applyComputerTurn(localGame);
+
+      if (result.ok) {
+        setLocalGame(result.value);
+        setLocalSelection(null);
+        setLocalError(null);
+      } else {
+        setLocalError(result.reason);
+      }
+
+      setComputerThinking(false);
+    }, COMPUTER_THINK_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [computerMode, computerThinking, localGame]);
 
   useEffect(() => {
     if (!multiplayerError) {
@@ -434,6 +676,7 @@ export function HomePage({
     setLocalGame(createInitialGameState());
     setLocalSelection(null);
     setLocalError(null);
+    setComputerThinking(false);
     setLocalScorePulse({ black: 0, white: 0 });
     localHistoryLengthRef.current = 0;
   }
@@ -460,8 +703,29 @@ export function HomePage({
     }
   }
 
+  function handleLocalUndoTurn() {
+    let nextState = localGame;
+    const undoCount =
+      computerMode && localGame.currentTurn === "white" ? 2 : 1;
+
+    for (let index = 0; index < undoCount; index += 1) {
+      const result = undoLastTurn(nextState);
+      if (!result.ok) {
+        setLocalError(result.reason);
+        return;
+      }
+
+      nextState = result.value;
+    }
+
+    setLocalGame(nextState);
+    setLocalSelection(null);
+    setLocalError(null);
+  }
+
   function goHome() {
     clearMultiplayerView();
+    setComputerThinking(false);
     setMode("menu");
     setNavOpen(false);
   }
@@ -480,6 +744,13 @@ export function HomePage({
     setNavOpen(false);
   }
 
+  function enterComputerMode() {
+    clearMultiplayerView();
+    resetLocalGame();
+    setMode("computer");
+    setNavOpen(false);
+  }
+
   function openProfilePage() {
     setNavOpen(false);
     navigate("/profile");
@@ -494,15 +765,15 @@ export function HomePage({
     openMenuSection("multiplayer");
   }
 
-  function handleLocalNav() {
+  function handleComputerNav() {
     if (mode === "menu") {
-      openMenuSection("local");
+      openMenuSection("computer");
       return;
     }
 
     setNavOpen(false);
     goHome();
-    setMenuTarget("local");
+    setMenuTarget("computer");
   }
 
   function handleLocalBoardClick(position: Position) {
@@ -801,9 +1072,9 @@ export function HomePage({
         onToggleNav={() => setNavOpen((value) => !value)}
         onCloseNav={() => setNavOpen(false)}
         onGoLobby={goHome}
-        onGoMultiplayer={handleMultiplayerNav}
         onGoOverTheBoard={enterLocalMode}
-        onGoLocal={handleLocalNav}
+        onGoMultiplayer={handleMultiplayerNav}
+        onGoComputer={handleComputerNav}
         onGoProfile={openProfilePage}
         onOpenAuth={onOpenAuth}
         onLogout={onLogout}
@@ -813,37 +1084,65 @@ export function HomePage({
         className={cn(
           "mx-auto flex flex-col gap-5 px-4 sm:px-6",
           mode === "menu"
-            ? "max-w-7xl py-5 lg:px-8 lg:py-6"
+            ? "max-w-7xl pb-5 pt-20 lg:px-8 lg:pb-6 lg:pt-20"
             : "max-w-[104rem] pt-16 pb-3 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2"
         )}
       >
         {mode === "menu" ? (
-          <section className="grid gap-5 lg:grid-cols-2">
-            <motion.div
-              ref={localCardRef}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className={cn("overflow-hidden", paperCard)}>
-                <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
-                <CardHeader>
-                  <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c]">
-                    Local
-                  </Badge>
-                  <CardTitle className="text-4xl text-[#2b1e14]">
-                    Over the board
-                  </CardTitle>
-                  <CardDescription className="text-[#6e5b48]">
-                    Start a shared-board match with a clean, focused table view.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button size="lg" className="w-full" onClick={enterLocalMode}>
-                    Start local game
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid gap-5">
+              <motion.div
+                ref={localCardRef}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className={cn("overflow-hidden", paperCard)}>
+                  <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
+                  <CardHeader>
+                    <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c]">
+                      Local
+                    </Badge>
+                    <CardTitle className="text-4xl text-[#2b1e14]">
+                      Over the board
+                    </CardTitle>
+                    <CardDescription className="text-[#6e5b48]">
+                      Start a shared-board match with a clean, focused table view.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button size="lg" className="w-full" onClick={enterLocalMode}>
+                      Start local game
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                ref={computerCardRef}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className={cn("overflow-hidden", paperCard)}>
+                  <div className="h-2 bg-[linear-gradient(90deg,#3c5a28,#94ba69)]" />
+                  <CardHeader>
+                    <Badge className="w-fit bg-[#edf5e4] text-[#486334]">
+                      Against computer
+                    </Badge>
+                    <CardTitle className="text-4xl text-[#2b1e14]">
+                      Solo board
+                    </CardTitle>
+                    <CardDescription className="text-[#6e5b48]">
+                      Play white, take the first move, and let the computer answer.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button size="lg" className="w-full" onClick={enterComputerMode}>
+                      Play against AI
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
 
             <motion.div
               ref={multiplayerCardRef}
@@ -914,8 +1213,8 @@ export function HomePage({
           </section>
         ) : null}
 
-        {mode === "local" ? (
-          <section className="grid gap-3 xl:gap-2 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
+        {localBoardMode ? (
+          <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
             <div className="flex justify-center xl:min-h-[calc(100dvh-1.5rem)]">
               <div className="mx-auto w-full" style={boardWrapStyle}>
                 <TiaoBoard
@@ -923,6 +1222,7 @@ export function HomePage({
                   selectedPiece={localSelection}
                   jumpTargets={localJumpTargets}
                   confirmReady={localConfirmReady}
+                  disabled={localBoardDisabled}
                   onPointClick={handleLocalBoardClick}
                   onUndoLastJump={handleLocalUndoPendingJump}
                 />
@@ -930,84 +1230,83 @@ export function HomePage({
             </div>
 
             <div className="space-y-4 xl:max-h-[calc(100dvh-1.5rem)] xl:overflow-auto">
-              <Card className={paperCard}>
-                <CardHeader>
-                  <GamePanelBrand />
-                  <CardTitle className="text-[#2b1e14]">
-                    {localGameOver
-                      ? `${localWinnerLabel} wins`
-                      : `${localTurnLabel} to move`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <AnimatedScoreTile
-                      label="Black"
-                      value={localGame.score.black}
-                      pulseKey={localScorePulse.black}
-                      className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
-                      labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
-                    />
-                    <AnimatedScoreTile
-                      label="White"
-                      value={localGame.score.white}
-                      pulseKey={localScorePulse.white}
-                      className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
-                      labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        const result = undoLastTurn(localGame);
-                        if (result.ok) {
-                          setLocalGame(result.value);
-                          setLocalSelection(null);
-                          setLocalError(null);
-                        } else {
-                          setLocalError(result.reason);
-                        }
-                      }}
-                    >
-                      Undo turn
-                    </Button>
-                    {localGame.pendingJump.length > 0 ? (
-                      <Button
-                        variant="outline"
-                        onClick={handleLocalUndoPendingJump}
-                      >
-                        Undo jump
-                      </Button>
+              <div className="mx-auto w-full xl:mx-0" style={boardWrapStyle}>
+                <Card className={paperCard}>
+                  <CardHeader>
+                    <GamePanelBrand />
+                    {computerMode ? (
+                      <Badge className="w-fit bg-[#edf5e4] text-[#486334]">
+                        Against computer
+                      </Badge>
                     ) : null}
-                    {localGame.pendingJump.length > 0 ? (
-                      <Button
-                        onClick={handleLocalConfirmPendingJump}
-                      >
-                        Confirm jump
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  {localGameOver ? (
-                    <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                      <Button variant="secondary" onClick={resetLocalGame}>
-                        Restart board
-                      </Button>
-                      <Button variant="ghost" onClick={goHome}>
-                        Back to lobby
-                      </Button>
+                    <CardTitle className="text-[#2b1e14]">
+                      {localStatusTitle}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <AnimatedScoreTile
+                        label="Black"
+                        value={localGame.score.black}
+                        pulseKey={localScorePulse.black}
+                        className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
+                        labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
+                      />
+                      <AnimatedScoreTile
+                        label="White"
+                        value={localGame.score.white}
+                        pulseKey={localScorePulse.white}
+                        className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
+                        labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
+                      />
                     </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+
+                    <div className="grid gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={handleLocalUndoTurn}
+                        disabled={localBoardDisabled}
+                      >
+                        Undo turn
+                      </Button>
+                      {localGame.pendingJump.length > 0 ? (
+                        <Button
+                          variant="outline"
+                          onClick={handleLocalUndoPendingJump}
+                          disabled={localBoardDisabled}
+                        >
+                          Undo jump
+                        </Button>
+                      ) : null}
+                      {localGame.pendingJump.length > 0 ? (
+                        <Button
+                          onClick={handleLocalConfirmPendingJump}
+                          disabled={localBoardDisabled}
+                        >
+                          Confirm jump
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    {localGameOver ? (
+                      <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
+                        <Button variant="secondary" onClick={resetLocalGame}>
+                          Restart board
+                        </Button>
+                        <Button variant="ghost" onClick={goHome}>
+                          Back to lobby
+                        </Button>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </section>
         ) : null}
 
         {mode === "multiplayer" ? (
-          <section className="grid gap-3 xl:gap-2 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
+          <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
             <div className="flex justify-center xl:min-h-[calc(100dvh-1.5rem)]">
               <div className="relative mx-auto w-full" style={boardWrapStyle}>
                 {multiplayerSnapshot ? (
@@ -1033,135 +1332,137 @@ export function HomePage({
             </div>
 
             <div className="space-y-4 xl:max-h-[calc(100dvh-1.5rem)] xl:overflow-auto">
-              <Card className={paperCard}>
-                <CardHeader>
-                  <GamePanelBrand />
-                  <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
-                    Multiplayer
-                  </Badge>
-                  <CardTitle className="text-[#2b1e14]">
-                    {multiplayerSnapshot
-                      ? `Room ${multiplayerSnapshot.gameId}`
-                      : "Room"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {multiplayerSnapshot ? (
-                    <>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="rounded-2xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 font-mono text-xl text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]">
-                          {multiplayerSnapshot.gameId}
+              <div className="mx-auto w-full xl:mx-0" style={boardWrapStyle}>
+                <Card className={paperCard}>
+                  <CardHeader>
+                    <GamePanelBrand />
+                    <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
+                      Multiplayer
+                    </Badge>
+                    <CardTitle className="text-[#2b1e14]">
+                      {multiplayerSnapshot
+                        ? `Room ${multiplayerSnapshot.gameId}`
+                        : "Room"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {multiplayerSnapshot ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="rounded-2xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 font-mono text-xl text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]">
+                            {multiplayerSnapshot.gameId}
+                          </div>
+                          <Button variant="secondary" onClick={handleCopyGameId}>
+                            Copy
+                          </Button>
+                          {copyFeedback ? (
+                            <span className="text-sm text-[#7a6656]">
+                              {copyFeedback}
+                            </span>
+                          ) : null}
                         </div>
-                        <Button variant="secondary" onClick={handleCopyGameId}>
-                          Copy
-                        </Button>
-                        {copyFeedback ? (
-                          <span className="text-sm text-[#7a6656]">
-                            {copyFeedback}
-                          </span>
-                        ) : null}
-                      </div>
 
-                      <div className="grid gap-2">
-                        {(["white", "black"] as PlayerColor[]).map((color) => {
-                          const seat = multiplayerSnapshot.seats[color];
-                          return (
-                            <div
-                              key={color}
-                              className="flex items-center justify-between rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
-                            >
-                              <div>
-                                <p className="text-sm font-semibold capitalize text-[#2b1e14]">
-                                  {color}
-                                </p>
-                                <p className="text-sm text-[#7a6656]">
-                                  {seat?.player.displayName || "Open"}
-                                </p>
-                              </div>
-                              <Badge
-                                className={cn(
-                                  seat?.online
-                                    ? "bg-[#eef2e8] text-[#43513f]"
-                                    : "bg-[#f2e8d9] text-[#6e5b48]"
-                                )}
+                        <div className="grid gap-2">
+                          {(["white", "black"] as PlayerColor[]).map((color) => {
+                            const seat = multiplayerSnapshot.seats[color];
+                            return (
+                              <div
+                                key={color}
+                                className="flex items-center justify-between rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
                               >
-                                {seat?.online ? "Online" : "Offline"}
-                              </Badge>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <AnimatedScoreTile
-                          label="Black"
-                          value={multiplayerSnapshot.state.score.black}
-                          pulseKey={multiplayerScorePulse.black}
-                          className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
-                          labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
-                        />
-                        <AnimatedScoreTile
-                          label="White"
-                          value={multiplayerSnapshot.state.score.white}
-                          pulseKey={multiplayerScorePulse.white}
-                          className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
-                          labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
-                        />
-                      </div>
-
-                      <div className="rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3 text-sm text-[#6e5b48]">
-                        <p>
-                          You:{" "}
-                          <span className="font-semibold text-[#2b1e14]">
-                            {playerSeat || "spectator"}
-                          </span>
-                        </p>
-                        <p>
-                          Status:{" "}
-                          <span className="font-semibold text-[#2b1e14]">
-                            {connectionState}
-                          </span>
-                        </p>
-                        <p>
-                          {multiplayerSnapshot.status === "waiting"
-                            ? "Room open."
-                            : multiplayerSnapshot.status === "finished"
-                            ? `${multiplayerWinnerLabel} won.`
-                            : `${multiplayerSnapshot.state.currentTurn} to move.`}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-2">
-                        {multiplayerSnapshot.state.pendingJump.length > 0 ? (
-                          <Button
-                            onClick={() =>
-                              sendMultiplayerMessage({ type: "confirm-jump" })
-                            }
-                            disabled={multiplayerBoardDisabled}
-                          >
-                            Confirm jump
-                          </Button>
-                        ) : null}
-                      </div>
-
-                      {multiplayerGameOver ? (
-                        <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                          <Button
-                            variant="secondary"
-                            onClick={handleResetMultiplayerBoard}
-                            disabled={multiplayerBusy}
-                          >
-                            {multiplayerBusy ? "Restarting..." : "Restart board"}
-                          </Button>
-                          <Button variant="ghost" onClick={goHome}>
-                            Back to lobby
-                          </Button>
+                                <div>
+                                  <p className="text-sm font-semibold capitalize text-[#2b1e14]">
+                                    {color}
+                                  </p>
+                                  <p className="text-sm text-[#7a6656]">
+                                    {seat?.player.displayName || "Open"}
+                                  </p>
+                                </div>
+                                <Badge
+                                  className={cn(
+                                    seat?.online
+                                      ? "bg-[#eef2e8] text-[#43513f]"
+                                      : "bg-[#f2e8d9] text-[#6e5b48]"
+                                  )}
+                                >
+                                  {seat?.online ? "Online" : "Offline"}
+                                </Badge>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ) : null}
-                    </>
-                  ) : null}
-                </CardContent>
-              </Card>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <AnimatedScoreTile
+                            label="Black"
+                            value={multiplayerSnapshot.state.score.black}
+                            pulseKey={multiplayerScorePulse.black}
+                            className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
+                            labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
+                          />
+                          <AnimatedScoreTile
+                            label="White"
+                            value={multiplayerSnapshot.state.score.white}
+                            pulseKey={multiplayerScorePulse.white}
+                            className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
+                            labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
+                          />
+                        </div>
+
+                        <div className="rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3 text-sm text-[#6e5b48]">
+                          <p>
+                            You:{" "}
+                            <span className="font-semibold text-[#2b1e14]">
+                              {playerSeat || "spectator"}
+                            </span>
+                          </p>
+                          <p>
+                            Status:{" "}
+                            <span className="font-semibold text-[#2b1e14]">
+                              {connectionState}
+                            </span>
+                          </p>
+                          <p>
+                            {multiplayerSnapshot.status === "waiting"
+                              ? "Room open."
+                              : multiplayerSnapshot.status === "finished"
+                              ? `${multiplayerWinnerLabel} won.`
+                              : `${multiplayerSnapshot.state.currentTurn} to move.`}
+                          </p>
+                        </div>
+
+                        <div className="grid gap-2">
+                          {multiplayerSnapshot.state.pendingJump.length > 0 ? (
+                            <Button
+                              onClick={() =>
+                                sendMultiplayerMessage({ type: "confirm-jump" })
+                              }
+                              disabled={multiplayerBoardDisabled}
+                            >
+                              Confirm jump
+                            </Button>
+                          ) : null}
+                        </div>
+
+                        {multiplayerGameOver ? (
+                          <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
+                            <Button
+                              variant="secondary"
+                              onClick={handleResetMultiplayerBoard}
+                              disabled={multiplayerBusy}
+                            >
+                              {multiplayerBusy ? "Restarting..." : "Restart board"}
+                            </Button>
+                            <Button variant="ghost" onClick={goHome}>
+                              Back to lobby
+                            </Button>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </section>
         ) : null}

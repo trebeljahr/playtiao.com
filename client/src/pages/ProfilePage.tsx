@@ -202,9 +202,9 @@ export function ProfilePage({
         onToggleNav={() => setNavOpen((value) => !value)}
         onCloseNav={() => setNavOpen(false)}
         onGoLobby={() => navigate("/")}
-        onGoMultiplayer={() => navigate("/?view=multiplayer")}
         onGoOverTheBoard={() => navigate("/?view=over-the-board")}
-        onGoLocal={() => navigate("/?view=local")}
+        onGoMultiplayer={() => navigate("/?view=multiplayer")}
+        onGoComputer={() => navigate("/?view=computer")}
         onGoProfile={() => {
           setNavOpen(false);
           navigate("/profile");
