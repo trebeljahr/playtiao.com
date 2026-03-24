@@ -1,7 +1,6 @@
 import express from "express";
 import { Express } from "express";
 import logger from "morgan";
-import cookieParser from "cookie-parser";
 import cors from "cors";
 import { FRONTEND_URL } from "./envVars";
 
@@ -16,5 +15,4 @@ export const configureApp = (app: Express): void => {
   app.use(logger("dev"));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
-  app.use(cookieParser());
 };

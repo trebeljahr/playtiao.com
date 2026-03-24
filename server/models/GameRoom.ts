@@ -1,7 +1,9 @@
 import { Document, Schema, model, models } from "mongoose";
 import {
   GameState,
+  MultiplayerRematchState,
   MultiplayerSeatAssignments,
+  MultiplayerRoomType,
   MultiplayerStatus,
   PlayerIdentity,
 } from "../../shared/src";
@@ -39,8 +41,11 @@ const PlayerIdentitySchema = new Schema<PlayerIdentity>(
 
 export interface IGameRoom extends Document {
   roomId: string;
+  roomType: MultiplayerRoomType;
   status: MultiplayerStatus;
   state: GameState;
+  players: PlayerIdentity[];
+  rematch: MultiplayerRematchState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +60,13 @@ const GameRoomSchema = new Schema<IGameRoom>(
       uppercase: true,
       trim: true,
     },
+    roomType: {
+      type: String,
+      required: true,
+      enum: ["direct", "matchmaking"],
+      default: "direct",
+      index: true,
+    },
     status: {
       type: String,
       required: true,
@@ -64,6 +76,23 @@ const GameRoomSchema = new Schema<IGameRoom>(
     state: {
       type: Schema.Types.Mixed,
       required: true,
+    },
+    players: {
+      type: [PlayerIdentitySchema],
+      default: [],
+    },
+    rematch: {
+      type: new Schema<MultiplayerRematchState>(
+        {
+          requestedBy: {
+            type: [String],
+            enum: ["white", "black"],
+            default: [],
+          },
+        },
+        { _id: false }
+      ),
+      default: null,
     },
     seats: {
       white: {
@@ -81,8 +110,7 @@ const GameRoomSchema = new Schema<IGameRoom>(
   }
 );
 
-GameRoomSchema.index({ "seats.white.playerId": 1, status: 1, updatedAt: -1 });
-GameRoomSchema.index({ "seats.black.playerId": 1, status: 1, updatedAt: -1 });
+GameRoomSchema.index({ "players.playerId": 1, status: 1, updatedAt: -1 });
 
 const GameRoom = models.GameRoom || model<IGameRoom>("GameRoom", GameRoomSchema);
 

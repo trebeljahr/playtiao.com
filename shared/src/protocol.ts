@@ -15,21 +15,31 @@ export type PlayerSlot = {
   online: boolean;
 };
 
+export type MultiplayerRoomType = "direct" | "matchmaking";
+
 export type MultiplayerStatus = "waiting" | "active" | "finished";
 
 export type MultiplayerSeatAssignments = Record<PlayerColor, PlayerIdentity | null>;
 
+export type MultiplayerRematchState = {
+  requestedBy: PlayerColor[];
+};
+
 export type MultiplayerSnapshot = {
   gameId: string;
+  roomType: MultiplayerRoomType;
   status: MultiplayerStatus;
   createdAt: string;
   updatedAt: string;
   state: GameState;
+  players: PlayerSlot[];
+  rematch: MultiplayerRematchState | null;
   seats: Record<PlayerColor, PlayerSlot | null>;
 };
 
 export type MultiplayerGameSummary = {
   gameId: string;
+  roomType: MultiplayerRoomType;
   status: MultiplayerStatus;
   createdAt: string;
   updatedAt: string;
@@ -38,12 +48,62 @@ export type MultiplayerGameSummary = {
   winner: PlayerColor | null;
   yourSeat: PlayerColor | null;
   score: ScoreState;
+  players: PlayerSlot[];
   seats: Record<PlayerColor, PlayerSlot | null>;
 };
 
 export type MultiplayerGamesIndex = {
   active: MultiplayerGameSummary[];
   finished: MultiplayerGameSummary[];
+};
+
+export type MatchmakingState =
+  | {
+      status: "idle";
+    }
+  | {
+      status: "searching";
+      queuedAt: string;
+    }
+  | {
+      status: "matched";
+      snapshot: MultiplayerSnapshot;
+    };
+
+export type SocialPlayerSummary = {
+  playerId: string;
+  displayName: string;
+  profilePicture?: string;
+  email?: string;
+};
+
+export type SocialSearchRelationship =
+  | "none"
+  | "friend"
+  | "incoming-request"
+  | "outgoing-request";
+
+export type SocialSearchResult = {
+  player: SocialPlayerSummary;
+  relationship: SocialSearchRelationship;
+};
+
+export type GameInvitationSummary = {
+  id: string;
+  gameId: string;
+  roomType: MultiplayerRoomType;
+  sender: SocialPlayerSummary;
+  recipient: SocialPlayerSummary;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type SocialOverview = {
+  friends: SocialPlayerSummary[];
+  incomingFriendRequests: SocialPlayerSummary[];
+  outgoingFriendRequests: SocialPlayerSummary[];
+  incomingInvitations: GameInvitationSummary[];
+  outgoingInvitations: GameInvitationSummary[];
 };
 
 export type GameActionMessage =
@@ -61,6 +121,12 @@ export type GameActionMessage =
     }
   | {
       type: "undo-pending-jump-step";
+    }
+  | {
+      type: "request-rematch";
+    }
+  | {
+      type: "decline-rematch";
     };
 
 export type ClientToServerMessage = GameActionMessage;

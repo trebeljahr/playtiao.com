@@ -1,8 +1,11 @@
 import WebSocket from "ws";
 import {
   ClientToServerMessage,
+  MatchmakingState,
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
+  MultiplayerRematchState,
+  MultiplayerRoomType,
   MultiplayerSeatAssignments,
   MultiplayerSnapshot,
   MultiplayerStatus,
@@ -36,54 +39,37 @@ export class GameServiceError extends Error {
 }
 
 type RoomConnections = Map<WebSocket, string>;
+type MatchmakingQueueEntry = {
+  player: PlayerIdentity;
+  queuedAt: number;
+};
 
 export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
   private readonly socketRooms = new Map<WebSocket, string>();
   private readonly locks = new Map<string, Promise<void>>();
+  private readonly matchmakingQueue: MatchmakingQueueEntry[] = [];
+  private readonly matchmakingMatches = new Map<string, string>();
 
-  constructor(private readonly store: GameRoomStore = new MongoGameRoomStore()) {}
+  constructor(
+    private readonly store: GameRoomStore = new MongoGameRoomStore(),
+    private readonly seatRandom: () => number = Math.random
+  ) {}
 
-  async createGame(creator: PlayerIdentity): Promise<MultiplayerSnapshot> {
+  async createGame(
+    creator: PlayerIdentity,
+    options: { roomType?: MultiplayerRoomType } = {}
+  ): Promise<MultiplayerSnapshot> {
     return this.withLocks([this.playerLockKey(creator.playerId)], async () => {
       await this.ensureGuestPlayerHasSingleOpenGame(creator);
 
-      for (let attempt = 0; attempt < 12; attempt += 1) {
-        const room = this.deriveRoomStatus({
-          id: this.generateRoomId(),
-          status: "waiting",
-          state: createInitialGameState(),
-          seats: {
-            white: creator,
-            black: null,
-          },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+      const room = await this.createRoomRecord({
+        players: [creator],
+        roomType: options.roomType ?? "direct",
+        assignSeats: false,
+      });
 
-        try {
-          const savedRoom = await this.store.createRoom({
-            id: room.id,
-            status: room.status,
-            state: room.state,
-            seats: room.seats,
-          });
-
-          return this.toSnapshot(savedRoom);
-        } catch (error) {
-          if (this.isDuplicateRoomError(error)) {
-            continue;
-          }
-
-          throw error;
-        }
-      }
-
-      throw new GameServiceError(
-        500,
-        "ROOM_CREATE_FAILED",
-        "Unable to create a multiplayer room right now."
-      );
+      return this.toSnapshot(room);
     });
   }
 
@@ -95,34 +81,34 @@ export class GameService {
       [this.roomLockKey(gameId), this.playerLockKey(player.playerId)],
       async () => {
         const room = await this.getRoom(gameId);
-        const existingSeat = getPlayerColorForRoom(room, player.playerId);
-
         await this.ensureGuestPlayerHasSingleOpenGame(player, room.id);
 
-        if (!existingSeat) {
-          if (!room.seats.white) {
-            room.seats.white = player;
-          } else if (!room.seats.black) {
-            room.seats.black = player;
-          } else {
-            throw new GameServiceError(
-              409,
-              "ROOM_FULL",
-              "That game already has two players."
-            );
-          }
+        const savedRoom = await this.joinRoom(room, player);
+        this.broadcastSnapshot(savedRoom);
+        return this.toSnapshot(savedRoom);
+      }
+    );
+  }
+
+  async accessGame(
+    gameId: string,
+    player: PlayerIdentity
+  ): Promise<MultiplayerSnapshot> {
+    return this.withLocks(
+      [this.roomLockKey(gameId), this.playerLockKey(player.playerId)],
+      async () => {
+        const room = await this.getRoom(gameId);
+
+        if (this.isPlayerInRoom(room, player.playerId)) {
+          return this.toSnapshot(room);
         }
 
-        const savedRoom = existingSeat
-          ? room
-          : await this.saveRoom({
-              ...room,
-              seats: {
-                white: room.seats.white,
-                black: room.seats.black,
-              },
-            });
+        if (room.players.length >= 2) {
+          return this.toSnapshot(room);
+        }
 
+        await this.ensureGuestPlayerHasSingleOpenGame(player, room.id);
+        const savedRoom = await this.joinRoom(room, player);
         this.broadcastSnapshot(savedRoom);
         return this.toSnapshot(savedRoom);
       }
@@ -153,53 +139,12 @@ export class GameService {
     };
   }
 
-  async resetGame(
-    gameId: string,
-    player: PlayerIdentity
-  ): Promise<MultiplayerSnapshot> {
-    return this.withLock(this.roomLockKey(gameId), async () => {
-      const room = await this.getRoom(gameId);
-      const playerColor = getPlayerColorForRoom(room, player.playerId);
-
-      if (!playerColor) {
-        throw new GameServiceError(
-          403,
-          "NOT_IN_GAME",
-          "You are not seated in this game."
-        );
-      }
-
-      if (!isGameOver(room.state)) {
-        throw new GameServiceError(
-          409,
-          "GAME_NOT_FINISHED",
-          "You can only restart the board once the game is over."
-        );
-      }
-
-      const savedRoom = await this.saveRoom({
-        ...room,
-        state: createInitialGameState(),
-      });
-
-      this.broadcastSnapshot(savedRoom);
-      return this.toSnapshot(savedRoom);
-    });
-  }
-
   async connect(
     gameId: string,
     player: PlayerIdentity,
     socket: WebSocket
   ): Promise<void> {
     const room = await this.getRoom(gameId);
-    if (!getPlayerColorForRoom(room, player.playerId)) {
-      throw new GameServiceError(
-        403,
-        "NOT_IN_GAME",
-        "Join the game before opening a multiplayer connection."
-      );
-    }
 
     const connections = this.getConnections(room.id);
     connections.set(socket, player.playerId);
@@ -228,7 +173,7 @@ export class GameService {
 
     const room = await this.store.getRoom(roomId);
     if (room) {
-      this.broadcastSnapshot(room);
+      this.broadcastSnapshot(this.deriveRoomStatus(room));
     }
   }
 
@@ -249,34 +194,32 @@ export class GameService {
         );
       }
 
-      if (!room.seats.white || !room.seats.black) {
-        throw new GameServiceError(
-          409,
-          "WAITING_FOR_OPPONENT",
-          "The game cannot start until both players have joined."
-        );
-      }
-
-      if (room.state.currentTurn !== playerColor) {
-        throw new GameServiceError(
-          409,
-          "NOT_YOUR_TURN",
-          "It is not your turn."
-        );
-      }
-
       let result;
       switch (message.type) {
+        case "request-rematch": {
+          const savedRoom = await this.requestRematch(room, playerColor);
+          this.broadcastSnapshot(savedRoom);
+          return this.toSnapshot(savedRoom);
+        }
+        case "decline-rematch": {
+          const savedRoom = await this.declineRematch(room, playerColor);
+          this.broadcastSnapshot(savedRoom);
+          return this.toSnapshot(savedRoom);
+        }
         case "place-piece":
+          this.ensureActionableRoom(room, playerColor);
           result = placePiece(room.state, message.position);
           break;
         case "jump-piece":
+          this.ensureActionableRoom(room, playerColor);
           result = jumpPiece(room.state, message.from, message.to);
           break;
         case "confirm-jump":
+          this.ensureActionableRoom(room, playerColor);
           result = confirmPendingJump(room.state);
           break;
         case "undo-pending-jump-step":
+          this.ensureActionableRoom(room, playerColor);
           result = undoPendingJumpStep(room.state);
           break;
         default:
@@ -301,8 +244,220 @@ export class GameService {
     });
   }
 
+  async enterMatchmaking(player: PlayerIdentity): Promise<MatchmakingState> {
+    return this.withLock(this.matchmakingLockKey(), async () => {
+      const matchedGameId = this.matchmakingMatches.get(player.playerId);
+      if (matchedGameId) {
+        return {
+          status: "matched",
+          snapshot: await this.getSnapshot(matchedGameId),
+        };
+      }
+
+      const existingEntry = this.matchmakingQueue.find(
+        (entry) => entry.player.playerId === player.playerId
+      );
+      if (existingEntry) {
+        return {
+          status: "searching",
+          queuedAt: new Date(existingEntry.queuedAt).toISOString(),
+        };
+      }
+
+      await this.ensureGuestPlayerHasSingleOpenGame(player);
+
+      while (this.matchmakingQueue.length > 0) {
+        const opponentEntry = this.matchmakingQueue.shift();
+        if (!opponentEntry) {
+          break;
+        }
+
+        if (opponentEntry.player.playerId === player.playerId) {
+          continue;
+        }
+
+        const snapshot = await this.withLocks(
+          [
+            this.playerLockKey(player.playerId),
+            this.playerLockKey(opponentEntry.player.playerId),
+          ],
+          async () => {
+            await this.ensureGuestPlayerHasSingleOpenGame(player);
+            await this.ensureGuestPlayerHasSingleOpenGame(opponentEntry.player);
+
+            const room = await this.createRoomRecord({
+              players: [opponentEntry.player, player],
+              roomType: "matchmaking",
+              assignSeats: true,
+            });
+
+            this.matchmakingMatches.set(opponentEntry.player.playerId, room.id);
+            this.matchmakingMatches.set(player.playerId, room.id);
+
+            return this.toSnapshot(room);
+          }
+        );
+
+        return {
+          status: "matched",
+          snapshot,
+        };
+      }
+
+      const queuedAt = Date.now();
+      this.matchmakingQueue.push({
+        player,
+        queuedAt,
+      });
+
+      return {
+        status: "searching",
+        queuedAt: new Date(queuedAt).toISOString(),
+      };
+    });
+  }
+
+  async getMatchmakingState(player: PlayerIdentity): Promise<MatchmakingState> {
+    return this.withLock(this.matchmakingLockKey(), async () => {
+      const matchedGameId = this.matchmakingMatches.get(player.playerId);
+      if (matchedGameId) {
+        return {
+          status: "matched",
+          snapshot: await this.getSnapshot(matchedGameId),
+        };
+      }
+
+      const existingEntry = this.matchmakingQueue.find(
+        (entry) => entry.player.playerId === player.playerId
+      );
+      if (existingEntry) {
+        return {
+          status: "searching",
+          queuedAt: new Date(existingEntry.queuedAt).toISOString(),
+        };
+      }
+
+      return {
+        status: "idle",
+      };
+    });
+  }
+
+  async leaveMatchmaking(player: PlayerIdentity): Promise<void> {
+    await this.withLock(this.matchmakingLockKey(), async () => {
+      const queueIndex = this.matchmakingQueue.findIndex(
+        (entry) => entry.player.playerId === player.playerId
+      );
+
+      if (queueIndex >= 0) {
+        this.matchmakingQueue.splice(queueIndex, 1);
+      }
+
+      this.matchmakingMatches.delete(player.playerId);
+    });
+  }
+
   pruneInactiveRooms(_maxIdleMs: number): void {
     // Multiplayer history is persisted, so rooms are intentionally retained.
+  }
+
+  private async createRoomRecord(options: {
+    players: PlayerIdentity[];
+    roomType: MultiplayerRoomType;
+    assignSeats: boolean;
+  }): Promise<StoredMultiplayerRoom> {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const room = this.deriveRoomStatus({
+        id: this.generateRoomId(),
+        roomType: options.roomType,
+        status: "waiting",
+        state: createInitialGameState(),
+        players: options.players.map((player) => ({ ...player })),
+        rematch: null,
+        seats: options.assignSeats
+          ? this.assignSeats(options.players[0], options.players[1])
+          : {
+              white: null,
+              black: null,
+            },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      try {
+        return await this.store.createRoom({
+          id: room.id,
+          roomType: room.roomType,
+          status: room.status,
+          state: room.state,
+          players: room.players,
+          rematch: room.rematch,
+          seats: room.seats,
+        });
+      } catch (error) {
+        if (this.isDuplicateRoomError(error)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new GameServiceError(
+      500,
+      "ROOM_CREATE_FAILED",
+      "Unable to create a multiplayer room right now."
+    );
+  }
+
+  private assignSeats(
+    firstPlayer: PlayerIdentity,
+    secondPlayer: PlayerIdentity
+  ): MultiplayerSeatAssignments {
+    if (this.seatRandom() < 0.5) {
+      return {
+        white: firstPlayer,
+        black: secondPlayer,
+      };
+    }
+
+    return {
+      white: secondPlayer,
+      black: firstPlayer,
+    };
+  }
+
+  private async joinRoom(
+    room: StoredMultiplayerRoom,
+    player: PlayerIdentity
+  ): Promise<StoredMultiplayerRoom> {
+    if (this.isPlayerInRoom(room, player.playerId)) {
+      return room;
+    }
+
+    if (room.players.length >= 2) {
+      throw new GameServiceError(
+        409,
+        "ROOM_FULL",
+        "That game already has two players."
+      );
+    }
+
+    const players = [...room.players, player];
+    const seats =
+      players.length === 2 && !room.seats.white && !room.seats.black
+        ? this.assignSeats(players[0], players[1])
+        : room.seats;
+
+    return this.saveRoom({
+      ...room,
+      players,
+      seats,
+    });
+  }
+
+  private isPlayerInRoom(room: StoredMultiplayerRoom, playerId: string): boolean {
+    return room.players.some((player) => player.playerId === playerId);
   }
 
   private async getRoom(gameId: string): Promise<StoredMultiplayerRoom> {
@@ -343,28 +498,124 @@ export class GameService {
   }
 
   private deriveRoomStatus(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
+    const players = this.normalizePlayers(room.players, room.seats);
+    const seats =
+      players.length < 2
+        ? {
+            white: null,
+            black: null,
+          }
+        : {
+            white:
+              room.seats.white &&
+              players.some(
+                (player) => player.playerId === room.seats.white?.playerId
+              )
+                ? { ...room.seats.white }
+                : null,
+            black:
+              room.seats.black &&
+              players.some(
+                (player) => player.playerId === room.seats.black?.playerId
+              )
+                ? { ...room.seats.black }
+                : null,
+          };
+    const status = this.getStatus(room.state, players, seats);
+    const rematch =
+      status === "finished" ? this.normalizeRematch(room.rematch, seats) : null;
+
     return {
       ...room,
-      status: this.getStatus(room),
+      roomType: room.roomType ?? "direct",
+      players,
+      rematch,
+      seats,
+      status,
     };
   }
 
-  private getStatus(room: {
-    state: StoredMultiplayerRoom["state"];
-    seats: MultiplayerSeatAssignments;
-  }): MultiplayerStatus {
-    if (isGameOver(room.state)) {
+  private normalizeRematch(
+    rematch: MultiplayerRematchState | null,
+    seats: MultiplayerSeatAssignments
+  ): MultiplayerRematchState | null {
+    if (!rematch) {
+      return null;
+    }
+
+    const activeColors = (["white", "black"] as PlayerColor[]).filter(
+      (color) => !!seats[color]
+    );
+    const requestedBy = rematch.requestedBy.filter((color) =>
+      activeColors.includes(color)
+    );
+
+    if (requestedBy.length === 0) {
+      return null;
+    }
+
+    return {
+      requestedBy,
+    };
+  }
+
+  private normalizePlayers(
+    players: PlayerIdentity[] | undefined,
+    seats: MultiplayerSeatAssignments
+  ): PlayerIdentity[] {
+    const nextPlayers: PlayerIdentity[] = [];
+    const seen = new Set<string>();
+
+    for (const player of players ?? []) {
+      if (seen.has(player.playerId)) {
+        continue;
+      }
+
+      seen.add(player.playerId);
+      nextPlayers.push({ ...player });
+    }
+
+    for (const color of ["white", "black"] as PlayerColor[]) {
+      const player = seats[color];
+      if (!player || seen.has(player.playerId)) {
+        continue;
+      }
+
+      seen.add(player.playerId);
+      nextPlayers.push({ ...player });
+    }
+
+    return nextPlayers;
+  }
+
+  private getStatus(
+    state: StoredMultiplayerRoom["state"],
+    players: PlayerIdentity[],
+    seats: MultiplayerSeatAssignments
+  ): MultiplayerStatus {
+    if (isGameOver(state)) {
       return "finished";
     }
 
-    if (room.seats.white && room.seats.black) {
+    if (players.length >= 2 && seats.white && seats.black) {
       return "active";
     }
 
     return "waiting";
   }
 
-  private toSlot(
+  private isPlayerOnline(roomId: string, playerId: string): boolean {
+    return Array.from(this.getConnections(roomId).values()).includes(playerId);
+  }
+
+  private toPlayerSlot(roomId: string, player: PlayerIdentity): PlayerSlot {
+    return {
+      player,
+      online: this.isPlayerOnline(roomId, player.playerId),
+    };
+  }
+
+  private toSeatSlot(
     room: StoredMultiplayerRoom,
     color: PlayerColor
   ): PlayerSlot | null {
@@ -373,24 +624,22 @@ export class GameService {
       return null;
     }
 
-    return {
-      player,
-      online: Array.from(this.getConnections(room.id).values()).includes(
-        player.playerId
-      ),
-    };
+    return this.toPlayerSlot(room.id, player);
   }
 
   private toSnapshot(room: StoredMultiplayerRoom): MultiplayerSnapshot {
     return {
       gameId: room.id,
+      roomType: room.roomType,
       status: room.status,
       createdAt: room.createdAt.toISOString(),
       updatedAt: room.updatedAt.toISOString(),
       state: room.state,
+      players: room.players.map((player) => this.toPlayerSlot(room.id, player)),
+      rematch: room.rematch,
       seats: {
-        white: this.toSlot(room, "white"),
-        black: this.toSlot(room, "black"),
+        white: this.toSeatSlot(room, "white"),
+        black: this.toSeatSlot(room, "black"),
       },
     };
   }
@@ -401,6 +650,7 @@ export class GameService {
   ): MultiplayerGameSummary {
     return {
       gameId: room.id,
+      roomType: room.roomType,
       status: room.status,
       createdAt: room.createdAt.toISOString(),
       updatedAt: room.updatedAt.toISOString(),
@@ -412,11 +662,104 @@ export class GameService {
         black: room.state.score.black,
         white: room.state.score.white,
       },
+      players: room.players.map((player) => this.toPlayerSlot(room.id, player)),
       seats: {
-        white: this.toSlot(room, "white"),
-        black: this.toSlot(room, "black"),
+        white: this.toSeatSlot(room, "white"),
+        black: this.toSeatSlot(room, "black"),
       },
     };
+  }
+
+  private ensureActionableRoom(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): void {
+    if (!room.seats.white || !room.seats.black) {
+      throw new GameServiceError(
+        409,
+        "WAITING_FOR_OPPONENT",
+        "The game cannot start until both players have joined."
+      );
+    }
+
+    if (room.state.currentTurn !== playerColor) {
+      throw new GameServiceError(
+        409,
+        "NOT_YOUR_TURN",
+        "It is not your turn."
+      );
+    }
+  }
+
+  private async requestRematch(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): Promise<StoredMultiplayerRoom> {
+    if (room.status !== "finished") {
+      throw new GameServiceError(
+        409,
+        "GAME_NOT_FINISHED",
+        "A rematch is only available once the game has finished."
+      );
+    }
+
+    if (!room.seats.white || !room.seats.black) {
+      throw new GameServiceError(
+        409,
+        "WAITING_FOR_OPPONENT",
+        "A rematch needs both players to still be seated."
+      );
+    }
+
+    const requestedBy = Array.from(
+      new Set([...(room.rematch?.requestedBy ?? []), playerColor])
+    );
+
+    if (requestedBy.length === 2) {
+      return this.saveRoom({
+        ...room,
+        state: createInitialGameState(),
+        rematch: null,
+        seats: this.assignSeats(room.seats.white, room.seats.black),
+      });
+    }
+
+    return this.saveRoom({
+      ...room,
+      rematch: {
+        requestedBy,
+      },
+    });
+  }
+
+  private async declineRematch(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): Promise<StoredMultiplayerRoom> {
+    if (room.status !== "finished") {
+      throw new GameServiceError(
+        409,
+        "GAME_NOT_FINISHED",
+        "A rematch can only be declined once the game has finished."
+      );
+    }
+
+    const incomingRequestExists = (room.rematch?.requestedBy ?? []).some(
+      (color) => color !== playerColor
+    );
+
+    if (!incomingRequestExists) {
+      throw new GameServiceError(
+        409,
+        "NO_REMATCH_REQUEST",
+        "There is no incoming rematch request to decline."
+      );
+    }
+
+    return this.saveRoom({
+      ...room,
+      rematch: null,
+    });
   }
 
   private broadcastSnapshot(room: StoredMultiplayerRoom): void {
@@ -471,6 +814,10 @@ export class GameService {
       "code" in error &&
       error.code === 11000
     );
+  }
+
+  private matchmakingLockKey(): string {
+    return "matchmaking";
   }
 
   private playerLockKey(playerId: string): string {

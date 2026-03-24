@@ -223,6 +223,16 @@ export function App() {
             }
           />
           <Route
+            path="/game/:gameId"
+            element={
+              <HomePage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
             path="/profile"
             element={
               <ProfilePage

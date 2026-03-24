@@ -46,27 +46,33 @@ function isGameServiceError(
   return error instanceof GameServiceError && error.code === code;
 }
 
-test("rooms persist across service instances and can be reopened", async () => {
+test("rooms persist across service instances and randomize seats on second join", async () => {
   const store = new InMemoryGameRoomStore();
-  const creatorService = new GameService(store);
-  const reopenService = new GameService(store);
+  const creatorService = new GameService(store, () => 0.9);
+  const reopenService = new GameService(store, () => 0.9);
   const alice = createPlayer("alice");
   const bob = createPlayer("bob");
 
   const created = await creatorService.createGame(alice);
+  assert.equal(created.status, "waiting");
+  assert.equal(created.players.length, 1);
+  assert.equal(created.seats.white, null);
+  assert.equal(created.seats.black, null);
+
   await creatorService.joinGame(created.gameId, bob);
 
   const reopened = await reopenService.getSnapshot(created.gameId);
 
   assert.equal(reopened.gameId, created.gameId);
   assert.equal(reopened.status, "active");
-  assert.equal(reopened.seats.white?.player.playerId, alice.playerId);
-  assert.equal(reopened.seats.black?.player.playerId, bob.playerId);
+  assert.equal(reopened.players.length, 2);
+  assert.equal(reopened.seats.white?.player.playerId, bob.playerId);
+  assert.equal(reopened.seats.black?.player.playerId, alice.playerId);
 });
 
 test("guest players are limited to one unfinished multiplayer game", async () => {
   const store = new InMemoryGameRoomStore();
-  const service = new GameService(store);
+  const service = new GameService(store, () => 0);
   const guest = createPlayer("guest-1", { kind: "guest", displayName: "Guest" });
   const host = createPlayer("host");
 
@@ -89,7 +95,7 @@ test("guest players are limited to one unfinished multiplayer game", async () =>
 
 test("account players can keep multiple active games and browse finished history", async () => {
   const store = new InMemoryGameRoomStore();
-  const service = new GameService(store);
+  const service = new GameService(store, () => 0);
   const alice = createPlayer("alice");
   const bob = createPlayer("bob");
   const carol = createPlayer("carol");
@@ -114,7 +120,7 @@ test("account players can keep multiple active games and browse finished history
 
 test("game browsing is restricted to account players", async () => {
   const store = new InMemoryGameRoomStore();
-  const service = new GameService(store);
+  const service = new GameService(store, () => 0);
   const guest = createPlayer("guest-2", { kind: "guest" });
 
   await assert.rejects(
@@ -123,17 +129,39 @@ test("game browsing is restricted to account players", async () => {
   );
 });
 
-test("online seat indicators update when sockets connect and disconnect", async () => {
+test("spectator access opens a full game without taking a seat", async () => {
   const store = new InMemoryGameRoomStore();
-  const service = new GameService(store);
+  const service = new GameService(store, () => 0);
   const alice = createPlayer("alice");
   const bob = createPlayer("bob");
+  const carol = createPlayer("carol");
+
+  const created = await service.createGame(alice);
+  const joined = await service.accessGame(created.gameId, bob);
+  const spectated = await service.accessGame(created.gameId, carol);
+
+  assert.equal(joined.status, "active");
+  assert.equal(joined.players.length, 2);
+  assert.equal(spectated.players.length, 2);
+  assert.equal(
+    spectated.players.some((slot) => slot.player.playerId === carol.playerId),
+    false
+  );
+});
+
+test("online seat indicators update when sockets connect and disconnect", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+  const spectator = createPlayer("spectator");
   const created = await service.createGame(alice);
 
   await service.joinGame(created.gameId, bob);
 
   const aliceSocket = new FakeSocket() as unknown as WebSocket;
   const bobSocket = new FakeSocket() as unknown as WebSocket;
+  const spectatorSocket = new FakeSocket() as unknown as WebSocket;
 
   await service.connect(created.gameId, alice, aliceSocket);
   let snapshot = await service.getSnapshot(created.gameId);
@@ -145,8 +173,91 @@ test("online seat indicators update when sockets connect and disconnect", async 
   assert.equal(snapshot.seats.white?.online, true);
   assert.equal(snapshot.seats.black?.online, true);
 
+  await service.connect(created.gameId, spectator, spectatorSocket);
+  snapshot = await service.getSnapshot(created.gameId);
+  assert.equal(snapshot.seats.white?.online, true);
+  assert.equal(snapshot.seats.black?.online, true);
+
   await service.disconnect(aliceSocket);
   snapshot = await service.getSnapshot(created.gameId);
   assert.equal(snapshot.seats.white?.online, false);
   assert.equal(snapshot.seats.black?.online, true);
+});
+
+test("matchmaking pairs the next two players into a live room", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const first = await service.enterMatchmaking(alice);
+  assert.equal(first.status, "searching");
+
+  const second = await service.enterMatchmaking(bob);
+  assert.equal(second.status, "matched");
+  assert.equal(second.snapshot.roomType, "matchmaking");
+  assert.equal(second.snapshot.status, "active");
+  assert.equal(second.snapshot.players.length, 2);
+
+  const waitingPlayerState = await service.getMatchmakingState(alice);
+  assert.equal(waitingPlayerState.status, "matched");
+  assert.equal(waitingPlayerState.snapshot.gameId, second.snapshot.gameId);
+
+  await service.leaveMatchmaking(alice);
+  const cleared = await service.getMatchmakingState(alice);
+  assert.equal(cleared.status, "idle");
+});
+
+test("rematches require both players and reshuffle seats when accepted", async () => {
+  const store = new InMemoryGameRoomStore();
+  const randomRolls = [0, 0.9];
+  const service = new GameService(store, () => randomRolls.shift() ?? 0.9);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  const joined = await service.joinGame(created.gameId, bob);
+  assert.equal(joined.seats.white?.player.playerId, alice.playerId);
+  assert.equal(joined.seats.black?.player.playerId, bob.playerId);
+
+  await finishRoom(store, created.gameId, "white");
+
+  const requested = await service.applyAction(created.gameId, alice, {
+    type: "request-rematch",
+  });
+  assert.deepEqual(requested.rematch?.requestedBy, ["white"]);
+  assert.equal(requested.status, "finished");
+
+  const accepted = await service.applyAction(created.gameId, bob, {
+    type: "request-rematch",
+  });
+  assert.equal(accepted.status, "active");
+  assert.equal(accepted.rematch, null);
+  assert.equal(accepted.state.currentTurn, "white");
+  assert.deepEqual(accepted.state.score, { black: 0, white: 0 });
+  assert.equal(accepted.state.history.length, 0);
+  assert.equal(accepted.seats.white?.player.playerId, bob.playerId);
+  assert.equal(accepted.seats.black?.player.playerId, alice.playerId);
+});
+
+test("players can decline a rematch offer", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  const requested = await service.applyAction(created.gameId, alice, {
+    type: "request-rematch",
+  });
+  assert.deepEqual(requested.rematch?.requestedBy, ["white"]);
+
+  const declined = await service.applyAction(created.gameId, bob, {
+    type: "decline-rematch",
+  });
+  assert.equal(declined.status, "finished");
+  assert.equal(declined.rematch, null);
 });

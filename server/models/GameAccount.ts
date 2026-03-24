@@ -5,6 +5,9 @@ export interface IGameAccount extends Document {
   passwordHash: string;
   displayName: string;
   profilePicture?: string;
+  friends: Schema.Types.ObjectId[];
+  receivedFriendRequests: Schema.Types.ObjectId[];
+  sentFriendRequests: Schema.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,11 +34,34 @@ const GameAccountSchema = new Schema<IGameAccount>(
       type: String,
       trim: true,
     },
+    friends: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "GameAccount",
+        default: [],
+      },
+    ],
+    receivedFriendRequests: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "GameAccount",
+        default: [],
+      },
+    ],
+    sentFriendRequests: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "GameAccount",
+        default: [],
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
+
+GameAccountSchema.index({ displayName: 1 });
 
 const GameAccount =
   models.GameAccount ||

@@ -106,6 +106,11 @@ function closeHttpServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {
       if (error) {
+        if ("code" in error && error.code === "ERR_SERVER_NOT_RUNNING") {
+          resolve();
+          return;
+        }
+
         reject(error);
         return;
       }
@@ -167,7 +172,7 @@ async function start(): Promise<void> {
     await connectToDB();
 
     server.listen(PORT, () => {
-      console.debug(`Server listening on http://localhost:${PORT}`);
+      console.info(`Tiao server listening on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start Tiao server:", error);

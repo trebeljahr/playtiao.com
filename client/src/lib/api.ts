@@ -1,8 +1,11 @@
 import type {
   AuthResponse,
+  MatchmakingState,
   MultiplayerGamesIndex,
   MultiplayerSnapshot,
   PlayerIdentity,
+  SocialOverview,
+  SocialSearchResult,
 } from "@shared";
 
 type JsonBody = Record<string, unknown> | undefined;
@@ -170,15 +173,18 @@ export function joinMultiplayerGame(token: string, gameId: string) {
   );
 }
 
-export function getMultiplayerGame(token: string, gameId: string) {
-  return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}`, {
-    token,
-  });
+export function accessMultiplayerGame(token: string, gameId: string) {
+  return request<{ snapshot: MultiplayerSnapshot }>(
+    `/api/games/${gameId}/access`,
+    {
+      method: "POST",
+      token,
+    }
+  );
 }
 
-export function resetMultiplayerGame(token: string, gameId: string) {
-  return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}/reset`, {
-    method: "POST",
+export function getMultiplayerGame(token: string, gameId: string) {
+  return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}`, {
     token,
   });
 }
@@ -187,6 +193,106 @@ export function listMultiplayerGames(token: string) {
   return request<{ games: MultiplayerGamesIndex }>("/api/games", {
     token,
   });
+}
+
+export function enterMatchmaking(token: string) {
+  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking", {
+    method: "POST",
+    token,
+  });
+}
+
+export function getMatchmakingState(token: string) {
+  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking", {
+    token,
+  });
+}
+
+export function leaveMatchmaking(token: string) {
+  return request<void>("/api/matchmaking", {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function getSocialOverview(token: string) {
+  return request<{ overview: SocialOverview }>("/api/player/social/overview", {
+    token,
+  });
+}
+
+export function searchPlayers(token: string, query: string) {
+  return request<{ results: SocialSearchResult[] }>(
+    `/api/player/social/search?q=${encodeURIComponent(query)}`,
+    {
+      token,
+    }
+  );
+}
+
+export function sendFriendRequest(token: string, accountId: string) {
+  return request<{ message: string }>("/api/player/social/friend-requests", {
+    method: "POST",
+    token,
+    body: {
+      accountId,
+    },
+  });
+}
+
+export function acceptFriendRequest(token: string, accountId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/friend-requests/${accountId}/accept`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+}
+
+export function declineFriendRequest(token: string, accountId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/friend-requests/${accountId}/decline`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+}
+
+export function cancelFriendRequest(token: string, accountId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/friend-requests/${accountId}/cancel`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+}
+
+export function sendGameInvitation(
+  token: string,
+  body: {
+    gameId: string;
+    recipientId: string;
+    expiresInMinutes: number;
+  }
+) {
+  return request<{ message: string }>("/api/player/social/game-invitations", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function revokeGameInvitation(token: string, invitationId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/game-invitations/${invitationId}/revoke`,
+    {
+      method: "POST",
+      token,
+    }
+  );
 }
 
 export function getAccountProfile(token: string) {

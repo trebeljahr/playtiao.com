@@ -1,16 +1,22 @@
 import {
   GameState,
+  MultiplayerRematchState,
   MultiplayerSeatAssignments,
+  MultiplayerRoomType,
   MultiplayerStatus,
   PlayerColor,
+  PlayerIdentity,
   cloneGameState,
 } from "../../shared/src";
 import GameRoom from "../models/GameRoom";
 
 export type StoredMultiplayerRoom = {
   id: string;
+  roomType: MultiplayerRoomType;
   status: MultiplayerStatus;
   state: GameState;
+  players: PlayerIdentity[];
+  rematch: MultiplayerRematchState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
@@ -18,8 +24,11 @@ export type StoredMultiplayerRoom = {
 
 export type CreateStoredMultiplayerRoomInput = {
   id: string;
+  roomType: MultiplayerRoomType;
   status: MultiplayerStatus;
   state: GameState;
+  players: PlayerIdentity[];
+  rematch: MultiplayerRematchState | null;
   seats: MultiplayerSeatAssignments;
 };
 
@@ -44,11 +53,30 @@ function cloneSeats(seats: MultiplayerSeatAssignments): MultiplayerSeatAssignmen
   };
 }
 
+function clonePlayers(players: PlayerIdentity[]): PlayerIdentity[] {
+  return players.map((player) => ({ ...player }));
+}
+
+function cloneRematch(
+  rematch: MultiplayerRematchState | null
+): MultiplayerRematchState | null {
+  if (!rematch) {
+    return null;
+  }
+
+  return {
+    requestedBy: [...rematch.requestedBy],
+  };
+}
+
 export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
   return {
     id: room.id,
+    roomType: room.roomType,
     status: room.status,
     state: cloneGameState(room.state),
+    players: clonePlayers(room.players),
+    rematch: cloneRematch(room.rematch),
     seats: cloneSeats(room.seats),
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
@@ -57,18 +85,37 @@ export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerR
 
 type PersistedGameRoom = {
   roomId: string;
+  roomType?: MultiplayerRoomType;
   status: MultiplayerStatus;
   state: GameState;
+  players?: PlayerIdentity[];
+  rematch?: MultiplayerRematchState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
 };
 
 function toStoredRoom(room: PersistedGameRoom): StoredMultiplayerRoom {
+  const players = clonePlayers(room.players ?? []);
+
+  for (const color of ["white", "black"] as PlayerColor[]) {
+    const seatedPlayer = room.seats[color];
+
+    if (
+      seatedPlayer &&
+      !players.some((player) => player.playerId === seatedPlayer.playerId)
+    ) {
+      players.push({ ...seatedPlayer });
+    }
+  }
+
   return {
     id: room.roomId,
+    roomType: room.roomType ?? "direct",
     status: room.status,
     state: cloneGameState(room.state),
+    players,
+    rematch: cloneRematch(room.rematch ?? null),
     seats: cloneSeats(room.seats),
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
@@ -81,15 +128,21 @@ export class MongoGameRoomStore implements GameRoomStore {
   ): Promise<StoredMultiplayerRoom> {
     const createdRoom = await GameRoom.create({
       roomId: normalizeRoomId(room.id),
+      roomType: room.roomType,
       status: room.status,
       state: cloneGameState(room.state),
+      players: clonePlayers(room.players),
+      rematch: cloneRematch(room.rematch),
       seats: cloneSeats(room.seats),
     });
 
     return toStoredRoom({
       roomId: createdRoom.roomId,
+      roomType: createdRoom.roomType,
       status: createdRoom.status,
       state: createdRoom.state,
+      players: createdRoom.players,
+      rematch: createdRoom.rematch,
       seats: createdRoom.seats,
       createdAt: createdRoom.createdAt,
       updatedAt: createdRoom.updatedAt,
@@ -113,8 +166,11 @@ export class MongoGameRoomStore implements GameRoomStore {
       },
       {
         $set: {
+          roomType: room.roomType,
           status: room.status,
           state: cloneGameState(room.state),
+          players: clonePlayers(room.players),
+          rematch: cloneRematch(room.rematch),
           seats: cloneSeats(room.seats),
         },
       },
@@ -135,6 +191,7 @@ export class MongoGameRoomStore implements GameRoomStore {
   async listRoomsForPlayer(playerId: string): Promise<StoredMultiplayerRoom[]> {
     const rooms = await GameRoom.find({
       $or: [
+        { "players.playerId": playerId },
         { "seats.white.playerId": playerId },
         { "seats.black.playerId": playerId },
       ],
@@ -154,6 +211,7 @@ export class MongoGameRoomStore implements GameRoomStore {
         $in: ["waiting", "active"],
       },
       $or: [
+        { "players.playerId": playerId },
         { "seats.white.playerId": playerId },
         { "seats.black.playerId": playerId },
       ],
@@ -182,8 +240,11 @@ export class InMemoryGameRoomStore implements GameRoomStore {
     const now = new Date();
     const storedRoom: StoredMultiplayerRoom = {
       id: normalizedId,
+      roomType: room.roomType,
       status: room.status,
       state: cloneGameState(room.state),
+      players: clonePlayers(room.players),
+      rematch: cloneRematch(room.rematch),
       seats: cloneSeats(room.seats),
       createdAt: now,
       updatedAt: now,
@@ -207,8 +268,11 @@ export class InMemoryGameRoomStore implements GameRoomStore {
 
     const updatedRoom: StoredMultiplayerRoom = {
       id: normalizedId,
+      roomType: room.roomType,
       status: room.status,
       state: cloneGameState(room.state),
+      players: clonePlayers(room.players),
+      rematch: cloneRematch(room.rematch),
       seats: cloneSeats(room.seats),
       createdAt: new Date(existingRoom.createdAt),
       updatedAt: new Date(),
@@ -220,10 +284,8 @@ export class InMemoryGameRoomStore implements GameRoomStore {
 
   async listRoomsForPlayer(playerId: string): Promise<StoredMultiplayerRoom[]> {
     const rooms = Array.from(this.rooms.values())
-      .filter(
-        (room) =>
-          room.seats.white?.playerId === playerId ||
-          room.seats.black?.playerId === playerId
+      .filter((room) =>
+        room.players.some((player) => player.playerId === playerId)
       )
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
@@ -237,8 +299,7 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       .filter(
         (candidate) =>
           candidate.status !== "finished" &&
-          (candidate.seats.white?.playerId === playerId ||
-            candidate.seats.black?.playerId === playerId)
+          candidate.players.some((player) => player.playerId === playerId)
       )
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
 

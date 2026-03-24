@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
+import mongoose from "mongoose";
 import { gameService, GameServiceError } from "../game/gameService";
 import { getPlayerFromRequest } from "../game/playerTokens";
+import GameInvitation from "../models/GameInvitation";
 
 const router = express.Router();
 
@@ -31,6 +33,31 @@ function respondWithGameServiceError(
   return res.status(500).json({
     message: fallbackMessage,
   });
+}
+
+async function acceptPendingInvitationsForPlayer(
+  gameId: string,
+  playerId: string
+) {
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
+
+  await GameInvitation.updateMany(
+    {
+      gameId: gameId.trim().toUpperCase(),
+      recipientId: playerId,
+      status: "pending",
+      expiresAt: {
+        $gt: new Date(),
+      },
+    },
+    {
+      $set: {
+        status: "accepted",
+      },
+    }
+  );
 }
 
 router.get("/games", async (req: Request, res: Response) => {
@@ -87,6 +114,29 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/games/:gameId/access", async (req: Request, res: Response) => {
+  const player = getAuthenticatedPlayer(req, res);
+  if (!player) {
+    return;
+  }
+
+  try {
+    const snapshot = await gameService.accessGame(req.params.gameId, player);
+
+    if (player.kind === "account") {
+      await acceptPendingInvitationsForPlayer(snapshot.gameId, player.playerId);
+    }
+
+    return res.status(200).json({ snapshot });
+  } catch (error) {
+    return respondWithGameServiceError(
+      res,
+      error,
+      "Unable to open that game right now."
+    );
+  }
+});
+
 router.get("/games/:gameId", async (req: Request, res: Response) => {
   const player = getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -95,16 +145,6 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
 
   try {
     const snapshot = await gameService.getSnapshot(req.params.gameId);
-    const participatingPlayer =
-      snapshot.seats.white?.player.playerId === player.playerId ||
-      snapshot.seats.black?.player.playerId === player.playerId;
-
-    if (!participatingPlayer) {
-      return res.status(403).json({
-        message: "You are not seated in that game.",
-      });
-    }
-
     return res.status(200).json({ snapshot });
   } catch (error) {
     return respondWithGameServiceError(
@@ -115,20 +155,56 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/games/:gameId/reset", async (req: Request, res: Response) => {
+router.post("/matchmaking", async (req: Request, res: Response) => {
   const player = getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
 
   try {
-    const snapshot = await gameService.resetGame(req.params.gameId, player);
-    return res.status(200).json({ snapshot });
+    const matchmaking = await gameService.enterMatchmaking(player);
+    return res.status(200).json({ matchmaking });
   } catch (error) {
     return respondWithGameServiceError(
       res,
       error,
-      "Unable to restart that game right now."
+      "Unable to enter matchmaking right now."
+    );
+  }
+});
+
+router.get("/matchmaking", async (req: Request, res: Response) => {
+  const player = getAuthenticatedPlayer(req, res);
+  if (!player) {
+    return;
+  }
+
+  try {
+    const matchmaking = await gameService.getMatchmakingState(player);
+    return res.status(200).json({ matchmaking });
+  } catch (error) {
+    return respondWithGameServiceError(
+      res,
+      error,
+      "Unable to load matchmaking right now."
+    );
+  }
+});
+
+router.delete("/matchmaking", async (req: Request, res: Response) => {
+  const player = getAuthenticatedPlayer(req, res);
+  if (!player) {
+    return;
+  }
+
+  try {
+    await gameService.leaveMatchmaking(player);
+    return res.status(204).send();
+  } catch (error) {
+    return respondWithGameServiceError(
+      res,
+      error,
+      "Unable to leave matchmaking right now."
     );
   }
 });

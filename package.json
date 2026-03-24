@@ -6,10 +6,10 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm --prefix client run build",
     "build:server": "npm --prefix server run build",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "concurrently -k -n client,server -c yellow,cyan \"npm run client\" \"npm run server\"",
     "test": "npm --prefix server test",
-    "client": "cd client && npm run dev",
-    "server": "cd server && npm run dev"
+    "client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

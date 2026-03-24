@@ -1,36 +1,39 @@
-const TOKEN_SECRET = process.env.TOKEN_SECRET as string;
-const MONGODB_URI = process.env.MONGODB_URI as string;
+function getRequiredEnv(
+  name: string,
+  options: {
+    testDefault?: string;
+    aliases?: string[];
+  } = {}
+): string {
+  const value =
+    process.env[name] ||
+    options.aliases?.map((alias) => process.env[alias]).find(Boolean) ||
+    (process.env.NODE_ENV === "test" ? options.testDefault : undefined);
+
+  if (!value) {
+    console.error(`${name} not provided in the environment`);
+    process.exit(1);
+  }
+
+  return value;
+}
+
+const TOKEN_SECRET = getRequiredEnv("TOKEN_SECRET", {
+  testDefault: "test-token-secret",
+});
+const MONGODB_URI = getRequiredEnv("MONGODB_URI", {
+  testDefault: "mongodb://127.0.0.1:27017/tiao-test",
+});
 const PORT = (process.env.PORT || "3000") as string;
-const ALTCHA_HMAC_KEY = process.env.ALTCHA_HMAC_KEY as string;
-const BUCKET_NAME = process.env.S3_BUCKET_NAME as string;
-const CLOUDFRONT_URL = (process.env.S3_PUBLIC_URL || process.env.CLOUDFRONT_URL) as string;
+const BUCKET_NAME = getRequiredEnv("S3_BUCKET_NAME", {
+  testDefault: "tiao-test-assets",
+});
+const CLOUDFRONT_URL = getRequiredEnv("S3_PUBLIC_URL", {
+  aliases: ["CLOUDFRONT_URL"],
+  testDefault: "https://assets.test.local",
+});
 const S3_ENDPOINT = process.env.S3_ENDPOINT;
 const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true";
-
-if (!process.env.TOKEN_SECRET) {
-  console.error("TOKEN_SECRET not provided in the environment");
-  process.exit(1);
-}
-
-if (!CLOUDFRONT_URL) {
-  console.error("No S3_PUBLIC_URL or CLOUDFRONT_URL provided in the environment");
-  process.exit(1);
-}
-
-if (!MONGODB_URI) {
-  console.error("No MONGODB_URI provided in the environment");
-  process.exit(1);
-}
-
-if (!ALTCHA_HMAC_KEY) {
-  console.error("No ALTCHA_HMAC_KEY provided in the environment");
-  process.exit(1);
-}
-
-if (!BUCKET_NAME) {
-  console.error("No S3_BUCKET_NAME provided in the environment");
-  process.exit(1);
-}
 
 const CORRECT_PATH = process.cwd();
 
@@ -42,7 +45,6 @@ export {
   PORT,
   FRONTEND_URL,
   CORRECT_PATH,
-  ALTCHA_HMAC_KEY,
   BUCKET_NAME,
   CLOUDFRONT_URL,
   S3_ENDPOINT,

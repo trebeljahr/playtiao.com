@@ -5,38 +5,60 @@ Tiao is a monorepo with:
 - `server/`: Express + WebSocket backend
 - `shared/`: shared protocol and game logic
 
+## Development
+
+The default local workflow is:
+- `npm run dev`: starts the Express/WebSocket server on `5005` and the Vite dev server on `3000` with HMR.
+
+How requests flow in development:
+- the browser loads the frontend from Vite on `http://localhost:3000`
+- Vite proxies `/api` and `/ws` to the backend on `http://localhost:5005`
+- that keeps the app code on relative URLs while preserving a fast HMR loop
+
+Useful direct commands:
+- `npm run client`
+- `npm run server`
+
+`vite preview` is not part of the normal development loop here.
+
 ## Deployment shape
 
-Production is designed to run as a single web app:
-- the frontend is built into `client/build`
-- the Express server serves that build
-- the WebSocket endpoint is exposed at `/ws`
+Production is designed to run as two services:
+- `client/`: a static frontend container built with Vite
+- `server/`: the Express + WebSocket backend container
 
-That shape works well with Coolify because the browser can stay on the same origin for both HTTP and WebSocket traffic.
+The default production setup keeps a single browser origin even though the services are split:
+- the frontend container serves the app
+- the frontend container proxies `/api` and `/ws` to the backend container
+- the backend does not serve frontend assets anymore
+
+That gives you the DX benefits of a split frontend/backend architecture without reintroducing cross-origin cookie pain.
 
 ## Coolify / Docker deployment
 
 This repo includes:
-- [Dockerfile](/Users/rico/projects/tiao/Dockerfile)
+- [client/Dockerfile](/Users/rico/projects/tiao/client/Dockerfile)
+- [server/Dockerfile](/Users/rico/projects/tiao/server/Dockerfile)
+- [client/nginx/default.conf.template](/Users/rico/projects/tiao/client/nginx/default.conf.template)
 - [.dockerignore](/Users/rico/projects/tiao/.dockerignore)
 - [build-and-deploy.yml](/Users/rico/projects/tiao/.github/workflows/build-and-deploy.yml)
+- [client/.env.example](/Users/rico/projects/tiao/client/.env.example)
 - [server/.env.example](/Users/rico/projects/tiao/server/.env.example)
 
-The Docker image:
-- builds the client
-- compiles the TypeScript server
-- serves the built frontend from the Node container
-- exposes a DB-aware health endpoint at `/api/health`
-- waits for Mongo before accepting traffic
+The deployment split now looks like this:
+- the client image serves the built frontend on port `80`
+- the client image proxies `/api` and `/ws` to `BACKEND_UPSTREAM`
+- the server image exposes the API and WebSocket service on port `3000`
+- the server health endpoint stays at `/api/health`
+- the client health endpoint is `/healthz`
 
 ## Required environment variables
 
-See [server/.env.example](/Users/rico/projects/tiao/server/.env.example) for a concrete template.
+See [server/.env.example](/Users/rico/projects/tiao/server/.env.example) and [client/.env.example](/Users/rico/projects/tiao/client/.env.example) for concrete templates.
 
-Core variables:
+Backend core variables:
 - `MONGODB_URI`
 - `TOKEN_SECRET`
-- `ALTCHA_HMAC_KEY`
 - `S3_BUCKET_NAME`
 - `S3_PUBLIC_URL` or `CLOUDFRONT_URL`
 - `AWS_REGION`
@@ -48,8 +70,10 @@ Optional for S3-compatible providers:
 - `S3_FORCE_PATH_STYLE`
 
 Notes:
-- `PORT` defaults to `3000` if not provided.
-- `FRONTEND_URL` is optional and is mainly useful when you want stricter CORS behavior.
+- backend `PORT` defaults to `3000` if not provided
+- `FRONTEND_URL` is useful when the browser talks to the backend directly across origins
+- the default split deployment does not require cookies across origins because the browser stays on the frontend origin and the frontend proxy forwards `/api` and `/ws`
+- `VITE_API_BASE_URL` is optional and only needed if you choose a direct browser-to-backend deployment instead of the proxy-based one
 
 ## CI/CD
 
@@ -57,16 +81,25 @@ The GitHub Actions workflow:
 - installs dependencies
 - runs the repo build
 - runs server tests
-- builds and pushes a Docker image to GHCR on every push to `main`
+- builds and pushes a client image to GHCR on every push to `main`
+- builds and pushes a server image to GHCR on every push to `main`
 
 If you set these GitHub secrets, the workflow will also trigger a Coolify deployment after the image push:
 - `COOLIFY_BASE_URL`
 - `COOLIFY_API_TOKEN`
-- `COOLIFY_RESOURCE_UUID`
+- `COOLIFY_CLIENT_RESOURCE_UUID`
+- `COOLIFY_SERVER_RESOURCE_UUID`
 
-There is also a legacy fallback for `COOLIFY_DEPLOY_WEBHOOK`, but the API-based deploy is the cleaner documented path.
+There are also legacy webhook fallbacks if you prefer them:
+- `COOLIFY_CLIENT_DEPLOY_WEBHOOK`
+- `COOLIFY_SERVER_DEPLOY_WEBHOOK`
 
-There is a concrete Coolify setup guide in [docs/coolify-deployment.md](/Users/rico/projects/tiao/docs/coolify-deployment.md).
+There is a concrete Coolify setup guide in [docs/coolify-deployment.md](/Users/rico/projects/tiao/docs/coolify-deployment.md), including:
+- first-deploy steps
+- frontend/backend application settings
+- internal proxy wiring
+- MongoDB/internal URL guidance
+- troubleshooting for frontend routing, backend health, and GHCR pull issues
 
 ## Realtime deployment note
 

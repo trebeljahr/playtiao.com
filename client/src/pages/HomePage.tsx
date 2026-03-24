@@ -3,12 +3,23 @@ import { motion, useAnimationControls } from "framer-motion";
 import { toast } from "sonner";
 import type { AuthResponse } from "@shared";
 import {
+  accessMultiplayerGame,
+  acceptFriendRequest,
   buildWebSocketUrl,
+  cancelFriendRequest,
   createMultiplayerGame,
+  enterMatchmaking,
+  getMatchmakingState,
   getMultiplayerGame,
+  getSocialOverview,
   joinMultiplayerGame,
+  leaveMatchmaking,
   listMultiplayerGames,
-  resetMultiplayerGame,
+  revokeGameInvitation,
+  searchPlayers,
+  sendFriendRequest,
+  sendGameInvitation,
+  declineFriendRequest,
 } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
@@ -24,16 +35,20 @@ import { Badge } from "@/components/ui/badge";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
 import { cn } from "@/lib/utils";
 import { Navbar, type AuthDialogMode } from "@/components/Navbar";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   BOARD_SIZE,
   ClientToServerMessage,
   GameState,
+  MatchmakingState,
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
   MultiplayerSnapshot,
   PlayerColor,
   Position,
+  SocialOverview,
+  SocialPlayerSummary,
+  SocialSearchResult,
   arePositionsEqual,
   canPlacePiece,
   confirmPendingJump,
@@ -87,6 +102,21 @@ const ADJACENT_DIRECTIONS = [
   { dx: 1, dy: 1 },
 ] as const;
 
+const EMPTY_SOCIAL_OVERVIEW: SocialOverview = {
+  friends: [],
+  incomingFriendRequests: [],
+  outgoingFriendRequests: [],
+  incomingInvitations: [],
+  outgoingInvitations: [],
+};
+
+const INVITATION_DURATION_OPTIONS = [
+  { label: "15 min", minutes: 15 },
+  { label: "1 hour", minutes: 60 },
+  { label: "6 hours", minutes: 360 },
+  { label: "24 hours", minutes: 1440 },
+] as const;
+
 function getPlayerSeat(
   snapshot: MultiplayerSnapshot | null,
   playerId: string | undefined
@@ -104,6 +134,28 @@ function getPlayerSeat(
   }
 
   return null;
+}
+
+function isPlayerInSnapshot(
+  snapshot: MultiplayerSnapshot | null,
+  playerId: string | undefined
+) {
+  if (!snapshot || !playerId) {
+    return false;
+  }
+
+  return snapshot.players.some((slot) => slot.player.playerId === playerId);
+}
+
+function getOpponentFromSlots(
+  players: Array<{ player: SocialPlayerSummary }>,
+  playerId: string | undefined
+) {
+  if (!playerId) {
+    return null;
+  }
+
+  return players.find((slot) => slot.player.playerId !== playerId)?.player ?? null;
 }
 
 function formatPlayerColor(color: PlayerColor | null) {
@@ -127,9 +179,12 @@ function isSummaryYourTurn(summary: MultiplayerGameSummary) {
   return summary.status === "active" && !!summary.yourSeat && summary.currentTurn === summary.yourSeat;
 }
 
-function getOpponentLabel(summary: MultiplayerGameSummary) {
+function getOpponentLabel(
+  summary: MultiplayerGameSummary,
+  playerId: string | undefined
+) {
   if (!summary.yourSeat) {
-    return "Spectator";
+    return getOpponentFromSlots(summary.players, playerId)?.displayName || "Waiting for opponent";
   }
 
   const opponentColor = summary.yourSeat === "white" ? "black" : "white";
@@ -146,6 +201,193 @@ function getSummaryStatusLabel(summary: MultiplayerGameSummary) {
   }
 
   return isSummaryYourTurn(summary) ? "Your move" : "Opponent to move";
+}
+
+function formatRelativeExpiry(value: string) {
+  const remainingMs = new Date(value).getTime() - Date.now();
+  const remainingMinutes = Math.max(0, Math.round(remainingMs / 60000));
+
+  if (remainingMinutes < 60) {
+    return `${remainingMinutes}m left`;
+  }
+
+  const remainingHours = remainingMinutes / 60;
+  if (remainingHours < 24) {
+    return `${Math.round(remainingHours)}h left`;
+  }
+
+  return `${Math.round(remainingHours / 24)}d left`;
+}
+
+function formatPlayerName(
+  player: SocialPlayerSummary | { playerId: string; displayName: string },
+  currentPlayerId: string | undefined
+) {
+  return player.playerId === currentPlayerId
+    ? `${player.displayName} (you)`
+    : player.displayName;
+}
+
+function PlayerOverviewAvatar({
+  player,
+  className,
+}: {
+  player: {
+    displayName: string;
+    profilePicture?: string;
+  };
+  className?: string;
+}) {
+  if (player.profilePicture) {
+    return (
+      <img
+        src={player.profilePicture}
+        alt={player.displayName}
+        className={cn("h-8 w-8 rounded-full object-cover", className)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(180deg,#f4ecde,#e1cda9)] text-xs font-semibold text-[#2e2217]",
+        className
+      )}
+    >
+      {player.displayName.slice(0, 1).toUpperCase()}
+    </div>
+  );
+}
+
+function EmptySeatAvatar({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "h-8 w-8 rounded-full border border-dashed border-[#cfbb98] bg-[#fbf4e7]",
+        className
+      )}
+      aria-hidden="true"
+    />
+  );
+}
+
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4", className)}
+    >
+      <path
+        d="M7.5 6.25V5a2.5 2.5 0 0 1 2.5-2.5h5a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 15 12.5h-1.25"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect
+        x="2.5"
+        y="7.5"
+        width="10"
+        height="10"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4", className)}
+    >
+      <path
+        d="m4.5 10 3.5 3.5L15.5 6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function getOptimisticSnapshotStatus(snapshot: MultiplayerSnapshot, state: GameState) {
+  if (isGameOver(state)) {
+    return "finished";
+  }
+
+  if (snapshot.seats.white && snapshot.seats.black) {
+    return "active";
+  }
+
+  return "waiting";
+}
+
+function createOptimisticSnapshot(
+  snapshot: MultiplayerSnapshot,
+  state: GameState
+): MultiplayerSnapshot {
+  return {
+    ...snapshot,
+    state,
+    status: getOptimisticSnapshotStatus(snapshot, state),
+    updatedAt: new Date().toISOString(),
+    rematch: isGameOver(state) ? snapshot.rematch : null,
+  };
+}
+
+function RoomCodeCopyPill({
+  gameId,
+  copied,
+  onCopy,
+}: {
+  gameId: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onCopy}
+      animate={
+        copied
+          ? {
+              scale: [1, 1.05, 1],
+              y: [0, -2, 0],
+            }
+          : {
+              scale: 1,
+              y: 0,
+            }
+      }
+      transition={{
+        duration: 0.42,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 text-sm font-semibold text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
+      aria-label={`Copy room ID ${gameId}`}
+    >
+      <span className="font-mono tracking-[0.18em]">{gameId}</span>
+      <span
+        className={cn(
+          "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
+          copied
+            ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]"
+            : "border-white/15 bg-white/8"
+        )}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </span>
+    </motion.button>
+  );
 }
 
 function HourglassSpinner({ className }: { className?: string }) {
@@ -425,6 +667,8 @@ export function HomePage({
 }: HomePageProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams();
+  const routeGameId = params.gameId?.trim().toUpperCase() ?? null;
 
   const [mode, setMode] = useState<Mode>("menu");
   const [navOpen, setNavOpen] = useState(false);
@@ -452,9 +696,30 @@ export function HomePage({
     useState<ConnectionState>("idle");
   const [joinGameId, setJoinGameId] = useState("");
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [copyFeedbackKey, setCopyFeedbackKey] = useState<string | null>(null);
   const [localConfirmReady, setLocalConfirmReady] = useState(true);
   const [multiplayerConfirmReady, setMultiplayerConfirmReady] = useState(true);
   const [computerThinking, setComputerThinking] = useState(false);
+  const [matchmaking, setMatchmaking] = useState<MatchmakingState>({
+    status: "idle",
+  });
+  const [matchmakingBusy, setMatchmakingBusy] = useState(false);
+  const [socialOverview, setSocialOverview] =
+    useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialLoaded, setSocialLoaded] = useState(false);
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState<
+    SocialSearchResult[]
+  >([]);
+  const [friendSearchBusy, setFriendSearchBusy] = useState(false);
+  const [socialActionBusyKey, setSocialActionBusyKey] = useState<string | null>(
+    null
+  );
+  const [inviteFriendId, setInviteFriendId] = useState("");
+  const [inviteDurationMinutes, setInviteDurationMinutes] = useState<number>(
+    INVITATION_DURATION_OPTIONS[1].minutes
+  );
   const [localScorePulse, setLocalScorePulse] = useState<Record<PlayerColor, number>>(
     { black: 0, white: 0 }
   );
@@ -463,6 +728,14 @@ export function HomePage({
   >({ black: 0, white: 0 });
 
   const socketRef = useRef<WebSocket | null>(null);
+  const latestAuthRef = useRef<AuthResponse | null>(auth);
+  const latestMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
+    multiplayerSnapshot
+  );
+  const confirmedMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const pendingOptimisticUpdateRef = useRef(false);
   const localCardRef = useRef<HTMLDivElement | null>(null);
   const computerCardRef = useRef<HTMLDivElement | null>(null);
   const multiplayerCardRef = useRef<HTMLDivElement | null>(null);
@@ -471,68 +744,91 @@ export function HomePage({
     gameId: null,
     length: 0,
   });
-  const multiplayerTurnMetaRef = useRef<{
-    gameId: string | null;
-    status: MultiplayerSnapshot["status"] | null;
-    historyLength: number;
-    isYourTurn: boolean;
-  }>({
-    gameId: null,
-    status: null,
-    historyLength: 0,
-    isYourTurn: false,
-  });
-  const multiplayerLibraryTurnRef = useRef<
-    Map<string, { updatedAt: string; isYourTurn: boolean }>
-  >(new Map());
+  const socialInvitationIdsRef = useRef<Set<string>>(new Set());
+  const socialInvitationsHydratedRef = useRef(false);
 
   const localBoardMode = mode === "local" || mode === "computer";
   const computerMode = mode === "computer";
   const accountPlayer = auth?.player.kind === "account";
+  const canToastIncomingInvites = mode === "menu" && !routeGameId;
 
   useStonePlacementSound(localBoardMode ? localGame : null);
   useStonePlacementSound(
     mode === "multiplayer" ? multiplayerSnapshot?.state ?? null : null
   );
 
-  function applyMultiplayerGamesIndex(
-    nextGames: MultiplayerGamesIndex,
-    allowTurnToast: boolean
-  ) {
-    if (allowTurnToast) {
-      for (const game of nextGames.active) {
-        const previous = multiplayerLibraryTurnRef.current.get(game.gameId);
-        const nextIsYourTurn = isSummaryYourTurn(game);
+  useEffect(() => {
+    latestAuthRef.current = auth;
+  }, [auth]);
 
-        if (
-          previous &&
-          !previous.isYourTurn &&
-          nextIsYourTurn &&
-          multiplayerSnapshot?.gameId !== game.gameId &&
-          previous.updatedAt !== game.updatedAt
-        ) {
-          toast.success(`Your move in room ${game.gameId}`);
-        }
-      }
+  useEffect(() => {
+    latestMultiplayerSnapshotRef.current = multiplayerSnapshot;
+  }, [multiplayerSnapshot]);
+
+  function clearReconnectTimer() {
+    if (reconnectTimerRef.current !== null) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }
+
+  function commitMultiplayerSnapshot(
+    nextSnapshot: MultiplayerSnapshot,
+    options: {
+      confirmed?: boolean;
+    } = {}
+  ) {
+    if (options.confirmed ?? true) {
+      confirmedMultiplayerSnapshotRef.current = nextSnapshot;
+      pendingOptimisticUpdateRef.current = false;
     }
 
-    multiplayerLibraryTurnRef.current = new Map(
-      nextGames.active.map((game) => [
-        game.gameId,
-        {
-          updatedAt: game.updatedAt,
-          isYourTurn: isSummaryYourTurn(game),
-        },
-      ])
-    );
+    setMultiplayerSnapshot(nextSnapshot);
+  }
 
+  function syncMultiplayerSelection(snapshot: MultiplayerSnapshot | null) {
+    setMultiplayerSelection(snapshot ? getPendingJumpDestination(snapshot.state) : null);
+  }
+
+  function restoreConfirmedSnapshot() {
+    const confirmedSnapshot = confirmedMultiplayerSnapshotRef.current;
+    pendingOptimisticUpdateRef.current = false;
+    if (!confirmedSnapshot) {
+      return;
+    }
+
+    commitMultiplayerSnapshot(confirmedSnapshot, { confirmed: false });
+    syncMultiplayerSelection(confirmedSnapshot);
+  }
+
+  function applyMultiplayerGamesIndex(nextGames: MultiplayerGamesIndex) {
     setMultiplayerGames(nextGames);
     setMultiplayerGamesLoaded(true);
   }
 
+  function applySocialOverview(nextOverview: SocialOverview, allowInviteToast: boolean) {
+    const incomingIds = new Set(
+      nextOverview.incomingInvitations.map((invitation) => invitation.id)
+    );
+
+    if (allowInviteToast && socialInvitationsHydratedRef.current && canToastIncomingInvites) {
+      for (const invitation of nextOverview.incomingInvitations) {
+        if (!socialInvitationIdsRef.current.has(invitation.id)) {
+          toast.success(
+            `${invitation.sender.displayName} invited you to game ${invitation.gameId}`
+          );
+        }
+      }
+    }
+
+    socialInvitationIdsRef.current = incomingIds;
+    socialInvitationsHydratedRef.current = true;
+    setSocialOverview(nextOverview);
+    setSocialLoaded(true);
+  }
+
   async function refreshMultiplayerGames(options: {
     silent?: boolean;
-    allowTurnToast?: boolean;
   } = {}) {
     if (!auth || auth.player.kind !== "account") {
       setMultiplayerGames({
@@ -541,7 +837,6 @@ export function HomePage({
       });
       setMultiplayerGamesLoaded(false);
       setMultiplayerGamesLoading(false);
-      multiplayerLibraryTurnRef.current.clear();
       return;
     }
 
@@ -549,7 +844,7 @@ export function HomePage({
 
     try {
       const response = await listMultiplayerGames(auth.token);
-      applyMultiplayerGamesIndex(response.games, options.allowTurnToast ?? false);
+      applyMultiplayerGamesIndex(response.games);
     } catch (error) {
       if (!options.silent) {
         toastError(error);
@@ -559,9 +854,39 @@ export function HomePage({
     }
   }
 
+  async function refreshSocialOverview(options: {
+    silent?: boolean;
+    allowInviteToast?: boolean;
+  } = {}) {
+    if (!auth || auth.player.kind !== "account") {
+      setSocialOverview(EMPTY_SOCIAL_OVERVIEW);
+      setSocialLoaded(false);
+      setSocialLoading(false);
+      socialInvitationIdsRef.current.clear();
+      socialInvitationsHydratedRef.current = false;
+      return;
+    }
+
+    setSocialLoading(true);
+
+    try {
+      const response = await getSocialOverview(auth.token);
+      applySocialOverview(response.overview, options.allowInviteToast ?? false);
+    } catch (error) {
+      if (!options.silent) {
+        toastError(error);
+      }
+    } finally {
+      setSocialLoading(false);
+    }
+  }
+
   useEffect(() => {
     return () => {
-      socketRef.current?.close();
+      clearReconnectTimer();
+      const socket = socketRef.current;
+      socketRef.current = null;
+      socket?.close();
     };
   }, []);
 
@@ -573,19 +898,16 @@ export function HomePage({
       });
       setMultiplayerGamesLoaded(false);
       setMultiplayerGamesLoading(false);
-      multiplayerLibraryTurnRef.current.clear();
       return;
     }
 
     void refreshMultiplayerGames({
       silent: true,
-      allowTurnToast: false,
     });
 
     const interval = window.setInterval(() => {
       void refreshMultiplayerGames({
         silent: true,
-        allowTurnToast: true,
       });
     }, 25000);
 
@@ -593,6 +915,33 @@ export function HomePage({
       window.clearInterval(interval);
     };
   }, [auth?.player.kind, auth?.player.playerId, auth?.token]);
+
+  useEffect(() => {
+    if (!auth || auth.player.kind !== "account") {
+      setSocialOverview(EMPTY_SOCIAL_OVERVIEW);
+      setSocialLoaded(false);
+      setSocialLoading(false);
+      socialInvitationIdsRef.current.clear();
+      socialInvitationsHydratedRef.current = false;
+      return;
+    }
+
+    void refreshSocialOverview({
+      silent: true,
+      allowInviteToast: false,
+    });
+
+    const interval = window.setInterval(() => {
+      void refreshSocialOverview({
+        silent: true,
+        allowInviteToast: true,
+      });
+    }, 20000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [auth?.player.kind, auth?.player.playerId, auth?.token, canToastIncomingInvites]);
 
   useEffect(() => {
     if (!multiplayerSnapshot) {
@@ -604,12 +953,43 @@ export function HomePage({
   }, [multiplayerSnapshot]);
 
   useEffect(() => {
+    if (!inviteFriendId) {
+      return;
+    }
+
+    const availableFriendIds = new Set(
+      socialOverview.friends
+        .filter(
+          (friend) =>
+            !multiplayerSnapshot?.players.some(
+              (slot) => slot.player.playerId === friend.playerId
+            )
+        )
+        .map((friend) => friend.playerId)
+    );
+
+    if (!availableFriendIds.has(inviteFriendId)) {
+      setInviteFriendId("");
+    }
+  }, [inviteFriendId, multiplayerSnapshot?.players, socialOverview.friends]);
+
+  useEffect(() => {
+    if (accountPlayer) {
+      return;
+    }
+
+    setFriendSearchResults([]);
+    setFriendSearchQuery("");
+  }, [accountPlayer]);
+
+  useEffect(() => {
     if (!copyFeedback) {
       return undefined;
     }
 
     const timeout = window.setTimeout(() => {
       setCopyFeedback(null);
+      setCopyFeedbackKey(null);
     }, 1800);
 
     return () => window.clearTimeout(timeout);
@@ -713,6 +1093,10 @@ export function HomePage({
   }, [mode, menuTarget]);
 
   useEffect(() => {
+    if (routeGameId) {
+      return;
+    }
+
     const params = new URLSearchParams(location.search);
     const view = params.get("view");
     if (!view) {
@@ -728,7 +1112,53 @@ export function HomePage({
     }
 
     navigate("/", { replace: true });
-  }, [location.search, navigate]);
+  }, [location.search, navigate, routeGameId]);
+
+  useEffect(() => {
+    if (!routeGameId || !auth) {
+      return;
+    }
+
+    if (mode === "multiplayer" && multiplayerSnapshot?.gameId === routeGameId) {
+      return;
+    }
+
+    void openMultiplayerGame(routeGameId, {
+      access: true,
+      navigateOnFailure: true,
+    });
+  }, [
+    auth,
+    mode,
+    multiplayerSnapshot?.gameId,
+    routeGameId,
+  ]);
+
+  useEffect(() => {
+    if (!auth || matchmaking.status !== "searching") {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      void (async () => {
+        try {
+          const response = await getMatchmakingState(auth.token);
+          setMatchmaking(response.matchmaking);
+
+          if (response.matchmaking.status === "matched") {
+            connectToRoom(response.matchmaking.snapshot, auth);
+            await stopMatchmaking({ silent: true });
+          }
+        } catch (error) {
+          toastError(error);
+        }
+      })();
+    }, 3500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [auth, matchmaking.status]);
 
   const localForcedOrigin = getPendingJumpDestination(localGame);
   const localActiveOrigin = localForcedOrigin ?? localSelection;
@@ -739,6 +1169,10 @@ export function HomePage({
     computerMode && (computerThinking || localGame.currentTurn === COMPUTER_COLOR);
 
   const playerSeat = getPlayerSeat(multiplayerSnapshot, auth?.player.playerId);
+  const isMultiplayerParticipant = isPlayerInSnapshot(
+    multiplayerSnapshot,
+    auth?.player.playerId
+  );
   const multiplayerForcedOrigin = multiplayerSnapshot
     ? getPendingJumpDestination(multiplayerSnapshot.state)
     : null;
@@ -752,7 +1186,9 @@ export function HomePage({
         )
       : [];
   const multiplayerGameActive =
-    multiplayerSnapshot?.status === "active" && !!multiplayerSnapshot.seats.black;
+    multiplayerSnapshot?.status === "active" &&
+    !!multiplayerSnapshot.seats.white &&
+    !!multiplayerSnapshot.seats.black;
   const multiplayerBoardDisabled =
     !multiplayerSnapshot ||
     !multiplayerGameActive ||
@@ -795,47 +1231,55 @@ export function HomePage({
     connectionState === "connected";
   const multiplayerWaitingForOpponentSeat =
     multiplayerSnapshot?.status === "waiting";
-  const multiplayerReconnectAvailable =
-    !!multiplayerSnapshot && connectionState === "disconnected";
+  const multiplayerSpectating =
+    !!multiplayerSnapshot && !isMultiplayerParticipant;
+  const multiplayerOpponent = getOpponentFromSlots(
+    multiplayerSnapshot?.players ?? [],
+    auth?.player.playerId
+  );
+  const opponentSeat = playerSeat
+    ? playerSeat === "white"
+      ? "black"
+      : "white"
+    : null;
+  const yourRematchRequestPending =
+    !!playerSeat &&
+    !!multiplayerSnapshot?.rematch?.requestedBy.includes(playerSeat);
+  const incomingRematchRequest =
+    !!playerSeat &&
+    !!opponentSeat &&
+    !!multiplayerSnapshot?.rematch?.requestedBy.includes(opponentSeat);
+  const rematchOfferFromOpponent =
+    incomingRematchRequest && !yourRematchRequestPending;
   const multiplayerStatusTitle = !multiplayerSnapshot
     ? "Room"
     : multiplayerGameOver
       ? `${multiplayerWinnerLabel} wins`
       : multiplayerWaitingForOpponentSeat
-        ? "Waiting for player two"
+        ? isMultiplayerParticipant
+          ? "Waiting for player two"
+          : "Spectating lobby"
         : multiplayerYourTurn
           ? "Your move"
           : multiplayerWaitingOnOpponent
             ? "Opponent to move"
-            : connectionState === "disconnected"
-              ? "Reconnecting needed"
+            : multiplayerSnapshot && !isMultiplayerParticipant
+              ? "Spectating live board"
+            : connectionState !== "connected"
+              ? "Reconnecting to room"
               : "Live match";
+  const inviteableFriends = socialOverview.friends.filter(
+    (friend) =>
+      !multiplayerSnapshot?.players.some(
+        (slot) => slot.player.playerId === friend.playerId
+      )
+  );
+  const currentRoomOutgoingInvitations = socialOverview.outgoingInvitations.filter(
+    (invitation) => invitation.gameId === multiplayerSnapshot?.gameId
+  );
 
   useWinConfetti(localBoardMode ? localWinner : null);
   useWinConfetti(mode === "multiplayer" ? multiplayerWinner : null);
-
-  useEffect(() => {
-    const nextMeta = {
-      gameId: multiplayerSnapshot?.gameId ?? null,
-      status: multiplayerSnapshot?.status ?? null,
-      historyLength: multiplayerSnapshot?.state.history.length ?? 0,
-      isYourTurn: multiplayerYourTurn,
-    };
-    const previousMeta = multiplayerTurnMetaRef.current;
-
-    if (
-      nextMeta.gameId &&
-      nextMeta.isYourTurn &&
-      previousMeta.gameId === nextMeta.gameId &&
-      !previousMeta.isYourTurn &&
-      (nextMeta.historyLength > previousMeta.historyLength ||
-        (previousMeta.status === "waiting" && nextMeta.status === "active"))
-    ) {
-      toast.success(`Your move in room ${nextMeta.gameId}`);
-    }
-
-    multiplayerTurnMetaRef.current = nextMeta;
-  }, [multiplayerSnapshot, multiplayerYourTurn]);
 
   useEffect(() => {
     if (
@@ -887,8 +1331,10 @@ export function HomePage({
   }, [localError]);
 
   function closeMultiplayerConnection() {
-    socketRef.current?.close();
+    clearReconnectTimer();
+    const socket = socketRef.current;
     socketRef.current = null;
+    socket?.close();
     setConnectionState("idle");
   }
 
@@ -898,14 +1344,12 @@ export function HomePage({
     setMultiplayerSelection(null);
     setMultiplayerError(null);
     setCopyFeedback(null);
+    setCopyFeedbackKey(null);
     setMultiplayerScorePulse({ black: 0, white: 0 });
+    confirmedMultiplayerSnapshotRef.current = null;
+    pendingOptimisticUpdateRef.current = false;
+    reconnectAttemptRef.current = 0;
     multiplayerHistoryMetaRef.current = { gameId: null, length: 0 };
-    multiplayerTurnMetaRef.current = {
-      gameId: null,
-      status: null,
-      historyLength: 0,
-      isYourTurn: false,
-    };
   }
 
   function resetLocalGame() {
@@ -959,35 +1403,70 @@ export function HomePage({
     setLocalError(null);
   }
 
+  async function stopMatchmaking(options: { silent?: boolean } = {}) {
+    if (!auth) {
+      setMatchmaking({ status: "idle" });
+      return;
+    }
+
+    try {
+      await leaveMatchmaking(auth.token);
+    } catch (error) {
+      if (!options.silent) {
+        toastError(error);
+      }
+    } finally {
+      setMatchmaking({ status: "idle" });
+    }
+  }
+
   function goHome() {
+    void stopMatchmaking({ silent: true });
     clearMultiplayerView();
     setComputerThinking(false);
     setMode("menu");
     setNavOpen(false);
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
   }
 
   function openMenuSection(section: Exclude<MenuTarget, null>) {
+    void stopMatchmaking({ silent: true });
     clearMultiplayerView();
     setMode("menu");
     setMenuTarget(section);
     setNavOpen(false);
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
   }
 
   function enterLocalMode() {
+    void stopMatchmaking({ silent: true });
     clearMultiplayerView();
     resetLocalGame();
     setMode("local");
     setNavOpen(false);
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
   }
 
   function enterComputerMode() {
+    void stopMatchmaking({ silent: true });
     clearMultiplayerView();
     resetLocalGame();
     setMode("computer");
     setNavOpen(false);
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
   }
 
   function openProfilePage() {
+    void stopMatchmaking({ silent: true });
+    clearMultiplayerView();
     setNavOpen(false);
     navigate("/profile");
   }
@@ -1082,13 +1561,108 @@ export function HomePage({
     setLocalSelection(localForcedOrigin);
   }
 
+  function scheduleMultiplayerReconnect() {
+    const snapshot = latestMultiplayerSnapshotRef.current;
+    const nextAuth = latestAuthRef.current;
+    if (!snapshot || !nextAuth) {
+      return;
+    }
+
+    clearReconnectTimer();
+    const delay = Math.min(1500 * Math.max(1, reconnectAttemptRef.current + 1), 7000);
+    reconnectAttemptRef.current += 1;
+    reconnectTimerRef.current = window.setTimeout(() => {
+      void reconnectToCurrentRoom();
+    }, delay);
+  }
+
+  function handleUnexpectedMultiplayerDisconnect() {
+    setConnectionState("disconnected");
+
+    if (pendingOptimisticUpdateRef.current) {
+      restoreConfirmedSnapshot();
+    }
+
+    if (reconnectAttemptRef.current === 0) {
+      toast.error("There was a disconnect from the server. Reconnecting...");
+    }
+
+    scheduleMultiplayerReconnect();
+  }
+
   function sendMultiplayerMessage(message: ClientToServerMessage) {
-    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
       setMultiplayerError("Connection not ready.");
       return;
     }
 
-    socketRef.current.send(JSON.stringify(message));
+    const currentSnapshot = latestMultiplayerSnapshotRef.current;
+    if (currentSnapshot) {
+      let nextState: GameState | null = null;
+
+      switch (message.type) {
+        case "place-piece": {
+          const result = placePiece(currentSnapshot.state, message.position);
+          if (!result.ok) {
+            setMultiplayerError(result.reason);
+            return;
+          }
+
+          nextState = result.value;
+          break;
+        }
+        case "jump-piece": {
+          const result = jumpPiece(currentSnapshot.state, message.from, message.to);
+          if (!result.ok) {
+            setMultiplayerError(result.reason);
+            return;
+          }
+
+          nextState = result.value;
+          break;
+        }
+        case "confirm-jump": {
+          const result = confirmPendingJump(currentSnapshot.state);
+          if (!result.ok) {
+            setMultiplayerError(result.reason);
+            return;
+          }
+
+          nextState = result.value;
+          break;
+        }
+        case "undo-pending-jump-step": {
+          const result = undoPendingJumpStep(currentSnapshot.state);
+          if (!result.ok) {
+            setMultiplayerError(result.reason);
+            return;
+          }
+
+          nextState = result.value;
+          break;
+        }
+        default:
+          break;
+      }
+
+      if (nextState) {
+        pendingOptimisticUpdateRef.current = true;
+        const nextSnapshot = createOptimisticSnapshot(currentSnapshot, nextState);
+        commitMultiplayerSnapshot(nextSnapshot, { confirmed: false });
+        syncMultiplayerSelection(nextSnapshot);
+      }
+    }
+
+    try {
+      socket.send(JSON.stringify(message));
+    } catch {
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+      socket.close();
+      handleUnexpectedMultiplayerDisconnect();
+    }
   }
 
   function handleMultiplayerBoardClick(position: Position) {
@@ -1158,22 +1732,55 @@ export function HomePage({
     setMultiplayerSelection(multiplayerForcedOrigin);
   }
 
-  function connectToRoom(snapshot: MultiplayerSnapshot, nextAuth: AuthResponse) {
-    clearMultiplayerView();
+  function connectToRoom(
+    snapshot: MultiplayerSnapshot,
+    nextAuth: AuthResponse,
+    options: {
+      preserveView?: boolean;
+    } = {}
+  ) {
+    if (options.preserveView) {
+      clearReconnectTimer();
+      const existingSocket = socketRef.current;
+      socketRef.current = null;
+      existingSocket?.close();
+      setCopyFeedback(null);
+      setCopyFeedbackKey(null);
+    } else {
+      clearMultiplayerView();
+    }
+
+    setMode("multiplayer");
+    setInviteFriendId("");
+
+    const nextPath = `/game/${snapshot.gameId}`;
+    if (location.pathname !== nextPath) {
+      navigate(nextPath, { replace: !!routeGameId });
+    }
 
     const socket = new WebSocket(
       buildWebSocketUrl(snapshot.gameId, nextAuth.token)
     );
 
-    setConnectionState("connecting");
     socketRef.current = socket;
-    setMultiplayerSnapshot(snapshot);
+    setConnectionState("connecting");
+    commitMultiplayerSnapshot(snapshot);
+    syncMultiplayerSelection(snapshot);
 
     socket.addEventListener("open", () => {
+      if (socketRef.current !== socket) {
+        return;
+      }
+
+      reconnectAttemptRef.current = 0;
       setConnectionState("connected");
     });
 
     socket.addEventListener("message", (event) => {
+      if (socketRef.current !== socket) {
+        return;
+      }
+
       const payload = JSON.parse(event.data as string) as
         | {
             type: "snapshot";
@@ -1181,54 +1788,117 @@ export function HomePage({
           }
         | {
             type: "error";
+            code?: string;
             message: string;
           };
 
       if (payload.type === "snapshot") {
-        setMultiplayerSnapshot(payload.snapshot);
+        commitMultiplayerSnapshot(payload.snapshot);
+        syncMultiplayerSelection(payload.snapshot);
         setMultiplayerError(null);
         return;
+      }
+
+      if (pendingOptimisticUpdateRef.current) {
+        restoreConfirmedSnapshot();
       }
 
       setMultiplayerError(payload.message);
     });
 
     socket.addEventListener("close", () => {
-      setConnectionState("disconnected");
+      if (socketRef.current !== socket) {
+        return;
+      }
+
+      socketRef.current = null;
+      handleUnexpectedMultiplayerDisconnect();
     });
 
-    socket.addEventListener("error", () => {
-      setConnectionState("disconnected");
-      setMultiplayerError("Connection dropped.");
-    });
+    socket.addEventListener("error", () => undefined);
   }
 
-  async function openExistingMultiplayerGame(gameId: string) {
+  async function reconnectToCurrentRoom() {
+    const snapshot = latestMultiplayerSnapshotRef.current;
+    const nextAuth = latestAuthRef.current;
+    if (!snapshot || !nextAuth) {
+      return;
+    }
+
+    setConnectionState("connecting");
+
+    try {
+      const response = await accessMultiplayerGame(nextAuth.token, snapshot.gameId);
+      connectToRoom(response.snapshot, nextAuth, {
+        preserveView: true,
+      });
+
+      if (nextAuth.player.kind === "account") {
+        void refreshMultiplayerGames({ silent: true });
+        void refreshSocialOverview({ silent: true });
+      }
+    } catch (error) {
+      if (isNetworkError(error)) {
+        setConnectionState("disconnected");
+        scheduleMultiplayerReconnect();
+        return;
+      }
+
+      clearMultiplayerView();
+      setMode("menu");
+      setMultiplayerError(readableError(error));
+      if (location.pathname !== "/") {
+        navigate("/");
+      }
+    }
+  }
+
+  async function openMultiplayerGame(
+    gameId: string,
+    options: {
+      access?: boolean;
+      navigateOnFailure?: boolean;
+    } = {}
+  ) {
     if (!auth) {
       setMultiplayerError("Player session unavailable.");
       return;
     }
 
+    const normalizedGameId = gameId.trim().toUpperCase();
     setMultiplayerBusy(true);
     setMultiplayerError(null);
 
     try {
-      const response = await getMultiplayerGame(auth.token, gameId);
-      setMode("multiplayer");
-      setMultiplayerSelection(null);
+      const response = options.access
+        ? await accessMultiplayerGame(auth.token, normalizedGameId)
+        : await getMultiplayerGame(auth.token, normalizedGameId);
+
+      await stopMatchmaking({ silent: true });
       connectToRoom(response.snapshot, auth);
+
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
+        void refreshSocialOverview({ silent: true });
       }
     } catch (error) {
       if (isNetworkError(error)) {
         toastError(error);
       } else {
+        clearMultiplayerView();
+        setMode("menu");
         setMultiplayerError(readableError(error));
+        if (options.navigateOnFailure && location.pathname !== "/") {
+          navigate("/");
+        }
       }
     } finally {
       setMultiplayerBusy(false);
     }
+  }
+
+  async function openExistingMultiplayerGame(gameId: string) {
+    await openMultiplayerGame(gameId, { access: false });
   }
 
   async function handleCreateRoom() {
@@ -1241,12 +1911,12 @@ export function HomePage({
     setMultiplayerError(null);
 
     try {
+      await stopMatchmaking({ silent: true });
       const response = await createMultiplayerGame(auth.token);
-      setMode("multiplayer");
-      setMultiplayerSelection(null);
       connectToRoom(response.snapshot, auth);
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
+        void refreshSocialOverview({ silent: true });
       }
     } catch (error) {
       if (isNetworkError(error)) {
@@ -1274,12 +1944,12 @@ export function HomePage({
     setMultiplayerError(null);
 
     try {
+      await stopMatchmaking({ silent: true });
       const response = await joinMultiplayerGame(auth.token, joinGameId.trim());
-      setMode("multiplayer");
-      setMultiplayerSelection(null);
       connectToRoom(response.snapshot, auth);
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
+        void refreshSocialOverview({ silent: true });
       }
     } catch (error) {
       if (isNetworkError(error)) {
@@ -1299,34 +1969,11 @@ export function HomePage({
 
     try {
       await navigator.clipboard.writeText(multiplayerSnapshot.gameId);
-      setCopyFeedback("Copied");
+      setCopyFeedback("Room copied");
+      setCopyFeedbackKey("room-id");
     } catch {
       setCopyFeedback("Copy failed");
-    }
-  }
-
-  async function handleResetMultiplayerBoard() {
-    if (!auth || !multiplayerSnapshot) {
-      return;
-    }
-
-    setMultiplayerBusy(true);
-
-    try {
-      const response = await resetMultiplayerGame(auth.token, multiplayerSnapshot.gameId);
-      setMultiplayerSnapshot(response.snapshot);
-      setMultiplayerSelection(null);
-      if (accountPlayer) {
-        void refreshMultiplayerGames({ silent: true });
-      }
-    } catch (error) {
-      if (isNetworkError(error)) {
-        toastError(error);
-      } else {
-        setMultiplayerError(readableError(error));
-      }
-    } finally {
-      setMultiplayerBusy(false);
+      setCopyFeedbackKey("room-id");
     }
   }
 
@@ -1334,12 +1981,190 @@ export function HomePage({
     sendMultiplayerMessage({ type: "undo-pending-jump-step" });
   }
 
-  async function handleReconnectMultiplayerRoom() {
-    if (!multiplayerSnapshot) {
+  function handleRequestRematch() {
+    sendMultiplayerMessage({ type: "request-rematch" });
+  }
+
+  function handleDeclineRematch() {
+    sendMultiplayerMessage({ type: "decline-rematch" });
+  }
+
+  async function handleEnterMatchmaking() {
+    if (!auth) {
+      setMultiplayerError("Player session unavailable.");
       return;
     }
 
-    await openExistingMultiplayerGame(multiplayerSnapshot.gameId);
+    setMatchmakingBusy(true);
+
+    try {
+      clearMultiplayerView();
+      const response = await enterMatchmaking(auth.token);
+      setMatchmaking(response.matchmaking);
+
+      if (response.matchmaking.status === "matched") {
+        connectToRoom(response.matchmaking.snapshot, auth);
+        await stopMatchmaking({ silent: true });
+      }
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setMatchmakingBusy(false);
+    }
+  }
+
+  async function handleCancelMatchmaking() {
+    setMatchmakingBusy(true);
+
+    try {
+      await stopMatchmaking({ silent: false });
+    } finally {
+      setMatchmakingBusy(false);
+    }
+  }
+
+  async function runFriendSearch() {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    if (!friendSearchQuery.trim()) {
+      setFriendSearchResults([]);
+      return;
+    }
+
+    setFriendSearchBusy(true);
+
+    try {
+      const response = await searchPlayers(auth.token, friendSearchQuery.trim());
+      setFriendSearchResults(response.results);
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setFriendSearchBusy(false);
+    }
+  }
+
+  async function handleSendFriendRequest(accountId: string) {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    setSocialActionBusyKey(`friend-send:${accountId}`);
+
+    try {
+      await sendFriendRequest(auth.token, accountId);
+      await refreshSocialOverview({ silent: true });
+      await runFriendSearch();
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleAcceptFriendRequest(accountId: string) {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    setSocialActionBusyKey(`friend-accept:${accountId}`);
+
+    try {
+      await acceptFriendRequest(auth.token, accountId);
+      await refreshSocialOverview({ silent: true });
+      await runFriendSearch();
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleDeclineFriendRequest(accountId: string) {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    setSocialActionBusyKey(`friend-decline:${accountId}`);
+
+    try {
+      await declineFriendRequest(auth.token, accountId);
+      await refreshSocialOverview({ silent: true });
+      await runFriendSearch();
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleCancelFriendRequest(accountId: string) {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    setSocialActionBusyKey(`friend-cancel:${accountId}`);
+
+    try {
+      await cancelFriendRequest(auth.token, accountId);
+      await refreshSocialOverview({ silent: true });
+      await runFriendSearch();
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleSendGameInvitation() {
+    if (
+      !auth ||
+      auth.player.kind !== "account" ||
+      !multiplayerSnapshot ||
+      !inviteFriendId
+    ) {
+      return;
+    }
+
+    setSocialActionBusyKey(`invite-send:${inviteFriendId}`);
+
+    try {
+      await sendGameInvitation(auth.token, {
+        gameId: multiplayerSnapshot.gameId,
+        recipientId: inviteFriendId,
+        expiresInMinutes: inviteDurationMinutes,
+      });
+      await refreshSocialOverview({ silent: true });
+      setInviteFriendId("");
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleRevokeGameInvitation(invitationId: string) {
+    if (!auth || auth.player.kind !== "account") {
+      return;
+    }
+
+    setSocialActionBusyKey(`invite-revoke:${invitationId}`);
+
+    try {
+      await revokeGameInvitation(auth.token, invitationId);
+      await refreshSocialOverview({ silent: true });
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setSocialActionBusyKey(null);
+    }
+  }
+
+  async function handleOpenInvitation(gameId: string) {
+    await openMultiplayerGame(gameId, {
+      access: true,
+    });
   }
 
   return (
@@ -1457,6 +2282,61 @@ export function HomePage({
                     >
                       {multiplayerBusy ? "Creating..." : "Create room"}
                     </Button>
+                    <p className="mt-3 text-sm text-[#6e5b48]">
+                      Every room now gets a shareable `/game/ROOMID` link, so the
+                      first visitor joins as your opponent and later visitors watch as
+                      spectators.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 rounded-3xl border border-[#d7c09a] bg-[linear-gradient(180deg,#fffef7,#f6edd9)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-[#5b4835]">
+                          Matchmaking
+                        </p>
+                        <p className="mt-1 text-sm text-[#6e5b48]">
+                          Get paired with the next player who queues up.
+                        </p>
+                      </div>
+                      <Badge className="bg-[#f3e7d5] text-[#6b563e]">
+                        {matchmaking.status === "searching"
+                          ? "Searching"
+                          : matchmaking.status === "matched"
+                            ? "Matched"
+                            : "Ready"}
+                      </Badge>
+                    </div>
+                    {matchmaking.status === "searching" ? (
+                      <div className="rounded-2xl border border-[#dbc59f] bg-[#fff8ee] px-4 py-3 text-sm text-[#6e5b48]">
+                        Looking for another player since{" "}
+                        <span className="font-semibold text-[#2b1e14]">
+                          {formatGameTimestamp(matchmaking.queuedAt)}
+                        </span>
+                        .
+                      </div>
+                    ) : null}
+                    <div className="grid gap-2">
+                      {matchmaking.status === "searching" ? (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={() => void handleCancelMatchmaking()}
+                          disabled={matchmakingBusy}
+                        >
+                          {matchmakingBusy ? "Stopping..." : "Cancel search"}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="lg"
+                          className="w-full"
+                          onClick={() => void handleEnterMatchmaking()}
+                          disabled={matchmakingBusy || multiplayerBusy || !auth}
+                        >
+                          {matchmakingBusy ? "Finding..." : "Find a match"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-[#8d7760]">
@@ -1579,7 +2459,7 @@ export function HomePage({
                                 <p className="mt-2 text-sm text-[#6e5b48]">
                                   Opponent:{" "}
                                   <span className="font-semibold text-[#2b1e14]">
-                                    {getOpponentLabel(game)}
+                                    {getOpponentLabel(game, auth?.player.playerId)}
                                   </span>
                                 </p>
                                 <p className="mt-1 text-sm text-[#7a6656]">
@@ -1644,7 +2524,7 @@ export function HomePage({
                                 <p className="mt-2 text-sm text-[#6e5b48]">
                                   Opponent:{" "}
                                   <span className="font-semibold text-[#2b1e14]">
-                                    {getOpponentLabel(game)}
+                                    {getOpponentLabel(game, auth?.player.playerId)}
                                   </span>
                                 </p>
                                 <p className="mt-1 text-sm text-[#7a6656]">
@@ -1664,6 +2544,333 @@ export function HomePage({
                           </div>
                         ))
                       )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </section>
+            ) : null}
+
+            {accountPlayer ? (
+              <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card className={cn("overflow-hidden", paperCard)}>
+                    <div className="h-2 bg-[linear-gradient(90deg,#4f3b24,#b8854e)]" />
+                    <CardHeader>
+                      <Badge className="w-fit bg-[#f5ead8] text-[#6e5437]">
+                        Friends
+                      </Badge>
+                      <CardTitle className="text-3xl text-[#2b1e14]">
+                        Friends and requests
+                      </CardTitle>
+                      <CardDescription className="text-[#6e5b48]">
+                        Search for players, grow your list, and handle incoming requests.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3 rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                        <label className="text-sm font-medium text-[#5b4835]">
+                          Find a player
+                        </label>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <Input
+                            value={friendSearchQuery}
+                            onChange={(event) => setFriendSearchQuery(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void runFriendSearch();
+                              }
+                            }}
+                            placeholder="Search by email or display name"
+                          />
+                          <Button
+                            variant="secondary"
+                            onClick={() => void runFriendSearch()}
+                            disabled={friendSearchBusy}
+                          >
+                            {friendSearchBusy ? "Searching..." : "Search"}
+                          </Button>
+                        </div>
+                        {friendSearchResults.length > 0 ? (
+                          <div className="space-y-2">
+                            {friendSearchResults.map((result) => (
+                              <div
+                                key={result.player.playerId}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                              >
+                                <div>
+                                  <p className="font-semibold text-[#2b1e14]">
+                                    {result.player.displayName}
+                                  </p>
+                                  <p className="text-sm text-[#7a6656]">
+                                    {result.player.email}
+                                  </p>
+                                </div>
+                                {result.relationship === "none" ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      void handleSendFriendRequest(result.player.playerId)
+                                    }
+                                    disabled={
+                                      socialActionBusyKey ===
+                                      `friend-send:${result.player.playerId}`
+                                    }
+                                  >
+                                    Add friend
+                                  </Button>
+                                ) : (
+                                  <Badge className="bg-[#f3e7d5] text-[#6b563e]">
+                                    {result.relationship === "friend"
+                                      ? "Already friends"
+                                      : result.relationship === "incoming-request"
+                                        ? "Incoming request"
+                                        : "Request sent"}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : friendSearchQuery.trim() && !friendSearchBusy ? (
+                          <p className="text-sm text-[#7a6656]">
+                            No players matched that search yet.
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                          <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                            Incoming requests
+                          </p>
+                          <div className="space-y-2">
+                            {socialOverview.incomingFriendRequests.length === 0 ? (
+                              <p className="text-sm text-[#7a6656]">
+                                No pending requests right now.
+                              </p>
+                            ) : (
+                              socialOverview.incomingFriendRequests.map((player) => (
+                                <div
+                                  key={player.playerId}
+                                  className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                                >
+                                  <p className="font-semibold text-[#2b1e14]">
+                                    {player.displayName}
+                                  </p>
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        void handleAcceptFriendRequest(player.playerId)
+                                      }
+                                      disabled={
+                                        socialActionBusyKey ===
+                                        `friend-accept:${player.playerId}`
+                                      }
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() =>
+                                        void handleDeclineFriendRequest(player.playerId)
+                                      }
+                                      disabled={
+                                        socialActionBusyKey ===
+                                        `friend-decline:${player.playerId}`
+                                      }
+                                    >
+                                      Decline
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                          <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                            Outgoing requests
+                          </p>
+                          <div className="space-y-2">
+                            {socialOverview.outgoingFriendRequests.length === 0 ? (
+                              <p className="text-sm text-[#7a6656]">
+                                No outgoing requests waiting.
+                              </p>
+                            ) : (
+                              socialOverview.outgoingFriendRequests.map((player) => (
+                                <div
+                                  key={player.playerId}
+                                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                                >
+                                  <p className="font-semibold text-[#2b1e14]">
+                                    {player.displayName}
+                                  </p>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      void handleCancelFriendRequest(player.playerId)
+                                    }
+                                    disabled={
+                                      socialActionBusyKey ===
+                                      `friend-cancel:${player.playerId}`
+                                    }
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                        <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                          Friends
+                        </p>
+                        <div className="space-y-2">
+                          {!socialLoaded && socialLoading ? (
+                            <p className="text-sm text-[#7a6656]">
+                              Loading your friends...
+                            </p>
+                          ) : socialOverview.friends.length === 0 ? (
+                            <p className="text-sm text-[#7a6656]">
+                              Add a few people and they will show up here for direct invites.
+                            </p>
+                          ) : (
+                            socialOverview.friends.map((player) => (
+                              <div
+                                key={player.playerId}
+                                className="flex items-center justify-between rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                              >
+                                <p className="font-semibold text-[#2b1e14]">
+                                  {player.displayName}
+                                </p>
+                                <Badge className="bg-[#efe3cf] text-[#5f4932]">
+                                  Friend
+                                </Badge>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card className={cn("overflow-hidden", paperCard)}>
+                    <div className="h-2 bg-[linear-gradient(90deg,#3b3125,#9d7c58)]" />
+                    <CardHeader className="gap-3">
+                      <Badge className="w-fit bg-[#f2e6d4] text-[#72533a]">
+                        Invitations
+                      </Badge>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <CardTitle className="text-3xl text-[#2b1e14]">
+                            Outstanding invitations
+                          </CardTitle>
+                          <CardDescription className="text-[#6e5b48]">
+                            New incoming invites appear here and toast while you are in the lobby.
+                          </CardDescription>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            void refreshSocialOverview({ allowInviteToast: false })
+                          }
+                          disabled={socialLoading}
+                        >
+                          {socialLoading ? "Refreshing..." : "Refresh"}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                        <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                          Incoming
+                        </p>
+                        <div className="space-y-2">
+                          {socialOverview.incomingInvitations.length === 0 ? (
+                            <p className="text-sm text-[#7a6656]">
+                              No incoming invitations right now.
+                            </p>
+                          ) : (
+                            socialOverview.incomingInvitations.map((invitation) => (
+                              <div
+                                key={invitation.id}
+                                className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-semibold text-[#2b1e14]">
+                                      {invitation.sender.displayName}
+                                    </p>
+                                    <p className="mt-1 text-sm text-[#7a6656]">
+                                      Game {invitation.gameId} • {formatRelativeExpiry(invitation.expiresAt)}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      void handleOpenInvitation(invitation.gameId)
+                                    }
+                                  >
+                                    Open game
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                        <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                          Outgoing
+                        </p>
+                        <div className="space-y-2">
+                          {socialOverview.outgoingInvitations.length === 0 ? (
+                            <p className="text-sm text-[#7a6656]">
+                              No active invitations sent yet.
+                            </p>
+                          ) : (
+                            socialOverview.outgoingInvitations.map((invitation) => (
+                              <div
+                                key={invitation.id}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                              >
+                                <div>
+                                  <p className="font-semibold text-[#2b1e14]">
+                                    {invitation.recipient.displayName}
+                                  </p>
+                                  <p className="mt-1 text-sm text-[#7a6656]">
+                                    Game {invitation.gameId} • {formatRelativeExpiry(invitation.expiresAt)}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    void handleRevokeGameInvitation(invitation.id)
+                                  }
+                                  disabled={
+                                    socialActionBusyKey ===
+                                    `invite-revoke:${invitation.id}`
+                                  }
+                                >
+                                  Revoke
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -1786,24 +2993,11 @@ export function HomePage({
                   />
                 ) : null}
 
-                {multiplayerWaitingOnOpponent ? (
-                  <div className="pointer-events-none absolute right-3 top-3 z-[96] flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur">
-                    <HourglassSpinner className="text-[#7b5f3f]" />
-                    Waiting for opponent
-                  </div>
-                ) : null}
-
-                {multiplayerYourTurn ? (
-                  <div className="pointer-events-none absolute right-3 top-3 z-[96] rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur">
-                    Your move
-                  </div>
-                ) : null}
-
                 {multiplayerSnapshot?.status === "waiting" ? (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
                       <HourglassSpinner className="text-[#7b5f3f]" />
-                      Waiting for player two
+                      Waiting for player two. Colors are assigned when they arrive.
                     </div>
                   </div>
                 ) : null}
@@ -1821,16 +3015,62 @@ export function HomePage({
                       "border-[#d5c19f] bg-[linear-gradient(180deg,rgba(255,251,244,0.98),rgba(247,236,214,0.95))]"
                   )}
                 >
-                  <CardHeader>
-                    <GamePanelBrand />
-                    <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
-                      Multiplayer
-                    </Badge>
-                    <CardTitle className="text-[#2b1e14]">
-                      {multiplayerSnapshot
-                        ? `Room ${multiplayerSnapshot.gameId}`
-                        : "Room"}
-                    </CardTitle>
+                  <CardHeader className="gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <GamePanelBrand />
+                        <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
+                          Multiplayer
+                        </Badge>
+                      </div>
+                      <div className="flex shrink-0 justify-end">
+                        {multiplayerSnapshot && connectionState !== "connected" ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          >
+                            <HourglassSpinner className="text-[#7b5f3f]" />
+                            {connectionState === "connecting" ? "Connecting" : "Reconnecting"}
+                          </motion.div>
+                        ) : multiplayerYourTurn ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="flex items-center rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
+                          >
+                            Your move
+                          </motion.div>
+                        ) : multiplayerWaitingOnOpponent ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          >
+                            <HourglassSpinner className="text-[#7b5f3f]" />
+                            Waiting
+                          </motion.div>
+                        ) : multiplayerWaitingForOpponentSeat ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          >
+                            <HourglassSpinner className="text-[#7b5f3f]" />
+                            Lobby open
+                          </motion.div>
+                        ) : multiplayerSpectating ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          >
+                            Spectating
+                          </motion.div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <CardTitle className="text-[#2b1e14]">Room</CardTitle>
                     <CardDescription
                       className={cn(
                         multiplayerYourTurn
@@ -1844,49 +3084,116 @@ export function HomePage({
                   <CardContent className="space-y-4">
                     {multiplayerSnapshot ? (
                       <>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="rounded-2xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 font-mono text-xl text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]">
-                            {multiplayerSnapshot.gameId}
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#7b6550]">
+                            Room ID
+                          </p>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <RoomCodeCopyPill
+                              gameId={multiplayerSnapshot.gameId}
+                              copied={
+                                copyFeedbackKey === "room-id" &&
+                                copyFeedback === "Room copied"
+                              }
+                              onCopy={() => void handleCopyGameId()}
+                            />
+                            {copyFeedback ? (
+                              <span className="text-sm text-[#7a6656]">
+                                {copyFeedback}
+                              </span>
+                            ) : null}
                           </div>
-                          <Button variant="secondary" onClick={handleCopyGameId}>
-                            Copy
-                          </Button>
-                          {copyFeedback ? (
-                            <span className="text-sm text-[#7a6656]">
-                              {copyFeedback}
-                            </span>
-                          ) : null}
                         </div>
 
-                        <div className="grid gap-2">
-                          {(["white", "black"] as PlayerColor[]).map((color) => {
-                            const seat = multiplayerSnapshot.seats[color];
-                            return (
-                              <div
-                                key={color}
-                                className="flex items-center justify-between rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
-                              >
-                                <div>
-                                  <p className="text-sm font-semibold capitalize text-[#2b1e14]">
-                                    {color}
-                                  </p>
-                                  <p className="text-sm text-[#7a6656]">
-                                    {seat?.player.displayName || "Open"}
-                                  </p>
-                                </div>
-                                <Badge
-                                  className={cn(
-                                    seat?.online
-                                      ? "bg-[#eef2e8] text-[#43513f]"
-                                      : "bg-[#f2e8d9] text-[#6e5b48]"
-                                  )}
+                        {multiplayerSnapshot.status === "waiting" ? (
+                          <div className="space-y-2">
+                            {Array.from({ length: 2 }, (_, index) => {
+                              const slot = multiplayerSnapshot.players[index] ?? null;
+                              return (
+                                <div
+                                  key={`lobby-player-${index}`}
+                                  className="flex items-center justify-between gap-3 rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
                                 >
-                                  {seat?.online ? "Online" : "Offline"}
-                                </Badge>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                  <div className="flex items-center gap-3">
+                                    {slot ? (
+                                      <PlayerOverviewAvatar player={slot.player} />
+                                    ) : (
+                                      <EmptySeatAvatar />
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-semibold text-[#2b1e14]">
+                                        {index === 0 ? "Lobby host" : "Second player"}
+                                      </p>
+                                      <p className="text-sm text-[#7a6656]">
+                                        {slot
+                                          ? formatPlayerName(
+                                              slot.player,
+                                              auth?.player.playerId
+                                            )
+                                          : "Waiting to join"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    className={cn(
+                                      slot?.online
+                                        ? "bg-[#eef2e8] text-[#43513f]"
+                                        : "bg-[#f2e8d9] text-[#6e5b48]"
+                                    )}
+                                  >
+                                    {slot ? (slot.online ? "Online" : "Offline") : "Open"}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                            <p className="rounded-2xl border border-[#dcc59f] bg-[#fff7ea] px-4 py-3 text-sm text-[#6e5b48]">
+                              White still starts. The colors are assigned randomly the
+                              moment player two joins the lobby.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid gap-2">
+                            {(["white", "black"] as PlayerColor[]).map((color) => {
+                              const seat = multiplayerSnapshot.seats[color];
+                              return (
+                                <div
+                                  key={color}
+                                  className="flex items-center justify-between gap-3 rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {seat ? (
+                                      <PlayerOverviewAvatar player={seat.player} />
+                                    ) : (
+                                      <EmptySeatAvatar />
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-semibold capitalize text-[#2b1e14]">
+                                        {color}
+                                      </p>
+                                      <p className="text-sm text-[#7a6656]">
+                                        {seat
+                                          ? formatPlayerName(
+                                              seat.player,
+                                              auth?.player.playerId
+                                            )
+                                          : "Open"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    className={cn(
+                                      seat?.online
+                                        ? "bg-[#eef2e8] text-[#43513f]"
+                                        : "bg-[#f2e8d9] text-[#6e5b48]"
+                                    )}
+                                  >
+                                    {seat?.online ? "Online" : "Offline"}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-3">
                           <AnimatedScoreTile
@@ -1905,49 +3212,91 @@ export function HomePage({
                           />
                         </div>
 
-                        <div
-                          className={cn(
-                            "rounded-3xl border px-4 py-3 text-sm",
-                            multiplayerYourTurn
-                              ? "border-[#bdd297] bg-[#f6fde8] text-[#5a7242]"
-                              : multiplayerWaitingOnOpponent
-                                ? "border-[#dcc59f] bg-[#fff7ea] text-[#6a553d]"
-                                : "border-[#d8c29c] bg-[#fffaf1] text-[#6e5b48]"
-                          )}
-                        >
-                          <p>
-                            You:{" "}
-                            <span className="font-semibold text-[#2b1e14]">
-                              {playerSeat || "spectator"}
-                            </span>
-                          </p>
-                          <p>
-                            Status:{" "}
-                            <span className="font-semibold text-[#2b1e14]">
-                              {connectionState}
-                            </span>
-                          </p>
-                          <p>
-                            {multiplayerSnapshot.status === "waiting"
-                              ? "Room open."
-                              : multiplayerSnapshot.status === "finished"
-                              ? `${multiplayerWinnerLabel} won.`
-                              : multiplayerYourTurn
-                                ? "The board is yours."
-                                : `${formatPlayerColor(multiplayerSnapshot.state.currentTurn)} to move.`}
-                          </p>
-                        </div>
+                        {accountPlayer && isMultiplayerParticipant && !multiplayerGameOver ? (
+                          <div className="rounded-3xl border border-[#dcc59f] bg-[#fff9ef] p-4">
+                            <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                              Invite a friend
+                            </p>
+                            {inviteableFriends.length === 0 ? (
+                              <p className="text-sm text-[#7a6656]">
+                                Add friends in the lobby to send direct game invites.
+                              </p>
+                            ) : (
+                              <div className="space-y-3">
+                                <select
+                                  value={inviteFriendId}
+                                  onChange={(event) => setInviteFriendId(event.target.value)}
+                                  className="h-10 w-full rounded-xl border border-[#d7c39e] bg-[#fffdf7] px-3 text-sm text-[#2b1e14] outline-none"
+                                >
+                                  <option value="">Choose a friend</option>
+                                  {inviteableFriends.map((friend) => (
+                                    <option key={friend.playerId} value={friend.playerId}>
+                                      {friend.displayName}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={String(inviteDurationMinutes)}
+                                  onChange={(event) =>
+                                    setInviteDurationMinutes(Number(event.target.value))
+                                  }
+                                  className="h-10 w-full rounded-xl border border-[#d7c39e] bg-[#fffdf7] px-3 text-sm text-[#2b1e14] outline-none"
+                                >
+                                  {INVITATION_DURATION_OPTIONS.map((option) => (
+                                    <option key={option.minutes} value={option.minutes}>
+                                      Keep invite for {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <Button
+                                  variant="secondary"
+                                  className="w-full"
+                                  onClick={() => void handleSendGameInvitation()}
+                                  disabled={
+                                    !inviteFriendId ||
+                                    socialActionBusyKey === `invite-send:${inviteFriendId}`
+                                  }
+                                >
+                                  Send invite
+                                </Button>
+                                {currentRoomOutgoingInvitations.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {currentRoomOutgoingInvitations.map((invitation) => (
+                                      <div
+                                        key={invitation.id}
+                                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                                      >
+                                        <div>
+                                          <p className="font-semibold text-[#2b1e14]">
+                                            {invitation.recipient.displayName}
+                                          </p>
+                                          <p className="text-sm text-[#7a6656]">
+                                            {formatRelativeExpiry(invitation.expiresAt)}
+                                          </p>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() =>
+                                            void handleRevokeGameInvitation(invitation.id)
+                                          }
+                                          disabled={
+                                            socialActionBusyKey ===
+                                            `invite-revoke:${invitation.id}`
+                                          }
+                                        >
+                                          Revoke
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
 
                         <div className="grid gap-2">
-                          {multiplayerReconnectAvailable ? (
-                            <Button
-                              variant="secondary"
-                              onClick={() => void handleReconnectMultiplayerRoom()}
-                              disabled={multiplayerBusy}
-                            >
-                              {multiplayerBusy ? "Reconnecting..." : "Reconnect room"}
-                            </Button>
-                          ) : null}
                           {multiplayerSnapshot.state.pendingJump.length > 0 ? (
                             <Button
                               onClick={() =>
@@ -1962,13 +3311,74 @@ export function HomePage({
 
                         {multiplayerGameOver ? (
                           <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                            <Button
-                              variant="secondary"
-                              onClick={handleResetMultiplayerBoard}
-                              disabled={multiplayerBusy}
-                            >
-                              {multiplayerBusy ? "Restarting..." : "Restart board"}
-                            </Button>
+                            {playerSeat ? (
+                              <div className="rounded-3xl border border-[#dcc59f] bg-[#fff9ef] p-4 text-sm text-[#6e5b48]">
+                                {rematchOfferFromOpponent ? (
+                                  <p>
+                                    <span className="font-semibold text-[#2b1e14]">
+                                      {multiplayerOpponent
+                                        ? formatPlayerName(
+                                            multiplayerOpponent,
+                                            auth?.player.playerId
+                                          )
+                                        : "Your opponent"}
+                                    </span>{" "}
+                                    wants a rematch.
+                                  </p>
+                                ) : yourRematchRequestPending ? (
+                                  <p>
+                                    Rematch offered. Waiting for{" "}
+                                    <span className="font-semibold text-[#2b1e14]">
+                                      {multiplayerOpponent
+                                        ? formatPlayerName(
+                                            multiplayerOpponent,
+                                            auth?.player.playerId
+                                          )
+                                        : "your opponent"}
+                                    </span>
+                                    .
+                                  </p>
+                                ) : (
+                                  <p>
+                                    Want another round? Rematches reshuffle colors before
+                                    white opens again.
+                                  </p>
+                                )}
+                              </div>
+                            ) : null}
+                            {playerSeat ? (
+                              rematchOfferFromOpponent ? (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <Button
+                                    variant="secondary"
+                                    onClick={handleRequestRematch}
+                                    disabled={connectionState !== "connected"}
+                                  >
+                                    Accept rematch
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={handleDeclineRematch}
+                                    disabled={connectionState !== "connected"}
+                                  >
+                                    Decline
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="secondary"
+                                  onClick={handleRequestRematch}
+                                  disabled={
+                                    connectionState !== "connected" ||
+                                    yourRematchRequestPending
+                                  }
+                                >
+                                  {yourRematchRequestPending
+                                    ? "Rematch requested"
+                                    : "Offer rematch"}
+                                </Button>
+                              )
+                            ) : null}
                             <Button variant="ghost" onClick={goHome}>
                               Back to lobby
                             </Button>
