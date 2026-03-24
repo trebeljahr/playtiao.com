@@ -263,24 +263,38 @@ export function ProfilePage({
                   )}
                 </div>
 
-                <label className="grid gap-2 text-sm font-medium text-[#4e3d2c]">
-                  <span>Choose image</span>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) =>
-                      setSelectedFile(event.target.files?.[0] ?? null)
-                    }
-                  />
-                </label>
-
-                <Button
-                  className="w-full"
-                  onClick={handleUploadPicture}
-                  disabled={!selectedFile || uploading}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleUploadPicture();
+                  }}
+                  className="space-y-4"
                 >
-                  {uploading ? "Uploading..." : "Upload profile picture"}
-                </Button>
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor="profile-picture"
+                      className="text-sm font-medium text-[#4e3d2c]"
+                    >
+                      Choose image
+                    </label>
+                    <Input
+                      id="profile-picture"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) =>
+                        setSelectedFile(event.target.files?.[0] ?? null)
+                      }
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={!selectedFile || uploading}
+                  >
+                    {uploading ? "Uploading..." : "Upload profile picture"}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
 
@@ -297,25 +311,49 @@ export function ProfilePage({
                     Loading your saved profile...
                   </div>
                 ) : (
-                  <>
-                    <label className="grid gap-2 text-sm font-medium text-[#4e3d2c]">
-                      <span>Display name</span>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void handleSaveProfile();
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="grid gap-2">
+                      <label
+                        htmlFor="profile-display-name"
+                        className="text-sm font-medium text-[#4e3d2c]"
+                      >
+                        Display name
+                      </label>
                       <Input
+                        id="profile-display-name"
+                        name="name"
                         value={displayName}
                         onChange={(event) => setDisplayName(event.target.value)}
-                        placeholder="Display name"
+                        placeholder="Your Name"
+                        autoComplete="name"
+                        required
                       />
-                    </label>
+                    </div>
 
-                    <label className="grid gap-2 text-sm font-medium text-[#4e3d2c]">
-                      <span>Email</span>
+                    <div className="grid gap-2">
+                      <label
+                        htmlFor="profile-email"
+                        className="text-sm font-medium text-[#4e3d2c]"
+                      >
+                        Email
+                      </label>
                       <Input
+                        id="profile-email"
+                        name="email"
                         type="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        placeholder="Email"
+                        placeholder="name@example.com"
+                        autoComplete="email"
+                        required
                       />
-                    </label>
+                    </div>
 
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
                       <p>Created: {formatTimestamp(profile?.createdAt)}</p>
@@ -323,14 +361,18 @@ export function ProfilePage({
                     </div>
 
                     <div className="flex flex-wrap gap-3">
-                      <Button onClick={handleSaveProfile} disabled={saving}>
+                      <Button type="submit" disabled={saving}>
                         {saving ? "Saving..." : "Save changes"}
                       </Button>
-                      <Button variant="outline" onClick={() => navigate("/")}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => navigate("/")}
+                      >
                         Back to lobby
                       </Button>
                     </div>
-                  </>
+                  </form>
                 )}
 
                 {successMessage ? (

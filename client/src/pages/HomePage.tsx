@@ -119,7 +119,7 @@ const INVITATION_DURATION_OPTIONS = [
 
 function getPlayerSeat(
   snapshot: MultiplayerSnapshot | null,
-  playerId: string | undefined
+  playerId: string | undefined,
 ): PlayerColor | null {
   if (!snapshot || !playerId) {
     return null;
@@ -138,7 +138,7 @@ function getPlayerSeat(
 
 function isPlayerInSnapshot(
   snapshot: MultiplayerSnapshot | null,
-  playerId: string | undefined
+  playerId: string | undefined,
 ) {
   if (!snapshot || !playerId) {
     return false;
@@ -149,13 +149,15 @@ function isPlayerInSnapshot(
 
 function getOpponentFromSlots(
   players: Array<{ player: SocialPlayerSummary }>,
-  playerId: string | undefined
+  playerId: string | undefined,
 ) {
   if (!playerId) {
     return null;
   }
 
-  return players.find((slot) => slot.player.playerId !== playerId)?.player ?? null;
+  return (
+    players.find((slot) => slot.player.playerId !== playerId)?.player ?? null
+  );
 }
 
 function formatPlayerColor(color: PlayerColor | null) {
@@ -176,15 +178,22 @@ function formatGameTimestamp(value: string) {
 }
 
 function isSummaryYourTurn(summary: MultiplayerGameSummary) {
-  return summary.status === "active" && !!summary.yourSeat && summary.currentTurn === summary.yourSeat;
+  return (
+    summary.status === "active" &&
+    !!summary.yourSeat &&
+    summary.currentTurn === summary.yourSeat
+  );
 }
 
 function getOpponentLabel(
   summary: MultiplayerGameSummary,
-  playerId: string | undefined
+  playerId: string | undefined,
 ) {
   if (!summary.yourSeat) {
-    return getOpponentFromSlots(summary.players, playerId)?.displayName || "Waiting for opponent";
+    return (
+      getOpponentFromSlots(summary.players, playerId)?.displayName ||
+      "Waiting for opponent"
+    );
   }
 
   const opponentColor = summary.yourSeat === "white" ? "black" : "white";
@@ -200,7 +209,7 @@ function getSummaryStatusLabel(summary: MultiplayerGameSummary) {
     return "Waiting for player two";
   }
 
-  return isSummaryYourTurn(summary) ? "Your move" : "Opponent to move";
+  return isSummaryYourTurn(summary) ? "Your move" : "Waiting for opponent";
 }
 
 function formatRelativeExpiry(value: string) {
@@ -221,7 +230,7 @@ function formatRelativeExpiry(value: string) {
 
 function formatPlayerName(
   player: SocialPlayerSummary | { playerId: string; displayName: string },
-  currentPlayerId: string | undefined
+  currentPlayerId: string | undefined,
 ) {
   return player.playerId === currentPlayerId
     ? `${player.displayName} (you)`
@@ -254,7 +263,7 @@ function PlayerOverviewAvatar({
     <div
       className={cn(
         "flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(180deg,#f4ecde,#e1cda9)] text-xs font-semibold text-[#2e2217]",
-        className
+        className,
       )}
     >
       {initial}
@@ -267,7 +276,7 @@ function EmptySeatAvatar({ className }: { className?: string }) {
     <div
       className={cn(
         "h-8 w-8 rounded-full border border-dashed border-[#cfbb98] bg-[#fbf4e7]",
-        className
+        className,
       )}
       aria-hidden="true"
     />
@@ -302,6 +311,25 @@ function CopyIcon({ className }: { className?: string }) {
   );
 }
 
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4", className)}
+    >
+      <path
+        d="M11.875 7.625a3.125 3.125 0 0 1 0 4.417l-1.875 1.875a3.125 3.125 0 0 1-4.417-4.417l.625-.625m3.75 3.125a3.125 3.125 0 0 1 0-4.417l1.875-1.875a3.125 3.125 0 0 1 4.417 4.417l-.625.625"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function CheckIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -319,31 +347,6 @@ function CheckIcon({ className }: { className?: string }) {
       />
     </svg>
   );
-}
-
-function getOptimisticSnapshotStatus(snapshot: MultiplayerSnapshot, state: GameState) {
-  if (isGameOver(state)) {
-    return "finished";
-  }
-
-  if (snapshot.seats.white && snapshot.seats.black) {
-    return "active";
-  }
-
-  return "waiting";
-}
-
-function createOptimisticSnapshot(
-  snapshot: MultiplayerSnapshot,
-  state: GameState
-): MultiplayerSnapshot {
-  return {
-    ...snapshot,
-    state,
-    status: getOptimisticSnapshotStatus(snapshot, state),
-    updatedAt: new Date().toISOString(),
-    rematch: isGameOver(state) ? snapshot.rematch : null,
-  };
 }
 
 function RoomCodeCopyPill({
@@ -375,7 +378,7 @@ function RoomCodeCopyPill({
         ease: [0.22, 1, 0.36, 1],
       }}
       className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 text-sm font-semibold text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
-      aria-label={`Copy room ID ${gameId}`}
+      aria-label={`Copy game ID ${gameId}`}
     >
       <span className="font-mono tracking-[0.18em]">{gameId}</span>
       <span
@@ -383,13 +386,84 @@ function RoomCodeCopyPill({
           "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
           copied
             ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]"
-            : "border-white/15 bg-white/8"
+            : "border-white/15 bg-white/8",
         )}
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </span>
     </motion.button>
   );
+}
+
+function ShareLinkCopyPill({
+  copied,
+  onCopy,
+}: {
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onCopy}
+      animate={
+        copied
+          ? {
+              scale: [1, 1.05, 1],
+              y: [0, -2, 0],
+            }
+          : {
+              scale: 1,
+              y: 0,
+            }
+      }
+      transition={{
+        duration: 0.42,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
+      aria-label="Copy share link"
+    >
+      <span
+        className={cn(
+          "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
+          copied
+            ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]"
+            : "border-white/15 bg-white/8",
+        )}
+      >
+        {copied ? <CheckIcon /> : <LinkIcon />}
+      </span>
+    </motion.button>
+  );
+}
+
+function getOptimisticSnapshotStatus(
+  snapshot: MultiplayerSnapshot,
+  state: GameState,
+) {
+  if (isGameOver(state)) {
+    return "finished";
+  }
+
+  if (snapshot.seats.white && snapshot.seats.black) {
+    return "active";
+  }
+
+  return "waiting";
+}
+
+function createOptimisticSnapshot(
+  snapshot: MultiplayerSnapshot,
+  state: GameState,
+): MultiplayerSnapshot {
+  return {
+    ...snapshot,
+    state,
+    status: getOptimisticSnapshotStatus(snapshot, state),
+    updatedAt: new Date().toISOString(),
+    rematch: isGameOver(state) ? snapshot.rematch : null,
+  };
 }
 
 function HourglassSpinner({ className }: { className?: string }) {
@@ -506,18 +580,13 @@ function distanceFromBoardCenter(position: Position) {
 function countAdjacentPieces(
   state: GameState,
   position: Position,
-  targetColor: PlayerColor
+  targetColor: PlayerColor,
 ) {
   return ADJACENT_DIRECTIONS.reduce((count, { dx, dy }) => {
     const nextX = position.x + dx;
     const nextY = position.y + dy;
 
-    if (
-      nextX < 0 ||
-      nextX >= BOARD_SIZE ||
-      nextY < 0 ||
-      nextY >= BOARD_SIZE
-    ) {
+    if (nextX < 0 || nextX >= BOARD_SIZE || nextY < 0 || nextY >= BOARD_SIZE) {
       return count;
     }
 
@@ -528,14 +597,15 @@ function countAdjacentPieces(
 function scoreComputerPlacement(state: GameState, position: Position) {
   const centerBias = 24 - distanceFromBoardCenter(position) * 1.85;
   const enemyAdjacency = countAdjacentPieces(state, position, "white") * 2.6;
-  const allyAdjacency = countAdjacentPieces(state, position, COMPUTER_COLOR) * 0.9;
+  const allyAdjacency =
+    countAdjacentPieces(state, position, COMPUTER_COLOR) * 0.9;
 
   return centerBias + enemyAdjacency + allyAdjacency;
 }
 
 function collectComputerJumpPlans(
   state: GameState,
-  from: Position
+  from: Position,
 ): Array<{ path: Position[]; score: number }> {
   const targets = getJumpTargets(state, from, state.currentTurn);
 
@@ -566,7 +636,7 @@ function collectComputerJumpPlans(
     const landingPressure = countAdjacentPieces(
       confirmed.value,
       target,
-      "white"
+      "white",
     );
 
     return [
@@ -662,11 +732,7 @@ function applyComputerTurn(state: GameState) {
   return confirmPendingJump(nextState);
 }
 
-export function HomePage({
-  auth,
-  onOpenAuth,
-  onLogout,
-}: HomePageProps) {
+export function HomePage({ auth, onOpenAuth, onLogout }: HomePageProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -677,7 +743,7 @@ export function HomePage({
   const [menuTarget, setMenuTarget] = useState<MenuTarget>(null);
 
   const [localGame, setLocalGame] = useState<GameState>(() =>
-    createInitialGameState()
+    createInitialGameState(),
   );
   const [localSelection, setLocalSelection] = useState<Position | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -688,10 +754,11 @@ export function HomePage({
     useState<Position | null>(null);
   const [multiplayerError, setMultiplayerError] = useState<string | null>(null);
   const [multiplayerBusy, setMultiplayerBusy] = useState(false);
-  const [multiplayerGames, setMultiplayerGames] = useState<MultiplayerGamesIndex>({
-    active: [],
-    finished: [],
-  });
+  const [multiplayerGames, setMultiplayerGames] =
+    useState<MultiplayerGamesIndex>({
+      active: [],
+      finished: [],
+    });
   const [multiplayerGamesLoading, setMultiplayerGamesLoading] = useState(false);
   const [multiplayerGamesLoaded, setMultiplayerGamesLoaded] = useState(false);
   const [connectionState, setConnectionState] =
@@ -706,8 +773,9 @@ export function HomePage({
     status: "idle",
   });
   const [matchmakingBusy, setMatchmakingBusy] = useState(false);
-  const [socialOverview, setSocialOverview] =
-    useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
+  const [socialOverview, setSocialOverview] = useState<SocialOverview>(
+    EMPTY_SOCIAL_OVERVIEW,
+  );
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialLoaded, setSocialLoaded] = useState(false);
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
@@ -716,15 +784,15 @@ export function HomePage({
   >([]);
   const [friendSearchBusy, setFriendSearchBusy] = useState(false);
   const [socialActionBusyKey, setSocialActionBusyKey] = useState<string | null>(
-    null
+    null,
   );
   const [inviteFriendId, setInviteFriendId] = useState("");
   const [inviteDurationMinutes, setInviteDurationMinutes] = useState<number>(
-    INVITATION_DURATION_OPTIONS[1].minutes
+    INVITATION_DURATION_OPTIONS[1].minutes,
   );
-  const [localScorePulse, setLocalScorePulse] = useState<Record<PlayerColor, number>>(
-    { black: 0, white: 0 }
-  );
+  const [localScorePulse, setLocalScorePulse] = useState<
+    Record<PlayerColor, number>
+  >({ black: 0, white: 0 });
   const [multiplayerScorePulse, setMultiplayerScorePulse] = useState<
     Record<PlayerColor, number>
   >({ black: 0, white: 0 });
@@ -732,9 +800,11 @@ export function HomePage({
   const socketRef = useRef<WebSocket | null>(null);
   const latestAuthRef = useRef<AuthResponse | null>(auth);
   const latestMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
-    multiplayerSnapshot
+    multiplayerSnapshot,
   );
-  const confirmedMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(null);
+  const confirmedMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
+    null,
+  );
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const pendingOptimisticUpdateRef = useRef(false);
@@ -742,7 +812,10 @@ export function HomePage({
   const computerCardRef = useRef<HTMLDivElement | null>(null);
   const multiplayerCardRef = useRef<HTMLDivElement | null>(null);
   const localHistoryLengthRef = useRef(localGame.history.length);
-  const multiplayerHistoryMetaRef = useRef<{ gameId: string | null; length: number }>({
+  const multiplayerHistoryMetaRef = useRef<{
+    gameId: string | null;
+    length: number;
+  }>({
     gameId: null,
     length: 0,
   });
@@ -753,11 +826,13 @@ export function HomePage({
   const computerMode = mode === "computer";
   const accountPlayer = auth?.player.kind === "account";
   const canToastIncomingInvites = mode === "menu" && !routeGameId;
-  const websocketDebugEnabled = new URLSearchParams(location.search).has("wsDebug");
+  const websocketDebugEnabled = new URLSearchParams(location.search).has(
+    "wsDebug",
+  );
 
   useStonePlacementSound(localBoardMode ? localGame : null);
   useStonePlacementSound(
-    mode === "multiplayer" ? multiplayerSnapshot?.state ?? null : null
+    mode === "multiplayer" ? (multiplayerSnapshot?.state ?? null) : null,
   );
 
   useEffect(() => {
@@ -787,7 +862,7 @@ export function HomePage({
     nextSnapshot: MultiplayerSnapshot,
     options: {
       confirmed?: boolean;
-    } = {}
+    } = {},
   ) {
     if (options.confirmed ?? true) {
       confirmedMultiplayerSnapshotRef.current = nextSnapshot;
@@ -798,7 +873,9 @@ export function HomePage({
   }
 
   function syncMultiplayerSelection(snapshot: MultiplayerSnapshot | null) {
-    setMultiplayerSelection(snapshot ? getPendingJumpDestination(snapshot.state) : null);
+    setMultiplayerSelection(
+      snapshot ? getPendingJumpDestination(snapshot.state) : null,
+    );
   }
 
   function restoreConfirmedSnapshot() {
@@ -817,16 +894,23 @@ export function HomePage({
     setMultiplayerGamesLoaded(true);
   }
 
-  function applySocialOverview(nextOverview: SocialOverview, allowInviteToast: boolean) {
+  function applySocialOverview(
+    nextOverview: SocialOverview,
+    allowInviteToast: boolean,
+  ) {
     const incomingIds = new Set(
-      nextOverview.incomingInvitations.map((invitation) => invitation.id)
+      nextOverview.incomingInvitations.map((invitation) => invitation.id),
     );
 
-    if (allowInviteToast && socialInvitationsHydratedRef.current && canToastIncomingInvites) {
+    if (
+      allowInviteToast &&
+      socialInvitationsHydratedRef.current &&
+      canToastIncomingInvites
+    ) {
       for (const invitation of nextOverview.incomingInvitations) {
         if (!socialInvitationIdsRef.current.has(invitation.id)) {
           toast.success(
-            `${invitation.sender.displayName} invited you to game ${invitation.gameId}`
+            `${invitation.sender.displayName} invited you to game ${invitation.gameId}`,
           );
         }
       }
@@ -838,9 +922,11 @@ export function HomePage({
     setSocialLoaded(true);
   }
 
-  async function refreshMultiplayerGames(options: {
-    silent?: boolean;
-  } = {}) {
+  async function refreshMultiplayerGames(
+    options: {
+      silent?: boolean;
+    } = {},
+  ) {
     if (!auth || auth.player.kind !== "account") {
       setMultiplayerGames({
         active: [],
@@ -865,10 +951,12 @@ export function HomePage({
     }
   }
 
-  async function refreshSocialOverview(options: {
-    silent?: boolean;
-    allowInviteToast?: boolean;
-  } = {}) {
+  async function refreshSocialOverview(
+    options: {
+      silent?: boolean;
+      allowInviteToast?: boolean;
+    } = {},
+  ) {
     if (!auth || auth.player.kind !== "account") {
       setSocialOverview(EMPTY_SOCIAL_OVERVIEW);
       setSocialLoaded(false);
@@ -960,7 +1048,9 @@ export function HomePage({
       return;
     }
 
-    setMultiplayerSelection(getPendingJumpDestination(multiplayerSnapshot.state));
+    setMultiplayerSelection(
+      getPendingJumpDestination(multiplayerSnapshot.state),
+    );
   }, [multiplayerSnapshot]);
 
   useEffect(() => {
@@ -973,10 +1063,10 @@ export function HomePage({
         .filter(
           (friend) =>
             !multiplayerSnapshot?.players.some(
-              (slot) => slot.player.playerId === friend.playerId
-            )
+              (slot) => slot.player.playerId === friend.playerId,
+            ),
         )
-        .map((friend) => friend.playerId)
+        .map((friend) => friend.playerId),
     );
 
     if (!availableFriendIds.has(inviteFriendId)) {
@@ -1021,7 +1111,8 @@ export function HomePage({
   }, [localGame.pendingJump.length]);
 
   useEffect(() => {
-    const pendingJumpLength = multiplayerSnapshot?.state.pendingJump.length ?? 0;
+    const pendingJumpLength =
+      multiplayerSnapshot?.state.pendingJump.length ?? 0;
 
     if (pendingJumpLength === 0) {
       setMultiplayerConfirmReady(true);
@@ -1138,12 +1229,7 @@ export function HomePage({
       access: true,
       navigateOnFailure: true,
     });
-  }, [
-    auth,
-    mode,
-    multiplayerSnapshot?.gameId,
-    routeGameId,
-  ]);
+  }, [auth, mode, multiplayerSnapshot?.gameId, routeGameId]);
 
   useEffect(() => {
     if (!auth || matchmaking.status !== "searching") {
@@ -1177,23 +1263,25 @@ export function HomePage({
     ? getJumpTargets(localGame, localActiveOrigin, localGame.currentTurn)
     : [];
   const localBoardDisabled =
-    computerMode && (computerThinking || localGame.currentTurn === COMPUTER_COLOR);
+    computerMode &&
+    (computerThinking || localGame.currentTurn === COMPUTER_COLOR);
 
   const playerSeat = getPlayerSeat(multiplayerSnapshot, auth?.player.playerId);
   const isMultiplayerParticipant = isPlayerInSnapshot(
     multiplayerSnapshot,
-    auth?.player.playerId
+    auth?.player.playerId,
   );
   const multiplayerForcedOrigin = multiplayerSnapshot
     ? getPendingJumpDestination(multiplayerSnapshot.state)
     : null;
-  const multiplayerActiveOrigin = multiplayerForcedOrigin ?? multiplayerSelection;
+  const multiplayerActiveOrigin =
+    multiplayerForcedOrigin ?? multiplayerSelection;
   const multiplayerJumpTargets =
     multiplayerSnapshot && multiplayerActiveOrigin
       ? getJumpTargets(
           multiplayerSnapshot.state,
           multiplayerActiveOrigin,
-          multiplayerSnapshot.state.currentTurn
+          multiplayerSnapshot.state.currentTurn,
         )
       : [];
   const multiplayerGameActive =
@@ -1246,7 +1334,7 @@ export function HomePage({
     !!multiplayerSnapshot && !isMultiplayerParticipant;
   const multiplayerOpponent = getOpponentFromSlots(
     multiplayerSnapshot?.players ?? [],
-    auth?.player.playerId
+    auth?.player.playerId,
   );
   const opponentSeat = playerSeat
     ? playerSeat === "white"
@@ -1263,7 +1351,7 @@ export function HomePage({
   const rematchOfferFromOpponent =
     incomingRematchRequest && !yourRematchRequestPending;
   const multiplayerStatusTitle = !multiplayerSnapshot
-    ? "Room"
+    ? "Game"
     : multiplayerGameOver
       ? `${multiplayerWinnerLabel} wins`
       : multiplayerWaitingForOpponentSeat
@@ -1273,21 +1361,22 @@ export function HomePage({
         : multiplayerYourTurn
           ? "Your move"
           : multiplayerWaitingOnOpponent
-            ? "Opponent to move"
+            ? "Waiting for opponent"
             : multiplayerSnapshot && !isMultiplayerParticipant
               ? "Spectating live board"
-            : connectionState !== "connected"
-              ? "Reconnecting to room"
-              : "Live match";
+              : connectionState !== "connected"
+                ? "Reconnecting to game"
+                : "Live match";
   const inviteableFriends = socialOverview.friends.filter(
     (friend) =>
       !multiplayerSnapshot?.players.some(
-        (slot) => slot.player.playerId === friend.playerId
-      )
+        (slot) => slot.player.playerId === friend.playerId,
+      ),
   );
-  const currentRoomOutgoingInvitations = socialOverview.outgoingInvitations.filter(
-    (invitation) => invitation.gameId === multiplayerSnapshot?.gameId
-  );
+  const currentRoomOutgoingInvitations =
+    socialOverview.outgoingInvitations.filter(
+      (invitation) => invitation.gameId === multiplayerSnapshot?.gameId,
+    );
 
   useWinConfetti(localBoardMode ? localWinner : null);
   useWinConfetti(mode === "multiplayer" ? multiplayerWinner : null);
@@ -1396,8 +1485,7 @@ export function HomePage({
 
   function handleLocalUndoTurn() {
     let nextState = localGame;
-    const undoCount =
-      computerMode && localGame.currentTurn === "white" ? 2 : 1;
+    const undoCount = computerMode && localGame.currentTurn === "white" ? 2 : 1;
 
     for (let index = 0; index < undoCount; index += 1) {
       const result = undoLastTurn(nextState);
@@ -1580,7 +1668,10 @@ export function HomePage({
     }
 
     clearReconnectTimer();
-    const delay = Math.min(1500 * Math.max(1, reconnectAttemptRef.current + 1), 7000);
+    const delay = Math.min(
+      1500 * Math.max(1, reconnectAttemptRef.current + 1),
+      7000,
+    );
     reconnectAttemptRef.current += 1;
     logWebSocketDebug("schedule-reconnect", {
       delay,
@@ -1633,7 +1724,11 @@ export function HomePage({
           break;
         }
         case "jump-piece": {
-          const result = jumpPiece(currentSnapshot.state, message.from, message.to);
+          const result = jumpPiece(
+            currentSnapshot.state,
+            message.from,
+            message.to,
+          );
           if (!result.ok) {
             setMultiplayerError(result.reason);
             return;
@@ -1668,7 +1763,10 @@ export function HomePage({
 
       if (nextState) {
         pendingOptimisticUpdateRef.current = true;
-        const nextSnapshot = createOptimisticSnapshot(currentSnapshot, nextState);
+        const nextSnapshot = createOptimisticSnapshot(
+          currentSnapshot,
+          nextState,
+        );
         commitMultiplayerSnapshot(nextSnapshot, { confirmed: false });
         syncMultiplayerSelection(nextSnapshot);
       }
@@ -1756,7 +1854,7 @@ export function HomePage({
     snapshot: MultiplayerSnapshot,
     options: {
       preserveView?: boolean;
-    } = {}
+    } = {},
   ) {
     if (options.preserveView) {
       clearReconnectTimer();
@@ -1909,7 +2007,7 @@ export function HomePage({
     options: {
       access?: boolean;
       navigateOnFailure?: boolean;
-    } = {}
+    } = {},
   ) {
     if (!auth) {
       setMultiplayerError("Player session unavailable.");
@@ -2020,11 +2118,27 @@ export function HomePage({
 
     try {
       await navigator.clipboard.writeText(multiplayerSnapshot.gameId);
-      setCopyFeedback("Room copied");
-      setCopyFeedbackKey("room-id");
+      setCopyFeedback("Copied!");
+      setCopyFeedbackKey("game-id");
+      toast.success(`Copied Game ID ${multiplayerSnapshot.gameId}`);
     } catch {
-      setCopyFeedback("Copy failed");
-      setCopyFeedbackKey("room-id");
+      toast.error("Failed to copy Game ID");
+    }
+  }
+
+  async function handleCopyGameLink() {
+    if (!multiplayerSnapshot) {
+      return;
+    }
+
+    try {
+      const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}`;
+      await navigator.clipboard.writeText(url);
+      setCopyFeedback("Link copied!");
+      setCopyFeedbackKey("share-link");
+      toast.success("Copied Game Link for Sharing");
+    } catch {
+      toast.error("Failed to copy Game Link");
     }
   }
 
@@ -2242,205 +2356,223 @@ export function HomePage({
           "mx-auto flex flex-col gap-5 px-4 sm:px-6",
           mode === "menu"
             ? "max-w-7xl pb-5 pt-20 lg:px-8 lg:pb-6 lg:pt-20"
-            : "max-w-[104rem] pt-16 pb-3 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2"
+            : "max-w-[104rem] pt-16 pb-3 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2",
         )}
       >
         {mode === "menu" ? (
           <>
             <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="grid gap-5">
-              <motion.div
-                ref={localCardRef}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card className={cn("overflow-hidden", paperCard)}>
-                  <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
-                  <CardHeader>
-                    <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c]">
-                      Local
-                    </Badge>
-                    <CardTitle className="text-4xl text-[#2b1e14]">
-                      Over the board
-                    </CardTitle>
-                    <CardDescription className="text-[#6e5b48]">
-                      Start a shared-board match with a clean, focused table view.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Button size="lg" className="w-full" onClick={enterLocalMode}>
-                      Start local game
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div
-                ref={computerCardRef}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card className={cn("overflow-hidden", paperCard)}>
-                  <div className="h-2 bg-[linear-gradient(90deg,#3c5a28,#94ba69)]" />
-                  <CardHeader>
-                    <Badge className="w-fit bg-[#edf5e4] text-[#486334]">
-                      Against computer
-                    </Badge>
-                    <CardTitle className="text-4xl text-[#2b1e14]">
-                      Solo board
-                    </CardTitle>
-                    <CardDescription className="text-[#6e5b48]">
-                      Play white, take the first move, and let the computer answer.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Button size="lg" className="w-full" onClick={enterComputerMode}>
-                      Play against AI
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-
-            <motion.div
-              ref={multiplayerCardRef}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className={cn("overflow-hidden", paperCard)}>
-                <div className="h-2 bg-[linear-gradient(90deg,#1f1a16,#8d6a39)]" />
-                <CardHeader>
-                  <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
-                    Multiplayer
-                  </Badge>
-                  <CardTitle className="text-4xl text-[#2b1e14]">
-                    Invite room
-                  </CardTitle>
-                  <CardDescription className="text-[#6e5b48]">
-                    Create a room, share the code, or join one in progress.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
-                    <p className="mb-3 text-sm font-medium text-[#5b4835]">
-                      Start a fresh room
-                    </p>
-                    <Button
-                      size="lg"
-                      className="w-full"
-                      onClick={handleCreateRoom}
-                      disabled={multiplayerBusy || !auth}
-                    >
-                      {multiplayerBusy ? "Creating..." : "Create room"}
-                    </Button>
-                    <p className="mt-3 text-sm text-[#6e5b48]">
-                      Every room now gets a shareable `/game/ROOMID` link, so the
-                      first visitor joins as your opponent and later visitors watch as
-                      spectators.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 rounded-3xl border border-[#d7c09a] bg-[linear-gradient(180deg,#fffef7,#f6edd9)] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-[#5b4835]">
-                          Matchmaking
-                        </p>
-                        <p className="mt-1 text-sm text-[#6e5b48]">
-                          Get paired with the next player who queues up.
-                        </p>
-                      </div>
-                      <Badge className="bg-[#f3e7d5] text-[#6b563e]">
-                        {matchmaking.status === "searching"
-                          ? "Searching"
-                          : matchmaking.status === "matched"
-                            ? "Matched"
-                            : "Ready"}
+              <div className="grid gap-5">
+                <motion.div
+                  ref={localCardRef}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className={cn("overflow-hidden", paperCard)}>
+                    <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
+                    <CardHeader>
+                      <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c]">
+                        Local
                       </Badge>
+                      <CardTitle className="text-4xl text-[#2b1e14]">
+                        Over the board
+                      </CardTitle>
+                      <CardDescription className="text-[#6e5b48]">
+                        Start a shared-board match with a clean, focused table
+                        view.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        size="lg"
+                        className="w-full"
+                        onClick={enterLocalMode}
+                      >
+                        Start local game
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  ref={computerCardRef}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className={cn("overflow-hidden", paperCard)}>
+                    <div className="h-2 bg-[linear-gradient(90deg,#3c5a28,#94ba69)]" />
+                    <CardHeader>
+                      <Badge className="w-fit bg-[#edf5e4] text-[#486334]">
+                        Against computer
+                      </Badge>
+                      <CardTitle className="text-4xl text-[#2b1e14]">
+                        Solo board
+                      </CardTitle>
+                      <CardDescription className="text-[#6e5b48]">
+                        Play white, take the first move, and let the computer
+                        answer.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        size="lg"
+                        className="w-full"
+                        onClick={enterComputerMode}
+                      >
+                        Play against AI
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </div>
+
+              <motion.div
+                ref={multiplayerCardRef}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className={cn("overflow-hidden", paperCard)}>
+                  <div className="h-2 bg-[linear-gradient(90deg,#1f1a16,#8d6a39)]" />
+                  <CardHeader>
+                    <Badge className="w-fit bg-[#eee3cf] text-[#5f4932]">
+                      Multiplayer
+                    </Badge>
+                    <CardTitle className="text-4xl text-[#2b1e14]">
+                      Invite room
+                    </CardTitle>
+                    <CardDescription className="text-[#6e5b48]">
+                      Create a room, share the code, or join one in progress.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                      <p className="mb-3 text-sm font-medium text-[#5b4835]">
+                        Start a fresh game
+                      </p>
+                      <Button
+                        size="lg"
+                        className="w-full"
+                        onClick={handleCreateRoom}
+                        disabled={multiplayerBusy || !auth}
+                      >
+                        {multiplayerBusy ? "Creating..." : "Create game"}
+                      </Button>
+                      <p className="mt-3 text-sm text-[#6e5b48]">
+                        Every game now gets a shareable `/game/GAMEID` link, so
+                        the first visitor joins as your opponent and later
+                        visitors watch as spectators.
+                      </p>
                     </div>
-                    {matchmaking.status === "searching" ? (
-                      <div className="rounded-2xl border border-[#dbc59f] bg-[#fff8ee] px-4 py-3 text-sm text-[#6e5b48]">
-                        Looking for another player since{" "}
-                        <span className="font-semibold text-[#2b1e14]">
-                          {formatGameTimestamp(matchmaking.queuedAt)}
-                        </span>
-                        .
+
+                    <div className="space-y-3 rounded-3xl border border-[#d7c09a] bg-[linear-gradient(180deg,#fffef7,#f6edd9)] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-[#5b4835]">
+                            Matchmaking
+                          </p>
+                          <p className="mt-1 text-sm text-[#6e5b48]">
+                            Get paired with the next player who queues up.
+                          </p>
+                        </div>
+                        <Badge className="bg-[#f3e7d5] text-[#6b563e]">
+                          {matchmaking.status === "searching"
+                            ? "Searching"
+                            : matchmaking.status === "matched"
+                              ? "Matched"
+                              : "Ready"}
+                        </Badge>
                       </div>
-                    ) : null}
-                    <div className="grid gap-2">
                       {matchmaking.status === "searching" ? (
-                        <Button
-                          variant="secondary"
-                          className="w-full"
-                          onClick={() => void handleCancelMatchmaking()}
-                          disabled={matchmakingBusy}
-                        >
-                          {matchmakingBusy ? "Stopping..." : "Cancel search"}
-                        </Button>
+                        <div className="rounded-2xl border border-[#dbc59f] bg-[#fff8ee] px-4 py-3 text-sm text-[#6e5b48]">
+                          Looking for another player since{" "}
+                          <span className="font-semibold text-[#2b1e14]">
+                            {formatGameTimestamp(matchmaking.queuedAt)}
+                          </span>
+                          .
+                        </div>
+                      ) : null}
+                      <div className="grid gap-2">
+                        {matchmaking.status === "searching" ? (
+                          <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={() => void handleCancelMatchmaking()}
+                            disabled={matchmakingBusy}
+                          >
+                            {matchmakingBusy ? "Stopping..." : "Cancel search"}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="lg"
+                            className="w-full"
+                            onClick={() => void handleEnterMatchmaking()}
+                            disabled={
+                              matchmakingBusy || multiplayerBusy || !auth
+                            }
+                          >
+                            {matchmakingBusy ? "Finding..." : "Find a match"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-[#8d7760]">
+                      <span className="h-px flex-1 bg-[#dcc7a2]" />
+                      Join existing game
+                      <span className="h-px flex-1 bg-[#dcc7a2]" />
+                    </div>
+
+                    <div className="space-y-3 rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
+                      <label className="text-sm font-medium text-[#5b4835]">
+                        Game ID
+                      </label>
+                      <Input
+                        value={joinGameId}
+                        onChange={(event) =>
+                          setJoinGameId(
+                            event.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9]/g, ""),
+                          )
+                        }
+                        placeholder="Game ID"
+                        maxLength={6}
+                      />
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleJoinRoom}
+                        disabled={multiplayerBusy || !auth}
+                      >
+                        Join game
+                      </Button>
+                    </div>
+                    <div className="rounded-3xl border border-dashed border-[#d9c4a0] bg-[#fffbf3] px-4 py-3 text-sm text-[#6e5b48]">
+                      {accountPlayer ? (
+                        <p>
+                          Account players can keep multiple live games, reopen
+                          them from the lobby, and browse finished matches
+                          later.
+                        </p>
                       ) : (
-                        <Button
-                          size="lg"
-                          className="w-full"
-                          onClick={() => void handleEnterMatchmaking()}
-                          disabled={matchmakingBusy || multiplayerBusy || !auth}
-                        >
-                          {matchmakingBusy ? "Finding..." : "Find a match"}
-                        </Button>
+                        <p>
+                          Guest players can keep one unfinished multiplayer game
+                          at a time. Sign in to juggle multiple games and unlock
+                          match history.
+                        </p>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-[#8d7760]">
-                    <span className="h-px flex-1 bg-[#dcc7a2]" />
-                    Join existing room
-                    <span className="h-px flex-1 bg-[#dcc7a2]" />
-                  </div>
-
-                  <div className="space-y-3 rounded-3xl border border-[#dbc59f] bg-[#fff9ef] p-4">
-                    <label className="text-sm font-medium text-[#5b4835]">
-                      Room code
-                    </label>
-                    <Input
-                      value={joinGameId}
-                      onChange={(event) =>
-                        setJoinGameId(
-                          event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")
-                        )
-                      }
-                      placeholder="Game ID"
-                      maxLength={6}
-                    />
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={handleJoinRoom}
-                      disabled={multiplayerBusy || !auth}
-                    >
-                      Join room
-                    </Button>
-                  </div>
-
-                  <div className="rounded-3xl border border-dashed border-[#d9c4a0] bg-[#fffbf3] px-4 py-3 text-sm text-[#6e5b48]">
-                    {accountPlayer ? (
-                      <p>
-                        Account players can keep multiple live tables, reopen them from the
-                        lobby, and browse finished matches later.
-                      </p>
-                    ) : (
-                      <p>
-                        Guest players can keep one unfinished multiplayer game at a time.
-                        Sign in to juggle multiple tables and unlock match history.
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </section>
 
             {accountPlayer ? (
               <section className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
                   <Card className={cn("overflow-hidden", paperCard)}>
                     <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
                     <CardHeader className="gap-3">
@@ -2450,10 +2582,11 @@ export function HomePage({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <CardTitle className="text-3xl text-[#2b1e14]">
-                            Active tables
+                            Active games
                           </CardTitle>
                           <CardDescription className="text-[#6e5b48]">
-                            Jump between your live rooms and spot where it is your move.
+                            Jump between your live games and spot where it is
+                            your move.
                           </CardDescription>
                         </div>
                         <Button
@@ -2462,19 +2595,21 @@ export function HomePage({
                           onClick={() => void refreshMultiplayerGames()}
                           disabled={multiplayerGamesLoading}
                         >
-                          {multiplayerGamesLoading ? "Refreshing..." : "Refresh"}
+                          {multiplayerGamesLoading
+                            ? "Refreshing..."
+                            : "Refresh"}
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {!multiplayerGamesLoaded && multiplayerGamesLoading ? (
                         <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] px-4 py-5 text-sm text-[#6e5b48]">
-                          Loading your active tables...
+                          Loading your active games...
                         </div>
                       ) : multiplayerGames.active.length === 0 ? (
                         <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] px-4 py-5 text-sm text-[#6e5b48]">
-                          No active games yet. Create a room or join a friend to start building
-                          your table list.
+                          No active games yet. Create a game or join a friend to
+                          start building your game list.
                         </div>
                       ) : (
                         multiplayerGames.active.map((game) => (
@@ -2486,7 +2621,7 @@ export function HomePage({
                                 ? "border-[#a7c07b] bg-[linear-gradient(180deg,#fbfff4,#eef6df)]"
                                 : game.status === "waiting"
                                   ? "border-[#dcc59f] bg-[linear-gradient(180deg,#fffaf2,#f7eddc)]"
-                                  : "border-[#d7c39e] bg-[linear-gradient(180deg,#fffaf3,#f5eee2)]"
+                                  : "border-[#d7c39e] bg-[linear-gradient(180deg,#fffaf3,#f5eee2)]",
                             )}
                           >
                             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2501,7 +2636,7 @@ export function HomePage({
                                         ? "bg-[#e8f2d8] text-[#4b6537]"
                                         : game.status === "waiting"
                                           ? "bg-[#f3e7d5] text-[#6b563e]"
-                                          : "bg-[#efe3cf] text-[#5f4932]"
+                                          : "bg-[#efe3cf] text-[#5f4932]",
                                     )}
                                   >
                                     {getSummaryStatusLabel(game)}
@@ -2510,17 +2645,22 @@ export function HomePage({
                                 <p className="mt-2 text-sm text-[#6e5b48]">
                                   Opponent:{" "}
                                   <span className="font-semibold text-[#2b1e14]">
-                                    {getOpponentLabel(game, auth?.player.playerId)}
+                                    {getOpponentLabel(
+                                      game,
+                                      auth?.player.playerId,
+                                    )}
                                   </span>
                                 </p>
                                 <p className="mt-1 text-sm text-[#7a6656]">
-                                  Score {game.score.white}-{game.score.black} • Updated{" "}
-                                  {formatGameTimestamp(game.updatedAt)}
+                                  Score {game.score.white}-{game.score.black} •
+                                  Updated {formatGameTimestamp(game.updatedAt)}
                                 </p>
                               </div>
                               <Button
                                 size="sm"
-                                onClick={() => void openExistingMultiplayerGame(game.gameId)}
+                                onClick={() =>
+                                  void openExistingMultiplayerGame(game.gameId)
+                                }
                                 disabled={multiplayerBusy}
                               >
                                 Open
@@ -2533,7 +2673,10 @@ export function HomePage({
                   </Card>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
                   <Card className={cn("overflow-hidden", paperCard)}>
                     <div className="h-2 bg-[linear-gradient(90deg,#45311f,#af7b4a)]" />
                     <CardHeader>
@@ -2544,7 +2687,8 @@ export function HomePage({
                         Finished games
                       </CardTitle>
                       <CardDescription className="text-[#6e5b48]">
-                        Reopen completed boards and keep a running archive of your tables.
+                        Reopen completed boards and keep a running archive of
+                        your tables.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -2554,7 +2698,8 @@ export function HomePage({
                         </div>
                       ) : multiplayerGames.finished.length === 0 ? (
                         <div className="rounded-3xl border border-[#dbc59f] bg-[#fff9ef] px-4 py-5 text-sm text-[#6e5b48]">
-                          Finished matches will land here once a room reaches the win score.
+                          Finished matches will land here once a game reaches
+                          the win score.
                         </div>
                       ) : (
                         multiplayerGames.finished.map((game) => (
@@ -2575,7 +2720,10 @@ export function HomePage({
                                 <p className="mt-2 text-sm text-[#6e5b48]">
                                   Opponent:{" "}
                                   <span className="font-semibold text-[#2b1e14]">
-                                    {getOpponentLabel(game, auth?.player.playerId)}
+                                    {getOpponentLabel(
+                                      game,
+                                      auth?.player.playerId,
+                                    )}
                                   </span>
                                 </p>
                                 <p className="mt-1 text-sm text-[#7a6656]">
@@ -2586,7 +2734,9 @@ export function HomePage({
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => void openExistingMultiplayerGame(game.gameId)}
+                                onClick={() =>
+                                  void openExistingMultiplayerGame(game.gameId)
+                                }
                                 disabled={multiplayerBusy}
                               >
                                 View board
@@ -2603,7 +2753,10 @@ export function HomePage({
 
             {accountPlayer ? (
               <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
                   <Card className={cn("overflow-hidden", paperCard)}>
                     <div className="h-2 bg-[linear-gradient(90deg,#4f3b24,#b8854e)]" />
                     <CardHeader>
@@ -2614,7 +2767,8 @@ export function HomePage({
                         Friends and requests
                       </CardTitle>
                       <CardDescription className="text-[#6e5b48]">
-                        Search for players, grow your list, and handle incoming requests.
+                        Search for players, grow your list, and handle incoming
+                        requests.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -2625,7 +2779,9 @@ export function HomePage({
                         <div className="flex flex-col gap-3 sm:flex-row">
                           <Input
                             value={friendSearchQuery}
-                            onChange={(event) => setFriendSearchQuery(event.target.value)}
+                            onChange={(event) =>
+                              setFriendSearchQuery(event.target.value)
+                            }
                             onKeyDown={(event) => {
                               if (event.key === "Enter") {
                                 event.preventDefault();
@@ -2661,7 +2817,9 @@ export function HomePage({
                                   <Button
                                     size="sm"
                                     onClick={() =>
-                                      void handleSendFriendRequest(result.player.playerId)
+                                      void handleSendFriendRequest(
+                                        result.player.playerId,
+                                      )
                                     }
                                     disabled={
                                       socialActionBusyKey ===
@@ -2674,7 +2832,8 @@ export function HomePage({
                                   <Badge className="bg-[#f3e7d5] text-[#6b563e]">
                                     {result.relationship === "friend"
                                       ? "Already friends"
-                                      : result.relationship === "incoming-request"
+                                      : result.relationship ===
+                                          "incoming-request"
                                         ? "Incoming request"
                                         : "Request sent"}
                                   </Badge>
@@ -2695,48 +2854,55 @@ export function HomePage({
                             Incoming requests
                           </p>
                           <div className="space-y-2">
-                            {socialOverview.incomingFriendRequests.length === 0 ? (
+                            {socialOverview.incomingFriendRequests.length ===
+                            0 ? (
                               <p className="text-sm text-[#7a6656]">
                                 No pending requests right now.
                               </p>
                             ) : (
-                              socialOverview.incomingFriendRequests.map((player) => (
-                                <div
-                                  key={player.playerId}
-                                  className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
-                                >
-                                  <p className="font-semibold text-[#2b1e14]">
-                                    {player.displayName}
-                                  </p>
-                                  <div className="mt-3 flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() =>
-                                        void handleAcceptFriendRequest(player.playerId)
-                                      }
-                                      disabled={
-                                        socialActionBusyKey ===
-                                        `friend-accept:${player.playerId}`
-                                      }
-                                    >
-                                      Accept
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() =>
-                                        void handleDeclineFriendRequest(player.playerId)
-                                      }
-                                      disabled={
-                                        socialActionBusyKey ===
-                                        `friend-decline:${player.playerId}`
-                                      }
-                                    >
-                                      Decline
-                                    </Button>
+                              socialOverview.incomingFriendRequests.map(
+                                (player) => (
+                                  <div
+                                    key={player.playerId}
+                                    className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                                  >
+                                    <p className="font-semibold text-[#2b1e14]">
+                                      {player.displayName}
+                                    </p>
+                                    <div className="mt-3 flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          void handleAcceptFriendRequest(
+                                            player.playerId,
+                                          )
+                                        }
+                                        disabled={
+                                          socialActionBusyKey ===
+                                          `friend-accept:${player.playerId}`
+                                        }
+                                      >
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                          void handleDeclineFriendRequest(
+                                            player.playerId,
+                                          )
+                                        }
+                                        disabled={
+                                          socialActionBusyKey ===
+                                          `friend-decline:${player.playerId}`
+                                        }
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              ))
+                                ),
+                              )
                             )}
                           </div>
                         </div>
@@ -2746,34 +2912,39 @@ export function HomePage({
                             Outgoing requests
                           </p>
                           <div className="space-y-2">
-                            {socialOverview.outgoingFriendRequests.length === 0 ? (
+                            {socialOverview.outgoingFriendRequests.length ===
+                            0 ? (
                               <p className="text-sm text-[#7a6656]">
                                 No outgoing requests waiting.
                               </p>
                             ) : (
-                              socialOverview.outgoingFriendRequests.map((player) => (
-                                <div
-                                  key={player.playerId}
-                                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
-                                >
-                                  <p className="font-semibold text-[#2b1e14]">
-                                    {player.displayName}
-                                  </p>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() =>
-                                      void handleCancelFriendRequest(player.playerId)
-                                    }
-                                    disabled={
-                                      socialActionBusyKey ===
-                                      `friend-cancel:${player.playerId}`
-                                    }
+                              socialOverview.outgoingFriendRequests.map(
+                                (player) => (
+                                  <div
+                                    key={player.playerId}
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
                                   >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              ))
+                                    <p className="font-semibold text-[#2b1e14]">
+                                      {player.displayName}
+                                    </p>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() =>
+                                        void handleCancelFriendRequest(
+                                          player.playerId,
+                                        )
+                                      }
+                                      disabled={
+                                        socialActionBusyKey ===
+                                        `friend-cancel:${player.playerId}`
+                                      }
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ),
+                              )
                             )}
                           </div>
                         </div>
@@ -2790,7 +2961,8 @@ export function HomePage({
                             </p>
                           ) : socialOverview.friends.length === 0 ? (
                             <p className="text-sm text-[#7a6656]">
-                              Add a few people and they will show up here for direct invites.
+                              Add a few people and they will show up here for
+                              direct invites.
                             </p>
                           ) : (
                             socialOverview.friends.map((player) => (
@@ -2813,7 +2985,10 @@ export function HomePage({
                   </Card>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
                   <Card className={cn("overflow-hidden", paperCard)}>
                     <div className="h-2 bg-[linear-gradient(90deg,#3b3125,#9d7c58)]" />
                     <CardHeader className="gap-3">
@@ -2826,14 +3001,17 @@ export function HomePage({
                             Outstanding invitations
                           </CardTitle>
                           <CardDescription className="text-[#6e5b48]">
-                            New incoming invites appear here and toast while you are in the lobby.
+                            New incoming invites appear here and toast while you
+                            are in the lobby.
                           </CardDescription>
                         </div>
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() =>
-                            void refreshSocialOverview({ allowInviteToast: false })
+                            void refreshSocialOverview({
+                              allowInviteToast: false,
+                            })
                           }
                           disabled={socialLoading}
                         >
@@ -2852,31 +3030,38 @@ export function HomePage({
                               No incoming invitations right now.
                             </p>
                           ) : (
-                            socialOverview.incomingInvitations.map((invitation) => (
-                              <div
-                                key={invitation.id}
-                                className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <p className="font-semibold text-[#2b1e14]">
-                                      {invitation.sender.displayName}
-                                    </p>
-                                    <p className="mt-1 text-sm text-[#7a6656]">
-                                      Game {invitation.gameId} • {formatRelativeExpiry(invitation.expiresAt)}
-                                    </p>
+                            socialOverview.incomingInvitations.map(
+                              (invitation) => (
+                                <div
+                                  key={invitation.id}
+                                  className="rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                      <p className="font-semibold text-[#2b1e14]">
+                                        {invitation.sender.displayName}
+                                      </p>
+                                      <p className="mt-1 text-sm text-[#7a6656]">
+                                        Game {invitation.gameId} •{" "}
+                                        {formatRelativeExpiry(
+                                          invitation.expiresAt,
+                                        )}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        void handleOpenInvitation(
+                                          invitation.gameId,
+                                        )
+                                      }
+                                    >
+                                      Open game
+                                    </Button>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      void handleOpenInvitation(invitation.gameId)
-                                    }
-                                  >
-                                    Open game
-                                  </Button>
                                 </div>
-                              </div>
-                            ))
+                              ),
+                            )
                           )}
                         </div>
                       </div>
@@ -2891,34 +3076,41 @@ export function HomePage({
                               No active invitations sent yet.
                             </p>
                           ) : (
-                            socialOverview.outgoingInvitations.map((invitation) => (
-                              <div
-                                key={invitation.id}
-                                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
-                              >
-                                <div>
-                                  <p className="font-semibold text-[#2b1e14]">
-                                    {invitation.recipient.displayName}
-                                  </p>
-                                  <p className="mt-1 text-sm text-[#7a6656]">
-                                    Game {invitation.gameId} • {formatRelativeExpiry(invitation.expiresAt)}
-                                  </p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    void handleRevokeGameInvitation(invitation.id)
-                                  }
-                                  disabled={
-                                    socialActionBusyKey ===
-                                    `invite-revoke:${invitation.id}`
-                                  }
+                            socialOverview.outgoingInvitations.map(
+                              (invitation) => (
+                                <div
+                                  key={invitation.id}
+                                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
                                 >
-                                  Revoke
-                                </Button>
-                              </div>
-                            ))
+                                  <div>
+                                    <p className="font-semibold text-[#2b1e14]">
+                                      {invitation.recipient.displayName}
+                                    </p>
+                                    <p className="mt-1 text-sm text-[#7a6656]">
+                                      Game {invitation.gameId} •{" "}
+                                      {formatRelativeExpiry(
+                                        invitation.expiresAt,
+                                      )}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      void handleRevokeGameInvitation(
+                                        invitation.id,
+                                      )
+                                    }
+                                    disabled={
+                                      socialActionBusyKey ===
+                                      `invite-revoke:${invitation.id}`
+                                    }
+                                  >
+                                    Revoke
+                                  </Button>
+                                </div>
+                              ),
+                            )
                           )}
                         </div>
                       </div>
@@ -3028,7 +3220,7 @@ export function HomePage({
               <div
                 className={cn(
                   "relative mx-auto w-full",
-                  multiplayerYourTurn ? "cursor-default" : "cursor-wait"
+                  multiplayerYourTurn ? "cursor-default" : "cursor-wait",
                 )}
                 style={boardWrapStyle}
               >
@@ -3048,7 +3240,8 @@ export function HomePage({
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
                       <HourglassSpinner className="text-[#7b5f3f]" />
-                      Waiting for player two. Colors are assigned when they arrive.
+                      Waiting For Opponent. Colors are assigned when they
+                      arrive.
                     </div>
                   </div>
                 ) : null}
@@ -3063,7 +3256,7 @@ export function HomePage({
                     multiplayerYourTurn &&
                       "border-[#b7cb8d] bg-[linear-gradient(180deg,rgba(251,255,243,0.98),rgba(240,248,224,0.96))]",
                     multiplayerWaitingOnOpponent &&
-                      "border-[#d5c19f] bg-[linear-gradient(180deg,rgba(255,251,244,0.98),rgba(247,236,214,0.95))]"
+                      "border-[#d5c19f] bg-[linear-gradient(180deg,rgba(255,251,244,0.98),rgba(247,236,214,0.95))]",
                   )}
                 >
                   <CardHeader className="gap-3">
@@ -3075,14 +3268,17 @@ export function HomePage({
                         </Badge>
                       </div>
                       <div className="flex shrink-0 justify-end">
-                        {multiplayerSnapshot && connectionState !== "connected" ? (
+                        {multiplayerSnapshot &&
+                        connectionState !== "connected" ? (
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
                           >
                             <HourglassSpinner className="text-[#7b5f3f]" />
-                            {connectionState === "connecting" ? "Connecting" : "Reconnecting"}
+                            {connectionState === "connecting"
+                              ? "Connecting"
+                              : "Reconnecting"}
                           </motion.div>
                         ) : multiplayerYourTurn ? (
                           <motion.div
@@ -3099,7 +3295,7 @@ export function HomePage({
                             className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
                           >
                             <HourglassSpinner className="text-[#7b5f3f]" />
-                            Waiting
+                            Waiting For Opponent
                           </motion.div>
                         ) : multiplayerWaitingForOpponentSeat ? (
                           <motion.div
@@ -3121,45 +3317,51 @@ export function HomePage({
                         ) : null}
                       </div>
                     </div>
-                    <CardTitle className="text-[#2b1e14]">Room</CardTitle>
-                    <CardDescription
-                      className={cn(
-                        multiplayerYourTurn
-                          ? "font-semibold text-[#56703f]"
-                          : "text-[#6e5b48]"
+
+                    <div className="flex items-end justify-between gap-4 border-t border-black/5 pt-4">
+                      <div className="space-y-1">
+                        <CardTitle className="font-display text-2xl text-[#2b1e14]">
+                          {multiplayerSnapshot?.status === "active"
+                            ? "Live match"
+                            : "Waiting for player"}
+                        </CardTitle>
+                        <CardDescription
+                          className={cn(
+                            "text-sm font-medium",
+                            multiplayerYourTurn
+                              ? "text-[#56703f]"
+                              : "text-[#7b6550]",
+                          )}
+                        ></CardDescription>
+                      </div>
+
+                      {multiplayerSnapshot && (
+                        <div className="flex items-center gap-2">
+                          <RoomCodeCopyPill
+                            gameId={multiplayerSnapshot.gameId}
+                            copied={
+                              copyFeedbackKey === "game-id" && !!copyFeedback
+                            }
+                            onCopy={() => void handleCopyGameId()}
+                          />
+                          <ShareLinkCopyPill
+                            copied={
+                              copyFeedbackKey === "share-link" && !!copyFeedback
+                            }
+                            onCopy={() => void handleCopyGameLink()}
+                          />
+                        </div>
                       )}
-                    >
-                      {multiplayerStatusTitle}
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {multiplayerSnapshot ? (
                       <>
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#7b6550]">
-                            Room ID
-                          </p>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <RoomCodeCopyPill
-                              gameId={multiplayerSnapshot.gameId}
-                              copied={
-                                copyFeedbackKey === "room-id" &&
-                                copyFeedback === "Room copied"
-                              }
-                              onCopy={() => void handleCopyGameId()}
-                            />
-                            {copyFeedback ? (
-                              <span className="text-sm text-[#7a6656]">
-                                {copyFeedback}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-
                         {multiplayerSnapshot.status === "waiting" ? (
                           <div className="space-y-2">
                             {Array.from({ length: 2 }, (_, index) => {
-                              const slot = multiplayerSnapshot.players[index] ?? null;
+                              const slot =
+                                multiplayerSnapshot.players[index] ?? null;
                               return (
                                 <div
                                   key={`lobby-player-${index}`}
@@ -3167,19 +3369,23 @@ export function HomePage({
                                 >
                                   <div className="flex items-center gap-3">
                                     {slot ? (
-                                      <PlayerOverviewAvatar player={slot.player} />
+                                      <PlayerOverviewAvatar
+                                        player={slot.player}
+                                      />
                                     ) : (
                                       <EmptySeatAvatar />
                                     )}
                                     <div>
                                       <p className="text-sm font-semibold text-[#2b1e14]">
-                                        {index === 0 ? "Lobby host" : "Second player"}
+                                        {index === 0
+                                          ? "Lobby host"
+                                          : "Second player"}
                                       </p>
                                       <p className="text-sm text-[#7a6656]">
                                         {slot
                                           ? formatPlayerName(
                                               slot.player,
-                                              auth?.player.playerId
+                                              auth?.player.playerId,
                                             )
                                           : "Waiting to join"}
                                       </p>
@@ -3189,60 +3395,70 @@ export function HomePage({
                                     className={cn(
                                       slot?.online
                                         ? "bg-[#eef2e8] text-[#43513f]"
-                                        : "bg-[#f2e8d9] text-[#6e5b48]"
+                                        : "bg-[#f2e8d9] text-[#6e5b48]",
                                     )}
                                   >
-                                    {slot ? (slot.online ? "Online" : "Offline") : "Open"}
+                                    {slot
+                                      ? slot.online
+                                        ? "Online"
+                                        : "Offline"
+                                      : "Open"}
                                   </Badge>
                                 </div>
                               );
                             })}
-                            <p className="rounded-2xl border border-[#dcc59f] bg-[#fff7ea] px-4 py-3 text-sm text-[#6e5b48]">
-                              White still starts. The colors are assigned randomly the
-                              moment player two joins the lobby.
+                            <p className="mt-4 text-xs leading-relaxed text-[#7a6656]">
+                              Share the Game ID or use the share link above to
+                              invite a friend. White still starts. The colors
+                              are assigned randomly the moment player two joins
+                              the lobby.
                             </p>
                           </div>
                         ) : (
                           <div className="grid gap-2">
-                            {(["white", "black"] as PlayerColor[]).map((color) => {
-                              const seat = multiplayerSnapshot.seats[color];
-                              return (
-                                <div
-                                  key={color}
-                                  className="flex items-center justify-between gap-3 rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    {seat ? (
-                                      <PlayerOverviewAvatar player={seat.player} />
-                                    ) : (
-                                      <EmptySeatAvatar />
-                                    )}
-                                    <div>
-                                      <p className="text-sm font-semibold capitalize text-[#2b1e14]">
-                                        {color}
-                                      </p>
-                                      <p className="text-sm text-[#7a6656]">
-                                        {seat
-                                          ? formatPlayerName(
-                                              seat.player,
-                                              auth?.player.playerId
-                                            )
-                                          : "Open"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <Badge
-                                    className={cn(
-                                      seat?.online
-                                        ? "bg-[#eef2e8] text-[#43513f]"
-                                        : "bg-[#f2e8d9] text-[#6e5b48]"
-                                    )}
+                            {(["white", "black"] as PlayerColor[]).map(
+                              (color) => {
+                                const seat = multiplayerSnapshot.seats[color];
+                                return (
+                                  <div
+                                    key={color}
+                                    className="flex items-center justify-between gap-3 rounded-3xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
                                   >
-                                    {seat?.online ? "Online" : "Offline"}
-                                  </Badge>
-                                </div>
-                              );
-                            })}
+                                    <div className="flex items-center gap-3">
+                                      {seat ? (
+                                        <PlayerOverviewAvatar
+                                          player={seat.player}
+                                        />
+                                      ) : (
+                                        <EmptySeatAvatar />
+                                      )}
+                                      <div>
+                                        <p className="text-sm font-semibold capitalize text-[#2b1e14]">
+                                          {color}
+                                        </p>
+                                        <p className="text-sm text-[#7a6656]">
+                                          {seat
+                                            ? formatPlayerName(
+                                                seat.player,
+                                                auth?.player.playerId,
+                                              )
+                                            : "Open"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      className={cn(
+                                        seat?.online
+                                          ? "bg-[#eef2e8] text-[#43513f]"
+                                          : "bg-[#f2e8d9] text-[#6e5b48]",
+                                      )}
+                                    >
+                                      {seat?.online ? "Online" : "Offline"}
+                                    </Badge>
+                                  </div>
+                                );
+                              },
+                            )}
                           </div>
                         )}
 
@@ -3262,90 +3478,6 @@ export function HomePage({
                             labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
                           />
                         </div>
-
-                        {accountPlayer && isMultiplayerParticipant && !multiplayerGameOver ? (
-                          <div className="rounded-3xl border border-[#dcc59f] bg-[#fff9ef] p-4">
-                            <p className="mb-3 text-sm font-medium text-[#5b4835]">
-                              Invite a friend
-                            </p>
-                            {inviteableFriends.length === 0 ? (
-                              <p className="text-sm text-[#7a6656]">
-                                Add friends in the lobby to send direct game invites.
-                              </p>
-                            ) : (
-                              <div className="space-y-3">
-                                <select
-                                  value={inviteFriendId}
-                                  onChange={(event) => setInviteFriendId(event.target.value)}
-                                  className="h-10 w-full rounded-xl border border-[#d7c39e] bg-[#fffdf7] px-3 text-sm text-[#2b1e14] outline-none"
-                                >
-                                  <option value="">Choose a friend</option>
-                                  {inviteableFriends.map((friend) => (
-                                    <option key={friend.playerId} value={friend.playerId}>
-                                      {friend.displayName}
-                                    </option>
-                                  ))}
-                                </select>
-                                <select
-                                  value={String(inviteDurationMinutes)}
-                                  onChange={(event) =>
-                                    setInviteDurationMinutes(Number(event.target.value))
-                                  }
-                                  className="h-10 w-full rounded-xl border border-[#d7c39e] bg-[#fffdf7] px-3 text-sm text-[#2b1e14] outline-none"
-                                >
-                                  {INVITATION_DURATION_OPTIONS.map((option) => (
-                                    <option key={option.minutes} value={option.minutes}>
-                                      Keep invite for {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                <Button
-                                  variant="secondary"
-                                  className="w-full"
-                                  onClick={() => void handleSendGameInvitation()}
-                                  disabled={
-                                    !inviteFriendId ||
-                                    socialActionBusyKey === `invite-send:${inviteFriendId}`
-                                  }
-                                >
-                                  Send invite
-                                </Button>
-                                {currentRoomOutgoingInvitations.length > 0 ? (
-                                  <div className="space-y-2">
-                                    {currentRoomOutgoingInvitations.map((invitation) => (
-                                      <div
-                                        key={invitation.id}
-                                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dcc59f] bg-[#fffdf7] px-4 py-3"
-                                      >
-                                        <div>
-                                          <p className="font-semibold text-[#2b1e14]">
-                                            {invitation.recipient.displayName}
-                                          </p>
-                                          <p className="text-sm text-[#7a6656]">
-                                            {formatRelativeExpiry(invitation.expiresAt)}
-                                          </p>
-                                        </div>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() =>
-                                            void handleRevokeGameInvitation(invitation.id)
-                                          }
-                                          disabled={
-                                            socialActionBusyKey ===
-                                            `invite-revoke:${invitation.id}`
-                                          }
-                                        >
-                                          Revoke
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
 
                         <div className="grid gap-2">
                           {multiplayerSnapshot.state.pendingJump.length > 0 ? (
@@ -3370,7 +3502,7 @@ export function HomePage({
                                       {multiplayerOpponent
                                         ? formatPlayerName(
                                             multiplayerOpponent,
-                                            auth?.player.playerId
+                                            auth?.player.playerId,
                                           )
                                         : "Your opponent"}
                                     </span>{" "}
@@ -3383,7 +3515,7 @@ export function HomePage({
                                       {multiplayerOpponent
                                         ? formatPlayerName(
                                             multiplayerOpponent,
-                                            auth?.player.playerId
+                                            auth?.player.playerId,
                                           )
                                         : "your opponent"}
                                     </span>
@@ -3391,8 +3523,8 @@ export function HomePage({
                                   </p>
                                 ) : (
                                   <p>
-                                    Want another round? Rematches reshuffle colors before
-                                    white opens again.
+                                    Want another round? Rematches reshuffle
+                                    colors before white opens again.
                                   </p>
                                 )}
                               </div>

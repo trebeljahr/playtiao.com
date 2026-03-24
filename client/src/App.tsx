@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AuthResponse } from "@shared";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthDialogMode } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,9 @@ export function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode>("login");
@@ -167,10 +170,16 @@ export function App() {
   async function handleLogout() {
     setAuth(null);
 
+    const isInGame = location.pathname.startsWith("/game/");
+
     try {
       await logoutPlayer();
       const guestAuth = await createGuest(ANONYMOUS_NAME);
       applyAuth(guestAuth);
+
+      if (isInGame) {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
       if (isNetworkError(error)) {
         toastError(error);
@@ -260,56 +269,128 @@ export function App() {
           </div>
 
           {authDialogMode === "login" ? (
-            <div className="space-y-3">
-              <Input
-                type="email"
-                value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
-                placeholder="Email"
-              />
-              <Input
-                type="password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                placeholder="Password"
-              />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleLoginSubmit();
+              }}
+              className="space-y-3"
+            >
+              <div className="space-y-1">
+                <label
+                  htmlFor="login-email"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Email
+                </label>
+                <Input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  value={loginEmail}
+                  onChange={(event) => setLoginEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="username email"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="login-password"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Password
+                </label>
+                <Input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
               <Button
+                type="submit"
                 className="w-full"
-                onClick={handleLoginSubmit}
                 disabled={authBusy}
               >
                 {authBusy ? "Signing in..." : "Sign in"}
               </Button>
-            </div>
+            </form>
           ) : null}
 
           {authDialogMode === "signup" ? (
-            <div className="space-y-3">
-              <Input
-                value={signupDisplayName}
-                onChange={(event) => setSignupDisplayName(event.target.value)}
-                placeholder="Display name"
-              />
-              <Input
-                type="email"
-                value={signupEmail}
-                onChange={(event) => setSignupEmail(event.target.value)}
-                placeholder="Email"
-              />
-              <Input
-                type="password"
-                value={signupPassword}
-                onChange={(event) => setSignupPassword(event.target.value)}
-                placeholder="Password"
-              />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSignupSubmit();
+              }}
+              className="space-y-3"
+            >
+              <div className="space-y-1">
+                <label
+                  htmlFor="signup-display-name"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Display name
+                </label>
+                <Input
+                  id="signup-display-name"
+                  name="name"
+                  value={signupDisplayName}
+                  onChange={(event) => setSignupDisplayName(event.target.value)}
+                  placeholder="Your Name"
+                  autoComplete="name"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="signup-email"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Email
+                </label>
+                <Input
+                  id="signup-email"
+                  name="email"
+                  type="email"
+                  value={signupEmail}
+                  onChange={(event) => setSignupEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="signup-password"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Password
+                </label>
+                <Input
+                  id="signup-password"
+                  name="password"
+                  type="password"
+                  value={signupPassword}
+                  onChange={(event) => setSignupPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
               <Button
+                type="submit"
                 className="w-full"
-                onClick={handleSignupSubmit}
                 disabled={authBusy}
               >
                 {authBusy ? "Creating..." : "Create account"}
               </Button>
-            </div>
+            </form>
           ) : null}
         </div>
       </Dialog>

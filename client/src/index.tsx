@@ -1,6 +1,7 @@
 import ReactDOM from "react-dom/client";
 import { BrowserRouter as Router } from "react-router-dom";
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 // import { AuthProviderWrapper } from "./context/auth.context";
 // import { DataProvider } from "./context/DataContext";
 import "./index.css";
@@ -13,11 +14,13 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 
 root.render(
-  <Router>
-    {/* <AuthProviderWrapper>
-      <DataProvider> */}
-    <App />
-    {/* </DataProvider>
-    </AuthProviderWrapper> */}
-  </Router>
+  <ErrorBoundary>
+    <Router>
+      {/* <AuthProviderWrapper>
+        <DataProvider> */}
+      <App />
+      {/* </DataProvider>
+      </AuthProviderWrapper> */}
+    </Router>
+  </ErrorBoundary>
 );
