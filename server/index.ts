@@ -10,6 +10,7 @@ import { ClientToServerMessage } from "../shared/src";
 const server = createServer(app);
 const websocketServer = new WebSocketServer({ server });
 const WEBSOCKET_PATHS = new Set(["/ws", "/api/ws"]);
+const SOCKET_PING_INTERVAL_MS = 1000 * 25;
 
 function sendJson(socket: WebSocket, payload: unknown): void {
   if (socket.readyState === WebSocket.OPEN) {
@@ -67,6 +68,13 @@ websocketServer.on("connection", (socket, request) => {
       socket.close();
     });
 
+    const pingInterval = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.ping();
+      }
+    }, SOCKET_PING_INTERVAL_MS);
+    pingInterval.unref();
+
     socket.on("message", (rawMessage) => {
       void (async () => {
         try {
@@ -92,10 +100,12 @@ websocketServer.on("connection", (socket, request) => {
     });
 
     socket.on("close", () => {
+      clearInterval(pingInterval);
       void gameService.disconnect(socket);
     });
 
     socket.on("error", () => {
+      clearInterval(pingInterval);
       void gameService.disconnect(socket);
     });
   })().catch(() => {

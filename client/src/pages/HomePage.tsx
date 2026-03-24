@@ -751,6 +751,7 @@ export function HomePage({
   const computerMode = mode === "computer";
   const accountPlayer = auth?.player.kind === "account";
   const canToastIncomingInvites = mode === "menu" && !routeGameId;
+  const websocketDebugEnabled = new URLSearchParams(location.search).has("wsDebug");
 
   useStonePlacementSound(localBoardMode ? localGame : null);
   useStonePlacementSound(
@@ -770,6 +771,14 @@ export function HomePage({
       window.clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+  }
+
+  function logWebSocketDebug(event: string, details?: Record<string, unknown>) {
+    if (!websocketDebugEnabled) {
+      return;
+    }
+
+    console.info("[tiao ws]", event, details ?? {});
   }
 
   function commitMultiplayerSnapshot(
@@ -1571,12 +1580,21 @@ export function HomePage({
     clearReconnectTimer();
     const delay = Math.min(1500 * Math.max(1, reconnectAttemptRef.current + 1), 7000);
     reconnectAttemptRef.current += 1;
+    logWebSocketDebug("schedule-reconnect", {
+      delay,
+      attempt: reconnectAttemptRef.current,
+      gameId: snapshot.gameId,
+    });
     reconnectTimerRef.current = window.setTimeout(() => {
       void reconnectToCurrentRoom();
     }, delay);
   }
 
   function handleUnexpectedMultiplayerDisconnect() {
+    logWebSocketDebug("unexpected-disconnect", {
+      reconnectAttempt: reconnectAttemptRef.current,
+      hasSnapshot: !!latestMultiplayerSnapshotRef.current,
+    });
     setConnectionState("disconnected");
 
     if (pendingOptimisticUpdateRef.current) {
@@ -1758,6 +1776,11 @@ export function HomePage({
     }
 
     const socket = new WebSocket(buildWebSocketUrl(snapshot.gameId));
+    logWebSocketDebug("connect", {
+      url: buildWebSocketUrl(snapshot.gameId),
+      preserveView: options.preserveView ?? false,
+      gameId: snapshot.gameId,
+    });
 
     socketRef.current = socket;
     setConnectionState("connecting");
@@ -1771,6 +1794,10 @@ export function HomePage({
 
       reconnectAttemptRef.current = 0;
       setConnectionState("connected");
+      logWebSocketDebug("open", {
+        url: socket.url,
+        gameId: snapshot.gameId,
+      });
     });
 
     socket.addEventListener("message", (event) => {
@@ -1790,11 +1817,21 @@ export function HomePage({
           };
 
       if (payload.type === "snapshot") {
+        logWebSocketDebug("snapshot", {
+          gameId: payload.snapshot.gameId,
+          status: payload.snapshot.status,
+          historyLength: payload.snapshot.state.history.length,
+        });
         commitMultiplayerSnapshot(payload.snapshot);
         syncMultiplayerSelection(payload.snapshot);
         setMultiplayerError(null);
         return;
       }
+
+      logWebSocketDebug("server-error", {
+        code: payload.code,
+        message: payload.message,
+      });
 
       if (pendingOptimisticUpdateRef.current) {
         restoreConfirmedSnapshot();
@@ -1803,7 +1840,13 @@ export function HomePage({
       setMultiplayerError(payload.message);
     });
 
-    socket.addEventListener("close", () => {
+    socket.addEventListener("close", (event) => {
+      logWebSocketDebug("close", {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+        readyState: socket.readyState,
+      });
       if (socketRef.current !== socket) {
         return;
       }
@@ -1812,7 +1855,12 @@ export function HomePage({
       handleUnexpectedMultiplayerDisconnect();
     });
 
-    socket.addEventListener("error", () => undefined);
+    socket.addEventListener("error", () => {
+      logWebSocketDebug("error", {
+        readyState: socket.readyState,
+        url: socket.url,
+      });
+    });
   }
 
   async function reconnectToCurrentRoom() {
@@ -1823,6 +1871,10 @@ export function HomePage({
     }
 
     setConnectionState("connecting");
+    logWebSocketDebug("reconnect-start", {
+      gameId: snapshot.gameId,
+      attempt: reconnectAttemptRef.current,
+    });
 
     try {
       const response = await accessMultiplayerGame(snapshot.gameId);
