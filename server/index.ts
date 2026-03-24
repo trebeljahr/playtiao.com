@@ -9,7 +9,7 @@ import { ClientToServerMessage } from "../shared/src";
 
 const server = createServer(app);
 const websocketServer = new WebSocketServer({ server });
-const WEBSOCKET_PATHS = new Set(["/ws", "/api/ws"]);
+const WEBSOCKET_PATHS = new Set(["/", "/ws", "/api/ws"]);
 const SOCKET_PING_INTERVAL_MS = 1000 * 10;
 
 function sendJson(socket: WebSocket, payload: unknown): void {
@@ -28,7 +28,7 @@ websocketServer.on("connection", (socket, request) => {
 
   const pingInterval = setInterval(() => {
     if (!isAlive) {
-      console.warn(`[ws] client ${gameId} failed to respond to ping, terminating.`);
+      console.warn(`[ws] client ${gameId || "unknown"} failed to respond to ping, terminating.`);
       return socket.terminate();
     }
 
@@ -44,19 +44,19 @@ websocketServer.on("connection", (socket, request) => {
 
   socket.on("close", (code, reason) => {
     clearInterval(pingInterval);
-    console.info(`[ws] closed ${gameId}: code=${code}, reason=${reason.toString() || "none"}`);
+    console.info(`[ws] closed ${gameId || "unknown"}: code=${code}, reason=${reason.toString() || "none"}`);
     void gameService.disconnect(socket);
   });
 
   socket.on("error", (error) => {
     clearInterval(pingInterval);
-    console.error(`[ws] error ${gameId}:`, error);
+    console.error(`[ws] error ${gameId || "unknown"}:`, error);
     void gameService.disconnect(socket);
   });
 
   void (async () => {
     if (!WEBSOCKET_PATHS.has(url.pathname)) {
-      console.warn(`[ws] invalid path: ${url.pathname}`);
+      console.warn(`[ws] invalid path rejected: ${url.pathname} (gameId: ${gameId || "none"})`);
       socket.close();
       return;
     }
