@@ -6,10 +6,13 @@ import { Jimp } from "jimp";
 import mongoose from "mongoose";
 import GameAccount from "../models/GameAccount";
 import {
+  clearPlayerSession,
+  commitPlayerSession,
   createAccountAuth,
   createGuestAuth,
   deriveDisplayNameFromEmail,
   getPlayerFromRequest,
+  refreshPlayerSession,
   sanitizeDisplayName,
 } from "../game/playerTokens";
 import { BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
@@ -62,7 +65,7 @@ async function requireAccount(req: Request, res: Response) {
     return null;
   }
 
-  const player = getPlayerFromRequest(req);
+  const player = await getPlayerFromRequest(req);
   if (!player) {
     res.status(401).json({
       message: "Not authenticated.",
@@ -88,12 +91,14 @@ async function requireAccount(req: Request, res: Response) {
   return account;
 }
 
-router.post("/guest", (req: Request, res: Response) => {
+router.post("/guest", async (req: Request, res: Response) => {
   const { displayName } = req.body as {
     displayName?: string;
   };
 
-  res.status(201).json(createGuestAuth(displayName));
+  const auth = createGuestAuth(displayName);
+  await commitPlayerSession(req, res, auth.player);
+  res.status(201).json(auth);
 });
 
 router.post("/signup", async (req: Request, res: Response) => {
@@ -147,7 +152,9 @@ router.post("/signup", async (req: Request, res: Response) => {
     displayName: displayName?.trim() || deriveDisplayNameFromEmail(normalizedEmail),
   });
 
-  return res.status(201).json(buildAccountAuth(account));
+  const auth = buildAccountAuth(account);
+  await commitPlayerSession(req, res, auth.player);
+  return res.status(201).json(auth);
 });
 
 router.post("/login", async (req: Request, res: Response) => {
@@ -187,11 +194,18 @@ router.post("/login", async (req: Request, res: Response) => {
     });
   }
 
-  return res.status(200).json(buildAccountAuth(account));
+  const auth = buildAccountAuth(account);
+  await commitPlayerSession(req, res, auth.player);
+  return res.status(200).json(auth);
+});
+
+router.post("/logout", async (req: Request, res: Response) => {
+  await clearPlayerSession(req, res);
+  return res.status(204).send();
 });
 
 router.get("/me", async (req: Request, res: Response) => {
-  const player = getPlayerFromRequest(req);
+  const player = await getPlayerFromRequest(req);
   if (!player) {
     return res.status(401).json({
       message: "Not authenticated.",
@@ -201,12 +215,20 @@ router.get("/me", async (req: Request, res: Response) => {
   if (player.kind === "account" && isDatabaseReady()) {
     const account = await GameAccount.findById(player.playerId);
     if (account) {
+      const auth = buildAccountAuth(account);
+      await refreshPlayerSession(req, res, auth.player);
       return res.status(200).json({
-        player: buildAccountAuth(account).player,
+        player: auth.player,
       });
     }
+
+    await clearPlayerSession(req, res);
+    return res.status(401).json({
+      message: "That account session is no longer valid.",
+    });
   }
 
+  await refreshPlayerSession(req, res, player);
   return res.status(200).json({ player });
 });
 
@@ -275,8 +297,10 @@ router.put("/profile", async (req: Request, res: Response) => {
 
   await account.save();
 
+  const auth = buildAccountAuth(account);
+  await refreshPlayerSession(req, res, auth.player);
   return res.status(200).json({
-    auth: buildAccountAuth(account),
+    auth,
     profile: serializeAccountProfile(account),
   });
 });
@@ -331,8 +355,10 @@ router.post(
       account.profilePicture = `${CLOUDFRONT_URL}/${fileName}`;
       await account.save();
 
+      const auth = buildAccountAuth(account);
+      await refreshPlayerSession(req, res, auth.player);
       return res.status(200).json({
-        auth: buildAccountAuth(account),
+        auth,
         profile: serializeAccountProfile(account),
       });
     } catch (error) {

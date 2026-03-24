@@ -143,6 +143,5 @@ export type ServerToClientMessage =
     };
 
 export type AuthResponse = {
-  token: string;
   player: PlayerIdentity;
 };

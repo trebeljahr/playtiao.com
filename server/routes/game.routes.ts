@@ -6,8 +6,8 @@ import GameInvitation from "../models/GameInvitation";
 
 const router = express.Router();
 
-function getAuthenticatedPlayer(req: Request, res: Response) {
-  const player = getPlayerFromRequest(req);
+async function getAuthenticatedPlayer(req: Request, res: Response) {
+  const player = await getPlayerFromRequest(req);
   if (!player) {
     res.status(401).json({
       message: "Authenticate as a guest or account before using multiplayer.",
@@ -61,7 +61,7 @@ async function acceptPendingInvitationsForPlayer(
 }
 
 router.get("/games", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -79,7 +79,7 @@ router.get("/games", async (req: Request, res: Response) => {
 });
 
 router.post("/games", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -97,7 +97,7 @@ router.post("/games", async (req: Request, res: Response) => {
 });
 
 router.post("/games/:gameId/join", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -115,7 +115,7 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
 });
 
 router.post("/games/:gameId/access", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -138,7 +138,7 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
 });
 
 router.get("/games/:gameId", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -156,7 +156,7 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
 });
 
 router.post("/matchmaking", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -174,7 +174,7 @@ router.post("/matchmaking", async (req: Request, res: Response) => {
 });
 
 router.get("/matchmaking", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }
@@ -192,7 +192,7 @@ router.get("/matchmaking", async (req: Request, res: Response) => {
 });
 
 router.delete("/matchmaking", async (req: Request, res: Response) => {
-  const player = getAuthenticatedPlayer(req, res);
+  const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
   }

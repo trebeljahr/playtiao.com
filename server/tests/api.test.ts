@@ -41,6 +41,11 @@ type TestRouter = {
 type RouteResult<T> = {
   status: number;
   body: T;
+  headers: Record<string, string | string[]>;
+};
+
+type SessionAuth = AuthResponse & {
+  cookie: string;
 };
 
 let singletonGameService:
@@ -54,10 +59,12 @@ let gameRoutes: TestRouter;
 function createMockResponse<T>(): Record<string, unknown> & {
   statusCode: number;
   body: T;
+  headers: Record<string, string | string[]>;
 } {
   return {
     statusCode: 200,
     body: undefined as T,
+    headers: {},
     locals: {},
     status(code: number) {
       this.statusCode = code;
@@ -70,6 +77,13 @@ function createMockResponse<T>(): Record<string, unknown> & {
     send(payload?: T) {
       this.body = payload as T;
       return this;
+    },
+    setHeader(name: string, value: string | string[]) {
+      this.headers[name.toLowerCase()] = value;
+      return this;
+    },
+    getHeader(name: string) {
+      return this.headers[name.toLowerCase()];
     },
   };
 }
@@ -126,7 +140,7 @@ async function invokeRoute<T>(
     path: string;
     params?: Record<string, string>;
     query?: Record<string, string>;
-    token?: string;
+    cookie?: string;
     body?: Record<string, unknown>;
   }
 ): Promise<RouteResult<T>> {
@@ -142,9 +156,9 @@ async function invokeRoute<T>(
     url: options.path,
     params: options.params ?? {},
     query: options.query ?? {},
-    headers: options.token
+    headers: options.cookie
       ? {
-          authorization: `Bearer ${options.token}`,
+          cookie: options.cookie,
         }
       : {},
     body: options.body ?? {},
@@ -158,10 +172,21 @@ async function invokeRoute<T>(
   return {
     status: res.statusCode,
     body: res.body,
+    headers: res.headers,
   };
 }
 
-async function createGuest(displayName: string): Promise<AuthResponse> {
+function getSessionCookie<T>(response: RouteResult<T>): string {
+  const setCookieHeader = response.headers["set-cookie"];
+  const rawHeader = Array.isArray(setCookieHeader)
+    ? setCookieHeader[0]
+    : setCookieHeader;
+
+  assert.equal(typeof rawHeader, "string");
+  return rawHeader.split(";")[0]!;
+}
+
+async function createGuest(displayName: string): Promise<SessionAuth> {
   const response = await invokeRoute<AuthResponse>(gameAuthRoutes, {
     method: "post",
     path: "/guest",
@@ -171,23 +196,30 @@ async function createGuest(displayName: string): Promise<AuthResponse> {
   });
 
   assert.equal(response.status, 201);
-  return response.body;
+  return {
+    ...response.body,
+    cookie: getSessionCookie(response),
+  };
 }
 
 beforeEach(async () => {
   const [
     { GameService, gameService },
     { InMemoryGameRoomStore },
+    { resetPlayerSessionStoreForTests },
     indexRoutesModule,
     gameAuthRoutesModule,
     gameRoutesModule,
   ] = await Promise.all([
     import("../game/gameService"),
     import("../game/gameStore"),
+    import("../auth/playerSessionStore"),
     import("../routes/index.routes"),
     import("../routes/game-auth.routes"),
     import("../routes/game.routes"),
   ]);
+
+  resetPlayerSessionStoreForTests();
 
   const service = new GameService(new InMemoryGameRoomStore(), () => 0);
   singletonGameService = gameService as unknown as PatchedGameService &
@@ -239,24 +271,45 @@ test("health endpoint reports readiness shape", async () => {
   assert.ok(["connected", "disconnected"].includes(response.body.database));
 });
 
-test("guest auth issues a token and /me reflects the current player", async () => {
+test("guest auth issues a session cookie and /me reflects the current player", async () => {
   const auth = await createGuest("API Guest");
 
   assert.equal(auth.player.displayName, "API Guest");
   assert.equal(auth.player.kind, "guest");
-  assert.ok(auth.token);
+  assert.match(auth.cookie, /^tiao\.session=/);
 
   const response = await invokeRoute<{
     player: AuthResponse["player"];
   }>(gameAuthRoutes, {
     method: "get",
     path: "/me",
-    token: auth.token,
+    cookie: auth.cookie,
   });
 
   assert.equal(response.status, 200);
   assert.equal(response.body.player.playerId, auth.player.playerId);
   assert.equal(response.body.player.displayName, auth.player.displayName);
+});
+
+test("logout clears the current session", async () => {
+  const auth = await createGuest("Logout Guest");
+
+  const logout = await invokeRoute<undefined>(gameAuthRoutes, {
+    method: "post",
+    path: "/logout",
+    cookie: auth.cookie,
+  });
+
+  assert.equal(logout.status, 204);
+
+  const me = await invokeRoute<{ message: string }>(gameAuthRoutes, {
+    method: "get",
+    path: "/me",
+    cookie: auth.cookie,
+  });
+
+  assert.equal(me.status, 401);
+  assert.match(me.body.message, /not authenticated/i);
 });
 
 test("multiplayer routes create games, join open seats, and allow spectators", async () => {
@@ -267,7 +320,7 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
   const created = await invokeRoute<{ snapshot: MultiplayerSnapshot }>(gameRoutes, {
     method: "post",
     path: "/games",
-    token: host.token,
+    cookie: host.cookie,
   });
   assert.equal(created.status, 201);
   assert.equal(created.body.snapshot.status, "waiting");
@@ -279,7 +332,7 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
     params: {
       gameId: created.body.snapshot.gameId,
     },
-    token: challenger.token,
+    cookie: challenger.cookie,
   });
   assert.equal(joined.status, 200);
   assert.equal(joined.body.snapshot.status, "active");
@@ -291,7 +344,7 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
     params: {
       gameId: created.body.snapshot.gameId,
     },
-    token: spectator.token,
+    cookie: spectator.cookie,
   });
   assert.equal(spectated.status, 200);
   assert.equal(spectated.body.snapshot.players.length, 2);
@@ -308,7 +361,7 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
     params: {
       gameId: created.body.snapshot.gameId,
     },
-    token: host.token,
+    cookie: host.cookie,
   });
   assert.equal(loaded.status, 200);
   assert.equal(loaded.body.snapshot.gameId, created.body.snapshot.gameId);
@@ -321,7 +374,7 @@ test("matchmaking API pairs the next two players into a matchmaking room", async
   const first = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
     method: "post",
     path: "/matchmaking",
-    token: alice.token,
+    cookie: alice.cookie,
   });
   assert.equal(first.status, 200);
   assert.equal(first.body.matchmaking.status, "searching");
@@ -329,7 +382,7 @@ test("matchmaking API pairs the next two players into a matchmaking room", async
   const second = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
     method: "post",
     path: "/matchmaking",
-    token: bob.token,
+    cookie: bob.cookie,
   });
   assert.equal(second.status, 200);
   assert.equal(second.body.matchmaking.status, "matched");
@@ -345,7 +398,7 @@ test("matchmaking API pairs the next two players into a matchmaking room", async
     {
       method: "get",
       path: "/matchmaking",
-      token: alice.token,
+      cookie: alice.cookie,
     }
   );
   assert.equal(aliceState.status, 200);
@@ -362,14 +415,14 @@ test("matchmaking API pairs the next two players into a matchmaking room", async
   const left = await invokeRoute<undefined>(gameRoutes, {
     method: "delete",
     path: "/matchmaking",
-    token: alice.token,
+    cookie: alice.cookie,
   });
   assert.equal(left.status, 204);
 
   const cleared = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
     method: "get",
     path: "/matchmaking",
-    token: alice.token,
+    cookie: alice.cookie,
   });
   assert.equal(cleared.status, 200);
   assert.equal(cleared.body.matchmaking.status, "idle");

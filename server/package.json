@@ -1,6 +1,9 @@
 {
   "name": "tiao-server",
   "version": "0.1.0",
+  "engines": {
+    "node": "22.20.x"
+  },
   "scripts": {
     "build": "npx tsc",
     "start": "NODE_ENV=production node dist/server/index.js",
@@ -16,7 +19,6 @@
     "dotenv": "^16.4.5",
     "express-rate-limit": "^7.4.1",
     "jimp": "^1.6.0",
-    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.3",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",

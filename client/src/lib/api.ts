@@ -37,12 +37,11 @@ function getApiBaseUrl() {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-export function buildWebSocketUrl(gameId: string, token: string) {
+export function buildWebSocketUrl(gameId: string) {
   const url = new URL(API_BASE_URL);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws";
   url.searchParams.set("gameId", gameId);
-  url.searchParams.set("token", token);
   return url.toString();
 }
 
@@ -51,7 +50,6 @@ async function request<T>(
   options: {
     method?: string;
     body?: JsonBody;
-    token?: string;
   } = {}
 ): Promise<T> {
   let response: Response;
@@ -59,9 +57,9 @@ async function request<T>(
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: options.method ?? "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
@@ -86,15 +84,13 @@ async function request<T>(
   return data;
 }
 
-async function upload<T>(path: string, formData: FormData, token: string): Promise<T> {
+async function upload<T>(path: string, formData: FormData): Promise<T> {
   let response: Response;
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
       body: formData,
     });
   } catch {
@@ -125,10 +121,8 @@ export function createGuest(displayName?: string) {
   });
 }
 
-export function getCurrentPlayer(token: string) {
-  return request<{ player: PlayerIdentity }>("/api/player/me", {
-    token,
-  });
+export function getCurrentPlayer() {
+  return request<{ player: PlayerIdentity }>("/api/player/me");
 }
 
 export function loginWithEmail(email: string, password: string) {
@@ -156,122 +150,108 @@ export function signUpWithEmail(
   });
 }
 
-export function createMultiplayerGame(token: string) {
-  return request<{ snapshot: MultiplayerSnapshot }>("/api/games", {
+export function logoutPlayer() {
+  return request<void>("/api/player/logout", {
     method: "POST",
-    token,
   });
 }
 
-export function joinMultiplayerGame(token: string, gameId: string) {
+export function createMultiplayerGame() {
+  return request<{ snapshot: MultiplayerSnapshot }>("/api/games", {
+    method: "POST",
+  });
+}
+
+export function joinMultiplayerGame(gameId: string) {
   return request<{ snapshot: MultiplayerSnapshot }>(
     `/api/games/${gameId}/join`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
-export function accessMultiplayerGame(token: string, gameId: string) {
+export function accessMultiplayerGame(gameId: string) {
   return request<{ snapshot: MultiplayerSnapshot }>(
     `/api/games/${gameId}/access`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
-export function getMultiplayerGame(token: string, gameId: string) {
-  return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}`, {
-    token,
-  });
+export function getMultiplayerGame(gameId: string) {
+  return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}`);
 }
 
-export function listMultiplayerGames(token: string) {
-  return request<{ games: MultiplayerGamesIndex }>("/api/games", {
-    token,
-  });
+export function listMultiplayerGames() {
+  return request<{ games: MultiplayerGamesIndex }>("/api/games");
 }
 
-export function enterMatchmaking(token: string) {
+export function enterMatchmaking() {
   return request<{ matchmaking: MatchmakingState }>("/api/matchmaking", {
     method: "POST",
-    token,
   });
 }
 
-export function getMatchmakingState(token: string) {
-  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking", {
-    token,
-  });
+export function getMatchmakingState() {
+  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking");
 }
 
-export function leaveMatchmaking(token: string) {
+export function leaveMatchmaking() {
   return request<void>("/api/matchmaking", {
     method: "DELETE",
-    token,
   });
 }
 
-export function getSocialOverview(token: string) {
-  return request<{ overview: SocialOverview }>("/api/player/social/overview", {
-    token,
-  });
+export function getSocialOverview() {
+  return request<{ overview: SocialOverview }>("/api/player/social/overview");
 }
 
-export function searchPlayers(token: string, query: string) {
+export function searchPlayers(query: string) {
   return request<{ results: SocialSearchResult[] }>(
     `/api/player/social/search?q=${encodeURIComponent(query)}`,
-    {
-      token,
-    }
+    {}
   );
 }
 
-export function sendFriendRequest(token: string, accountId: string) {
+export function sendFriendRequest(accountId: string) {
   return request<{ message: string }>("/api/player/social/friend-requests", {
     method: "POST",
-    token,
     body: {
       accountId,
     },
   });
 }
 
-export function acceptFriendRequest(token: string, accountId: string) {
+export function acceptFriendRequest(accountId: string) {
   return request<{ message: string }>(
     `/api/player/social/friend-requests/${accountId}/accept`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
-export function declineFriendRequest(token: string, accountId: string) {
+export function declineFriendRequest(accountId: string) {
   return request<{ message: string }>(
     `/api/player/social/friend-requests/${accountId}/decline`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
-export function cancelFriendRequest(token: string, accountId: string) {
+export function cancelFriendRequest(accountId: string) {
   return request<{ message: string }>(
     `/api/player/social/friend-requests/${accountId}/cancel`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
 export function sendGameInvitation(
-  token: string,
   body: {
     gameId: string;
     recipientId: string;
@@ -280,29 +260,24 @@ export function sendGameInvitation(
 ) {
   return request<{ message: string }>("/api/player/social/game-invitations", {
     method: "POST",
-    token,
     body,
   });
 }
 
-export function revokeGameInvitation(token: string, invitationId: string) {
+export function revokeGameInvitation(invitationId: string) {
   return request<{ message: string }>(
     `/api/player/social/game-invitations/${invitationId}/revoke`,
     {
       method: "POST",
-      token,
     }
   );
 }
 
-export function getAccountProfile(token: string) {
-  return request<{ profile: AccountProfile }>("/api/player/profile", {
-    token,
-  });
+export function getAccountProfile() {
+  return request<{ profile: AccountProfile }>("/api/player/profile");
 }
 
 export function updateAccountProfile(
-  token: string,
   body: {
     displayName?: string;
     email?: string;
@@ -313,18 +288,16 @@ export function updateAccountProfile(
     {
       method: "PUT",
       body,
-      token,
     }
   );
 }
 
-export function uploadAccountProfilePicture(token: string, file: File) {
+export function uploadAccountProfilePicture(file: File) {
   const formData = new FormData();
   formData.set("profilePicture", file);
 
   return upload<{ auth: AuthResponse; profile: AccountProfile }>(
     "/api/player/profile-picture",
-    formData,
-    token
+    formData
   );
 }

@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: |
             client/package-lock.json
@@ -51,7 +51,7 @@ jobs:
       COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_CLIENT_DEPLOY_WEBHOOK }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -103,7 +103,7 @@ jobs:
       COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_SERVER_DEPLOY_WEBHOOK }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3

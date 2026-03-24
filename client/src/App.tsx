@@ -6,13 +6,14 @@ import { AuthDialogMode } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createGuest, getCurrentPlayer, loginWithEmail, signUpWithEmail } from "@/lib/api";
-import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import {
-  clearStoredAuth,
-  getStoredAuth,
-  persistAuth,
-} from "@/lib/playerAuth";
+  createGuest,
+  getCurrentPlayer,
+  loginWithEmail,
+  logoutPlayer,
+  signUpWithEmail,
+} from "@/lib/api";
+import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { HomePage } from "./pages/HomePage";
 import { ProfilePage } from "./pages/ProfilePage";
 
@@ -60,7 +61,6 @@ export function App() {
         return;
       }
 
-      persistAuth(guestAuth);
       setAuth(guestAuth);
       setAppError(null);
     }
@@ -69,33 +69,20 @@ export function App() {
       setAuthLoading(true);
       setAppError(null);
 
-      const storedAuth = getStoredAuth();
-      if (storedAuth) {
-        try {
-          const response = await getCurrentPlayer(storedAuth.token);
-          if (cancelled) {
-            return;
-          }
-
-          const nextAuth = {
-            token: storedAuth.token,
-            player: response.player,
-          };
-          persistAuth(nextAuth);
-          setAuth(nextAuth);
-          setAuthLoading(false);
+      try {
+        const response = await getCurrentPlayer();
+        if (cancelled) {
           return;
-        } catch (error) {
-          clearStoredAuth();
-          if (cancelled) {
-            return;
-          }
+        }
 
-          if (isNetworkError(error)) {
-            toastError(error);
-          } else {
-            setAppError(readableError(error));
-          }
+        setAuth({
+          player: response.player,
+        });
+        setAuthLoading(false);
+        return;
+      } catch (error) {
+        if (cancelled) {
+          return;
         }
       }
 
@@ -124,7 +111,6 @@ export function App() {
   }, []);
 
   function applyAuth(nextAuth: AuthResponse) {
-    persistAuth(nextAuth);
     setAuth(nextAuth);
     setAppError(null);
     setAuthDialogError(null);
@@ -179,10 +165,10 @@ export function App() {
   }
 
   async function handleLogout() {
-    clearStoredAuth();
     setAuth(null);
 
     try {
+      await logoutPlayer();
       const guestAuth = await createGuest(ANONYMOUS_NAME);
       applyAuth(guestAuth);
     } catch (error) {

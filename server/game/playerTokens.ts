@@ -1,16 +1,16 @@
 import { randomUUID } from "crypto";
-import { Request } from "express";
-import jwt from "jsonwebtoken";
+import { IncomingMessage } from "http";
+import { Request, Response } from "express";
 import { AuthResponse, PlayerIdentity } from "../../shared/src";
-import { TOKEN_SECRET } from "../config/envVars";
+import {
+  createStoredPlayerSession,
+  deleteStoredPlayerSession,
+  readStoredPlayerSession,
+  replaceStoredPlayerSession,
+} from "../auth/playerSessionStore";
 
-type PlayerTokenPayload = {
-  sub: string;
-  kind: PlayerIdentity["kind"];
-  displayName: string;
-  email?: string;
-  profilePicture?: string;
-};
+const SESSION_COOKIE_NAME = "tiao.session";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export function sanitizeDisplayName(displayName?: string): string {
   const trimmed = displayName?.trim();
@@ -29,7 +29,6 @@ export function createGuestAuth(displayName?: string): AuthResponse {
   };
 
   return {
-    token: signPlayerToken(player),
     player,
   };
 }
@@ -49,63 +48,174 @@ export function createAccountAuth(account: {
   };
 
   return {
-    token: signPlayerToken(player),
     player,
   };
 }
 
-export function signPlayerToken(player: PlayerIdentity): string {
-  const payload: PlayerTokenPayload = {
-    sub: player.playerId,
-    kind: player.kind,
-    displayName: player.displayName,
-    email: player.email,
-    profilePicture: player.profilePicture,
-  };
+function parseCookieHeader(cookieHeader?: string): Map<string, string> {
+  const cookies = new Map<string, string>();
+  if (!cookieHeader) {
+    return cookies;
+  }
 
-  return jwt.sign(payload, TOKEN_SECRET, {
-    algorithm: "HS256",
-    expiresIn: "30d",
-  });
+  for (const entry of cookieHeader.split(";")) {
+    const [rawName, ...valueParts] = entry.trim().split("=");
+    if (!rawName || valueParts.length === 0) {
+      continue;
+    }
+
+    cookies.set(rawName, decodeURIComponent(valueParts.join("=")));
+  }
+
+  return cookies;
 }
 
-export function verifyPlayerToken(token: string): PlayerIdentity | null {
-  try {
-    const payload = jwt.verify(token, TOKEN_SECRET) as PlayerTokenPayload;
-
-    return {
-      playerId: payload.sub,
-      displayName: payload.displayName,
-      kind: payload.kind,
-      email: payload.email,
-      profilePicture: payload.profilePicture,
-    };
-  } catch {
-    return null;
-  }
+function getSessionCookieValue(
+  request: Pick<Request, "headers"> | Pick<IncomingMessage, "headers">
+): string | null {
+  return parseCookieHeader(request.headers.cookie).get(SESSION_COOKIE_NAME) ?? null;
 }
 
-export function getBearerToken(req: Request): string | null {
-  const authorizationHeader = req.headers.authorization;
-  if (!authorizationHeader) {
-    return null;
-  }
+function isSecureRequest(
+  request: Pick<Request, "headers" | "secure"> | Pick<IncomingMessage, "headers">
+): boolean {
+  const forwardedProto = request.headers["x-forwarded-proto"];
+  const protocol = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : forwardedProto?.split(",")[0]?.trim();
 
-  const [type, token] = authorizationHeader.split(" ");
-  if (type !== "Bearer" || !token) {
-    return null;
-  }
-
-  return token;
+  return ("secure" in request && request.secure) || protocol === "https";
 }
 
-export function getPlayerFromRequest(req: Request): PlayerIdentity | null {
-  const token = getBearerToken(req);
-  if (!token) {
+function serializeCookie(
+  name: string,
+  value: string,
+  options: {
+    maxAgeSeconds: number;
+    secure: boolean;
+    expires?: Date;
+  }
+): string {
+  const cookie = [
+    `${name}=${encodeURIComponent(value)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${options.maxAgeSeconds}`,
+  ];
+
+  if (options.expires) {
+    cookie.push(`Expires=${options.expires.toUTCString()}`);
+  }
+
+  if (options.secure) {
+    cookie.push("Secure");
+  }
+
+  return cookie.join("; ");
+}
+
+function setResponseCookie(
+  response: Pick<Response, "setHeader">,
+  cookieValue: string
+): void {
+  response.setHeader("Set-Cookie", cookieValue);
+}
+
+export function commitPlayerSession(
+  req: Request,
+  res: Pick<Response, "setHeader">,
+  player: PlayerIdentity
+): Promise<void> {
+  return (async () => {
+    const previousToken = getSessionCookieValue(req);
+    if (previousToken) {
+      await deleteStoredPlayerSession(previousToken);
+    }
+
+    const sessionToken = await createStoredPlayerSession(player);
+
+    setResponseCookie(
+      res,
+      serializeCookie(SESSION_COOKIE_NAME, sessionToken, {
+        maxAgeSeconds: SESSION_TTL_SECONDS,
+        secure: isSecureRequest(req),
+      })
+    );
+  })();
+}
+
+export function refreshPlayerSession(
+  req: Request,
+  res: Pick<Response, "setHeader">,
+  player: PlayerIdentity
+): Promise<void> {
+  return (async () => {
+    const sessionToken = getSessionCookieValue(req);
+    if (!sessionToken) {
+      await commitPlayerSession(req, res, player);
+      return;
+    }
+
+    const replaced = await replaceStoredPlayerSession(sessionToken, player);
+    if (!replaced) {
+      await commitPlayerSession(req, res, player);
+      return;
+    }
+
+    setResponseCookie(
+      res,
+      serializeCookie(SESSION_COOKIE_NAME, sessionToken, {
+        maxAgeSeconds: SESSION_TTL_SECONDS,
+        secure: isSecureRequest(req),
+      })
+    );
+  })();
+}
+
+export function clearPlayerSession(
+  req: Request,
+  res: Pick<Response, "setHeader">
+): Promise<void> {
+  return (async () => {
+    const sessionToken = getSessionCookieValue(req);
+    if (sessionToken) {
+      await deleteStoredPlayerSession(sessionToken);
+    }
+
+    setResponseCookie(
+      res,
+      serializeCookie(SESSION_COOKIE_NAME, "", {
+        maxAgeSeconds: 0,
+        expires: new Date(0),
+        secure: isSecureRequest(req),
+      })
+    );
+  })();
+}
+
+export async function getPlayerFromRequest(
+  req: Request
+): Promise<PlayerIdentity | null> {
+  const sessionToken = getSessionCookieValue(req);
+  if (!sessionToken) {
     return null;
   }
 
-  return verifyPlayerToken(token);
+  const session = await readStoredPlayerSession(sessionToken);
+  return session?.player ?? null;
+}
+
+export async function getPlayerFromUpgradeRequest(
+  request: IncomingMessage
+): Promise<PlayerIdentity | null> {
+  const sessionToken = getSessionCookieValue(request);
+  if (!sessionToken) {
+    return null;
+  }
+
+  const session = await readStoredPlayerSession(sessionToken);
+  return session?.player ?? null;
 }
 
 export function deriveDisplayNameFromEmail(email: string): string {

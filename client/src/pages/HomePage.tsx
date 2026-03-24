@@ -843,7 +843,7 @@ export function HomePage({
     setMultiplayerGamesLoading(true);
 
     try {
-      const response = await listMultiplayerGames(auth.token);
+      const response = await listMultiplayerGames();
       applyMultiplayerGamesIndex(response.games);
     } catch (error) {
       if (!options.silent) {
@@ -870,7 +870,7 @@ export function HomePage({
     setSocialLoading(true);
 
     try {
-      const response = await getSocialOverview(auth.token);
+      const response = await getSocialOverview();
       applySocialOverview(response.overview, options.allowInviteToast ?? false);
     } catch (error) {
       if (!options.silent) {
@@ -914,7 +914,7 @@ export function HomePage({
     return () => {
       window.clearInterval(interval);
     };
-  }, [auth?.player.kind, auth?.player.playerId, auth?.token]);
+  }, [auth?.player.kind, auth?.player.playerId]);
 
   useEffect(() => {
     if (!auth || auth.player.kind !== "account") {
@@ -941,7 +941,7 @@ export function HomePage({
     return () => {
       window.clearInterval(interval);
     };
-  }, [auth?.player.kind, auth?.player.playerId, auth?.token, canToastIncomingInvites]);
+  }, [auth?.player.kind, auth?.player.playerId, canToastIncomingInvites]);
 
   useEffect(() => {
     if (!multiplayerSnapshot) {
@@ -1142,11 +1142,11 @@ export function HomePage({
     const interval = window.setInterval(() => {
       void (async () => {
         try {
-          const response = await getMatchmakingState(auth.token);
+          const response = await getMatchmakingState();
           setMatchmaking(response.matchmaking);
 
           if (response.matchmaking.status === "matched") {
-            connectToRoom(response.matchmaking.snapshot, auth);
+            connectToRoom(response.matchmaking.snapshot);
             await stopMatchmaking({ silent: true });
           }
         } catch (error) {
@@ -1410,7 +1410,7 @@ export function HomePage({
     }
 
     try {
-      await leaveMatchmaking(auth.token);
+      await leaveMatchmaking();
     } catch (error) {
       if (!options.silent) {
         toastError(error);
@@ -1734,7 +1734,6 @@ export function HomePage({
 
   function connectToRoom(
     snapshot: MultiplayerSnapshot,
-    nextAuth: AuthResponse,
     options: {
       preserveView?: boolean;
     } = {}
@@ -1758,9 +1757,7 @@ export function HomePage({
       navigate(nextPath, { replace: !!routeGameId });
     }
 
-    const socket = new WebSocket(
-      buildWebSocketUrl(snapshot.gameId, nextAuth.token)
-    );
+    const socket = new WebSocket(buildWebSocketUrl(snapshot.gameId));
 
     socketRef.current = socket;
     setConnectionState("connecting");
@@ -1828,8 +1825,8 @@ export function HomePage({
     setConnectionState("connecting");
 
     try {
-      const response = await accessMultiplayerGame(nextAuth.token, snapshot.gameId);
-      connectToRoom(response.snapshot, nextAuth, {
+      const response = await accessMultiplayerGame(snapshot.gameId);
+      connectToRoom(response.snapshot, {
         preserveView: true,
       });
 
@@ -1871,11 +1868,11 @@ export function HomePage({
 
     try {
       const response = options.access
-        ? await accessMultiplayerGame(auth.token, normalizedGameId)
-        : await getMultiplayerGame(auth.token, normalizedGameId);
+        ? await accessMultiplayerGame(normalizedGameId)
+        : await getMultiplayerGame(normalizedGameId);
 
       await stopMatchmaking({ silent: true });
-      connectToRoom(response.snapshot, auth);
+      connectToRoom(response.snapshot);
 
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
@@ -1912,8 +1909,8 @@ export function HomePage({
 
     try {
       await stopMatchmaking({ silent: true });
-      const response = await createMultiplayerGame(auth.token);
-      connectToRoom(response.snapshot, auth);
+      const response = await createMultiplayerGame();
+      connectToRoom(response.snapshot);
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
         void refreshSocialOverview({ silent: true });
@@ -1945,8 +1942,8 @@ export function HomePage({
 
     try {
       await stopMatchmaking({ silent: true });
-      const response = await joinMultiplayerGame(auth.token, joinGameId.trim());
-      connectToRoom(response.snapshot, auth);
+      const response = await joinMultiplayerGame(joinGameId.trim());
+      connectToRoom(response.snapshot);
       if (accountPlayer) {
         void refreshMultiplayerGames({ silent: true });
         void refreshSocialOverview({ silent: true });
@@ -1999,11 +1996,11 @@ export function HomePage({
 
     try {
       clearMultiplayerView();
-      const response = await enterMatchmaking(auth.token);
+      const response = await enterMatchmaking();
       setMatchmaking(response.matchmaking);
 
       if (response.matchmaking.status === "matched") {
-        connectToRoom(response.matchmaking.snapshot, auth);
+        connectToRoom(response.matchmaking.snapshot);
         await stopMatchmaking({ silent: true });
       }
     } catch (error) {
@@ -2036,7 +2033,7 @@ export function HomePage({
     setFriendSearchBusy(true);
 
     try {
-      const response = await searchPlayers(auth.token, friendSearchQuery.trim());
+      const response = await searchPlayers(friendSearchQuery.trim());
       setFriendSearchResults(response.results);
     } catch (error) {
       toastError(error);
@@ -2053,7 +2050,7 @@ export function HomePage({
     setSocialActionBusyKey(`friend-send:${accountId}`);
 
     try {
-      await sendFriendRequest(auth.token, accountId);
+      await sendFriendRequest(accountId);
       await refreshSocialOverview({ silent: true });
       await runFriendSearch();
     } catch (error) {
@@ -2071,7 +2068,7 @@ export function HomePage({
     setSocialActionBusyKey(`friend-accept:${accountId}`);
 
     try {
-      await acceptFriendRequest(auth.token, accountId);
+      await acceptFriendRequest(accountId);
       await refreshSocialOverview({ silent: true });
       await runFriendSearch();
     } catch (error) {
@@ -2089,7 +2086,7 @@ export function HomePage({
     setSocialActionBusyKey(`friend-decline:${accountId}`);
 
     try {
-      await declineFriendRequest(auth.token, accountId);
+      await declineFriendRequest(accountId);
       await refreshSocialOverview({ silent: true });
       await runFriendSearch();
     } catch (error) {
@@ -2107,7 +2104,7 @@ export function HomePage({
     setSocialActionBusyKey(`friend-cancel:${accountId}`);
 
     try {
-      await cancelFriendRequest(auth.token, accountId);
+      await cancelFriendRequest(accountId);
       await refreshSocialOverview({ silent: true });
       await runFriendSearch();
     } catch (error) {
@@ -2130,7 +2127,7 @@ export function HomePage({
     setSocialActionBusyKey(`invite-send:${inviteFriendId}`);
 
     try {
-      await sendGameInvitation(auth.token, {
+      await sendGameInvitation({
         gameId: multiplayerSnapshot.gameId,
         recipientId: inviteFriendId,
         expiresInMinutes: inviteDurationMinutes,
@@ -2152,7 +2149,7 @@ export function HomePage({
     setSocialActionBusyKey(`invite-revoke:${invitationId}`);
 
     try {
-      await revokeGameInvitation(auth.token, invitationId);
+      await revokeGameInvitation(invitationId);
       await refreshSocialOverview({ silent: true });
     } catch (error) {
       toastError(error);

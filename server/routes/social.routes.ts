@@ -81,7 +81,7 @@ async function requireAccount(req: Request, res: Response) {
     return null;
   }
 
-  const player = getPlayerFromRequest(req);
+  const player = await getPlayerFromRequest(req);
   if (!player) {
     res.status(401).json({
       message: "Not authenticated.",

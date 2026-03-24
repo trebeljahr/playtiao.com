@@ -34,6 +34,11 @@ The default production setup keeps a single browser origin even though the servi
 
 That gives you the DX benefits of a split frontend/backend architecture without reintroducing cross-origin cookie pain.
 
+Authentication now uses an opaque `HttpOnly` session cookie backed by MongoDB:
+- the browser stores only the session handle
+- player/account identity is resolved on the server from the session collection
+- the default same-origin proxy setup keeps cookie auth simple for both `/api` and `/ws`
+
 ## Coolify / Docker deployment
 
 This repo includes:
@@ -74,6 +79,7 @@ Notes:
 - `FRONTEND_URL` is useful when the browser talks to the backend directly across origins
 - the default split deployment does not require cookies across origins because the browser stays on the frontend origin and the frontend proxy forwards `/api` and `/ws`
 - `VITE_API_BASE_URL` is optional and only needed if you choose a direct browser-to-backend deployment instead of the proxy-based one
+- MongoDB now stores account data, social data, room data, and session records
 
 ## CI/CD
 

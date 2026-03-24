@@ -62,7 +62,6 @@ export function ProfilePage({
       return;
     }
 
-    const token = auth.token;
     let cancelled = false;
 
     async function loadProfile() {
@@ -70,7 +69,7 @@ export function ProfilePage({
       setPageError(null);
 
       try {
-        const response = await getAccountProfile(token);
+        const response = await getAccountProfile();
         if (cancelled) {
           return;
         }
@@ -142,7 +141,7 @@ export function ProfilePage({
     setPageError(null);
 
     try {
-      const response = await updateAccountProfile(auth.token, {
+      const response = await updateAccountProfile({
         displayName,
         email,
       });
@@ -171,7 +170,7 @@ export function ProfilePage({
     setPageError(null);
 
     try {
-      const response = await uploadAccountProfilePicture(auth.token, selectedFile);
+      const response = await uploadAccountProfilePicture(selectedFile);
       onAuthChange(response.auth);
       setProfile(response.profile);
       setSelectedFile(null);

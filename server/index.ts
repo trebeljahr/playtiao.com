@@ -4,7 +4,7 @@ import app from "./app";
 import { PORT } from "./config/envVars";
 import { connectToDB, disconnectFromDB } from "./db";
 import { gameService, GameServiceError } from "./game/gameService";
-import { verifyPlayerToken } from "./game/playerTokens";
+import { getPlayerFromUpgradeRequest } from "./game/playerTokens";
 import { ClientToServerMessage } from "../shared/src";
 
 const server = createServer(app);
@@ -17,80 +17,88 @@ function sendJson(socket: WebSocket, payload: unknown): void {
 }
 
 websocketServer.on("connection", (socket, request) => {
-  const baseUrl = `http://${request.headers.host || "localhost"}`;
-  const url = new URL(request.url || "/ws", baseUrl);
-  const gameId = url.searchParams.get("gameId")?.trim().toUpperCase();
-  const token = url.searchParams.get("token");
+  void (async () => {
+    const baseUrl = `http://${request.headers.host || "localhost"}`;
+    const url = new URL(request.url || "/ws", baseUrl);
+    const gameId = url.searchParams.get("gameId")?.trim().toUpperCase();
 
-  if (!gameId || !token) {
-    sendJson(socket, {
-      type: "error",
-      code: "BAD_CONNECTION",
-      message: "A gameId and token are required to connect.",
+    if (!gameId) {
+      sendJson(socket, {
+        type: "error",
+        code: "BAD_CONNECTION",
+        message: "A gameId is required to connect.",
+      });
+      socket.close();
+      return;
+    }
+
+    const player = await getPlayerFromUpgradeRequest(request);
+    if (!player) {
+      sendJson(socket, {
+        type: "error",
+        code: "UNAUTHORIZED",
+        message: "That player session is missing or has expired.",
+      });
+      socket.close();
+      return;
+    }
+
+    void gameService.connect(gameId, player, socket).catch((error) => {
+      const serviceError =
+        error instanceof GameServiceError
+          ? error
+          : new GameServiceError(
+              500,
+              "WS_CONNECT_FAILED",
+              "Unable to connect to that multiplayer room."
+            );
+
+      sendJson(socket, {
+        type: "error",
+        code: serviceError.code,
+        message: serviceError.message,
+      });
+      socket.close();
     });
-    socket.close();
-    return;
-  }
 
-  const player = verifyPlayerToken(token);
-  if (!player) {
+    socket.on("message", (rawMessage) => {
+      void (async () => {
+        try {
+          const message = JSON.parse(rawMessage.toString()) as ClientToServerMessage;
+          await gameService.applyAction(gameId, player, message);
+        } catch (error) {
+          const serviceError =
+            error instanceof GameServiceError
+              ? error
+              : new GameServiceError(
+                  400,
+                  "INVALID_MESSAGE",
+                  "That move update could not be processed."
+                );
+
+          sendJson(socket, {
+            type: "error",
+            code: serviceError.code,
+            message: serviceError.message,
+          });
+        }
+      })();
+    });
+
+    socket.on("close", () => {
+      void gameService.disconnect(socket);
+    });
+
+    socket.on("error", () => {
+      void gameService.disconnect(socket);
+    });
+  })().catch(() => {
     sendJson(socket, {
       type: "error",
       code: "UNAUTHORIZED",
-      message: "That player token is invalid or has expired.",
+      message: "Unable to validate that player session right now.",
     });
     socket.close();
-    return;
-  }
-
-  void gameService.connect(gameId, player, socket).catch((error) => {
-    const serviceError =
-      error instanceof GameServiceError
-        ? error
-        : new GameServiceError(
-            500,
-            "WS_CONNECT_FAILED",
-            "Unable to connect to that multiplayer room."
-          );
-
-    sendJson(socket, {
-      type: "error",
-      code: serviceError.code,
-      message: serviceError.message,
-    });
-    socket.close();
-  });
-
-  socket.on("message", (rawMessage) => {
-    void (async () => {
-      try {
-        const message = JSON.parse(rawMessage.toString()) as ClientToServerMessage;
-        await gameService.applyAction(gameId, player, message);
-      } catch (error) {
-        const serviceError =
-          error instanceof GameServiceError
-            ? error
-            : new GameServiceError(
-                400,
-                "INVALID_MESSAGE",
-                "That move update could not be processed."
-              );
-
-        sendJson(socket, {
-          type: "error",
-          code: serviceError.code,
-          message: serviceError.message,
-        });
-      }
-    })();
-  });
-
-  socket.on("close", () => {
-    void gameService.disconnect(socket);
-  });
-
-  socket.on("error", () => {
-    void gameService.disconnect(socket);
   });
 });
 

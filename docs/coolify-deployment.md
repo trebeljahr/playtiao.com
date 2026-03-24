@@ -19,6 +19,11 @@ Recommended dependencies:
 - MongoDB: external managed MongoDB, or a Coolify MongoDB resource
 - Object storage: S3, Cloudflare R2, Hetzner Object Storage, or MinIO
 
+MongoDB backs more than account metadata here:
+- multiplayer room persistence
+- social data
+- opaque session storage for the `HttpOnly` auth cookie
+
 ## What `localhost` Means In Coolify
 
 When Coolify shows a server named `localhost`, that is the actual machine where Coolify itself is installed.

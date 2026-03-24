@@ -9,6 +9,7 @@ export const configureApp = (app: Express): void => {
   app.use(
     cors({
       origin: FRONTEND_URL ? [FRONTEND_URL] : true,
+      credentials: true,
     })
   );
 
