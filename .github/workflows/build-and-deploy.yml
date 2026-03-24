@@ -44,6 +44,11 @@ jobs:
   build:
     needs: verify
     runs-on: ubuntu-latest
+    env:
+      COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
+      COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+      COOLIFY_RESOURCE_UUID: ${{ secrets.COOLIFY_RESOURCE_UUID }}
+      COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -77,11 +82,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Trigger Coolify deployment via API
-        if: ${{ secrets.COOLIFY_BASE_URL != '' && secrets.COOLIFY_API_TOKEN != '' && secrets.COOLIFY_RESOURCE_UUID != '' }}
-        env:
-          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
-          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
-          COOLIFY_RESOURCE_UUID: ${{ secrets.COOLIFY_RESOURCE_UUID }}
+        if: ${{ env.COOLIFY_BASE_URL != '' && env.COOLIFY_API_TOKEN != '' && env.COOLIFY_RESOURCE_UUID != '' }}
         run: |
           curl -fsS \
             -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
@@ -89,7 +90,5 @@ jobs:
             "$COOLIFY_BASE_URL/api/v1/deploy?uuid=$COOLIFY_RESOURCE_UUID"
 
       - name: Trigger legacy Coolify deployment webhook
-        if: ${{ (secrets.COOLIFY_BASE_URL == '' || secrets.COOLIFY_API_TOKEN == '' || secrets.COOLIFY_RESOURCE_UUID == '') && secrets.COOLIFY_DEPLOY_WEBHOOK != '' }}
-        env:
-          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+        if: ${{ (env.COOLIFY_BASE_URL == '' || env.COOLIFY_API_TOKEN == '' || env.COOLIFY_RESOURCE_UUID == '') && env.COOLIFY_DEPLOY_WEBHOOK != '' }}
         run: curl -fsS -X POST "$COOLIFY_DEPLOY_WEBHOOK"
