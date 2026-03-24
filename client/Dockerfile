@@ -12,7 +12,7 @@ RUN npm --prefix client run build
 
 FROM nginx:1.27-alpine AS runtime
 
-ENV BACKEND_UPSTREAM=http://tiao-server:3000
+ENV BACKEND_UPSTREAM=http://127.0.0.1:65535
 ENV ESC='$'
 
 COPY client/nginx/default.conf.template /etc/nginx/templates/default.conf.template

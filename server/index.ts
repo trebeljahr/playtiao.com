@@ -8,7 +8,8 @@ import { getPlayerFromUpgradeRequest } from "./game/playerTokens";
 import { ClientToServerMessage } from "../shared/src";
 
 const server = createServer(app);
-const websocketServer = new WebSocketServer({ server, path: "/ws" });
+const websocketServer = new WebSocketServer({ server });
+const WEBSOCKET_PATHS = new Set(["/ws", "/api/ws"]);
 
 function sendJson(socket: WebSocket, payload: unknown): void {
   if (socket.readyState === WebSocket.OPEN) {
@@ -20,6 +21,11 @@ websocketServer.on("connection", (socket, request) => {
   void (async () => {
     const baseUrl = `http://${request.headers.host || "localhost"}`;
     const url = new URL(request.url || "/ws", baseUrl);
+    if (!WEBSOCKET_PATHS.has(url.pathname)) {
+      socket.close();
+      return;
+    }
+
     const gameId = url.searchParams.get("gameId")?.trim().toUpperCase();
 
     if (!gameId) {

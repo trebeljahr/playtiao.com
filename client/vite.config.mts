@@ -18,6 +18,11 @@ export default defineConfig({
       allow: [path.resolve(__dirname, "..")],
     },
     proxy: {
+      "/api/ws": {
+        target: "ws://localhost:5005",
+        changeOrigin: true,
+        ws: true,
+      },
       "/api": {
         target: "http://localhost:5005",
         changeOrigin: true,

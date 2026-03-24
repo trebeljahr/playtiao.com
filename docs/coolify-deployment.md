@@ -6,7 +6,7 @@ Tiao is now set up to deploy as two applications:
 
 The recommended production shape still keeps a single browser origin:
 - the frontend serves the SPA
-- the frontend proxies `/api` and `/ws` to the backend over the private network
+- either the frontend proxies `/api` and `/api/ws` to the backend over the private network, or Coolify path-routes those same paths directly to the backend
 - the backend does not serve frontend assets anymore
 
 ## Recommended production shape
@@ -48,6 +48,9 @@ Suggested base settings:
 - Domain: optional
 
 The backend does not need a public domain if the frontend proxies traffic to it over the internal network.
+If you want to keep a single public domain without depending on an internal upstream hostname, you can instead attach path-based domains:
+- `https://tiao.your-domain.com/api`
+- `https://tiao.your-domain.com/api/ws`
 
 ### Frontend app
 
@@ -103,11 +106,22 @@ Notes:
 Frontend runtime variables:
 - `BACKEND_UPSTREAM=http://tiao-server:3000`
 
+Notes:
+- `BACKEND_UPSTREAM` is only needed in frontend-proxy mode
+- if you use Coolify path-based routing on the same public domain for `/api` and `/api/ws`, the frontend app can leave `BACKEND_UPSTREAM` unset
+
 Recommended values for a first production deploy:
 - `FRONTEND_URL=https://tiao.your-domain.com`
 - `MONGODB_URI=<Coolify Mongo internal URL or managed Mongo URL>`
 - `PORT=3000` or simply omit `PORT` and let the backend default to `3000`
 - `BACKEND_UPSTREAM=http://<coolify-internal-backend-host>:3000`
+
+Recommended values for a single-domain Coolify path-routing deploy:
+- frontend domain: `https://tiao.your-domain.com`
+- backend domains: `https://tiao.your-domain.com/api,https://tiao.your-domain.com/api/ws`
+- `FRONTEND_URL=https://tiao.your-domain.com`
+- backend `PORT=3000` or omit it
+- no extra public backend hostname is required
 
 ## Step-By-Step First Deploy
 
@@ -144,9 +158,9 @@ Important:
 Tiao expects the frontend domain to receive:
 - normal HTTPS traffic for the SPA
 - API requests at `/api`
-- websocket upgrade requests at `/ws`
+- websocket upgrade requests at `/api/ws`
 
-The frontend container proxies `/api` and `/ws` to the backend, so the browser can keep using one origin. That means:
+Whether you use the frontend proxy or Coolify path-based routing, the browser can keep using one origin. That means:
 - no cross-site cookies are required
 - no browser-facing CORS complexity is required in the default production setup
 - multiplayer websocket URLs continue to work without special browser configuration

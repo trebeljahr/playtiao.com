@@ -40,7 +40,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export function buildWebSocketUrl(gameId: string) {
   const url = new URL(API_BASE_URL);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/ws";
+  url.pathname = "/api/ws";
   url.searchParams.set("gameId", gameId);
   return url.toString();
 }
