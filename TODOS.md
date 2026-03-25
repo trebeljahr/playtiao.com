@@ -13,3 +13,4 @@
 - [ ] get rid of the "confirm jump" and "undo jump" buttons in the score card across everywhere this part of the UI is not needed anymore with the hover for cancel/undo and the click again to "confirm" 
 - [ ] don't immediately display a "it's your move" toast whenever leaving a multiplayer game to go back to the lobby. Only display this when the other player actually moved while I am in the lobby and this triggered the change
 - [ ] in the active games list in the lobby show when a player is currently waiting in the game somehow, maybe add a touch of color and bring the game up higher in the list too
+- [ ] local mode again doesn't respect move order somehow and allows players to jump with either color without respecting turn order, sometimes... maybe when server resets or something like this?
