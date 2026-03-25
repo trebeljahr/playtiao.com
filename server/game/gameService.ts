@@ -873,6 +873,7 @@ export class GameService {
         white: this.toSeatSlot(room, "white"),
         black: this.toSeatSlot(room, "black"),
       },
+      rematch: room.status === "finished" ? (room.rematch ?? null) : null,
     };
   }
 

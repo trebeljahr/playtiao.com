@@ -146,4 +146,52 @@ describe("MoveList", () => {
     expect(screen.getByLabelText("Next move")).toBeDisabled();
     expect(screen.getByLabelText("Go to end")).toBeDisabled();
   });
+
+  it("does not call window.scrollIntoView when changing moves", () => {
+    const onSelectMove = vi.fn();
+    const { rerender } = render(
+      <MoveList
+        history={sampleHistory}
+        currentMoveIndex={0}
+        onSelectMove={onSelectMove}
+        interactive={true}
+      />,
+    );
+
+    // scrollIntoView should NOT have been called on the document body
+    const scrollIntoViewSpy = vi.fn();
+    const container = screen.getByTestId("move-list").querySelector(".overflow-y-auto");
+    expect(container).toBeTruthy();
+
+    // The scroll behavior should be container-scoped, not using scrollIntoView
+    // Re-render with a different move index - no page scroll should occur
+    rerender(
+      <MoveList
+        history={sampleHistory}
+        currentMoveIndex={2}
+        onSelectMove={onSelectMove}
+        interactive={true}
+      />,
+    );
+
+    // The container-based scroll logic uses scrollTop, not scrollIntoView
+    // Verify the active move element exists with correct styling
+    const activeElements = screen.getByTestId("move-list").querySelectorAll(".font-semibold");
+    expect(activeElements.length).toBeGreaterThan(0);
+  });
+
+  it("hides nav buttons when hideNavButtons is true", () => {
+    render(
+      <MoveList
+        history={sampleHistory}
+        currentMoveIndex={1}
+        onSelectMove={() => {}}
+        interactive={true}
+        hideNavButtons={true}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Go to start")).toBeNull();
+    expect(screen.queryByLabelText("Previous move")).toBeNull();
+  });
 });

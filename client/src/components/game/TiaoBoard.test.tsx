@@ -184,3 +184,95 @@ describe("TiaoBoard – board testid", () => {
     expect(screen.getByTestId("tiao-board")).toBeTruthy();
   });
 });
+
+describe("TiaoBoard – last move highlighting", () => {
+  it("renders gold border for last put move position", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+    // Place a piece at (9,9) so the highlight has something to highlight
+    state.positions[9][9] = "white";
+
+    const lastMove = {
+      type: "put" as const,
+      color: "white" as const,
+      position: { x: 9, y: 9 },
+    };
+
+    const { container } = render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        lastMove={lastMove}
+        onPointClick={() => {}}
+        disabled
+      />
+    );
+
+    // The cell at (9,9) should contain a highlight span with the gold border
+    const cell = screen.getByTestId("cell-9-9");
+    const highlightSpan = cell.querySelector("span[class*='border-[#c4963c]']");
+    expect(highlightSpan).toBeTruthy();
+  });
+
+  it("renders jump trail arrows for last jump move", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+    // Place piece at the jump destination
+    state.positions[8][8] = "black";
+
+    const lastMove = {
+      type: "jump" as const,
+      color: "black" as const,
+      jumps: [
+        {
+          from: { x: 10, y: 10 },
+          over: { x: 9, y: 9 },
+          to: { x: 8, y: 8 },
+          color: "black" as const,
+        },
+      ],
+    };
+
+    const { container } = render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        lastMove={lastMove}
+        onPointClick={() => {}}
+        disabled
+      />
+    );
+
+    // Should render SVG lines for the jump trail with gold color
+    const board = screen.getByTestId("tiao-board");
+    const svgOverlay = board.querySelectorAll("svg")[1]; // Second SVG is the overlay
+    expect(svgOverlay).toBeTruthy();
+
+    // Check for gold-colored arrow lines (stroke="#c4963c")
+    const goldLines = svgOverlay.querySelectorAll('line[stroke="#c4963c"]');
+    expect(goldLines.length).toBeGreaterThan(0);
+  });
+
+  it("does not render jump trail arrows when lastMove is undefined", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+
+    const { container } = render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+        disabled
+      />
+    );
+
+    const board = screen.getByTestId("tiao-board");
+    const svgOverlay = board.querySelectorAll("svg")[1];
+    // No gold lines should exist
+    const goldLines = svgOverlay?.querySelectorAll('line[stroke="#c4963c"]') ?? [];
+    expect(goldLines.length).toBe(0);
+  });
+});

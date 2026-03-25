@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { MultiplayerGamePage } from "./MultiplayerGamePage";
-import type { AuthResponse, MultiplayerSnapshot } from "@shared";
+import type { AuthResponse, MultiplayerSnapshot, TurnRecord } from "@shared";
 import { createInitialGameState, EMPTY_SOCIAL_OVERVIEW } from "@shared";
 
 // --- Mocks ---
@@ -108,6 +108,47 @@ function renderWithRouter(auth: AuthResponse | null, gameId: string) {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+const defaultSocialMock = {
+  socialOverview: EMPTY_SOCIAL_OVERVIEW,
+  socialLoading: false,
+  socialLoaded: false,
+  friendSearchQuery: "",
+  setFriendSearchQuery: vi.fn(),
+  friendSearchResults: [],
+  friendSearchBusy: false,
+  socialActionBusyKey: null,
+  refreshSocialOverview: vi.fn(),
+  runFriendSearch: vi.fn(),
+  handleSendFriendRequest: vi.fn(),
+  handleAcceptFriendRequest: vi.fn(),
+  handleDeclineFriendRequest: vi.fn(),
+  handleCancelFriendRequest: vi.fn(),
+  handleRemoveFriend: vi.fn(),
+  handleSendGameInvitation: vi.fn(),
+  handleRevokeGameInvitation: vi.fn(),
+};
+
+async function setupMocks(
+  snapshot: MultiplayerSnapshot,
+  overrides?: { connectionState?: string },
+) {
+  const { useMultiplayerGame } = await import("@/lib/hooks/useMultiplayerGame");
+  (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+    multiplayerSnapshot: snapshot,
+    multiplayerSelection: null,
+    connectionState: overrides?.connectionState ?? "connected",
+    connectToRoom: mockConnectToRoom,
+    sendMultiplayerMessage: mockSendMultiplayerMessage,
+    setMultiplayerSelection: mockSetMultiplayerSelection,
+    multiplayerBusy: false,
+    setMultiplayerBusy: mockSetMultiplayerBusy,
+    multiplayerError: null,
+  });
+
+  const { useSocialData } = await import("@/lib/hooks/useSocialData");
+  (useSocialData as ReturnType<typeof vi.fn>).mockReturnValue(defaultSocialMock);
 }
 
 // --- Tests ---
@@ -302,5 +343,89 @@ describe("MultiplayerGamePage", () => {
     expect(mockUseWinConfetti).toHaveBeenCalled();
     const lastCall = mockUseWinConfetti.mock.calls[mockUseWinConfetti.mock.calls.length - 1];
     expect(lastCall[0]).toBeNull(); // review mode → null winner passed
+  });
+
+  it("renders review nav buttons in the card header when game is finished with history", async () => {
+    const history: TurnRecord[] = [
+      { type: "put", color: "white", position: { x: 9, y: 9 } },
+      { type: "put", color: "black", position: { x: 10, y: 10 } },
+    ];
+    const state = createInitialGameState();
+    state.history = history;
+
+    const snapshot = makeMatchmakingSnapshot({
+      status: "finished",
+      state,
+    });
+
+    await setupMocks(snapshot);
+    renderWithRouter(guestAuth, "ABC123");
+
+    // Review nav buttons should be in the card header area (data-testid)
+    const navContainer = screen.getByTestId("review-nav-buttons");
+    expect(navContainer).toBeInTheDocument();
+
+    // Should contain all four navigation buttons
+    expect(screen.getByLabelText("Go to start")).toBeInTheDocument();
+    expect(screen.getByLabelText("Previous move")).toBeInTheDocument();
+    expect(screen.getByLabelText("Next move")).toBeInTheDocument();
+    expect(screen.getByLabelText("Go to end")).toBeInTheDocument();
+  });
+
+  it("does not render review nav buttons when game is active", async () => {
+    const snapshot = makeMatchmakingSnapshot({ status: "active" });
+    await setupMocks(snapshot);
+    renderWithRouter(guestAuth, "ABC123");
+
+    expect(screen.queryByTestId("review-nav-buttons")).not.toBeInTheDocument();
+  });
+
+  it("shows rematch toast when opponent requests rematch", async () => {
+    const { toast } = await import("sonner");
+
+    const state = createInitialGameState();
+    state.score = { black: 10, white: 0 };
+
+    const snapshot = makeMatchmakingSnapshot({
+      status: "finished",
+      state,
+      rematch: { requestedBy: ["black"] }, // opponent (we're white)
+    });
+
+    await setupMocks(snapshot);
+    renderWithRouter(guestAuth, "ABC123");
+
+    expect(toast).toHaveBeenCalledWith(
+      "Opponent wants a rematch!",
+      expect.objectContaining({
+        description: "Accept or decline in the game panel.",
+      }),
+    );
+  });
+
+  it("shows rematch request sent toast when clicking Rematch button", async () => {
+    const { toast } = await import("sonner");
+
+    // Need a finished game with a winner for rematch buttons to show
+    const state = createInitialGameState();
+    state.history = [{ type: "forfeit", color: "black" }];
+    state.score = { black: 0, white: 10 };
+
+    const snapshot = makeMatchmakingSnapshot({
+      status: "finished",
+      state,
+      rematch: null,
+    });
+
+    await setupMocks(snapshot);
+    renderWithRouter(guestAuth, "ABC123");
+
+    const rematchBtn = screen.getByRole("button", { name: "Rematch" });
+    fireEvent.click(rematchBtn);
+
+    expect(mockSendMultiplayerMessage).toHaveBeenCalledWith({
+      type: "request-rematch",
+    });
+    expect(toast.success).toHaveBeenCalledWith("Rematch request sent!");
   });
 });

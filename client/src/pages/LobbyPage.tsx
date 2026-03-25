@@ -85,6 +85,26 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
           },
         });
       }
+
+      // Toast for incoming rematch requests
+      if (
+        summary.status === "finished" &&
+        summary.rematch?.requestedBy.length &&
+        summary.yourSeat &&
+        !summary.rematch.requestedBy.includes(summary.yourSeat) &&
+        !inGame
+      ) {
+        const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
+        const opponentName = summary.seats[opponentSeat]?.player.displayName || "your opponent";
+        toast(`${opponentName} wants a rematch!`, {
+          id: `rematch-${summary.gameId}`,
+          description: `Game ${summary.gameId}`,
+          action: {
+            label: "View Game",
+            onClick: () => window.location.assign(`/game/${summary.gameId}`),
+          },
+        });
+      }
     }
     if (payload.type === "social-update") {
       void refreshSocialOverview({ silent: true, allowInviteToast: true });
@@ -96,15 +116,27 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
   const [multiplayerBusy, setMultiplayerBusy] = useState(false);
 
   const activeGames = multiplayerGames.active ?? [];
+  const finishedGames = multiplayerGames.finished ?? [];
+  const rematchGames = useMemo(() => {
+    return finishedGames.filter(
+      (g) => g.rematch?.requestedBy.length && g.yourSeat && !g.rematch.requestedBy.includes(g.yourSeat),
+    );
+  }, [finishedGames]);
   const sortedActiveGames = useMemo(() => {
-    return [...activeGames].sort((a, b) => {
+    const combined = [...activeGames, ...rematchGames];
+    return combined.sort((a, b) => {
+      // Rematch requests at the top
+      const aRematch = a.status === "finished" && !!a.rematch?.requestedBy.length;
+      const bRematch = b.status === "finished" && !!b.rematch?.requestedBy.length;
+      if (aRematch && !bRematch) return -1;
+      if (!aRematch && bRematch) return 1;
       const aYourTurn = isSummaryYourTurn(a);
       const bYourTurn = isSummaryYourTurn(b);
       if (aYourTurn && !bYourTurn) return -1;
       if (!aYourTurn && bYourTurn) return 1;
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
-  }, [activeGames]);
+  }, [activeGames, rematchGames]);
 
   async function handleCreateRoom() {
     if (!auth) {
@@ -359,14 +391,18 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                     const isYourTurn = isSummaryYourTurn(game);
                     const opponentSeat = game.yourSeat === "white" ? "black" : "white";
                     const opponentOnline = game.seats[opponentSeat]?.online ?? false;
+                    const hasRematchRequest = game.status === "finished" && !!game.rematch?.requestedBy.length;
                     return (
                       <div
                         key={game.gameId}
+                        data-testid={`lobby-game-${game.gameId}`}
                         className={cn(
                           "flex items-center justify-between rounded-2xl border p-4 shadow-sm hover:border-[#b98d49] transition-colors group",
-                          opponentOnline
-                            ? "border-[#b8cc8f] bg-[#f9fcf3]"
-                            : "border-[#d7c39e] bg-[#fffaf3]",
+                          hasRematchRequest
+                            ? "border-[#d4b87a] bg-[#fdf6e8]"
+                            : opponentOnline
+                              ? "border-[#b8cc8f] bg-[#f9fcf3]"
+                              : "border-[#d7c39e] bg-[#fffaf3]",
                         )}
                       >
                         <div className="flex items-center gap-4">
@@ -384,12 +420,14 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                           <Badge
                             className={cn(
                               "ml-2 px-3 py-1",
-                              isYourTurn
-                                ? "bg-[#e8f2d8] text-[#4b6537] animate-pulse"
-                                : "bg-[#f3e7d5] text-[#6b563e]",
+                              hasRematchRequest
+                                ? "bg-[#f5ead4] text-[#8d6a2f] animate-pulse"
+                                : isYourTurn
+                                  ? "bg-[#e8f2d8] text-[#4b6537] animate-pulse"
+                                  : "bg-[#f3e7d5] text-[#6b563e]",
                             )}
                           >
-                            {isYourTurn ? "Your move" : "Their move"}
+                            {hasRematchRequest ? "Rematch requested" : isYourTurn ? "Your move" : "Their move"}
                           </Badge>
                         </div>
                         <Button
@@ -397,7 +435,7 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                           className="shadow-sm group-hover:scale-105 transition-transform"
                           onClick={() => navigate(`/game/${game.gameId}`)}
                         >
-                          Resume
+                          {hasRematchRequest ? "View" : "Resume"}
                         </Button>
                       </div>
                     );

@@ -171,6 +171,11 @@ export function MultiplayerGamePage({
 
   const displayState = reviewBoardState ?? multiplayerSnapshot?.state ?? null;
 
+  const reviewLastMove =
+    isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null && reviewMoveIndex >= 0
+      ? multiplayerSnapshot.state.history[reviewMoveIndex] ?? null
+      : null;
+
   const playerSeat =
     multiplayerSnapshot && auth
       ? (Object.entries(multiplayerSnapshot.seats).find(
@@ -200,6 +205,24 @@ export function MultiplayerGamePage({
       lastTakebackToastRef.current = null;
     }
   }, [multiplayerSnapshot?.takeback?.requestedBy, playerSeat]);
+
+  // Toast for incoming rematch requests
+  const lastRematchToastRef = useRef(false);
+  useEffect(() => {
+    const rematchRequesters = multiplayerSnapshot?.rematch?.requestedBy ?? [];
+    const opponentRequested = rematchRequesters.some((color) => color !== playerSeat);
+    const weAlreadyRequested = playerSeat ? rematchRequesters.includes(playerSeat) : false;
+
+    if (opponentRequested && !weAlreadyRequested && !lastRematchToastRef.current) {
+      lastRematchToastRef.current = true;
+      toast("Opponent wants a rematch!", {
+        description: "Accept or decline in the game panel.",
+      });
+    }
+    if (!opponentRequested) {
+      lastRematchToastRef.current = false;
+    }
+  }, [multiplayerSnapshot?.rematch?.requestedBy, playerSeat]);
 
   const multiplayerYourTurn =
     multiplayerSnapshot?.status === "active" &&
@@ -345,6 +368,7 @@ export function MultiplayerGamePage({
                   selectedPiece={isReviewMode ? null : multiplayerSelection}
                   jumpTargets={multiplayerJumpTargets}
                   confirmReady={true}
+                  lastMove={reviewLastMove}
                   onPointClick={isReviewMode ? undefined : handleBoardClick}
                   disabled={isReviewMode || !multiplayerYourTurn}
                   onUndoLastJump={
@@ -357,15 +381,7 @@ export function MultiplayerGamePage({
                   }
                 />
               )}
-              {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null && (
-                <div className="mt-2">
-                  <MoveListNavButtons
-                    history={multiplayerSnapshot.state.history}
-                    currentMoveIndex={reviewMoveIndex}
-                    onSelectMove={setReviewMoveIndex}
-                  />
-                </div>
-              )}
+              {/* Review nav buttons moved to card header pill area */}
               {multiplayerSnapshot?.status === "waiting" && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
@@ -395,7 +411,20 @@ export function MultiplayerGamePage({
                       </Badge>
                     </div>
                     <div className="flex shrink-0 justify-end">
-                      {multiplayerSnapshot &&
+                      {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          className="flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-1 py-1 shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          data-testid="review-nav-buttons"
+                        >
+                          <MoveListNavButtons
+                            history={multiplayerSnapshot.state.history}
+                            currentMoveIndex={reviewMoveIndex}
+                            onSelectMove={setReviewMoveIndex}
+                          />
+                        </motion.div>
+                      ) : multiplayerSnapshot &&
                       connectionState !== "connected" ? (
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -761,11 +790,14 @@ export function MultiplayerGamePage({
                               <div className="grid grid-cols-2 gap-2">
                                 <Button
                                   variant="secondary"
-                                  onClick={() =>
+                                  onClick={() => {
                                     sendMultiplayerMessage({
                                       type: "request-rematch",
-                                    })
-                                  }
+                                    });
+                                    if (!multiplayerSnapshot.rematch?.requestedBy.length) {
+                                      toast.success("Rematch request sent!");
+                                    }
+                                  }}
                                 >
                                   {multiplayerSnapshot.rematch?.requestedBy
                                     .length

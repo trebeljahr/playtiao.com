@@ -72,6 +72,7 @@ export type MultiplayerGameSummary = {
   score: ScoreState;
   players: PlayerSlot[];
   seats: Record<PlayerColor, PlayerSlot | null>;
+  rematch: MultiplayerRematchState | null;
 };
 
 export type MultiplayerGamesIndex = {

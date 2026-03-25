@@ -89,11 +89,18 @@ export function MoveList({
   const activeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (activeRef.current?.scrollIntoView && scrollRef.current) {
-      activeRef.current.scrollIntoView({
-        block: "nearest",
-        behavior: "smooth",
-      });
+    if (activeRef.current && scrollRef.current) {
+      // Only scroll within the move list container, not the page
+      const container = scrollRef.current;
+      const element = activeRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      if (elementRect.top < containerRect.top) {
+        container.scrollTop -= containerRect.top - elementRect.top;
+      } else if (elementRect.bottom > containerRect.bottom) {
+        container.scrollTop += elementRect.bottom - containerRect.bottom;
+      }
     }
   }, [currentMoveIndex]);
 

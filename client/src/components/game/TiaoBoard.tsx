@@ -582,6 +582,18 @@ export function TiaoBoard({
             >
               <path d="M0 0L8 4L0 8L2.15 4Z" fill="#c9837b" fillOpacity="1" />
             </marker>
+            <marker
+              id={`${jumpTrailMarkerId}-overlay-gold`}
+              viewBox="0 0 8 8"
+              refX="6.2"
+              refY="4"
+              markerWidth="5.4"
+              markerHeight="5.4"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path d="M0 0L8 4L0 8L2.15 4Z" fill="#c4963c" fillOpacity="0.85" />
+            </marker>
           </defs>
 
           {state.pendingJump.map((jump, index) => {
@@ -640,6 +652,40 @@ export function TiaoBoard({
                   strokeWidth="2.45"
                   strokeLinecap="round"
                   markerEnd={`url(#${jumpTrailMarkerId}-overlay-green)`}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            );
+          })}
+
+          {/* Last move jump trail arrows (review mode) */}
+          {lastMove?.type === "jump" && lastMove.jumps.map((jump, index) => {
+            const segment = getJumpTrailMetrics(jump.from, jump.to);
+            const arrowKey = `lastmove-${jump.from.x}-${jump.from.y}-${jump.to.x}-${jump.to.y}-${index}`;
+
+            return (
+              <g key={arrowKey}>
+                <line
+                  x1={segment.startX}
+                  y1={segment.startY}
+                  x2={segment.endX}
+                  y2={segment.endY}
+                  stroke="#a07930"
+                  strokeOpacity="0.5"
+                  strokeWidth="3.15"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <line
+                  x1={segment.startX}
+                  y1={segment.startY}
+                  x2={segment.endX}
+                  y2={segment.endY}
+                  stroke="#c4963c"
+                  strokeOpacity="0.7"
+                  strokeWidth="2.45"
+                  strokeLinecap="round"
+                  markerEnd={`url(#${jumpTrailMarkerId}-overlay-gold)`}
                   vectorEffect="non-scaling-stroke"
                 />
               </g>
