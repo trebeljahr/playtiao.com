@@ -13,6 +13,7 @@ import {
   getSocialOverview,
   acceptFriendRequest,
   declineFriendRequest,
+  declineGameInvitation,
 } from "./api";
 import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
@@ -134,6 +135,7 @@ export function SocialNotificationsProvider({
       for (const inv of nextOverview.incomingInvitations) {
         if (!prevInvitationIdsRef.current.has(inv.id)) {
           const invGameId = inv.gameId;
+          const invId = inv.id;
           const senderName = inv.sender.displayName;
           toast(`${senderName} invited you to a game`, {
             duration: 15000,
@@ -141,6 +143,12 @@ export function SocialNotificationsProvider({
               label: "Join",
               onClick: () => {
                 window.location.assign(`/game/${invGameId}`);
+              },
+            },
+            cancel: {
+              label: "Decline",
+              onClick: () => {
+                void declineGameInvitation(invId).then(() => fetchOverview());
               },
             },
           });

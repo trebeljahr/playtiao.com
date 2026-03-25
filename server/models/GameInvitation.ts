@@ -5,6 +5,7 @@ export type GameInvitationStatus =
   | "pending"
   | "accepted"
   | "revoked"
+  | "declined"
   | "expired";
 
 export interface IGameInvitation extends Document {
@@ -47,7 +48,7 @@ const GameInvitationSchema = new Schema<IGameInvitation>(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "accepted", "revoked", "expired"],
+      enum: ["pending", "accepted", "revoked", "declined", "expired"],
       default: "pending",
       index: true,
     },

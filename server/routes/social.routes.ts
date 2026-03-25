@@ -960,6 +960,41 @@ router.post(
 );
 
 router.post(
+  "/player/social/game-invitations/:invitationId/decline",
+  async (req: Request, res: Response) => {
+    const account = await requireAccount(req, res);
+    if (!account) {
+      return;
+    }
+
+    const invitation = await GameInvitation.findOne({
+      _id: req.params.invitationId,
+      recipientId: account._id,
+      status: "pending",
+      expiresAt: {
+        $gt: new Date(),
+      },
+    });
+
+    if (!invitation) {
+      return res.status(404).json({
+        message: "That invitation is no longer active.",
+      });
+    }
+
+    invitation.status = "declined";
+    await invitation.save();
+
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(invitation.senderId.toString());
+
+    return res.status(200).json({
+      message: "Invitation declined.",
+    });
+  }
+);
+
+router.post(
   "/player/social/friends/:accountId/remove",
   async (req: Request, res: Response) => {
     const account = await requireAccount(req, res);

@@ -283,6 +283,15 @@ export function revokeGameInvitation(invitationId: string) {
   );
 }
 
+export function declineGameInvitation(invitationId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/game-invitations/${invitationId}/decline`,
+    {
+      method: "POST",
+    }
+  );
+}
+
 export function markTutorialComplete() {
   return request<{ auth: AuthResponse }>("/api/player/tutorial-complete", {
     method: "POST",

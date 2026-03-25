@@ -51,7 +51,7 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
   const navigate = useNavigate();
   const { multiplayerGames, refreshMultiplayerGames } = useGamesIndex(auth);
 
-  const { socialOverview, refreshSocialOverview } = useSocialData(auth, true);
+  const { socialOverview, refreshSocialOverview, handleDeclineGameInvitation } = useSocialData(auth, true);
 
   // Track the last seen history length per game to avoid spurious "your move" toasts
   // (e.g. when leaving a game, the departure triggers a game-update but no new move).
@@ -489,13 +489,23 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        className="shadow-sm group-hover:scale-105 transition-transform"
-                        onClick={() => navigate(`/game/${inv.gameId}`)}
-                      >
-                        Accept
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#dcc7a2] hover:bg-[#faefd8]"
+                          onClick={() => handleDeclineGameInvitation(inv.id)}
+                        >
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="shadow-sm group-hover:scale-105 transition-transform"
+                          onClick={() => navigate(`/game/${inv.gameId}`)}
+                        >
+                          Accept
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {socialOverview.incomingInvitations.length === 0 && (

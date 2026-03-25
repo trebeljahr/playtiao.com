@@ -16,6 +16,7 @@ import {
   removeFriend,
   sendGameInvitation,
   revokeGameInvitation,
+  declineGameInvitation,
 } from "../api";
 import { toastError } from "../errors";
 
@@ -48,13 +49,7 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
         socialInvitationsHydratedRef.current &&
         canToastIncomingInvites
       ) {
-        for (const invitation of nextOverview.incomingInvitations) {
-          if (!socialInvitationIdsRef.current.has(invitation.id)) {
-            toast.success(
-              `${invitation.sender.displayName} invited you to game ${invitation.gameId}`,
-            );
-          }
-        }
+        // Toast is handled by SocialNotificationsContext with action buttons
       }
 
       socialInvitationIdsRef.current = incomingIds;
@@ -259,6 +254,26 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
     [auth, refreshSocialOverview],
   );
 
+  const handleDeclineGameInvitation = useCallback(
+    async (invitationId: string) => {
+      if (!auth || auth.player.kind !== "account") {
+        return;
+      }
+
+      setSocialActionBusyKey(`invite-decline:${invitationId}`);
+
+      try {
+        await declineGameInvitation(invitationId);
+        await refreshSocialOverview({ silent: true });
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setSocialActionBusyKey(null);
+      }
+    },
+    [auth, refreshSocialOverview],
+  );
+
   useEffect(() => {
     if (auth?.player.kind === "account" && !socialLoaded && !socialLoading) {
       void refreshSocialOverview({ allowInviteToast: true });
@@ -283,5 +298,6 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
     handleRemoveFriend,
     handleSendGameInvitation,
     handleRevokeGameInvitation,
+    handleDeclineGameInvitation,
   };
 }
