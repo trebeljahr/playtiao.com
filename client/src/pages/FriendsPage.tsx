@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,8 @@ import { Navbar } from "@/components/Navbar";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbySocket } from "@/lib/hooks/useLobbySocket";
+import { createMultiplayerGame } from "@/lib/api";
+import { toastError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
 type FriendsPageProps = {
@@ -29,11 +32,30 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
   const [navOpen, setNavOpen] = useState(false);
 
   const social = useSocialData(auth, false);
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
+
+  async function handleInviteToGame(friendId: string) {
+    setInviteBusy(friendId);
+    try {
+      const response = await createMultiplayerGame();
+      const gameId = response.snapshot.gameId;
+      await social.handleSendGameInvitation(gameId, friendId, 60);
+      toast.success("Game created & invitation sent!");
+      navigate(`/game/${gameId}`);
+    } catch (error) {
+      toastError(error);
+    } finally {
+      setInviteBusy(null);
+    }
+  }
 
   useLobbySocket(
     auth,
     () => {},
-    () => void social.refreshSocialOverview({ silent: true }),
+    () => {
+      void social.refreshSocialOverview({ silent: true });
+      void social.runFriendSearch();
+    },
   );
 
   const paperCard =
@@ -140,6 +162,15 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
                       <Badge className={friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
                         {friend.online ? "Online" : "Offline"}
                       </Badge>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-xs"
+                        onClick={() => handleInviteToGame(friend.playerId)}
+                        disabled={inviteBusy === friend.playerId}
+                      >
+                        {inviteBusy === friend.playerId ? "Creating..." : "Invite"}
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
