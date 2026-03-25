@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Entered matchmaking","content":{"application/json":{"schema":{"type":"object","properties":{"matchmaking":{"type":"object","properties":{"status":{"type":"string","enum":["idle","searching","matched"]}},"title":"MatchmakingState"}}}}}},"401":{"description":"Not authenticated"},"500":{"description":"Server error"}}}

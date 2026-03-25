@@ -1,0 +1,69 @@
+name: docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "docs-site/**"
+      - "shared/src/**"
+      - "server/routes/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            docs-site/package-lock.json
+            server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Install docs-site dependencies
+        run: npm --prefix docs-site ci
+
+      - name: Generate OpenAPI spec
+        run: npx tsx server/scripts/generate-openapi.ts
+
+      - name: Generate API docs from OpenAPI spec
+        run: npm --prefix docs-site run generate:api-docs
+
+      - name: Build docs site
+        run: npm --prefix docs-site run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs-site/build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

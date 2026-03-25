@@ -1,0 +1,1 @@
+{"responses":{"204":{"description":"Left matchmaking"},"401":{"description":"Not authenticated"},"500":{"description":"Server error"}}}

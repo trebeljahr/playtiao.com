@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Game finished","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}}}}}},"403":{"description":"Not allowed in production"},"500":{"description":"Failed to finish game"}}}

@@ -1,0 +1,1 @@
+{"parameters":[{"in":"path","name":"accountId","required":true,"schema":{"type":"string"},"description":"Account ID of the target player"}]}

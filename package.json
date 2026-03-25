@@ -13,7 +13,9 @@
     "dev": "node scripts/dev.mjs",
     "test": "npm --prefix server test",
     "client": "npm --prefix client run dev",
-    "server": "npm --prefix server run dev"
+    "server": "npm --prefix server run dev",
+    "docs": "npm --prefix docs-site start",
+    "docs:build": "npx tsx server/scripts/generate-openapi.ts && npm --prefix docs-site run generate:api-docs && npm --prefix docs-site run build"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

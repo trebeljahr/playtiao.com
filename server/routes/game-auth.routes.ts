@@ -22,6 +22,87 @@ import { multerUploadMiddleware } from "../middleware/multerUploadMiddleware";
 const router = express.Router();
 const saltRounds = 10;
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PlayerIdentity:
+ *       type: object
+ *       properties:
+ *         playerId:
+ *           type: string
+ *         displayName:
+ *           type: string
+ *         kind:
+ *           type: string
+ *           enum: [guest, account]
+ *         email:
+ *           type: string
+ *         profilePicture:
+ *           type: string
+ *     AuthResponse:
+ *       type: object
+ *       properties:
+ *         player:
+ *           $ref: '#/components/schemas/PlayerIdentity'
+ *     MultiplayerSnapshot:
+ *       type: object
+ *       properties:
+ *         gameId:
+ *           type: string
+ *         roomType:
+ *           type: string
+ *           enum: [direct, matchmaking]
+ *         status:
+ *           type: string
+ *           enum: [waiting, active, finished]
+ *         state:
+ *           type: object
+ *         players:
+ *           type: array
+ *           items:
+ *             type: object
+ *         seats:
+ *           type: object
+ *         rematch:
+ *           type: object
+ *           nullable: true
+ *     MatchmakingState:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           enum: [idle, searching, matched]
+ *     SocialOverview:
+ *       type: object
+ *       properties:
+ *         friends:
+ *           type: array
+ *           items:
+ *             type: object
+ *         incomingFriendRequests:
+ *           type: array
+ *           items:
+ *             type: object
+ *         outgoingFriendRequests:
+ *           type: array
+ *           items:
+ *             type: object
+ *         incomingInvitations:
+ *           type: array
+ *           items:
+ *             type: object
+ *         outgoingInvitations:
+ *           type: array
+ *           items:
+ *             type: object
+ *   securitySchemes:
+ *     sessionCookie:
+ *       type: apiKey
+ *       in: cookie
+ *       name: tiao.session
+ */
+
 function isDatabaseReady(): boolean {
   return mongoose.connection.readyState === 1;
 }
@@ -44,7 +125,6 @@ function serializeAccountProfile(account: {
   displayName: string;
   email?: string;
   profilePicture?: string;
-  hasSeenTutorial?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }) {
@@ -52,7 +132,6 @@ function serializeAccountProfile(account: {
     displayName: account.displayName,
     email: account.email,
     profilePicture: account.profilePicture,
-    hasSeenTutorial: account.hasSeenTutorial ?? false,
     createdAt: account.createdAt?.toISOString(),
     updatedAt: account.updatedAt?.toISOString(),
   };
@@ -93,6 +172,29 @@ async function requireAccount(req: Request, res: Response) {
   return account;
 }
 
+/**
+ * @openapi
+ * /api/player/guest:
+ *   post:
+ *     summary: Create a guest session
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               displayName:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Guest session created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ */
 router.post("/guest", async (req: Request, res: Response) => {
   const { displayName } = req.body as {
     displayName?: string;
@@ -103,6 +205,43 @@ router.post("/guest", async (req: Request, res: Response) => {
   res.status(201).json(auth);
 });
 
+/**
+ * @openapi
+ * /api/player/signup:
+ *   post:
+ *     summary: Create a new account
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *               displayName:
+ *                 type: string
+ *                 minLength: 3
+ *     responses:
+ *       201:
+ *         description: Account created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Validation error (missing fields, short password, short username, invalid email)
+ *       409:
+ *         description: Email or username already taken
+ *       503:
+ *         description: Account signup unavailable
+ */
 router.post("/signup", async (req: Request, res: Response) => {
   if (!isDatabaseReady()) {
     return res.status(503).json({
@@ -181,6 +320,42 @@ router.post("/signup", async (req: Request, res: Response) => {
   return res.status(201).json(auth);
 });
 
+/**
+ * @openapi
+ * /api/player/login:
+ *   post:
+ *     summary: Log in to an existing account
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - identifier
+ *               - password
+ *             properties:
+ *               identifier:
+ *                 type: string
+ *                 description: Username or email address
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Missing identifier or password
+ *       401:
+ *         description: Account not found or incorrect password
+ *       503:
+ *         description: Account login unavailable
+ */
 router.post("/login", async (req: Request, res: Response) => {
   if (!isDatabaseReady()) {
     return res.status(503).json({
@@ -228,11 +403,46 @@ router.post("/login", async (req: Request, res: Response) => {
   return res.status(200).json(auth);
 });
 
+/**
+ * @openapi
+ * /api/player/logout:
+ *   post:
+ *     summary: Destroy the current session
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       204:
+ *         description: Session destroyed
+ */
 router.post("/logout", async (req: Request, res: Response) => {
   await clearPlayerSession(req, res);
   return res.status(204).send();
 });
 
+/**
+ * @openapi
+ * /api/player/me:
+ *   get:
+ *     summary: Get the current authenticated player
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       200:
+ *         description: Current player identity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 player:
+ *                   $ref: '#/components/schemas/PlayerIdentity'
+ *       401:
+ *         description: Not authenticated or session no longer valid
+ */
 router.get("/me", async (req: Request, res: Response) => {
   const player = await getPlayerFromRequest(req);
   if (!player) {
@@ -261,6 +471,47 @@ router.get("/me", async (req: Request, res: Response) => {
   return res.status(200).json({ player });
 });
 
+/**
+ * @openapi
+ * /api/player/profile:
+ *   get:
+ *     summary: Get the current account profile
+ *     tags:
+ *       - Profile
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       200:
+ *         description: Account profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     profilePicture:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only account players can access profiles
+ *       404:
+ *         description: Account not found
+ *       503:
+ *         description: Account features unavailable
+ */
 router.get("/profile", async (req: Request, res: Response) => {
   const account = await requireAccount(req, res);
   if (!account) {
@@ -272,6 +523,69 @@ router.get("/profile", async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * @openapi
+ * /api/player/profile:
+ *   put:
+ *     summary: Update the current account profile
+ *     tags:
+ *       - Profile
+ *     security:
+ *       - sessionCookie: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               displayName:
+ *                 type: string
+ *                 minLength: 3
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 auth:
+ *                   $ref: '#/components/schemas/AuthResponse'
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     profilePicture:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Validation error (no fields provided, short display name, short password, invalid email)
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only account players can edit profiles
+ *       404:
+ *         description: Account not found
+ *       409:
+ *         description: Username or email already taken
+ *       503:
+ *         description: Account features unavailable
+ */
 router.put("/profile", async (req: Request, res: Response) => {
   const account = await requireAccount(req, res);
   if (!account) {
@@ -360,20 +674,65 @@ router.put("/profile", async (req: Request, res: Response) => {
   });
 });
 
-router.post("/tutorial-complete", async (req: Request, res: Response) => {
-  const account = await requireAccount(req, res);
-  if (!account) {
-    return;
-  }
-
-  account.hasSeenTutorial = true;
-  await account.save();
-
-  const auth = buildAccountAuth(account);
-  await refreshPlayerSession(req, res, auth.player);
-  return res.status(200).json({ auth });
-});
-
+/**
+ * @openapi
+ * /api/player/profile-picture:
+ *   post:
+ *     summary: Upload a profile picture
+ *     tags:
+ *       - Profile
+ *     security:
+ *       - sessionCookie: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - profilePicture
+ *             properties:
+ *               profilePicture:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile picture uploaded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 auth:
+ *                   $ref: '#/components/schemas/AuthResponse'
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     displayName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     profilePicture:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: No image file provided
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only account players can upload profile pictures
+ *       404:
+ *         description: Account not found
+ *       500:
+ *         description: Upload failed
+ *       503:
+ *         description: Account features unavailable
+ */
 router.post(
   "/profile-picture",
   multerUploadMiddleware.single("profilePicture"),

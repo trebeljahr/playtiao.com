@@ -1,0 +1,1390 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tiao API",
+    "version": "1.0.0",
+    "description": "REST API and WebSocket protocol for Tiao, the open-source multiplayer board game platform."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5005/api",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Guest and account session management"
+    },
+    {
+      "name": "Profile",
+      "description": "Account profile management"
+    },
+    {
+      "name": "Games",
+      "description": "Multiplayer game rooms"
+    },
+    {
+      "name": "Matchmaking",
+      "description": "Automatic opponent pairing"
+    },
+    {
+      "name": "Social",
+      "description": "Friends, friend requests, and game invitations"
+    }
+  ],
+  "paths": {
+    "/api/player/guest": {
+      "post": {
+        "summary": "Create a guest session",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guest session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/player/signup": {
+      "post": {
+        "summary": "Create a new account",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (missing fields, short password, short username, invalid email)"
+          },
+          "409": {
+            "description": "Email or username already taken"
+          },
+          "503": {
+            "description": "Account signup unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/login": {
+      "post": {
+        "summary": "Log in to an existing account",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "identifier",
+                  "password"
+                ],
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Username or email address"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing identifier or password"
+          },
+          "401": {
+            "description": "Account not found or incorrect password"
+          },
+          "503": {
+            "description": "Account login unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/logout": {
+      "post": {
+        "summary": "Destroy the current session",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session destroyed"
+          }
+        }
+      }
+    },
+    "/api/player/me": {
+      "get": {
+        "summary": "Get the current authenticated player",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current player identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerIdentity"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated or session no longer valid"
+          }
+        }
+      }
+    },
+    "/api/player/profile": {
+      "get": {
+        "summary": "Get the current account profile",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "profilePicture": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Only account players can access profiles"
+          },
+          "404": {
+            "description": "Account not found"
+          },
+          "503": {
+            "description": "Account features unavailable"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update the current account profile",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "auth": {
+                      "$ref": "#/components/schemas/AuthResponse"
+                    },
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "profilePicture": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (no fields provided, short display name, short password, invalid email)"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Only account players can edit profiles"
+          },
+          "404": {
+            "description": "Account not found"
+          },
+          "409": {
+            "description": "Username or email already taken"
+          },
+          "503": {
+            "description": "Account features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/profile-picture": {
+      "post": {
+        "summary": "Upload a profile picture",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profilePicture"
+                ],
+                "properties": {
+                  "profilePicture": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile picture uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "auth": {
+                      "$ref": "#/components/schemas/AuthResponse"
+                    },
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "profilePicture": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No image file provided"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Only account players can upload profile pictures"
+          },
+          "404": {
+            "description": "Account not found"
+          },
+          "500": {
+            "description": "Upload failed"
+          },
+          "503": {
+            "description": "Account features unavailable"
+          }
+        }
+      }
+    },
+    "/api/games": {
+      "get": {
+        "summary": "List the current player's games",
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of games",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "games": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MultiplayerSnapshot"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new multiplayer game",
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Game created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/MultiplayerSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/join": {
+      "post": {
+        "summary": "Join an existing game",
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined the game",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/MultiplayerSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/access": {
+      "post": {
+        "summary": "Access a game (join or spectate)",
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game accessed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/MultiplayerSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}": {
+      "get": {
+        "summary": "Get a game snapshot",
+        "tags": [
+          "Games"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/MultiplayerSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/matchmaking": {
+      "post": {
+        "summary": "Enter matchmaking queue",
+        "tags": [
+          "Matchmaking"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entered matchmaking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "matchmaking": {
+                      "$ref": "#/components/schemas/MatchmakingState"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get current matchmaking status",
+        "tags": [
+          "Matchmaking"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matchmaking state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "matchmaking": {
+                      "$ref": "#/components/schemas/MatchmakingState"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Leave matchmaking queue",
+        "tags": [
+          "Matchmaking"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Left matchmaking"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/{gameId}/test-finish": {
+      "post": {
+        "summary": "Force-finish a game (development only)",
+        "tags": [
+          "Games"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "winner"
+                ],
+                "properties": {
+                  "winner": {
+                    "type": "string",
+                    "enum": [
+                      "white",
+                      "black"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Game finished",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed in production"
+          },
+          "500": {
+            "description": "Failed to finish game"
+          }
+        }
+      }
+    },
+    "/api/player/social/overview": {
+      "get": {
+        "summary": "Get social overview (friends, requests, invitations)",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Social overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "overview": {
+                      "$ref": "#/components/schemas/SocialOverview"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Account not found"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/search": {
+      "get": {
+        "summary": "Search for players by name or email",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "description": "Search query (display name or exact email)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "player": {
+                            "type": "object",
+                            "properties": {
+                              "playerId": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": "string"
+                              },
+                              "profilePicture": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "relationship": {
+                            "type": "string",
+                            "enum": [
+                              "friend",
+                              "incoming-request",
+                              "outgoing-request",
+                              "none"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Query too short (minimum 2 characters)"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Account not found"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/friend-requests": {
+      "post": {
+        "summary": "Send a friend request",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "accountId"
+                ],
+                "properties": {
+                  "accountId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Friend request sent"
+          },
+          "400": {
+            "description": "Missing accountId or cannot add yourself"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Target player or account not found"
+          },
+          "409": {
+            "description": "Already friends or pending request exists"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/friend-requests/{accountId}/accept": {
+      "post": {
+        "summary": "Accept a friend request",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Account ID of the requester"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Friend request accepted"
+          },
+          "400": {
+            "description": "No pending friend request from that player"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Player or account not found"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/friend-requests/{accountId}/decline": {
+      "post": {
+        "summary": "Decline a friend request",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Account ID of the requester"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Friend request declined"
+          },
+          "400": {
+            "description": "No pending friend request from that player"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Player or account not found"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/friend-requests/{accountId}/cancel": {
+      "post": {
+        "summary": "Cancel an outgoing friend request",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Account ID of the target player"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Friend request cancelled"
+          },
+          "400": {
+            "description": "No outgoing request to that player"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Player or account not found"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/game-invitations": {
+      "post": {
+        "summary": "Send a game invitation to a friend",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "gameId",
+                  "recipientId",
+                  "expiresInMinutes"
+                ],
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "recipientId": {
+                    "type": "string"
+                  },
+                  "expiresInMinutes": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 10080
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing invitation updated"
+          },
+          "201": {
+            "description": "Invitation sent"
+          },
+          "400": {
+            "description": "Missing fields or invalid expiration duration"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required, not in the room, or recipient is not a friend"
+          },
+          "404": {
+            "description": "Recipient or account not found"
+          },
+          "409": {
+            "description": "Game is finished or recipient already in the room"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    },
+    "/api/player/social/game-invitations/{invitationId}/revoke": {
+      "post": {
+        "summary": "Revoke a pending game invitation",
+        "tags": [
+          "Social"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the invitation to revoke"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation revoked"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Account required"
+          },
+          "404": {
+            "description": "Invitation not found or no longer active"
+          },
+          "503": {
+            "description": "Social features unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PlayerIdentity": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "guest",
+              "account"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "profilePicture": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/PlayerIdentity"
+          }
+        }
+      },
+      "MultiplayerSnapshot": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "roomType": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "matchmaking"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "active",
+              "finished"
+            ]
+          },
+          "state": {
+            "type": "object"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "seats": {
+            "type": "object"
+          },
+          "rematch": {
+            "type": "object",
+            "nullable": true
+          }
+        }
+      },
+      "MatchmakingState": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "searching",
+              "matched"
+            ]
+          }
+        }
+      },
+      "SocialOverview": {
+        "type": "object",
+        "properties": {
+          "friends": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "incomingFriendRequests": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "outgoingFriendRequests": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "incomingInvitations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "outgoingInvitations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "tiao.session"
+      }
+    }
+  }
+}

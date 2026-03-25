@@ -60,6 +60,32 @@ async function acceptPendingInvitationsForPlayer(
   );
 }
 
+/**
+ * @openapi
+ * /api/games:
+ *   get:
+ *     summary: List the current player's games
+ *     tags:
+ *       - Games
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       200:
+ *         description: List of games
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 games:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MultiplayerSnapshot'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.get("/games", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -78,6 +104,30 @@ router.get("/games", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/games:
+ *   post:
+ *     summary: Create a new multiplayer game
+ *     tags:
+ *       - Games
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       201:
+ *         description: Game created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 snapshot:
+ *                   $ref: '#/components/schemas/MultiplayerSnapshot'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.post("/games", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -96,6 +146,36 @@ router.post("/games", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/games/{gameId}/join:
+ *   post:
+ *     summary: Join an existing game
+ *     tags:
+ *       - Games
+ *     security:
+ *       - sessionCookie: []
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Joined the game
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 snapshot:
+ *                   $ref: '#/components/schemas/MultiplayerSnapshot'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.post("/games/:gameId/join", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -114,6 +194,36 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/games/{gameId}/access:
+ *   post:
+ *     summary: Access a game (join or spectate)
+ *     tags:
+ *       - Games
+ *     security:
+ *       - sessionCookie: []
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Game accessed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 snapshot:
+ *                   $ref: '#/components/schemas/MultiplayerSnapshot'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.post("/games/:gameId/access", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -137,6 +247,36 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/games/{gameId}:
+ *   get:
+ *     summary: Get a game snapshot
+ *     tags:
+ *       - Games
+ *     security:
+ *       - sessionCookie: []
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Game snapshot
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 snapshot:
+ *                   $ref: '#/components/schemas/MultiplayerSnapshot'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.get("/games/:gameId", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -155,6 +295,30 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/matchmaking:
+ *   post:
+ *     summary: Enter matchmaking queue
+ *     tags:
+ *       - Matchmaking
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       200:
+ *         description: Entered matchmaking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 matchmaking:
+ *                   $ref: '#/components/schemas/MatchmakingState'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.post("/matchmaking", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -173,6 +337,30 @@ router.post("/matchmaking", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/matchmaking:
+ *   get:
+ *     summary: Get current matchmaking status
+ *     tags:
+ *       - Matchmaking
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       200:
+ *         description: Matchmaking state
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 matchmaking:
+ *                   $ref: '#/components/schemas/MatchmakingState'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.get("/matchmaking", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -191,6 +379,23 @@ router.get("/matchmaking", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/matchmaking:
+ *   delete:
+ *     summary: Leave matchmaking queue
+ *     tags:
+ *       - Matchmaking
+ *     security:
+ *       - sessionCookie: []
+ *     responses:
+ *       204:
+ *         description: Left matchmaking
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
 router.delete("/matchmaking", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
@@ -209,6 +414,46 @@ router.delete("/matchmaking", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/{gameId}/test-finish:
+ *   post:
+ *     summary: Force-finish a game (development only)
+ *     tags:
+ *       - Games
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - winner
+ *             properties:
+ *               winner:
+ *                 type: string
+ *                 enum: [white, black]
+ *     responses:
+ *       200:
+ *         description: Game finished
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Not allowed in production
+ *       500:
+ *         description: Failed to finish game
+ */
 router.post("/:gameId/test-finish", async (req: Request, res: Response) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ message: "Not allowed in production." });
