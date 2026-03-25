@@ -58,13 +58,14 @@ function HamburgerIcon({ open }: { open: boolean }) {
 }
 
 function PlayerAvatar({ auth }: { auth: AuthResponse | null }) {
-  const isAnonymous = !auth || auth.player.kind !== "account";
+  const player = auth?.player;
+  const isAnonymous = player?.kind !== "account";
 
-  if (auth?.player.profilePicture) {
+  if (player?.profilePicture) {
     return (
       <img
-        src={auth.player.profilePicture}
-        alt={auth.player.displayName}
+        src={player.profilePicture}
+        alt={player.displayName}
         className="h-10 w-10 rounded-full border border-black/10 object-cover shadow-sm"
       />
     );
@@ -83,20 +84,21 @@ function PlayerAvatar({ auth }: { auth: AuthResponse | null }) {
 
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a37d48]/35 bg-[linear-gradient(180deg,#f4ecde,#e1cda9)] font-display text-lg text-[#2e2217] shadow-sm">
-      {auth.player.displayName.slice(0, 1).toUpperCase()}
+      {player.displayName.slice(0, 1).toUpperCase()}
     </div>
   );
 }
 
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
-  const isAnonymous = !auth || auth.player.kind !== "account";
+  const player = auth?.player;
+  const isAnonymous = player?.kind !== "account";
 
   return (
     <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
       <PlayerAvatar auth={auth} />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">
-          {isAnonymous ? "Anonymous" : auth.player.displayName}
+          {isAnonymous ? "Anonymous" : player.displayName}
         </p>
         <p className="truncate text-xs text-[#6e5b48]">
           {isAnonymous ? "Not signed in" : "Account"}
@@ -158,7 +160,8 @@ export function Navbar({
   const navigate = useNavigate();
   const location = useLocation();
   const { pendingFriendRequestCount } = useSocialNotifications();
-  const isAccount = auth?.player?.kind === "account";
+  const player = auth?.player;
+  const isAccount = player?.kind === "account";
   const gameMode =
     mode === "local" || mode === "computer" || mode === "multiplayer";
   const minimalMode = gameMode || mode === "lobby";
@@ -245,7 +248,7 @@ export function Navbar({
   );
 
   const accountControls =
-    auth?.player?.kind === "account" ? (
+    player?.kind === "account" ? (
       <>
         <Button variant="secondary" size="sm" onClick={() => handleNav("/profile")}>
           Profile
@@ -326,18 +329,18 @@ export function Navbar({
           <PlayerAvatar auth={auth} />
           <div className="min-w-0">
             <p className="truncate text-base font-semibold">
-              {auth?.player?.kind === "account" ? auth.player.displayName : "Anonymous"}
+              {player?.kind === "account" ? player.displayName : "Anonymous"}
             </p>
             <p className="truncate text-sm text-[#6e5b48]">
-              {auth?.player?.kind === "account"
-                ? auth.player.email
+              {player?.kind === "account"
+                ? player.email
                 : "Sign in to save your profile"}
             </p>
           </div>
         </div>
 
         <div className="mt-4 grid gap-2">
-          {auth?.player?.kind === "account" ? (
+          {player?.kind === "account" ? (
             <>
               <Button variant="secondary" className="w-full justify-start" onClick={() => handleNav("/profile")}>
                 Profile
