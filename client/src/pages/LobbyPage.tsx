@@ -142,7 +142,8 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
       />
 
       <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-20">
-        {/* Banner Section */}
+        {/* Banner Section — hidden for returning logged-in users */}
+        {!(auth?.player.kind === "account" && auth.player.hasSeenTutorial) && (
         <section className="relative flex flex-col items-center justify-center py-12 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -159,8 +160,16 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
               A beautiful abstract strategy game. Play online, with friends, or
               against an AI.
             </p>
+            <Button
+              variant="ghost"
+              className="mt-2 text-[#b98d49] hover:text-[#8d6a2f] hover:bg-[#f4e8d2] font-semibold"
+              onClick={() => navigate("/tutorial")}
+            >
+              New here? Learn to play →
+            </Button>
           </motion.div>
         </section>
+        )}
 
         <section className="grid gap-8 lg:grid-cols-2">
           {/* Local Match Card */}
