@@ -35,7 +35,7 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
 
   useStonePlacementSound(local.localGame);
   const winner = isGameOver(local.localGame) ? getWinner(local.localGame) : null;
-  useWinConfetti(winner);
+  const { resultBanner } = useWinConfetti(winner);
 
   const localStatusTitle = winner
     ? `${formatPlayerColor(winner)} wins!`
@@ -51,6 +51,7 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {resultBanner}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar

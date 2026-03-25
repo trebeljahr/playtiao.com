@@ -56,7 +56,7 @@ export function ComputerGamePage({
   const winner = isGameOver(computer.localGame)
     ? getWinner(computer.localGame)
     : null;
-  useWinConfetti(winner, { viewerColor: "white" });
+  const { resultBanner } = useWinConfetti(winner, { viewerColor: "white" });
 
   const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
   const prevWinnerRef = React.useRef<string | null>(null);
@@ -96,6 +96,7 @@ export function ComputerGamePage({
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {resultBanner}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar

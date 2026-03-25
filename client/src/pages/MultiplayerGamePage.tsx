@@ -191,7 +191,7 @@ export function MultiplayerGamePage({
         )?.[0] as PlayerColor | undefined)
       : null;
 
-  useWinConfetti(wasFinishedOnLoadRef.current ? null : winner, { viewerColor: playerSeat ?? null });
+  const { resultBanner } = useWinConfetti(wasFinishedOnLoadRef.current ? null : winner, { viewerColor: playerSeat ?? null });
 
   const { whiteTime, blackTime } = useGameClock(
     multiplayerSnapshot?.clock ?? null,
@@ -400,6 +400,7 @@ export function MultiplayerGamePage({
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {resultBanner}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar
