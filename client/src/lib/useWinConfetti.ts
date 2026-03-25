@@ -31,38 +31,25 @@ export function useWinConfetti(
     if (isLoser) {
       playDefeatParticles();
     } else {
-      playVictoryConfetti(winner);
+      playVictoryConfetti();
     }
   }, [winner, viewerColor]);
 }
 
-function playVictoryConfetti(winner: PlayerColor) {
-  const duration = 1400;
-  const endTime = Date.now() + duration;
-  const colors =
-    winner === "black"
-      ? ["#1a1410", "#5f554d", "#e0c28a", "#f7ecda"]
-      : ["#f7f3ea", "#d7cab8", "#e0c28a", "#7f6445"];
+function playVictoryConfetti() {
+  const colors = ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff", "#5f27cd", "#01a3a4", "#f368e0", "#ff9f43", "#00d2d3"];
 
-  const frame = () => {
-    confetti({
-      particleCount: 5,
-      startVelocity: 20,
-      spread: 70,
-      origin: {
-        x: 0.15 + Math.random() * 0.7,
-        y: 0.18 + Math.random() * 0.08,
-      },
-      colors,
-      scalar: 0.95,
-    });
-
-    if (Date.now() < endTime) {
-      window.requestAnimationFrame(frame);
-    }
-  };
-
-  frame();
+  confetti({
+    particleCount: 120,
+    startVelocity: 45,
+    spread: 360,
+    origin: { x: 0.5, y: 0.4 },
+    colors,
+    scalar: 1.2,
+    gravity: 0.6,
+    ticks: 200,
+    shapes: ["circle", "square"],
+  });
 }
 
 function playDefeatParticles() {
