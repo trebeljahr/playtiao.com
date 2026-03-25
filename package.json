@@ -16,6 +16,7 @@
     "server": "npm --prefix server run dev"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "@playwright/test": "^1.48.1"
   }
 }

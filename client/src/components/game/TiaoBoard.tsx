@@ -111,6 +111,7 @@ export function TiaoBoard({
   const [hoveredJumpTargetKey, setHoveredJumpTargetKey] = useState<string | null>(
     null
   );
+  const [hoveredEmptyKey, setHoveredEmptyKey] = useState<string | null>(null);
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [undoHovered, setUndoHovered] = useState(false);
   const selectableOrigins = getSelectableJumpOrigins(state).map(
@@ -276,6 +277,7 @@ export function TiaoBoard({
           const isJumpTarget = jumpTargetKeys.includes(pieceKey);
           const isMarkedForCapture = isPositionMarkedForCapture(state, position);
           const isSelectableOrigin = selectableOrigins.includes(pieceKey);
+          const isHoveredEmpty = !piece && hoveredEmptyKey === pieceKey && !disabled && !activeOrigin;
 
           return (
             <button
@@ -291,6 +293,10 @@ export function TiaoBoard({
                 if (showConfirmAffordance && !disabled) {
                   setConfirmHovered(true);
                 }
+
+                if (!piece && !disabled) {
+                  setHoveredEmptyKey(pieceKey);
+                }
               }}
               onPointerLeave={() => {
                 if (hoveredJumpTargetKey === pieceKey) {
@@ -299,6 +305,10 @@ export function TiaoBoard({
 
                 if (showConfirmAffordance) {
                   setConfirmHovered(false);
+                }
+
+                if (hoveredEmptyKey === pieceKey) {
+                  setHoveredEmptyKey(null);
                 }
               }}
               onFocus={() => {
@@ -381,6 +391,15 @@ export function TiaoBoard({
                     isSelectableOrigin &&
                       !disabled &&
                       "shadow-[0_0_0_4px_rgba(242,208,144,0.22),inset_0_2px_10px_rgba(255,255,255,0.18),0_10px_18px_rgba(0,0,0,0.18)]"
+                  )}
+                />
+              ) : isHoveredEmpty ? (
+                <span
+                  className={cn(
+                    "pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm",
+                    state.currentTurn === "black"
+                      ? "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]"
+                      : "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
                   )}
                 />
               ) : null}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { AuthResponse, MultiplayerSnapshot } from "@shared";
@@ -10,11 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/Navbar";
 import { HourglassSpinner } from "@/components/game/GameShared";
 import { useMatchmakingData } from "@/lib/hooks/useMatchmakingData";
-import { cn } from "@/lib/utils";
 
 type MatchmakingPageProps = {
   auth: AuthResponse | null;
@@ -36,6 +34,12 @@ export function MatchmakingPage({ auth, onOpenAuth, onLogout }: MatchmakingPageP
     handleEnterMatchmaking,
     handleCancelMatchmaking,
   } = useMatchmakingData(auth, onMatched);
+
+  useEffect(() => {
+    if (auth && matchmaking.status === "idle" && !matchmakingBusy) {
+      void handleEnterMatchmaking();
+    }
+  }, [auth, matchmaking.status, matchmakingBusy, handleEnterMatchmaking]);
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -69,7 +73,20 @@ export function MatchmakingPage({ auth, onOpenAuth, onLogout }: MatchmakingPageP
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 flex flex-col items-center py-8">
-              {matchmaking.status === "searching" ? (
+              {!auth ? (
+                <div className="w-full space-y-4 text-center">
+                  <p className="text-[#6e5b48]">
+                    Please sign in to enter the global matchmaking queue.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="w-full h-16 text-xl"
+                    onClick={() => onOpenAuth("login")}
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              ) : matchmaking.status === "searching" || matchmakingBusy ? (
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
                     <HourglassSpinner className="h-16 w-16 text-[#a6824d]" />
@@ -89,23 +106,9 @@ export function MatchmakingPage({ auth, onOpenAuth, onLogout }: MatchmakingPageP
                   </Button>
                 </div>
               ) : (
-                <div className="w-full space-y-4">
-                  <p className="text-center text-[#6e5b48]">
-                    Click below to enter the global matchmaking queue.
-                  </p>
-                  <Button
-                    size="lg"
-                    className="w-full h-16 text-xl"
-                    onClick={handleEnterMatchmaking}
-                    disabled={matchmakingBusy || !auth}
-                  >
-                    {matchmakingBusy ? "Entering..." : "Find Match"}
-                  </Button>
-                  {!auth && (
-                    <p className="text-center text-xs text-red-600">
-                      You must be signed in to use matchmaking.
-                    </p>
-                  )}
+                <div className="flex flex-col items-center gap-4">
+                  <HourglassSpinner className="h-16 w-16 text-[#a6824d] opacity-50" />
+                  <p className="text-[#6e5b48]">Initializing matchmaking...</p>
                 </div>
               )}
             </CardContent>

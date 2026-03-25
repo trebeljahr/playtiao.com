@@ -53,6 +53,7 @@ export function ProfilePage({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -143,12 +144,14 @@ export function ProfilePage({
     try {
       const response = await updateAccountProfile({
         displayName,
-        email,
+        email: email || undefined,
+        password: password || undefined,
       });
       onAuthChange(response.auth);
       setProfile(response.profile);
       setDisplayName(response.profile.displayName);
-      setEmail(response.profile.email);
+      setEmail(response.profile.email || "");
+      setPassword("");
       setSuccessMessage("Profile saved.");
     } catch (error) {
       if (isNetworkError(error)) {
@@ -201,9 +204,9 @@ export function ProfilePage({
         onToggleNav={() => setNavOpen((value) => !value)}
         onCloseNav={() => setNavOpen(false)}
         onGoLobby={() => navigate("/")}
-        onGoOverTheBoard={() => navigate("/?view=over-the-board")}
-        onGoMultiplayer={() => navigate("/?view=multiplayer")}
-        onGoComputer={() => navigate("/?view=computer")}
+        onGoOverTheBoard={() => navigate("/local")}
+        onGoMultiplayer={() => navigate("/multiplayer")}
+        onGoComputer={() => navigate("/computer")}
         onGoProfile={() => {
           setNavOpen(false);
           navigate("/profile");
@@ -341,7 +344,7 @@ export function ProfilePage({
                         htmlFor="profile-email"
                         className="text-sm font-medium text-[#4e3d2c]"
                       >
-                        Email
+                        Email (Optional)
                       </label>
                       <Input
                         id="profile-email"
@@ -351,7 +354,24 @@ export function ProfilePage({
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="name@example.com"
                         autoComplete="email"
-                        required
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label
+                        htmlFor="profile-password"
+                        className="text-sm font-medium text-[#4e3d2c]"
+                      >
+                        New Password (Optional)
+                      </label>
+                      <Input
+                        id="profile-password"
+                        name="password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
                       />
                     </div>
 

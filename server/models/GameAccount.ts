@@ -16,10 +16,10 @@ const GameAccountSchema = new Schema<IGameAccount>(
   {
     email: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
       trim: true,
+      sparse: true,
     },
     passwordHash: {
       type: String,
@@ -29,6 +29,7 @@ const GameAccountSchema = new Schema<IGameAccount>(
       type: String,
       required: true,
       trim: true,
+      unique: true,
     },
     profilePicture: {
       type: String,
@@ -60,8 +61,6 @@ const GameAccountSchema = new Schema<IGameAccount>(
     timestamps: true,
   }
 );
-
-GameAccountSchema.index({ displayName: 1 });
 
 const GameAccount =
   models.GameAccount ||

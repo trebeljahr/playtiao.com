@@ -46,6 +46,7 @@ type MatchmakingQueueEntry = {
 
 export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
+  private readonly lobbyConnections = new Map<string, Set<WebSocket>>();
   private readonly socketRooms = new Map<WebSocket, string>();
   private readonly locks = new Map<string, Promise<void>>();
   private readonly matchmakingQueue: MatchmakingQueueEntry[] = [];
@@ -55,6 +56,34 @@ export class GameService {
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
     private readonly seatRandom: () => number = Math.random
   ) {}
+
+  async connectLobby(player: PlayerIdentity, socket: WebSocket): Promise<void> {
+    let userSockets = this.lobbyConnections.get(player.playerId);
+    if (!userSockets) {
+      userSockets = new Set();
+      this.lobbyConnections.set(player.playerId, userSockets);
+    }
+    userSockets.add(socket);
+
+    socket.on("close", () => {
+      userSockets?.delete(socket);
+      if (userSockets?.size === 0) {
+        this.lobbyConnections.delete(player.playerId);
+      }
+    });
+  }
+
+  private broadcastLobby(playerId: string, payload: any): void {
+    const userSockets = this.lobbyConnections.get(playerId);
+    if (!userSockets) return;
+
+    const message = JSON.stringify(payload);
+    for (const socket of userSockets) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(message);
+      }
+    }
+  }
 
   async createGame(
     creator: PlayerIdentity,
@@ -354,6 +383,18 @@ export class GameService {
       }
 
       this.matchmakingMatches.delete(player.playerId);
+    });
+  }
+
+  async testForceFinishGame(gameId: string, winner: PlayerColor): Promise<void> {
+    if (process.env.NODE_ENV === "production") return;
+
+    return this.withLock(this.roomLockKey(gameId), async () => {
+      const room = await this.getRoom(gameId);
+      room.state.score[winner] = 10;
+      room.status = "finished";
+      const savedRoom = await this.saveRoom(room);
+      this.broadcastSnapshot(savedRoom);
     });
   }
 
@@ -763,29 +804,36 @@ export class GameService {
   }
 
   private broadcastSnapshot(room: StoredMultiplayerRoom): void {
-    const connections = this.connections.get(room.id);
-    if (!connections || connections.size === 0) {
-      return;
-    }
-
     const snapshot = this.toSnapshot(room);
     const message = JSON.stringify({
       type: "snapshot",
       snapshot,
     });
 
-    for (const [socket] of connections.entries()) {
-      if (socket.readyState !== WebSocket.OPEN) {
-        connections.delete(socket);
-        this.socketRooms.delete(socket);
-        continue;
+    // Notify active game connections
+    const connections = this.connections.get(room.id);
+    if (connections && connections.size > 0) {
+      for (const [socket] of connections.entries()) {
+        if (socket.readyState !== WebSocket.OPEN) {
+          connections.delete(socket);
+          this.socketRooms.delete(socket);
+          continue;
+        }
+
+        socket.send(message);
       }
 
-      socket.send(message);
+      if (connections.size === 0) {
+        this.connections.delete(room.id);
+      }
     }
 
-    if (connections.size === 0) {
-      this.connections.delete(room.id);
+    // Also notify lobby for participants
+    for (const player of room.players) {
+      this.broadcastLobby(player.playerId, {
+        type: "game-update",
+        summary: this.toSummary(room, player.playerId),
+      });
     }
   }
 

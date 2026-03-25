@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { AuthResponse, MatchmakingState, MultiplayerSnapshot } from "@shared";
-import { enterMatchmaking, leaveMatchmaking } from "../api";
+import { enterMatchmaking, leaveMatchmaking, getMatchmakingState } from "../api";
 import { toastError } from "../errors";
 
 export function useMatchmakingData(
@@ -11,9 +11,14 @@ export function useMatchmakingData(
     status: "idle",
   });
   const [matchmakingBusy, setMatchmakingBusy] = useState(false);
+  const pollTimerRef = useRef<number | null>(null);
 
   const stopMatchmaking = useCallback(
     async (options: { silent?: boolean } = {}) => {
+      if (pollTimerRef.current !== null) {
+        window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
       try {
         await leaveMatchmaking();
         setMatchmaking({ status: "idle" });
@@ -25,6 +30,30 @@ export function useMatchmakingData(
     },
     [],
   );
+
+  const pollMatchmakingStatus = useCallback(async () => {
+    try {
+      const response = await getMatchmakingState();
+      setMatchmaking(response.matchmaking);
+
+      if (response.matchmaking.status === "matched") {
+        if (pollTimerRef.current !== null) {
+          window.clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
+        onMatched(response.matchmaking.snapshot);
+      }
+    } catch (error) {
+      // Silent error for polling
+    }
+  }, [onMatched]);
+
+  const startPolling = useCallback(() => {
+    if (pollTimerRef.current !== null) {
+      window.clearInterval(pollTimerRef.current);
+    }
+    pollTimerRef.current = window.setInterval(pollMatchmakingStatus, 2000);
+  }, [pollMatchmakingStatus]);
 
   const handleEnterMatchmaking = useCallback(async () => {
     if (!auth) {
@@ -40,13 +69,15 @@ export function useMatchmakingData(
       if (response.matchmaking.status === "matched") {
         onMatched(response.matchmaking.snapshot);
         await stopMatchmaking({ silent: true });
+      } else if (response.matchmaking.status === "searching") {
+        startPolling();
       }
     } catch (error) {
       toastError(error);
     } finally {
       setMatchmakingBusy(false);
     }
-  }, [auth, onMatched, stopMatchmaking]);
+  }, [auth, onMatched, stopMatchmaking, startPolling]);
 
   const handleCancelMatchmaking = useCallback(async () => {
     setMatchmakingBusy(true);
@@ -56,6 +87,14 @@ export function useMatchmakingData(
       setMatchmakingBusy(false);
     }
   }, [stopMatchmaking]);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current !== null) {
+        window.clearInterval(pollTimerRef.current);
+      }
+    };
+  }, []);
 
   return {
     matchmaking,

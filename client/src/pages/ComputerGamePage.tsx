@@ -2,12 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
@@ -29,20 +24,26 @@ type ComputerGamePageProps = {
   onLogout: () => void;
 };
 
-export function ComputerGamePage({ auth, onOpenAuth, onLogout }: ComputerGamePageProps) {
+export function ComputerGamePage({
+  auth,
+  onOpenAuth,
+  onLogout,
+}: ComputerGamePageProps) {
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
   const computer = useComputerGame();
 
   useStonePlacementSound(computer.localGame);
-  const winner = isGameOver(computer.localGame) ? getWinner(computer.localGame) : null;
+  const winner = isGameOver(computer.localGame)
+    ? getWinner(computer.localGame)
+    : null;
   useWinConfetti(winner);
 
   const localStatusTitle = winner
     ? `${formatPlayerColor(winner)} wins!`
     : computer.computerThinking
-    ? "Computer thinking..."
-    : `${formatPlayerColor(computer.localGame.currentTurn)} to move`;
+      ? "Computer thinking..."
+      : `${formatPlayerColor(computer.localGame.currentTurn)} to move`;
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -137,7 +138,10 @@ export function ComputerGamePage({ auth, onOpenAuth, onLogout }: ComputerGamePag
 
                   {winner && (
                     <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                      <Button variant="secondary" onClick={computer.resetLocalGame}>
+                      <Button
+                        variant="secondary"
+                        onClick={computer.resetLocalGame}
+                      >
                         Restart board
                       </Button>
                       <Button variant="ghost" onClick={() => navigate("/")}>

@@ -209,4 +209,20 @@ router.delete("/matchmaking", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/:gameId/test-finish", async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ message: "Not allowed in production." });
+  }
+
+  const { gameId } = req.params;
+  const { winner } = req.body as { winner: "white" | "black" };
+
+  try {
+    await gameService.testForceFinishGame(gameId, winner);
+    res.status(200).json({ message: "Game finished." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to finish game." });
+  }
+});
+
 export default router;

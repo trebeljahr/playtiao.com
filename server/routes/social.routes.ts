@@ -186,6 +186,50 @@ function respondWithGameServiceError(
   });
 }
 
+async function notifyLobbyUpdate(playerId: string) {
+  const account = await GameAccount.findById(playerId);
+  if (!account) return;
+
+  await expireStaleInvitations();
+
+  const [friends, incomingFriendRequests, outgoingFriendRequests] =
+    await Promise.all([
+      loadAccountsById(account.friends),
+      loadAccountsById(account.receivedFriendRequests),
+      loadAccountsById(account.sentFriendRequests),
+    ]);
+
+  const [incomingInvitations, outgoingInvitations] = await Promise.all([
+    loadInvitationSummaries({
+      recipientId: account._id,
+      status: "pending",
+      expiresAt: {
+        $gt: new Date(),
+      },
+    }),
+    loadInvitationSummaries({
+      senderId: account._id,
+      status: "pending",
+      expiresAt: {
+        $gt: new Date(),
+      },
+    }),
+  ]);
+
+  const overview: SocialOverview = {
+    friends,
+    incomingFriendRequests,
+    outgoingFriendRequests,
+    incomingInvitations,
+    outgoingInvitations,
+  };
+
+  gameService["broadcastLobby"](playerId, {
+    type: "social-update",
+    overview,
+  });
+}
+
 router.get("/player/social/overview", async (req: Request, res: Response) => {
   const account = await requireAccount(req, res);
   if (!account) {
@@ -372,6 +416,9 @@ router.post(
 
     await Promise.all([account.save(), requester.save()]);
 
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(requester.id);
+
     return res.status(200).json({
       message: "Friend request accepted.",
     });
@@ -412,6 +459,9 @@ router.post(
 
     await Promise.all([account.save(), requester.save()]);
 
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(requester.id);
+
     return res.status(200).json({
       message: "Friend request declined.",
     });
@@ -451,6 +501,9 @@ router.post(
     ) as mongoose.Types.ObjectId[];
 
     await Promise.all([account.save(), targetAccount.save()]);
+
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(targetAccount.id);
 
     return res.status(200).json({
       message: "Friend request cancelled.",

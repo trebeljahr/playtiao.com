@@ -138,10 +138,15 @@ export function useMultiplayerGame(
     }
 
     clearReconnectTimer();
-    const delay = Math.min(
-      1500 * Math.max(1, reconnectAttemptRef.current + 1),
-      7000,
+    
+    // Jittered exponential backoff: 1.5s, 3s, 6s, max 10s.
+    const baseDelay = Math.min(
+      1500 * Math.pow(2, Math.min(reconnectAttemptRef.current, 3)),
+      10000
     );
+    const jitter = Math.random() * 1000;
+    const delay = baseDelay + jitter;
+
     reconnectAttemptRef.current += 1;
     logWebSocketDebug("schedule-reconnect", {
       delay,
@@ -166,6 +171,7 @@ export function useMultiplayerGame(
     });
 
     try {
+      // Poll server status before re-establishing websocket
       const response = await accessMultiplayerGame(snapshot.gameId);
       connectToRoom(response.snapshot, {
         preserveView: true,

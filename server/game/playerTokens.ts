@@ -35,7 +35,7 @@ export function createGuestAuth(displayName?: string): AuthResponse {
 
 export function createAccountAuth(account: {
   id: string;
-  email: string;
+  email?: string;
   displayName: string;
   profilePicture?: string;
 }): AuthResponse {

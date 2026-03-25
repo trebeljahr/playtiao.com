@@ -58,7 +58,11 @@ export function useLocalGame() {
           localSelection.x === position.x &&
           localSelection.y === position.y
         ) {
-          setLocalSelection(null);
+          if (localGame.pendingJump.length > 0) {
+            handleLocalConfirmPendingJump();
+          } else {
+            setLocalSelection(null);
+          }
           return;
         }
 

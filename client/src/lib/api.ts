@@ -12,7 +12,7 @@ type JsonBody = Record<string, unknown> | undefined;
 
 export type AccountProfile = {
   displayName: string;
-  email: string;
+  email?: string;
   profilePicture?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -125,19 +125,19 @@ export function getCurrentPlayer() {
   return request<{ player: PlayerIdentity }>("/api/player/me");
 }
 
-export function loginWithEmail(email: string, password: string) {
+export function login(identifier: string, password: string) {
   return request<AuthResponse>("/api/player/login", {
     method: "POST",
     body: {
-      email,
+      identifier,
       password,
     },
   });
 }
 
 export function signUpWithEmail(
-  email: string,
-  password: string,
+  email?: string,
+  password?: string,
   displayName?: string
 ) {
   return request<AuthResponse>("/api/player/signup", {
@@ -281,6 +281,7 @@ export function updateAccountProfile(
   body: {
     displayName?: string;
     email?: string;
+    password?: string;
   }
 ) {
   return request<{ auth: AuthResponse; profile: AccountProfile }>(

@@ -230,7 +230,7 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
           <div className="flex justify-center xl:min-h-[calc(100dvh-1.5rem)]">
-            <div className={cn("relative mx-auto w-full", multiplayerYourTurn ? "cursor-default" : "cursor-wait")} style={boardWrapStyle}>
+            <div className="relative mx-auto w-full" style={boardWrapStyle}>
               {multiplayerSnapshot && (
                 <TiaoBoard
                   state={multiplayerSnapshot.state}
@@ -391,11 +391,39 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
                       {winner && (
                         <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
                           {multiplayerSnapshot.rematch?.requestedBy.includes(playerSeat as PlayerColor) ? (
-                            <p className="text-center text-sm font-medium text-[#56703f]">Rematch requested. Waiting for opponent...</p>
+                            <div className="space-y-2">
+                              <p className="text-center text-sm font-medium text-[#56703f]">
+                                Rematch requested. Waiting for opponent...
+                              </p>
+                              {(multiplayerSnapshot.rematch?.requestedBy ?? []).some(color => color !== playerSeat) && (
+                                <p className="text-center text-xs text-[#6e5b48]">
+                                  Your opponent also wants a rematch! It should start any second.
+                                </p>
+                              )}
+                            </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2">
-                              <Button variant="secondary" onClick={() => sendMultiplayerMessage({ type: "request-rematch" })}>Rematch</Button>
-                              <Button variant="outline" onClick={() => sendMultiplayerMessage({ type: "decline-rematch" })}>Decline</Button>
+                              <Button
+                                variant="secondary"
+                                onClick={() => sendMultiplayerMessage({ type: "request-rematch" })}
+                              >
+                                {multiplayerSnapshot.rematch?.requestedBy.length ? "Accept Rematch" : "Rematch"}
+                              </Button>
+                              {(multiplayerSnapshot.rematch?.requestedBy ?? []).some(color => color !== playerSeat) ? (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => sendMultiplayerMessage({ type: "decline-rematch" })}
+                                >
+                                  Decline
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => navigate("/")}
+                                >
+                                  Leave
+                                </Button>
+                              )}
                             </div>
                           )}
                           <Button variant="ghost" onClick={() => navigate("/")}>Back to lobby</Button>

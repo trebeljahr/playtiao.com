@@ -61,6 +61,18 @@ websocketServer.on("connection", (socket, request) => {
       return;
     }
 
+    if (url.pathname === "/api/ws/lobby") {
+      const player = await getPlayerFromUpgradeRequest(request);
+      if (!player || player.kind !== "account") {
+        console.warn(`[ws] unauthorized lobby connection attempt`);
+        socket.close();
+        return;
+      }
+
+      await gameService.connectLobby(player, socket);
+      return;
+    }
+
     if (!gameId) {
       sendJson(socket, {
         type: "error",

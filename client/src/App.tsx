@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   createGuest,
   getCurrentPlayer,
-  loginWithEmail,
+  login,
   logoutPlayer,
   signUpWithEmail,
 } from "@/lib/api";
@@ -136,7 +136,7 @@ export function App() {
     setAuthDialogError(null);
 
     try {
-      const nextAuth = await loginWithEmail(loginEmail, loginPassword);
+      const nextAuth = await login(loginEmail, loginPassword);
       applyAuth(nextAuth);
       setAuthDialogOpen(false);
     } catch (error) {
@@ -337,15 +337,14 @@ export function App() {
                   htmlFor="login-email"
                   className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
                 >
-                  Email
+                  Username or Email
                 </label>
                 <Input
                   id="login-email"
-                  name="email"
-                  type="email"
+                  name="identifier"
                   value={loginEmail}
                   onChange={(event) => setLoginEmail(event.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="name or name@example.com"
                   autoComplete="username email"
                   required
                 />
@@ -391,14 +390,14 @@ export function App() {
                   htmlFor="signup-display-name"
                   className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
                 >
-                  Display name
+                  Username
                 </label>
                 <Input
                   id="signup-display-name"
                   name="name"
                   value={signupDisplayName}
                   onChange={(event) => setSignupDisplayName(event.target.value)}
-                  placeholder="Your Name"
+                  placeholder="Username"
                   autoComplete="name"
                   required
                 />
@@ -408,7 +407,7 @@ export function App() {
                   htmlFor="signup-email"
                   className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
                 >
-                  Email
+                  Email (Optional)
                 </label>
                 <Input
                   id="signup-email"
@@ -418,7 +417,6 @@ export function App() {
                   onChange={(event) => setSignupEmail(event.target.value)}
                   placeholder="name@example.com"
                   autoComplete="email"
-                  required
                 />
               </div>
               <div className="space-y-1">

@@ -28,7 +28,7 @@ function isDatabaseReady(): boolean {
 
 function buildAccountAuth(account: {
   id: string;
-  email: string;
+  email?: string;
   displayName: string;
   profilePicture?: string;
 }) {
@@ -42,7 +42,7 @@ function buildAccountAuth(account: {
 
 function serializeAccountProfile(account: {
   displayName: string;
-  email: string;
+  email?: string;
   profilePicture?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -116,17 +116,49 @@ router.post("/signup", async (req: Request, res: Response) => {
   };
 
   const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail || !password) {
+  const trimmedDisplayName = displayName?.trim();
+
+  if (!password || (!normalizedEmail && !trimmedDisplayName)) {
     return res.status(400).json({
-      message: "Provide an email address and password.",
+      message: "Provide a username or email address, and a password.",
     });
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  if (!emailRegex.test(normalizedEmail)) {
-    return res.status(400).json({
-      message: "Provide a valid email address.",
+  if (normalizedEmail) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({
+        message: "Provide a valid email address.",
+      });
+    }
+
+    const existingAccountByEmail = await GameAccount.findOne({
+      email: normalizedEmail,
     });
+
+    if (existingAccountByEmail) {
+      return res.status(409).json({
+        message: "An account with that email already exists.",
+      });
+    }
+  }
+
+  if (trimmedDisplayName) {
+    if (trimmedDisplayName.length < 3) {
+      return res.status(400).json({
+        message: "Usernames must be at least 3 characters long.",
+      });
+    }
+
+    const existingAccountByDisplayName = await GameAccount.findOne({
+      displayName: trimmedDisplayName,
+    });
+
+    if (existingAccountByDisplayName) {
+      return res.status(409).json({
+        message: "That username is already taken.",
+      });
+    }
   }
 
   if (password.length < 8) {
@@ -135,21 +167,11 @@ router.post("/signup", async (req: Request, res: Response) => {
     });
   }
 
-  const existingAccount = await GameAccount.findOne({
-    email: normalizedEmail,
-  });
-
-  if (existingAccount) {
-    return res.status(409).json({
-      message: "An account with that email already exists.",
-    });
-  }
-
   const passwordHash = bcrypt.hashSync(password, saltRounds);
   const account = await GameAccount.create({
-    email: normalizedEmail,
+    email: normalizedEmail || undefined,
     passwordHash,
-    displayName: displayName?.trim() || deriveDisplayNameFromEmail(normalizedEmail),
+    displayName: trimmedDisplayName || (normalizedEmail ? deriveDisplayNameFromEmail(normalizedEmail) : `Player-${randomUUID().slice(0, 8)}`),
   });
 
   const auth = buildAccountAuth(account);
@@ -165,25 +187,30 @@ router.post("/login", async (req: Request, res: Response) => {
     });
   }
 
-  const { email, password } = req.body as {
-    email?: string;
+  const { identifier, password } = req.body as {
+    identifier?: string;
     password?: string;
   };
 
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail || !password) {
+  if (!identifier || !password) {
     return res.status(400).json({
-      message: "Provide an email address and password.",
+      message: "Provide a username or email address, and a password.",
     });
   }
 
+  const trimmedIdentifier = identifier.trim();
+  const lowercaseIdentifier = trimmedIdentifier.toLowerCase();
+
   const account = await GameAccount.findOne({
-    email: normalizedEmail,
+    $or: [
+      { email: lowercaseIdentifier },
+      { displayName: trimmedIdentifier },
+    ],
   });
 
   if (!account) {
     return res.status(401).json({
-      message: "No account was found for that email address.",
+      message: "No account was found with that identifier.",
     });
   }
 
@@ -249,24 +276,36 @@ router.put("/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { displayName, email } = req.body as {
+  const { displayName, email, password } = req.body as {
     displayName?: string;
     email?: string;
+    password?: string;
   };
 
   const normalizedEmail = email?.trim().toLowerCase();
   const sanitizedDisplayName = displayName?.trim();
 
-  if (!normalizedEmail && !sanitizedDisplayName) {
+  if (!normalizedEmail && !sanitizedDisplayName && !password) {
     return res.status(400).json({
-      message: "Provide a display name or email address to update.",
+      message: "Provide a display name, email address, or password to update.",
     });
   }
 
   if (sanitizedDisplayName !== undefined) {
-    if (!sanitizedDisplayName) {
+    if (!sanitizedDisplayName || sanitizedDisplayName.length < 3) {
       return res.status(400).json({
-        message: "Display name cannot be empty.",
+        message: "Display name must be at least 3 characters long.",
+      });
+    }
+
+    const existingAccountByDisplayName = await GameAccount.findOne({
+      displayName: sanitizedDisplayName,
+      _id: { $ne: account._id },
+    });
+
+    if (existingAccountByDisplayName) {
+      return res.status(409).json({
+        message: "That username is already taken.",
       });
     }
 
@@ -274,25 +313,39 @@ router.put("/profile", async (req: Request, res: Response) => {
   }
 
   if (normalizedEmail !== undefined) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    if (!emailRegex.test(normalizedEmail)) {
+    if (normalizedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({
+          message: "Provide a valid email address.",
+        });
+      }
+
+      const existingAccount = await GameAccount.findOne({
+        email: normalizedEmail,
+        _id: { $ne: account._id },
+      });
+
+      if (existingAccount) {
+        return res.status(409).json({
+          message: "An account with that email already exists.",
+        });
+      }
+
+      account.email = normalizedEmail;
+    } else {
+      account.email = undefined;
+    }
+  }
+
+  if (password !== undefined) {
+    if (password.length < 8) {
       return res.status(400).json({
-        message: "Provide a valid email address.",
+        message: "Passwords must be at least 8 characters long.",
       });
     }
 
-    const existingAccount = await GameAccount.findOne({
-      email: normalizedEmail,
-      _id: { $ne: account._id },
-    });
-
-    if (existingAccount) {
-      return res.status(409).json({
-        message: "An account with that email already exists.",
-      });
-    }
-
-    account.email = normalizedEmail;
+    account.passwordHash = bcrypt.hashSync(password, saltRounds);
   }
 
   await account.save();

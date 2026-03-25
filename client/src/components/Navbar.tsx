@@ -162,7 +162,7 @@ export function Navbar({
   const navItemClasses =
     "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";
   const activeNavItemClasses =
-    "bg-[rgba(255,248,232,0.94)] text-[#20120a] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] hover:text-[#20120a] active:translate-y-0";
+    "bg-[rgba(255,248,232,0.94)] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] active:translate-y-0";
 
   const handleNav = (path: string) => {
     onCloseNav();
