@@ -14,6 +14,7 @@ import type {
   SocialPlayerSummary,
 } from "@shared";
 import { cn } from "@/lib/utils";
+import { formatClockTime } from "./GameClock";
 
 // --- Icons ---
 
@@ -425,6 +426,10 @@ type AnimatedScoreTileProps = {
   labelClassName: string;
   valueClassName?: string;
   playerInfo?: AnimatedScoreTilePlayerInfo;
+  /** Remaining clock time in ms. When provided, shows a formatted clock next to the score. */
+  clockMs?: number | null;
+  /** Whether this player's clock is currently ticking. */
+  clockActive?: boolean;
 };
 
 export function AnimatedScoreTile({
@@ -435,6 +440,8 @@ export function AnimatedScoreTile({
   labelClassName,
   valueClassName = "mt-2 text-3xl font-semibold tabular-nums",
   playerInfo,
+  clockMs,
+  clockActive,
 }: AnimatedScoreTileProps) {
   const tileControls = useAnimationControls();
   const valueControls = useAnimationControls();
@@ -549,13 +556,28 @@ export function AnimatedScoreTile({
         </>
       )}
       <p className={labelClassName}>{label}</p>
-      <motion.p
-        initial={{ scale: 1, y: 0 }}
-        animate={valueControls}
-        className={valueClassName}
-      >
-        {value}
-      </motion.p>
+      <div className="flex items-baseline gap-2">
+        <motion.p
+          initial={{ scale: 1, y: 0 }}
+          animate={valueControls}
+          className={valueClassName}
+        >
+          {value}
+        </motion.p>
+        {clockMs != null && (
+          <span
+            className={cn(
+              "font-mono text-sm tabular-nums opacity-70",
+              clockActive && "opacity-100",
+              clockMs < 10_000 && clockMs > 0 && "text-red-400 font-bold opacity-100",
+              clockMs < 30_000 && clockMs >= 10_000 && "text-amber-400 font-semibold opacity-100",
+              clockMs <= 0 && "text-red-400 font-bold opacity-100",
+            )}
+          >
+            {formatClockTime(clockMs)}
+          </span>
+        )}
+      </div>
     </motion.div>
   );
 }

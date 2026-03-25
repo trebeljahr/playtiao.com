@@ -39,7 +39,7 @@ import {
   replayToMove,
 } from "@shared";
 import { MoveList, MoveListNavButtons } from "@/components/game/MoveList";
-import { GameClock } from "@/components/game/GameClock";
+import { useGameClock, InlineClockBadge } from "@/components/game/GameClock";
 import { cn } from "@/lib/utils";
 import { accessMultiplayerGame } from "@/lib/api";
 
@@ -192,6 +192,14 @@ export function MultiplayerGamePage({
       : null;
 
   useWinConfetti(wasFinishedOnLoadRef.current ? null : winner, { viewerColor: playerSeat ?? null });
+
+  const { whiteTime, blackTime } = useGameClock(
+    multiplayerSnapshot?.clock ?? null,
+    multiplayerSnapshot?.state.currentTurn ?? "white",
+    multiplayerSnapshot?.status ?? "waiting",
+  );
+  const yourClockMs = playerSeat ? (playerSeat === "white" ? whiteTime : blackTime) : null;
+  const hasClock = !!multiplayerSnapshot?.timeControl;
 
   const isMultiplayerParticipant = !!playerSeat;
 
@@ -451,6 +459,9 @@ export function MultiplayerGamePage({
                           className="flex items-center rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
                         >
                           Your move
+                          {hasClock && yourClockMs != null && (
+                            <InlineClockBadge timeMs={yourClockMs} />
+                          )}
                         </motion.div>
                       ) : multiplayerWaitingOnOpponent ? (
                         <motion.div
@@ -646,6 +657,8 @@ export function MultiplayerGamePage({
                                   pulseKey={0}
                                   className={tileStyle}
                                   labelClassName="text-xs uppercase tracking-wider"
+                                  clockMs={hasClock ? (color === "white" ? whiteTime : blackTime) : null}
+                                  clockActive={hasClock && multiplayerSnapshot.state.currentTurn === color && multiplayerSnapshot.status === "active"}
                                   playerInfo={
                                     seat
                                       ? {
@@ -683,16 +696,6 @@ export function MultiplayerGamePage({
                             },
                           )}
                         </div>
-                      )}
-
-                      {multiplayerSnapshot.timeControl && (
-                        <GameClock
-                          clock={multiplayerSnapshot.clock}
-                          timeControl={multiplayerSnapshot.timeControl}
-                          currentTurn={multiplayerSnapshot.state.currentTurn}
-                          status={multiplayerSnapshot.status}
-                          playerSeat={playerSeat ?? null}
-                        />
                       )}
 
                       {multiplayerSnapshot.status === "active" &&
