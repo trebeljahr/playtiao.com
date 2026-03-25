@@ -2,8 +2,8 @@
 // Starts client, server, and (optionally) docs for development.
 //
 // Usage:
-//   node scripts/dev.mjs                Random ports (client 3001-3999, docs 4001-4999, server 5001-5999)
-//   node scripts/dev.mjs --fixed        Fixed ports (client 3000, docs 4004, server 5000)
+//   node scripts/dev.mjs                Random ports (client 3100-3999, docs 4100-4999, server 5100-5999)
+//   node scripts/dev.mjs --fixed        Fixed ports (client 3000, docs 4000, server 5000)
 //   node scripts/dev.mjs --docs         Include docs site
 //   node scripts/dev.mjs --fixed --docs Fixed ports with docs
 //   npm run dev                         Random ports (client + server)
@@ -50,15 +50,15 @@ if (process.env.PORT) {
 } else if (fixedMode) {
   clientPort = 3000;
 } else {
-  clientPort = await findRandomFreePort(3001, 3999);
+  clientPort = await findRandomFreePort(3100, 3999);
 }
 
 if (process.env.DOCS_PORT) {
   docsPort = parseInt(process.env.DOCS_PORT, 10);
 } else if (fixedMode) {
-  docsPort = 4004;
+  docsPort = 4000;
 } else {
-  docsPort = await findRandomFreePort(4001, 4999);
+  docsPort = await findRandomFreePort(4100, 4999);
 }
 
 if (process.env.API_PORT) {
@@ -66,7 +66,7 @@ if (process.env.API_PORT) {
 } else if (fixedMode) {
   apiPort = 5000;
 } else {
-  apiPort = await findRandomFreePort(5001, 5999);
+  apiPort = await findRandomFreePort(5100, 5999);
 }
 
 console.log(`\n  Mode:   ${fixedMode ? "fixed" : "random"}`);
