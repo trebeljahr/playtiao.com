@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate, useLocation } from "react-router-dom";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,11 +13,6 @@ type NavbarProps = {
   navOpen: boolean;
   onToggleNav: () => void;
   onCloseNav: () => void;
-  onGoLobby: () => void;
-  onGoOverTheBoard: () => void;
-  onGoMultiplayer: () => void;
-  onGoComputer: () => void;
-  onGoProfile: () => void;
   onOpenAuth: (mode: AuthDialogMode) => void;
   onLogout: () => void;
 };
@@ -155,14 +151,11 @@ export function Navbar({
   navOpen,
   onToggleNav,
   onCloseNav,
-  onGoLobby,
-  onGoOverTheBoard,
-  onGoMultiplayer,
-  onGoComputer,
-  onGoProfile,
   onOpenAuth,
   onLogout,
 }: NavbarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const gameMode =
     mode === "local" || mode === "computer" || mode === "multiplayer";
   const minimalMode = gameMode || mode === "lobby";
@@ -170,26 +163,46 @@ export function Navbar({
     "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";
   const activeNavItemClasses =
     "bg-[rgba(255,248,232,0.94)] text-[#20120a] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] hover:text-[#20120a] active:translate-y-0";
+
+  const handleNav = (path: string) => {
+    onCloseNav();
+    navigate(path);
+  };
+
   const navItems = [
     {
       label: "Lobby",
-      active: mode === "lobby",
-      onClick: onGoLobby,
+      active: location.pathname === "/",
+      onClick: () => handleNav("/"),
     },
     {
       label: "Over the Board",
-      active: mode === "local",
-      onClick: onGoOverTheBoard,
+      active: location.pathname === "/local",
+      onClick: () => handleNav("/local"),
     },
-    {
-      label: "Multiplayer",
-      active: mode === "multiplayer",
-      onClick: onGoMultiplayer,
-    },
+    ...(location.pathname.startsWith("/game/")
+      ? [
+          {
+            label: "Multiplayer",
+            active: true,
+            onClick: () => {},
+          },
+        ]
+      : []),
     {
       label: "Against computer",
-      active: mode === "computer",
-      onClick: onGoComputer,
+      active: location.pathname === "/computer",
+      onClick: () => handleNav("/computer"),
+    },
+    {
+      label: "Friends",
+      active: location.pathname === "/friends",
+      onClick: () => handleNav("/friends"),
+    },
+    {
+      label: "My Games",
+      active: location.pathname === "/games",
+      onClick: () => handleNav("/games"),
     },
   ];
 
@@ -216,7 +229,7 @@ export function Navbar({
   const accountControls =
     auth?.player.kind === "account" ? (
       <>
-        <Button variant="secondary" size="sm" onClick={onGoProfile}>
+        <Button variant="secondary" size="sm" onClick={() => handleNav("/profile")}>
           Profile
         </Button>
         <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={onLogout}>
@@ -253,10 +266,7 @@ export function Navbar({
         <Brand
           compact={gameMode}
           className={cn("shrink-0", minimalMode && "-translate-y-[2px]")}
-          onClick={() => {
-            onCloseNav();
-            onGoLobby();
-          }}
+          onClick={() => handleNav("/")}
         />
         {!minimalMode ? (
           <Button
@@ -281,10 +291,7 @@ export function Navbar({
               "disabled:opacity-100",
               item.active && activeNavItemClasses
             )}
-            onClick={() => {
-              onCloseNav();
-              item.onClick();
-            }}
+            onClick={item.onClick}
           >
             {item.label}
           </Button>
@@ -309,10 +316,7 @@ export function Navbar({
         <div className="mt-4 grid gap-2">
           {auth?.player.kind === "account" ? (
             <>
-              <Button variant="secondary" className="w-full justify-start" onClick={() => {
-                onCloseNav();
-                onGoProfile();
-              }}>
+              <Button variant="secondary" className="w-full justify-start" onClick={() => handleNav("/profile")}>
                 Profile
               </Button>
               <Button variant="ghost" className="w-full justify-start text-[#28170e]" onClick={() => {
@@ -359,7 +363,7 @@ export function Navbar({
         <nav className="sticky top-0 z-40 border-b border-[#af8a56]/35 bg-[linear-gradient(180deg,rgba(245,223,178,0.97),rgba(225,189,119,0.98))] shadow-[0_20px_40px_-28px_rgba(96,63,24,0.4)] backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <Brand onClick={onGoLobby} />
+              <Brand onClick={() => handleNav("/")} />
             </div>
 
             {desktopNav}

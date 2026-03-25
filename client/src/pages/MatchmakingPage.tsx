@@ -1,0 +1,117 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import type { AuthResponse, MultiplayerSnapshot } from "@shared";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Navbar } from "@/components/Navbar";
+import { HourglassSpinner } from "@/components/game/GameShared";
+import { useMatchmakingData } from "@/lib/hooks/useMatchmakingData";
+import { cn } from "@/lib/utils";
+
+type MatchmakingPageProps = {
+  auth: AuthResponse | null;
+  onOpenAuth: (mode: "login" | "signup") => void;
+  onLogout: () => void;
+};
+
+export function MatchmakingPage({ auth, onOpenAuth, onLogout }: MatchmakingPageProps) {
+  const navigate = useNavigate();
+  const [navOpen, setNavOpen] = useState(false);
+
+  const onMatched = (snapshot: MultiplayerSnapshot) => {
+    navigate(`/game/${snapshot.gameId}`);
+  };
+
+  const {
+    matchmaking,
+    matchmakingBusy,
+    handleEnterMatchmaking,
+    handleCancelMatchmaking,
+  } = useMatchmakingData(auth, onMatched);
+
+  const paperCard =
+    "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
+
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+
+      <Navbar
+        mode="lobby"
+        auth={auth}
+        navOpen={navOpen}
+        onToggleNav={() => setNavOpen((v) => !v)}
+        onCloseNav={() => setNavOpen(false)}
+        onGoLobby={() => navigate("/")}
+        onGoOverTheBoard={() => navigate("/local")}
+        onGoMultiplayer={() => navigate("/multiplayer")}
+        onGoComputer={() => navigate("/computer")}
+        onGoProfile={() => navigate("/profile")}
+        onOpenAuth={onOpenAuth}
+        onLogout={onLogout}
+      />
+
+      <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className={paperCard}>
+            <CardHeader className="text-center">
+              <CardTitle className="text-4xl text-[#2b1e14]">Matchmaking</CardTitle>
+              <CardDescription className="text-[#6e5b48]">
+                Find an opponent online and start building your game history.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 flex flex-col items-center py-8">
+              {matchmaking.status === "searching" ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <HourglassSpinner className="h-16 w-16 text-[#a6824d]" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-4 border-[#a6824d]/20"
+                      animate={{ scale: [1, 1.2, 1], opacity: [1, 0, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </div>
+                  <p className="text-lg font-semibold text-[#5d4732]">Searching for opponent...</p>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelMatchmaking}
+                    disabled={matchmakingBusy}
+                  >
+                    Cancel Search
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full space-y-4">
+                  <p className="text-center text-[#6e5b48]">
+                    Click below to enter the global matchmaking queue.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="w-full h-16 text-xl"
+                    onClick={handleEnterMatchmaking}
+                    disabled={matchmakingBusy || !auth}
+                  >
+                    {matchmakingBusy ? "Entering..." : "Find Match"}
+                  </Button>
+                  {!auth && (
+                    <p className="text-center text-xs text-red-600">
+                      You must be signed in to use matchmaking.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+    </div>
+  );
+}

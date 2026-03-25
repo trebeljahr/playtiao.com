@@ -106,6 +106,14 @@ export type SocialOverview = {
   outgoingInvitations: GameInvitationSummary[];
 };
 
+export const EMPTY_SOCIAL_OVERVIEW: SocialOverview = {
+  friends: [],
+  incomingFriendRequests: [],
+  outgoingFriendRequests: [],
+  incomingInvitations: [],
+  outgoingInvitations: [],
+};
+
 export type GameActionMessage =
   | {
       type: "place-piece";

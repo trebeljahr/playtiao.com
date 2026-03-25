@@ -1,0 +1,392 @@
+import { useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import {
+  AuthResponse,
+  GameState,
+  Position,
+  PlayerColor,
+  MultiplayerSnapshot,
+  ClientToServerMessage,
+  ServerToClientMessage,
+  isGameOver,
+  getJumpTargets,
+  jumpPiece,
+  placePiece,
+  confirmPendingJump,
+  undoPendingJumpStep,
+  arePositionsEqual,
+  getPendingJumpDestination,
+} from "@shared";
+import { buildWebSocketUrl, accessMultiplayerGame } from "../api";
+import { toastError, readableError, isNetworkError } from "../errors";
+import { createOptimisticSnapshot } from "../../components/game/GameShared";
+
+export type ConnectionState = "idle" | "connecting" | "connected" | "disconnected";
+
+export function useMultiplayerGame(
+  auth: AuthResponse | null,
+  gameId: string | null,
+  options: {
+    onSync?: () => void;
+    websocketDebugEnabled?: boolean;
+  } = {},
+) {
+  const [multiplayerSnapshot, setMultiplayerSnapshot] =
+    useState<MultiplayerSnapshot | null>(null);
+  const [multiplayerSelection, setMultiplayerSelection] =
+    useState<Position | null>(null);
+  const [multiplayerError, setMultiplayerError] = useState<string | null>(null);
+  const [multiplayerBusy, setMultiplayerBusy] = useState(false);
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("idle");
+
+  const socketRef = useRef<WebSocket | null>(null);
+  const latestAuthRef = useRef<AuthResponse | null>(auth);
+  const latestMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
+    multiplayerSnapshot,
+  );
+  const confirmedMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
+    null,
+  );
+  const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const pendingOptimisticUpdateRef = useRef(false);
+
+  useEffect(() => {
+    latestAuthRef.current = auth;
+  }, [auth]);
+
+  useEffect(() => {
+    latestMultiplayerSnapshotRef.current = multiplayerSnapshot;
+  }, [multiplayerSnapshot]);
+
+  const logWebSocketDebug = useCallback(
+    (event: string, details?: Record<string, unknown>) => {
+      if (!options.websocketDebugEnabled) {
+        return;
+      }
+      console.info("[tiao ws]", event, details ?? {});
+    },
+    [options.websocketDebugEnabled],
+  );
+
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current !== null) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const commitMultiplayerSnapshot = useCallback(
+    (
+      nextSnapshot: MultiplayerSnapshot,
+      options: {
+        confirmed?: boolean;
+      } = {},
+    ) => {
+      if (options.confirmed ?? true) {
+        confirmedMultiplayerSnapshotRef.current = nextSnapshot;
+        pendingOptimisticUpdateRef.current = false;
+      }
+      setMultiplayerSnapshot(nextSnapshot);
+    },
+    [],
+  );
+
+  const syncMultiplayerSelection = useCallback(
+    (snapshot: MultiplayerSnapshot | null) => {
+      setMultiplayerSelection(
+        snapshot ? getPendingJumpDestination(snapshot.state) : null,
+      );
+    },
+    [],
+  );
+
+  const restoreConfirmedSnapshot = useCallback(() => {
+    const confirmedSnapshot = confirmedMultiplayerSnapshotRef.current;
+    pendingOptimisticUpdateRef.current = false;
+    if (!confirmedSnapshot) {
+      return;
+    }
+    commitMultiplayerSnapshot(confirmedSnapshot, { confirmed: false });
+    syncMultiplayerSelection(confirmedSnapshot);
+  }, [commitMultiplayerSnapshot, syncMultiplayerSelection]);
+
+  const handleUnexpectedMultiplayerDisconnect = useCallback(() => {
+    logWebSocketDebug("unexpected-disconnect", {
+      reconnectAttempt: reconnectAttemptRef.current,
+      hasSnapshot: !!latestMultiplayerSnapshotRef.current,
+    });
+    setConnectionState("disconnected");
+
+    if (pendingOptimisticUpdateRef.current) {
+      restoreConfirmedSnapshot();
+    }
+
+    if (reconnectAttemptRef.current === 0) {
+      toast.error("There was a disconnect from the server. Reconnecting...");
+    }
+
+    scheduleMultiplayerReconnect();
+  }, [logWebSocketDebug, restoreConfirmedSnapshot]);
+
+  const scheduleMultiplayerReconnect = useCallback(() => {
+    const snapshot = latestMultiplayerSnapshotRef.current;
+    const nextAuth = latestAuthRef.current;
+    if (!snapshot || !nextAuth) {
+      return;
+    }
+
+    clearReconnectTimer();
+    const delay = Math.min(
+      1500 * Math.max(1, reconnectAttemptRef.current + 1),
+      7000,
+    );
+    reconnectAttemptRef.current += 1;
+    logWebSocketDebug("schedule-reconnect", {
+      delay,
+      attempt: reconnectAttemptRef.current,
+      gameId: snapshot.gameId,
+    });
+    reconnectTimerRef.current = window.setTimeout(() => {
+      void reconnectToCurrentRoom();
+    }, delay);
+  }, [logWebSocketDebug, clearReconnectTimer]);
+
+  const reconnectToCurrentRoom = useCallback(async () => {
+    const snapshot = latestMultiplayerSnapshotRef.current;
+    if (!snapshot) {
+      return;
+    }
+
+    setConnectionState("connecting");
+    logWebSocketDebug("reconnect-start", {
+      gameId: snapshot.gameId,
+      attempt: reconnectAttemptRef.current,
+    });
+
+    try {
+      const response = await accessMultiplayerGame(snapshot.gameId);
+      connectToRoom(response.snapshot, {
+        preserveView: true,
+      });
+    } catch (error) {
+      if (isNetworkError(error)) {
+        setConnectionState("disconnected");
+        scheduleMultiplayerReconnect();
+        return;
+      }
+      setMultiplayerError(readableError(error));
+    }
+  }, [logWebSocketDebug, scheduleMultiplayerReconnect]);
+
+  const sendMultiplayerMessage = useCallback(
+    (message: ClientToServerMessage) => {
+      const socket = socketRef.current;
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        setMultiplayerError("Connection not ready.");
+        return;
+      }
+
+      const currentSnapshot = latestMultiplayerSnapshotRef.current;
+      if (currentSnapshot) {
+        let nextState: GameState | null = null;
+
+        switch (message.type) {
+          case "place-piece": {
+            const result = placePiece(currentSnapshot.state, message.position);
+            if (!result.ok) {
+              setMultiplayerError(result.reason);
+              return;
+            }
+            nextState = result.value;
+            break;
+          }
+          case "jump-piece": {
+            const result = jumpPiece(
+              currentSnapshot.state,
+              message.from,
+              message.to,
+            );
+            if (!result.ok) {
+              setMultiplayerError(result.reason);
+              return;
+            }
+            nextState = result.value;
+            break;
+          }
+          case "confirm-jump": {
+            const result = confirmPendingJump(currentSnapshot.state);
+            if (!result.ok) {
+              setMultiplayerError(result.reason);
+              return;
+            }
+            nextState = result.value;
+            break;
+          }
+          case "undo-pending-jump-step": {
+            const result = undoPendingJumpStep(currentSnapshot.state);
+            if (!result.ok) {
+              setMultiplayerError(result.reason);
+              return;
+            }
+            nextState = result.value;
+            break;
+          }
+          default:
+            break;
+        }
+
+        if (nextState) {
+          pendingOptimisticUpdateRef.current = true;
+          const nextSnapshot = createOptimisticSnapshot(
+            currentSnapshot,
+            nextState,
+          );
+          commitMultiplayerSnapshot(nextSnapshot, { confirmed: false });
+          syncMultiplayerSelection(nextSnapshot);
+        }
+      }
+
+      try {
+        socket.send(JSON.stringify(message));
+      } catch {
+        if (socketRef.current === socket) {
+          socketRef.current = null;
+        }
+        socket.close();
+        handleUnexpectedMultiplayerDisconnect();
+      }
+    },
+    [
+      commitMultiplayerSnapshot,
+      syncMultiplayerSelection,
+      handleUnexpectedMultiplayerDisconnect,
+    ],
+  );
+
+  const connectToRoom = useCallback(
+    (
+      snapshot: MultiplayerSnapshot,
+      options: {
+        preserveView?: boolean;
+      } = {},
+    ) => {
+      if (options.preserveView) {
+        clearReconnectTimer();
+        const existingSocket = socketRef.current;
+        socketRef.current = null;
+        existingSocket?.close();
+      }
+
+      const socket = new WebSocket(buildWebSocketUrl(snapshot.gameId));
+      logWebSocketDebug("connect", {
+        url: buildWebSocketUrl(snapshot.gameId),
+        preserveView: options.preserveView ?? false,
+        gameId: snapshot.gameId,
+      });
+
+      socketRef.current = socket;
+      setConnectionState("connecting");
+      commitMultiplayerSnapshot(snapshot);
+      syncMultiplayerSelection(snapshot);
+
+      socket.addEventListener("open", () => {
+        if (socketRef.current !== socket) {
+          return;
+        }
+        reconnectAttemptRef.current = 0;
+        setConnectionState("connected");
+        logWebSocketDebug("open", {
+          url: socket.url,
+          gameId: snapshot.gameId,
+        });
+      });
+
+      socket.addEventListener("message", (event) => {
+        if (socketRef.current !== socket) {
+          return;
+        }
+
+        const payload = JSON.parse(event.data as string) as ServerToClientMessage;
+
+        if (payload.type === "snapshot") {
+          logWebSocketDebug("snapshot", {
+            gameId: payload.snapshot.gameId,
+            status: payload.snapshot.status,
+            historyLength: payload.snapshot.state.history.length,
+          });
+          commitMultiplayerSnapshot(payload.snapshot);
+          syncMultiplayerSelection(payload.snapshot);
+          setMultiplayerError(null);
+          return;
+        }
+
+        if (payload.type === "error") {
+          logWebSocketDebug("server-error", {
+            code: payload.code,
+            message: payload.message,
+          });
+
+          if (pendingOptimisticUpdateRef.current) {
+            restoreConfirmedSnapshot();
+          }
+
+          setMultiplayerError(payload.message);
+        }
+      });
+
+      socket.addEventListener("close", (event) => {
+        logWebSocketDebug("close", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          readyState: socket.readyState,
+        });
+        if (socketRef.current !== socket) {
+          return;
+        }
+        socketRef.current = null;
+        handleUnexpectedMultiplayerDisconnect();
+      });
+
+      socket.addEventListener("error", () => {
+        logWebSocketDebug("error", {
+          readyState: socket.readyState,
+          url: socket.url,
+        });
+      });
+    },
+    [
+      logWebSocketDebug,
+      clearReconnectTimer,
+      commitMultiplayerSnapshot,
+      syncMultiplayerSelection,
+      handleUnexpectedMultiplayerDisconnect,
+      restoreConfirmedSnapshot,
+    ],
+  );
+
+  useEffect(() => {
+    return () => {
+      clearReconnectTimer();
+      const socket = socketRef.current;
+      socketRef.current = null;
+      socket?.close();
+    };
+  }, [clearReconnectTimer]);
+
+  return {
+    multiplayerSnapshot,
+    multiplayerSelection,
+    multiplayerError,
+    setMultiplayerError,
+    multiplayerBusy,
+    setMultiplayerBusy,
+    connectionState,
+    connectToRoom,
+    sendMultiplayerMessage,
+    handleUnexpectedMultiplayerDisconnect,
+    setMultiplayerSelection,
+  };
+}

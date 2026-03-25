@@ -14,8 +14,14 @@ import {
   signUpWithEmail,
 } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
-import { HomePage } from "./pages/HomePage";
+import { LobbyPage } from "./pages/LobbyPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { LocalGamePage } from "./pages/LocalGamePage";
+import { ComputerGamePage } from "./pages/ComputerGamePage";
+import { MultiplayerGamePage } from "./pages/MultiplayerGamePage";
+import { MatchmakingPage } from "./pages/MatchmakingPage";
+import { FriendsPage } from "./pages/FriendsPage";
+import { GamesPage } from "./pages/GamesPage";
 
 const ANONYMOUS_NAME = "Anonymous";
 
@@ -210,7 +216,27 @@ export function App() {
           <Route
             path="/"
             element={
-              <HomePage
+              <LobbyPage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/local"
+            element={
+              <LocalGamePage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/computer"
+            element={
+              <ComputerGamePage
                 auth={auth}
                 onOpenAuth={openAuthDialog}
                 onLogout={handleLogout}
@@ -220,7 +246,37 @@ export function App() {
           <Route
             path="/game/:gameId"
             element={
-              <HomePage
+              <MultiplayerGamePage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/matchmaking"
+            element={
+              <MatchmakingPage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/friends"
+            element={
+              <FriendsPage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/games"
+            element={
+              <GamesPage
                 auth={auth}
                 onOpenAuth={openAuthDialog}
                 onLogout={handleLogout}

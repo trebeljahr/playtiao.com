@@ -1,0 +1,145 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import type { AuthResponse } from "@shared";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Navbar } from "@/components/Navbar";
+import { PlayerOverviewAvatar } from "@/components/game/GameShared";
+import { useSocialData } from "@/lib/hooks/useSocialData";
+import { cn } from "@/lib/utils";
+
+type FriendsPageProps = {
+  auth: AuthResponse | null;
+  onOpenAuth: (mode: "login" | "signup") => void;
+  onLogout: () => void;
+};
+
+export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
+  const navigate = useNavigate();
+  const [navOpen, setNavOpen] = useState(false);
+
+  const social = useSocialData(auth, false);
+
+  const paperCard =
+    "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
+
+  if (!auth || auth.player.kind !== "account") {
+    return (
+      <div className="relative min-h-screen overflow-hidden">
+        <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onGoLobby={() => navigate("/")} onGoOverTheBoard={() => navigate("/local")} onGoMultiplayer={() => navigate("/multiplayer")} onGoComputer={() => navigate("/computer")} onGoProfile={() => navigate("/profile")} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+        <main className="mx-auto max-w-2xl px-4 pt-32">
+          <Card className={paperCard}>
+            <CardHeader><CardTitle>Account Required</CardTitle></CardHeader>
+            <CardContent><p>Please sign in to manage friends.</p><Button className="mt-4" onClick={() => onOpenAuth("login")}>Sign In</Button></CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+
+      <Navbar
+        mode="lobby"
+        auth={auth}
+        navOpen={navOpen}
+        onToggleNav={() => setNavOpen(!navOpen)}
+        onCloseNav={() => setNavOpen(false)}
+        onGoLobby={() => navigate("/")}
+        onGoOverTheBoard={() => navigate("/local")}
+        onGoMultiplayer={() => navigate("/multiplayer")}
+        onGoComputer={() => navigate("/computer")}
+        onGoProfile={() => navigate("/profile")}
+        onOpenAuth={onOpenAuth}
+        onLogout={onLogout}
+      />
+
+      <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr]">
+          <Card className={paperCard}>
+            <CardHeader>
+              <CardTitle>Find players</CardTitle>
+              <CardDescription>Search by name to send friend requests.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Player name..."
+                  value={social.friendSearchQuery}
+                  onChange={(e) => social.setFriendSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && social.runFriendSearch()}
+                />
+                <Button onClick={social.runFriendSearch} disabled={social.friendSearchBusy}>Search</Button>
+              </div>
+              <div className="space-y-2">
+                {social.friendSearchResults.map((result) => (
+                  <div key={result.playerId} className="flex items-center justify-between p-2 rounded-xl bg-white/40">
+                    <div className="flex items-center gap-2">
+                      <PlayerOverviewAvatar player={result} />
+                      <span className="text-sm font-medium">{result.displayName}</span>
+                    </div>
+                    {result.isFriend ? (
+                      <Badge variant="outline">Friend</Badge>
+                    ) : (
+                      <Button size="sm" onClick={() => social.handleSendFriendRequest(result.playerId)}>Add</Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-5">
+            <Card className={paperCard}>
+              <CardHeader><CardTitle>Incoming Requests</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {social.socialOverview.incomingFriendRequests.map(req => (
+                  <div key={req.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
+                    <div className="flex items-center gap-2">
+                      <PlayerOverviewAvatar player={req} />
+                      <span className="font-medium">{req.displayName}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => social.handleAcceptFriendRequest(req.playerId)}>Accept</Button>
+                      <Button size="sm" variant="ghost" onClick={() => social.handleDeclineFriendRequest(req.playerId)}>Decline</Button>
+                    </div>
+                  </div>
+                ))}
+                {social.socialOverview.incomingFriendRequests.length === 0 && <p className="text-sm text-[#6e5b48]">No pending requests.</p>}
+              </CardContent>
+            </Card>
+
+            <Card className={paperCard}>
+              <CardHeader><CardTitle>Friends</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {social.socialOverview.friends.map(friend => (
+                  <div key={friend.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
+                    <div className="flex items-center gap-2">
+                      <PlayerOverviewAvatar player={friend} />
+                      <span className="font-medium">{friend.displayName}</span>
+                    </div>
+                    <Badge className={friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
+                      {friend.online ? "Online" : "Offline"}
+                    </Badge>
+                  </div>
+                ))}
+                {social.socialOverview.friends.length === 0 && <p className="text-sm text-[#6e5b48]">Your friend list is empty.</p>}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

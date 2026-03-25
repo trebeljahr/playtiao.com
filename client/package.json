@@ -28,8 +28,8 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.13",
     "@types/node": "^25.0.3",
-    "@types/react": "^17.0.6",
-    "@types/react-dom": "^17.0.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.2.5",
     "postcss": "^8.3.0",
