@@ -94,11 +94,11 @@ export function MatchmakingPage({ auth, onOpenAuth, onLogout }: MatchmakingPageP
                     />
                   </div>
                   <p className="text-lg font-semibold text-[#5d4732]">Searching for opponent...</p>
-                  {locationTimeControl && (
-                    <p className="text-sm text-[#7a6656]">
-                      {Math.floor(locationTimeControl.initialMs / 60000)}+{Math.floor(locationTimeControl.incrementMs / 1000)}
-                    </p>
-                  )}
+                  <p className="text-sm text-[#7a6656]">
+                    {locationTimeControl
+                      ? `${Math.floor(locationTimeControl.initialMs / 60000)}+${Math.floor(locationTimeControl.incrementMs / 1000)}`
+                      : "Unlimited"}
+                  </p>
                   <Button
                     variant="outline"
                     onClick={handleCancelMatchmaking}

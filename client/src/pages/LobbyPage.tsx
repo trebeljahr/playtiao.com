@@ -295,6 +295,14 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto space-y-10 pb-8">
+                <Button
+                  size="lg"
+                  className="w-full h-14 text-lg"
+                  onClick={() => navigate("/matchmaking")}
+                >
+                  Unlimited time game
+                </Button>
+
                 <div className="grid grid-cols-3 gap-2">
                   {TIME_CONTROL_PRESETS.map((preset) => (
                     <Button
