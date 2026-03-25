@@ -1,4 +1,4 @@
-# Mobile Magnifying Loupe for Stone Placement
+# Mobile Stone Placement
 
 ## Problem
 
@@ -6,11 +6,11 @@ On mobile devices, Tiao's 19x19 board renders intersections at roughly 20px apar
 
 ## Decision
 
-We implemented a **magnifying loupe** that activates on touch-and-hold, inspired by iOS text selection and Telegram's text editing loupe. When a user holds their finger on the board for more than 120ms, a magnified circular view appears above their finger showing a zoomed-in (~3x) region of the board. The loupe tracks finger movement in real-time, snapping to the nearest grid intersection. Lifting the finger places the stone at the highlighted position.
+We implemented a **tap-to-preview + tap-to-confirm** pattern on mobile. First tap on an empty intersection shows a semi-transparent ghost stone preview with a "Tap to place" label and pulsing confirmation ring. Tapping the same position again confirms the placement. Tapping a different empty intersection moves the preview there instead.
 
-Quick taps (< 120ms) bypass the loupe entirely and place immediately, preserving fast gameplay for confident moves.
+When tapping on a position that already has a piece, or when there's an active selection (for jump moves), the tap goes through directly without the preview step, since those interactions are unambiguous.
 
-Desktop behavior is completely unchanged — single clicks place stones immediately with no loupe.
+Desktop behavior is completely unchanged — single clicks place stones immediately with no preview.
 
 ## Alternatives Considered
 

@@ -9,8 +9,11 @@ import {
 } from "@shared";
 import type { WorkerRequest, WorkerResponse } from "./engine/tiao-engine.worker";
 
-export const COMPUTER_COLOR: PlayerColor = "black";
 export const COMPUTER_THINK_MS = 440;
+
+export function randomComputerColor(): PlayerColor {
+  return Math.random() < 0.5 ? "black" : "white";
+}
 
 export type AIDifficulty = 1 | 2 | 3;
 
@@ -37,6 +40,7 @@ export function requestComputerMove(
   state: GameState,
   level: AIDifficulty,
   onProgress?: (progress: number) => void,
+  color: PlayerColor = "black",
 ): { promise: Promise<ComputerTurnPlan | null>; cancel: () => void } {
   const id = ++requestId;
   const w = getWorker();
@@ -72,7 +76,7 @@ export function requestComputerMove(
     type: "search",
     id,
     state,
-    config: { level, color: COMPUTER_COLOR },
+    config: { level, color },
   } satisfies WorkerRequest);
 
   const cancel = () => {

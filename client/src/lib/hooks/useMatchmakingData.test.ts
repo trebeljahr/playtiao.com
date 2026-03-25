@@ -33,6 +33,7 @@ const mockSnapshot = {
   players: [],
   seats: { white: null, black: null },
   rematch: null,
+  takeback: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 } as unknown as MultiplayerSnapshot;

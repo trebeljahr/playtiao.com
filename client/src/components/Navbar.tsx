@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 
 export type AuthDialogMode = "login" | "signup";
-export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer";
+export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "tutorial";
 
 type NavbarProps = {
   mode: NavbarMode;
@@ -163,7 +163,7 @@ export function Navbar({
   const player = auth?.player;
   const isAccount = player?.kind === "account";
   const gameMode =
-    mode === "local" || mode === "computer" || mode === "multiplayer";
+    mode === "local" || mode === "computer" || mode === "multiplayer" || mode === "tutorial";
   const minimalMode = gameMode || mode === "lobby";
   const navItemClasses =
     "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";

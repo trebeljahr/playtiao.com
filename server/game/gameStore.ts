@@ -1,6 +1,7 @@
 import {
   GameState,
   MultiplayerRematchState,
+  MultiplayerTakebackState,
   MultiplayerSeatAssignments,
   MultiplayerRoomType,
   MultiplayerStatus,
@@ -17,6 +18,7 @@ export type StoredMultiplayerRoom = {
   state: GameState;
   players: PlayerIdentity[];
   rematch: MultiplayerRematchState | null;
+  takeback: MultiplayerTakebackState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +31,7 @@ export type CreateStoredMultiplayerRoomInput = {
   state: GameState;
   players: PlayerIdentity[];
   rematch: MultiplayerRematchState | null;
+  takeback: MultiplayerTakebackState | null;
   seats: MultiplayerSeatAssignments;
 };
 
@@ -69,6 +72,19 @@ function cloneRematch(
   };
 }
 
+function cloneTakeback(
+  takeback: MultiplayerTakebackState | null | undefined
+): MultiplayerTakebackState | null {
+  if (!takeback) {
+    return null;
+  }
+
+  return {
+    requestedBy: takeback.requestedBy,
+    declinedCount: { ...takeback.declinedCount },
+  };
+}
+
 export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
   return {
     id: room.id,
@@ -77,6 +93,7 @@ export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerR
     state: cloneGameState(room.state),
     players: clonePlayers(room.players),
     rematch: cloneRematch(room.rematch),
+    takeback: cloneTakeback(room.takeback),
     seats: cloneSeats(room.seats),
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
@@ -90,6 +107,7 @@ type PersistedGameRoom = {
   state: GameState;
   players?: PlayerIdentity[];
   rematch?: MultiplayerRematchState | null;
+  takeback?: MultiplayerTakebackState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
@@ -116,6 +134,7 @@ function toStoredRoom(room: PersistedGameRoom): StoredMultiplayerRoom {
     state: cloneGameState(room.state),
     players,
     rematch: cloneRematch(room.rematch ?? null),
+    takeback: cloneTakeback(room.takeback ?? null),
     seats: cloneSeats(room.seats),
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
@@ -133,6 +152,7 @@ export class MongoGameRoomStore implements GameRoomStore {
       state: cloneGameState(room.state),
       players: clonePlayers(room.players),
       rematch: cloneRematch(room.rematch),
+      takeback: cloneTakeback(room.takeback),
       seats: cloneSeats(room.seats),
     });
 
@@ -143,6 +163,7 @@ export class MongoGameRoomStore implements GameRoomStore {
       state: createdRoom.state,
       players: createdRoom.players,
       rematch: createdRoom.rematch,
+      takeback: createdRoom.takeback,
       seats: createdRoom.seats,
       createdAt: createdRoom.createdAt,
       updatedAt: createdRoom.updatedAt,
@@ -171,6 +192,7 @@ export class MongoGameRoomStore implements GameRoomStore {
           state: cloneGameState(room.state),
           players: clonePlayers(room.players),
           rematch: cloneRematch(room.rematch),
+          takeback: cloneTakeback(room.takeback),
           seats: cloneSeats(room.seats),
         },
       },
@@ -245,6 +267,7 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       state: cloneGameState(room.state),
       players: clonePlayers(room.players),
       rematch: cloneRematch(room.rematch),
+      takeback: cloneTakeback(room.takeback),
       seats: cloneSeats(room.seats),
       createdAt: now,
       updatedAt: now,
@@ -273,6 +296,7 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       state: cloneGameState(room.state),
       players: clonePlayers(room.players),
       rematch: cloneRematch(room.rematch),
+      takeback: cloneTakeback(room.takeback),
       seats: cloneSeats(room.seats),
       createdAt: new Date(existingRoom.createdAt),
       updatedAt: new Date(),

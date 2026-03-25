@@ -5,6 +5,7 @@ import {
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
   MultiplayerRematchState,
+  MultiplayerTakebackState,
   MultiplayerRoomType,
   MultiplayerSeatAssignments,
   MultiplayerSnapshot,
@@ -18,6 +19,7 @@ import {
   isGameOver,
   jumpPiece,
   placePiece,
+  undoLastTurn,
   undoPendingJumpStep,
 } from "../../shared/src";
 import {
@@ -264,6 +266,21 @@ export class GameService {
           this.broadcastSnapshot(savedRoom);
           return this.toSnapshot(savedRoom);
         }
+        case "request-takeback": {
+          const savedRoom = await this.requestTakeback(room, playerColor);
+          this.broadcastSnapshot(savedRoom);
+          return this.toSnapshot(savedRoom);
+        }
+        case "accept-takeback": {
+          const savedRoom = await this.acceptTakeback(room, playerColor);
+          this.broadcastSnapshot(savedRoom);
+          return this.toSnapshot(savedRoom);
+        }
+        case "decline-takeback": {
+          const savedRoom = await this.declineTakeback(room, playerColor);
+          this.broadcastSnapshot(savedRoom);
+          return this.toSnapshot(savedRoom);
+        }
         case "place-piece":
           this.ensureActionableRoom(room, playerColor);
           result = placePiece(room.state, message.position);
@@ -292,9 +309,11 @@ export class GameService {
         throw new GameServiceError(409, result.code, result.reason);
       }
 
+      // Clear any pending takeback when a game action is made
       const savedRoom = await this.saveRoom({
         ...room,
         state: result.value,
+        takeback: null,
       });
 
       this.broadcastSnapshot(savedRoom);
@@ -440,6 +459,7 @@ export class GameService {
         state: createInitialGameState(),
         players: options.players.map((player) => ({ ...player })),
         rematch: null,
+        takeback: null,
         seats: options.assignSeats
           ? this.assignSeats(options.players[0], options.players[1])
           : {
@@ -591,11 +611,15 @@ export class GameService {
     const rematch =
       status === "finished" ? this.normalizeRematch(room.rematch, seats) : null;
 
+    // Clear takeback state if game is not active
+    const takeback = status === "active" ? (room.takeback ?? null) : null;
+
     return {
       ...room,
       roomType: room.roomType ?? "direct",
       players,
       rematch,
+      takeback,
       seats,
       status,
     };
@@ -703,7 +727,7 @@ export class GameService {
       state: room.state,
       players: room.players.map((player) => this.toPlayerSlot(room.id, player)),
       rematch: room.rematch,
-      takeback: null,
+      takeback: room.takeback,
       seats: {
         white: this.toSeatSlot(room, "white"),
         black: this.toSeatSlot(room, "black"),
@@ -787,6 +811,7 @@ export class GameService {
         ...room,
         state: createInitialGameState(),
         rematch: null,
+        takeback: null,
         seats: this.assignSeats(room.seats.white, room.seats.black),
       });
     }
@@ -826,6 +851,141 @@ export class GameService {
     return this.saveRoom({
       ...room,
       rematch: null,
+    });
+  }
+
+  private async requestTakeback(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): Promise<StoredMultiplayerRoom> {
+    if (room.status !== "active") {
+      throw new GameServiceError(
+        409,
+        "GAME_NOT_ACTIVE",
+        "Takebacks are only available during an active game."
+      );
+    }
+
+    if (room.state.history.length === 0) {
+      throw new GameServiceError(
+        409,
+        "NO_MOVES",
+        "There are no moves to take back."
+      );
+    }
+
+    if (room.takeback?.requestedBy) {
+      throw new GameServiceError(
+        409,
+        "TAKEBACK_PENDING",
+        "A takeback request is already pending."
+      );
+    }
+
+    const declinedCount = room.takeback?.declinedCount ?? { white: 0, black: 0 };
+    if (declinedCount[playerColor] >= 3) {
+      throw new GameServiceError(
+        409,
+        "TAKEBACK_LIMIT",
+        "You have used all your takeback requests. Make a move to reset."
+      );
+    }
+
+    return this.saveRoom({
+      ...room,
+      takeback: {
+        requestedBy: playerColor,
+        declinedCount,
+      },
+    });
+  }
+
+  private async acceptTakeback(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): Promise<StoredMultiplayerRoom> {
+    if (!room.takeback?.requestedBy) {
+      throw new GameServiceError(
+        409,
+        "NO_TAKEBACK_REQUEST",
+        "There is no takeback request to accept."
+      );
+    }
+
+    if (room.takeback.requestedBy === playerColor) {
+      throw new GameServiceError(
+        409,
+        "OWN_TAKEBACK",
+        "You cannot accept your own takeback request."
+      );
+    }
+
+    // Undo the last move by the requester.
+    // If it's currently the requester's turn, undo their opponent's last move
+    // then undo the requester's move. If it's the opponent's turn, just undo
+    // the requester's last move.
+    let state = room.state;
+    const requester = room.takeback.requestedBy;
+
+    if (state.currentTurn !== requester && state.history.length > 0) {
+      // It's the accepting player's turn, meaning the requester's move was
+      // the one before. Just undo the last move.
+      const undo = undoLastTurn(state);
+      if (!undo.ok) {
+        throw new GameServiceError(409, undo.code, undo.reason);
+      }
+      state = undo.value;
+    } else if (state.currentTurn === requester && state.history.length >= 2) {
+      // It's the requester's turn, so undo the accepting player's move first,
+      // then undo the requester's previous move.
+      const undo1 = undoLastTurn(state);
+      if (!undo1.ok) {
+        throw new GameServiceError(409, undo1.code, undo1.reason);
+      }
+      const undo2 = undoLastTurn(undo1.value);
+      if (!undo2.ok) {
+        throw new GameServiceError(409, undo2.code, undo2.reason);
+      }
+      state = undo2.value;
+    }
+
+    return this.saveRoom({
+      ...room,
+      state,
+      takeback: null,
+    });
+  }
+
+  private async declineTakeback(
+    room: StoredMultiplayerRoom,
+    playerColor: PlayerColor
+  ): Promise<StoredMultiplayerRoom> {
+    if (!room.takeback?.requestedBy) {
+      throw new GameServiceError(
+        409,
+        "NO_TAKEBACK_REQUEST",
+        "There is no takeback request to decline."
+      );
+    }
+
+    if (room.takeback.requestedBy === playerColor) {
+      throw new GameServiceError(
+        409,
+        "OWN_TAKEBACK",
+        "You cannot decline your own takeback request."
+      );
+    }
+
+    const requester = room.takeback.requestedBy;
+    const declinedCount = { ...room.takeback.declinedCount };
+    declinedCount[requester] = (declinedCount[requester] || 0) + 1;
+
+    return this.saveRoom({
+      ...room,
+      takeback: {
+        requestedBy: null,
+        declinedCount,
+      },
     });
   }
 

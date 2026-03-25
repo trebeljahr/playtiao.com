@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -176,6 +176,25 @@ export function MultiplayerGamePage({
       : null;
 
   const isMultiplayerParticipant = !!playerSeat;
+
+  // Toast for incoming takeback requests
+  const lastTakebackToastRef = useRef<string | null>(null);
+  useEffect(() => {
+    const takebackRequester = multiplayerSnapshot?.takeback?.requestedBy;
+    if (
+      takebackRequester &&
+      takebackRequester !== playerSeat &&
+      lastTakebackToastRef.current !== takebackRequester
+    ) {
+      lastTakebackToastRef.current = takebackRequester;
+      toast("Opponent requested a takeback", {
+        description: "Check the game panel to accept or decline.",
+      });
+    }
+    if (!takebackRequester) {
+      lastTakebackToastRef.current = null;
+    }
+  }, [multiplayerSnapshot?.takeback?.requestedBy, playerSeat]);
 
   const multiplayerYourTurn =
     multiplayerSnapshot?.status === "active" &&
@@ -434,6 +453,12 @@ export function MultiplayerGamePage({
                           pulseKey={0}
                           className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8]"
                           labelClassName="text-xs uppercase tracking-wider"
+                          avatar={multiplayerSnapshot.seats.black ? (
+                            <PlayerOverviewAvatar
+                              player={multiplayerSnapshot.seats.black.player}
+                              className="h-6 w-6"
+                            />
+                          ) : undefined}
                         />
                         <AnimatedScoreTile
                           label="White"
@@ -444,6 +469,12 @@ export function MultiplayerGamePage({
                           pulseKey={0}
                           className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14]"
                           labelClassName="text-xs uppercase tracking-wider"
+                          avatar={multiplayerSnapshot.seats.white ? (
+                            <PlayerOverviewAvatar
+                              player={multiplayerSnapshot.seats.white.player}
+                              className="h-6 w-6"
+                            />
+                          ) : undefined}
                         />
                       </div>
 
@@ -675,6 +706,71 @@ export function MultiplayerGamePage({
                             >
                               Confirm jump
                             </Button>
+                          </div>
+                        )}
+
+                      {/* Takeback controls */}
+                      {multiplayerSnapshot.status === "active" &&
+                        isMultiplayerParticipant &&
+                        !winner && (
+                          <div className="grid gap-2">
+                            {multiplayerSnapshot.takeback?.requestedBy &&
+                            multiplayerSnapshot.takeback.requestedBy !== playerSeat ? (
+                              <div className="rounded-2xl border border-[#d8c29c] bg-[#fff8ee] p-3 space-y-2">
+                                <p className="text-sm font-semibold text-[#2b1e14]">
+                                  Opponent requested a takeback
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() =>
+                                      sendMultiplayerMessage({
+                                        type: "accept-takeback",
+                                      })
+                                    }
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      sendMultiplayerMessage({
+                                        type: "decline-takeback",
+                                      })
+                                    }
+                                  >
+                                    Decline
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : multiplayerSnapshot.takeback?.requestedBy === playerSeat ? (
+                              <div className="flex items-center gap-2 rounded-2xl border border-[#d8c29c] bg-[#fff8ee] px-4 py-3">
+                                <HourglassSpinner className="text-[#7b5f3f]" />
+                                <p className="text-sm font-medium text-[#5d4732]">
+                                  Takeback requested...
+                                </p>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  sendMultiplayerMessage({
+                                    type: "request-takeback",
+                                  })
+                                }
+                                disabled={
+                                  multiplayerSnapshot.state.history.length === 0 ||
+                                  (multiplayerSnapshot.takeback?.declinedCount?.[playerSeat as PlayerColor] ?? 0) >= 3
+                                }
+                              >
+                                {(multiplayerSnapshot.takeback?.declinedCount?.[playerSeat as PlayerColor] ?? 0) >= 3
+                                  ? "No takebacks left"
+                                  : "Request Takeback"}
+                              </Button>
+                            )}
                           </div>
                         )}
 

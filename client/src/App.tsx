@@ -304,6 +304,8 @@ export function App() {
               <TutorialPage
                 auth={auth}
                 onAuthChange={applyAuth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
               />
             }
           />

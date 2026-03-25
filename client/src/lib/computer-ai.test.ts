@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createInitialGameState, placePiece, type GameState } from "@shared";
 import {
-  COMPUTER_COLOR,
   applyComputerTurnPlan,
   type ComputerTurnPlan,
 } from "./computer-ai";
@@ -9,7 +8,7 @@ import {
 describe("applyComputerTurnPlan", () => {
   it("applies a placement plan", () => {
     const state = createInitialGameState();
-    state.currentTurn = COMPUTER_COLOR;
+    state.currentTurn = "black";
 
     const plan: ComputerTurnPlan = {
       type: "place",
@@ -20,7 +19,7 @@ describe("applyComputerTurnPlan", () => {
     const result = applyComputerTurnPlan(state, plan);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.positions[9][9]).toBe(COMPUTER_COLOR);
+    expect(result.value.positions[9][9]).toBe("black");
     expect(result.value.currentTurn).toBe("white");
   });
 
@@ -74,7 +73,7 @@ describe("applyComputerTurnPlan", () => {
   it("rejects invalid placement", () => {
     const state = createInitialGameState();
     state.positions[9][9] = "white";
-    state.currentTurn = COMPUTER_COLOR;
+    state.currentTurn = "black";
 
     const plan: ComputerTurnPlan = {
       type: "place",

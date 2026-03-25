@@ -115,6 +115,7 @@ function createMockSnapshot(
       },
     ],
     rematch: null,
+    takeback: null,
     seats: {
       white: { player: mockAuth.player, online: true },
       black: {

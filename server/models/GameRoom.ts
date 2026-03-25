@@ -2,6 +2,7 @@ import { Document, Schema, model, models } from "mongoose";
 import {
   GameState,
   MultiplayerRematchState,
+  MultiplayerTakebackState,
   MultiplayerSeatAssignments,
   MultiplayerRoomType,
   MultiplayerStatus,
@@ -46,6 +47,7 @@ export interface IGameRoom extends Document {
   state: GameState;
   players: PlayerIdentity[];
   rematch: MultiplayerRematchState | null;
+  takeback: MultiplayerTakebackState | null;
   seats: MultiplayerSeatAssignments;
   createdAt: Date;
   updatedAt: Date;
@@ -88,6 +90,23 @@ const GameRoomSchema = new Schema<IGameRoom>(
             type: [String],
             enum: ["white", "black"],
             default: [],
+          },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
+    takeback: {
+      type: new Schema<MultiplayerTakebackState>(
+        {
+          requestedBy: {
+            type: String,
+            enum: ["white", "black", null],
+            default: null,
+          },
+          declinedCount: {
+            type: Schema.Types.Mixed,
+            default: { white: 0, black: 0 },
           },
         },
         { _id: false }

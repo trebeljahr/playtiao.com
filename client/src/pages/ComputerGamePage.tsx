@@ -167,14 +167,14 @@ export function ComputerGamePage({
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <AnimatedScoreTile
-                        label="Black (AI)"
+                        label={computer.computerColor === "black" ? "Black (AI)" : "Black (You)"}
                         value={computer.localGame.score.black}
                         pulseKey={computer.localScorePulse.black}
                         className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
                         labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
                       />
                       <AnimatedScoreTile
-                        label="White (You)"
+                        label={computer.computerColor === "white" ? "White (AI)" : "White (You)"}
                         value={computer.localGame.score.white}
                         pulseKey={computer.localScorePulse.white}
                         className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
@@ -186,9 +186,9 @@ export function ComputerGamePage({
                       <Button
                         variant="secondary"
                         onClick={computer.handleLocalUndoTurn}
-                        disabled={computer.controlsDisabled}
+                        disabled={computer.localGame.history.length === 0}
                       >
-                        Undo turn
+                        Undo move
                       </Button>
                     </div>
 

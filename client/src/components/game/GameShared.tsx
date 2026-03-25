@@ -200,6 +200,7 @@ export function createOptimisticSnapshot(
     status: getOptimisticSnapshotStatus(snapshot, state),
     updatedAt: new Date().toISOString(),
     rematch: isGameOver(state) ? snapshot.rematch : null,
+    takeback: snapshot.takeback,
   };
 }
 
@@ -385,6 +386,7 @@ type AnimatedScoreTileProps = {
   className: string;
   labelClassName: string;
   valueClassName?: string;
+  avatar?: React.ReactNode;
 };
 
 export function AnimatedScoreTile({
@@ -394,6 +396,7 @@ export function AnimatedScoreTile({
   className,
   labelClassName,
   valueClassName = "mt-2 text-3xl font-semibold tabular-nums",
+  avatar,
 }: AnimatedScoreTileProps) {
   const tileControls = useAnimationControls();
   const valueControls = useAnimationControls();
@@ -434,7 +437,10 @@ export function AnimatedScoreTile({
       className={className}
       style={{ transformOrigin: "center bottom" }}
     >
-      <p className={labelClassName}>{label}</p>
+      <div className="flex items-center gap-2">
+        {avatar}
+        <p className={labelClassName}>{label}</p>
+      </div>
       <motion.p
         initial={{ scale: 1, y: 0 }}
         animate={valueControls}

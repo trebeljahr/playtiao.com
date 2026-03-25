@@ -26,6 +26,13 @@ export type MultiplayerRematchState = {
   requestedBy: PlayerColor[];
 };
 
+export type MultiplayerTakebackState = {
+  /** Which player has a pending request, or null if no active request */
+  requestedBy: PlayerColor | null;
+  /** How many times each player's requests have been declined since their last move */
+  declinedCount: Record<PlayerColor, number>;
+};
+
 export type MultiplayerSnapshot = {
   gameId: string;
   roomType: MultiplayerRoomType;
@@ -35,6 +42,7 @@ export type MultiplayerSnapshot = {
   state: GameState;
   players: PlayerSlot[];
   rematch: MultiplayerRematchState | null;
+  takeback: MultiplayerTakebackState | null;
   seats: Record<PlayerColor, PlayerSlot | null>;
 };
 
@@ -137,6 +145,15 @@ export type GameActionMessage =
     }
   | {
       type: "decline-rematch";
+    }
+  | {
+      type: "request-takeback";
+    }
+  | {
+      type: "accept-takeback";
+    }
+  | {
+      type: "decline-takeback";
     };
 
 export type ClientToServerMessage = GameActionMessage;

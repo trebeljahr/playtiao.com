@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/Navbar";
 import { markTutorialComplete } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { InteractiveMiniBoard } from "@/components/tutorial/InteractiveMiniBoard";
@@ -12,6 +13,8 @@ import { TUTORIAL_STEPS } from "@/components/tutorial/tutorialSteps";
 type TutorialPageProps = {
   auth: AuthResponse | null;
   onAuthChange?: (auth: AuthResponse) => void;
+  onOpenAuth: (mode: "login" | "signup") => void;
+  onLogout: () => void;
 };
 
 function fireBigConfetti() {
@@ -70,8 +73,9 @@ function ProgressDots({
 
 // --- Main tutorial component ---
 
-export function TutorialPage({ auth, onAuthChange }: TutorialPageProps) {
+export function TutorialPage({ auth, onAuthChange, onOpenAuth, onLogout }: TutorialPageProps) {
   const navigate = useNavigate();
+  const [navOpen, setNavOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [completing, setCompleting] = useState(false);
@@ -191,6 +195,16 @@ export function TutorialPage({ auth, onAuthChange }: TutorialPageProps) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[24rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+
+      <Navbar
+        mode="tutorial"
+        auth={auth}
+        navOpen={navOpen}
+        onToggleNav={() => setNavOpen((v) => !v)}
+        onCloseNav={() => setNavOpen(false)}
+        onOpenAuth={onOpenAuth}
+        onLogout={onLogout}
+      />
 
       <div className="flex w-full max-w-lg flex-col items-center gap-5">
         {/* Step counter */}

@@ -33,6 +33,10 @@ import {
 } from "@/components/game/boardStyles";
 import { cn } from "@/lib/utils";
 
+const IS_TOUCH_DEVICE =
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
 function fireLightConfetti() {
   confetti({
     particleCount: 60,
@@ -116,6 +120,7 @@ export function InteractiveMiniBoard({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [triedIllegal, setTriedIllegal] = useState(false);
   const [hasUndone, setHasUndone] = useState(false);
+  const [hasSeenConfirmHint, setHasSeenConfirmHint] = useState(false);
   const completedRef = useRef(false);
 
   const color = turnColor;
@@ -149,6 +154,7 @@ export function InteractiveMiniBoard({
     setErrorMsg(null);
     setTriedIllegal(false);
     setHasUndone(false);
+    setHasSeenConfirmHint(false);
     completedRef.current = false;
   }, [resetKey, initialBoard]);
 
@@ -367,7 +373,10 @@ export function InteractiveMiniBoard({
         return { pos: interaction.jumpTo!, label: "Jump here!" };
       }
       if (hasPending) {
-        return { pos: forcedOrigin!, label: "Click to confirm (or undo)" };
+        const confirmLabel = IS_TOUCH_DEVICE
+          ? "Tap again to confirm"
+          : "Click to confirm (or undo)";
+        return { pos: forcedOrigin!, label: confirmLabel };
       }
     }
     if (interaction.type === "chain-jump" || interaction.type === "chain-jump-early") {
@@ -398,6 +407,22 @@ export function InteractiveMiniBoard({
   }
 
   const nudge = getNudge();
+
+  // On mobile, show a prominent confirm circle the first time a confirm is needed
+  const showMobileConfirmHint =
+    IS_TOUCH_DEVICE &&
+    !hasSeenConfirmHint &&
+    hasPending &&
+    forcedOrigin &&
+    !completed;
+
+  // Mark the hint as seen once the confirm circle has been shown
+  useEffect(() => {
+    if (showMobileConfirmHint) {
+      const timer = setTimeout(() => setHasSeenConfirmHint(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showMobileConfirmHint]);
 
   // Show confirm affordance when hovering forced origin
   const showConfirmOverlay = !!forcedOrigin && hasPending && confirmHovered && !completed;
@@ -821,6 +846,31 @@ export function InteractiveMiniBoard({
                 }}
                 transition={{
                   duration: 1.4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            )}
+
+            {/* Mobile confirm hint — larger pulsing circle on first confirm */}
+            {showMobileConfirmHint && forcedOrigin && (
+              <motion.span
+                className="pointer-events-none absolute z-[84] rounded-full border-[3px] border-[#56703f] bg-[#56703f]/10"
+                style={{
+                  left: `${pointPct(forcedOrigin.x, size)}%`,
+                  top: `${pointPct(forcedOrigin.y, size)}%`,
+                  width: `${100 / size * 1.3}%`,
+                  aspectRatio: "1",
+                  marginLeft: `${-100 / size * 1.3 / 2}%`,
+                  marginTop: `${-100 / size * 1.3 / 2}%`,
+                }}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{
+                  scale: [1, 1.35, 1],
+                  opacity: [0.8, 0.3, 0.8],
+                }}
+                transition={{
+                  duration: 1.2,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}

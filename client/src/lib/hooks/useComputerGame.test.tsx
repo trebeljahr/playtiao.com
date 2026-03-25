@@ -3,8 +3,8 @@ import { renderHook, act } from "@testing-library/react";
 import { useComputerGame } from "./useComputerGame";
 
 vi.mock("../computer-ai", () => ({
-  COMPUTER_COLOR: "black" as const,
   COMPUTER_THINK_MS: 440,
+  randomComputerColor: () => "black" as const,
   requestComputerMove: vi.fn(() => ({
     promise: new Promise(() => {}), // never resolves
     cancel: vi.fn(),

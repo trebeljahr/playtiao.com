@@ -82,6 +82,7 @@ function makeMatchmakingSnapshot(overrides?: Partial<MultiplayerSnapshot>): Mult
       black: { player: { playerId: "guest-bbb", displayName: "Anonymous", kind: "guest" }, online: true },
     },
     rematch: null,
+    takeback: null,
     ...overrides,
   };
 }
