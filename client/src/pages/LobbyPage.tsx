@@ -295,36 +295,6 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto space-y-10 pb-8">
-                <Button
-                  size="lg"
-                  className="w-full h-14 text-lg"
-                  onClick={() => navigate("/matchmaking")}
-                >
-                  Unlimited time game
-                </Button>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {TIME_CONTROL_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.label}
-                      variant="secondary"
-                      className="flex flex-col items-center gap-0.5 h-auto py-3 border-[#dcc7a2] hover:border-[#b98d49] hover:bg-[#fff8ee] transition-all"
-                      onClick={() =>
-                        navigate("/matchmaking", {
-                          state: { timeControl: preset.timeControl },
-                        })
-                      }
-                    >
-                      <span className="text-base font-bold text-[#2b1e14]">
-                        {preset.label}
-                      </span>
-                      <span className="text-[0.65rem] uppercase tracking-wider text-[#8d7760]">
-                        {preset.category}
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-
                 <div className="space-y-6">
                   <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-[0.25em] text-[#8d7760]">
                     <span className="h-px flex-1 bg-[#dcc7a2]" />
@@ -368,6 +338,42 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                       </Button>
                     </div>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-[0.25em] text-[#8d7760]">
+                  <span className="h-px flex-1 bg-[#dcc7a2]" />
+                  Quick match
+                  <span className="h-px flex-1 bg-[#dcc7a2]" />
+                </div>
+
+                <Button
+                  size="lg"
+                  className="w-full h-14 text-lg"
+                  onClick={() => navigate("/matchmaking")}
+                >
+                  Unlimited time game
+                </Button>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {TIME_CONTROL_PRESETS.map((preset) => (
+                    <Button
+                      key={preset.label}
+                      variant="secondary"
+                      className="flex flex-col items-center gap-0.5 h-auto py-3 border-[#dcc7a2] hover:border-[#b98d49] hover:bg-[#fff8ee] transition-all"
+                      onClick={() =>
+                        navigate("/matchmaking", {
+                          state: { timeControl: preset.timeControl },
+                        })
+                      }
+                    >
+                      <span className="text-base font-bold text-[#2b1e14]">
+                        {preset.label}
+                      </span>
+                      <span className="text-[0.65rem] uppercase tracking-wider text-[#8d7760]">
+                        {preset.category}
+                      </span>
+                    </Button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
