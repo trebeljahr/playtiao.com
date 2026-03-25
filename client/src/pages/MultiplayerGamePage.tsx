@@ -85,6 +85,7 @@ export function MultiplayerGamePage({
   const liveSocialOverview = social.socialOverview;
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [forfeitDialogOpen, setForfeitDialogOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
 
   // Real-time social updates (friend online status, invitation state)
@@ -664,15 +665,7 @@ export function MultiplayerGamePage({
                               variant="ghost"
                               size="sm"
                               className="w-full text-[#9b4030] hover:bg-[#fdf0ed] hover:text-[#7a2e22]"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Are you sure you want to forfeit? Your opponent will win.",
-                                  )
-                                ) {
-                                  sendMultiplayerMessage({ type: "forfeit" });
-                                }
-                              }}
+                              onClick={() => setForfeitDialogOpen(true)}
                             >
                               Forfeit
                             </Button>
@@ -948,6 +941,31 @@ export function MultiplayerGamePage({
               );
             })
           )}
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={forfeitDialogOpen}
+        onOpenChange={setForfeitDialogOpen}
+        title="Forfeit Game"
+        description="Are you sure you want to forfeit? Your opponent will win."
+      >
+        <div className="flex gap-3 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => setForfeitDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="bg-[#9b4030] text-white hover:bg-[#7a2e22]"
+            onClick={() => {
+              setForfeitDialogOpen(false);
+              sendMultiplayerMessage({ type: "forfeit" });
+            }}
+          >
+            Forfeit
+          </Button>
         </div>
       </Dialog>
     </div>
