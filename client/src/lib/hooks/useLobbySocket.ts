@@ -35,8 +35,13 @@ export function useLobbySocket(
 
       if (payload.type === "game-update") {
         onGameUpdateRef.current();
-        // If it just became my turn, show a toast (deduplicated by game ID)
-        if (payload.summary.status === "active" && payload.summary.yourSeat === payload.summary.currentTurn) {
+        // If it just became my turn, show a toast — but not if we're already in that game
+        const inGame = window.location.pathname.startsWith("/game/");
+        if (
+          payload.summary.status === "active" &&
+          payload.summary.yourSeat === payload.summary.currentTurn &&
+          !inGame
+        ) {
           const opponentSeat = payload.summary.yourSeat === "white" ? "black" : "white";
           const opponentName = payload.summary.seats[opponentSeat]?.player.displayName || "your opponent";
           toast.info(`Your move in ${payload.summary.gameId}`, {
