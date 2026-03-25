@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/Navbar";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { useSocialData } from "@/lib/hooks/useSocialData";
-import { useLobbySocket } from "@/lib/hooks/useLobbySocket";
+import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { createMultiplayerGame } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -49,14 +49,12 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
     }
   }
 
-  useLobbySocket(
-    auth,
-    () => {},
-    () => {
+  useLobbyMessage((payload) => {
+    if (payload.type === "social-update") {
       void social.refreshSocialOverview({ silent: true });
       void social.runFriendSearch();
-    },
-  );
+    }
+  });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
