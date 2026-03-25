@@ -11,6 +11,15 @@ export function useLobbySocket(
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
+  // Store callbacks in refs so the socket doesn't reconnect on every render.
+  // Without this, inline arrow functions cause connect to get a new identity
+  // each render → useEffect tears down and reopens the socket → brief overlap
+  // where multiple sockets are alive → server broadcasts to all → duplicate toasts.
+  const onGameUpdateRef = useRef(onGameUpdate);
+  const onSocialUpdateRef = useRef(onSocialUpdate);
+  onGameUpdateRef.current = onGameUpdate;
+  onSocialUpdateRef.current = onSocialUpdate;
+
   const connect = useCallback(() => {
     if (!auth || auth.player.kind !== "account") return;
 
@@ -25,11 +34,14 @@ export function useLobbySocket(
       const payload = JSON.parse(event.data) as any;
 
       if (payload.type === "game-update") {
-        onGameUpdate();
-        // If it just became my turn, show a toast
+        onGameUpdateRef.current();
+        // If it just became my turn, show a toast (deduplicated by game ID)
         if (payload.summary.status === "active" && payload.summary.yourSeat === payload.summary.currentTurn) {
+          const opponentSeat = payload.summary.yourSeat === "white" ? "black" : "white";
+          const opponentName = payload.summary.seats[opponentSeat]?.player.displayName || "your opponent";
           toast.info(`Your move in ${payload.summary.gameId}`, {
-            description: `It's your turn against ${payload.summary.seats[payload.summary.yourSeat === "white" ? "black" : "white"]?.player.displayName || "your opponent"}.`,
+            id: `your-turn-${payload.summary.gameId}`,
+            description: `It's your turn against ${opponentName}.`,
             action: {
               label: "Join Game",
               onClick: () => window.location.assign(`/game/${payload.summary.gameId}`),
@@ -39,15 +51,7 @@ export function useLobbySocket(
       }
 
       if (payload.type === "social-update") {
-        onSocialUpdate();
-        
-        // We could compare previous overview with new one to find EXACTLY what changed,
-        // but for now let's just show a general notification for incoming requests/invites
-        // if they are new. (This is slightly complex without storing state here).
-        // Let's at least show a toast that social status updated.
-        toast.success("Social update", {
-          description: "Your friends list or game invitations have been updated.",
-        });
+        onSocialUpdateRef.current();
       }
     };
 
@@ -61,7 +65,7 @@ export function useLobbySocket(
     socket.onerror = () => {
       socket.close();
     };
-  }, [auth, onGameUpdate, onSocialUpdate]);
+  }, [auth]);
 
   useEffect(() => {
     connect();

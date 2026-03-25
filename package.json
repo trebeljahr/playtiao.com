@@ -10,7 +10,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm --prefix client run build",
     "build:server": "npm --prefix server run build",
-    "dev": "concurrently -k -n client,server -c yellow,cyan \"npm run client\" \"npm run server\"",
+    "dev": "node scripts/dev.mjs",
     "test": "npm --prefix server test",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev"

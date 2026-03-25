@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": ["scripts/dev-preview.sh"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev.mjs"],
       "port": 3000,
       "autoPort": true
     }
