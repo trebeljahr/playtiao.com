@@ -44,6 +44,7 @@ function serializeAccountProfile(account: {
   displayName: string;
   email?: string;
   profilePicture?: string;
+  hasSeenTutorial?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }) {
@@ -51,6 +52,7 @@ function serializeAccountProfile(account: {
     displayName: account.displayName,
     email: account.email,
     profilePicture: account.profilePicture,
+    hasSeenTutorial: account.hasSeenTutorial ?? false,
     createdAt: account.createdAt?.toISOString(),
     updatedAt: account.updatedAt?.toISOString(),
   };
@@ -356,6 +358,20 @@ router.put("/profile", async (req: Request, res: Response) => {
     auth,
     profile: serializeAccountProfile(account),
   });
+});
+
+router.post("/tutorial-complete", async (req: Request, res: Response) => {
+  const account = await requireAccount(req, res);
+  if (!account) {
+    return;
+  }
+
+  account.hasSeenTutorial = true;
+  await account.save();
+
+  const auth = buildAccountAuth(account);
+  await refreshPlayerSession(req, res, auth.player);
+  return res.status(200).json({ auth });
 });
 
 router.post(

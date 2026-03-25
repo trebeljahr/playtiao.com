@@ -13,6 +13,7 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   cancelFriendRequest,
+  removeFriend,
   sendGameInvitation,
   revokeGameInvitation,
 } from "../api";
@@ -197,6 +198,23 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
     [auth, refreshSocialOverview, runFriendSearch],
   );
 
+  const handleRemoveFriend = useCallback(
+    async (accountId: string) => {
+      if (!auth || auth.player.kind !== "account") return;
+      setSocialActionBusyKey(`friend-remove:${accountId}`);
+      try {
+        await removeFriend(accountId);
+        await refreshSocialOverview({ silent: true });
+        await runFriendSearch();
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setSocialActionBusyKey(null);
+      }
+    },
+    [auth, refreshSocialOverview, runFriendSearch],
+  );
+
   const handleSendGameInvitation = useCallback(
     async (gameId: string, recipientId: string, expiresInMinutes: number) => {
       if (!auth || auth.player.kind !== "account") {
@@ -262,6 +280,7 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
     handleAcceptFriendRequest,
     handleDeclineFriendRequest,
     handleCancelFriendRequest,
+    handleRemoveFriend,
     handleSendGameInvitation,
     handleRevokeGameInvitation,
   };

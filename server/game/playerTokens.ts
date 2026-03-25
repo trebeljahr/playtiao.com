@@ -42,6 +42,7 @@ export function createAccountAuth(account: {
   email?: string;
   displayName: string;
   profilePicture?: string;
+  hasSeenTutorial?: boolean;
 }): AuthResponse {
   const player: PlayerIdentity = {
     playerId: account.id,
@@ -49,6 +50,7 @@ export function createAccountAuth(account: {
     displayName: sanitizeDisplayName(account.displayName),
     kind: "account",
     profilePicture: account.profilePicture,
+    hasSeenTutorial: account.hasSeenTutorial ?? false,
   };
 
   return {

@@ -8,6 +8,7 @@ export type PlayerIdentity = {
   kind: IdentityKind;
   email?: string;
   profilePicture?: string;
+  hasSeenTutorial?: boolean;
 };
 
 export type PlayerSlot = {
@@ -75,6 +76,7 @@ export type SocialPlayerSummary = {
   displayName: string;
   profilePicture?: string;
   email?: string;
+  online?: boolean;
 };
 
 export type SocialSearchRelationship =

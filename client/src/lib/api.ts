@@ -251,6 +251,13 @@ export function cancelFriendRequest(accountId: string) {
   );
 }
 
+export function removeFriend(accountId: string) {
+  return request<{ message: string }>(
+    `/api/player/social/friends/${accountId}/remove`,
+    { method: "POST" }
+  );
+}
+
 export function sendGameInvitation(
   body: {
     gameId: string;
@@ -271,6 +278,12 @@ export function revokeGameInvitation(invitationId: string) {
       method: "POST",
     }
   );
+}
+
+export function markTutorialComplete() {
+  return request<{ auth: AuthResponse }>("/api/player/tutorial-complete", {
+    method: "POST",
+  });
 }
 
 export function getAccountProfile() {

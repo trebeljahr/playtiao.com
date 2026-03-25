@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/Navbar";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { useSocialData } from "@/lib/hooks/useSocialData";
+import { useLobbySocket } from "@/lib/hooks/useLobbySocket";
 import { cn } from "@/lib/utils";
 
 type FriendsPageProps = {
@@ -28,6 +29,12 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
   const [navOpen, setNavOpen] = useState(false);
 
   const social = useSocialData(auth, false);
+
+  useLobbySocket(
+    auth,
+    () => {},
+    () => void social.refreshSocialOverview({ silent: true }),
+  );
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -129,9 +136,20 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
                       <PlayerOverviewAvatar player={friend} />
                       <span className="font-medium">{friend.displayName}</span>
                     </div>
-                    <Badge className={friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
-                      {friend.online ? "Online" : "Offline"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
+                        {friend.online ? "Online" : "Offline"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-[#8d7760] hover:text-red-600"
+                        onClick={() => social.handleRemoveFriend(friend.playerId)}
+                        disabled={social.socialActionBusyKey === `friend-remove:${friend.playerId}`}
+                      >
+                        Unfriend
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {social.socialOverview.friends.length === 0 && <p className="text-sm text-[#6e5b48]">Your friend list is empty.</p>}

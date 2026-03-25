@@ -61,6 +61,11 @@ export class GameService {
     private readonly abandonTimeoutMs: number = GUEST_ABANDON_TIMEOUT_MS
   ) {}
 
+  isPlayerConnectedToLobby(playerId: string): boolean {
+    const sockets = this.lobbyConnections.get(playerId);
+    return !!sockets && sockets.size > 0;
+  }
+
   async connectLobby(player: PlayerIdentity, socket: WebSocket): Promise<void> {
     let userSockets = this.lobbyConnections.get(player.playerId);
     if (!userSockets) {

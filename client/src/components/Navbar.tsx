@@ -165,7 +165,7 @@ export function Navbar({
   const navItemClasses =
     "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";
   const activeNavItemClasses =
-    "bg-[rgba(255,248,232,0.94)] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] active:translate-y-0";
+    "bg-[rgba(255,248,232,0.94)] text-[#28170e] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] active:translate-y-0";
 
   const handleNav = (path: string) => {
     onCloseNav();
@@ -228,7 +228,7 @@ export function Navbar({
           size="sm"
           disabled={item.active}
           className={cn(
-            "relative justify-start px-3 text-[#28170e] disabled:opacity-100",
+            "relative justify-start px-3 text-[#28170e] disabled:opacity-100 disabled:text-[#28170e]",
             item.active ? activeNavItemClasses : navItemClasses
           )}
           onClick={item.onClick}
@@ -306,7 +306,7 @@ export function Navbar({
             disabled={item.active}
             className={cn(
               navItemClasses,
-              "disabled:opacity-100",
+              "disabled:opacity-100 disabled:text-[#28170e]",
               item.active && activeNavItemClasses
             )}
             onClick={item.onClick}

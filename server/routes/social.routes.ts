@@ -144,6 +144,29 @@ async function loadAccountsById(accountIds: ReadonlyArray<{ toString(): string }
   return accounts.map((account) => toSocialPlayerSummary(account));
 }
 
+async function loadAccountsByIdWithOnlineStatus(accountIds: ReadonlyArray<{ toString(): string }>) {
+  const normalizedIds = accountIds.map((accountId) => accountId.toString());
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const accounts = await GameAccount.find({
+    _id: {
+      $in: normalizedIds,
+    },
+  })
+    .sort({ displayName: 1 })
+    .lean<IGameAccount[]>()
+    .exec();
+
+  return accounts.map((account) => ({
+    ...toSocialPlayerSummary(account),
+    online: gameService.isPlayerConnectedToLobby(
+      account._id ? String(account._id) : ""
+    ),
+  }));
+}
+
 async function loadInvitationSummaries(
   filter: Record<string, unknown>
 ): Promise<GameInvitationSummary[]> {
@@ -194,7 +217,7 @@ async function notifyLobbyUpdate(playerId: string) {
 
   const [friends, incomingFriendRequests, outgoingFriendRequests] =
     await Promise.all([
-      loadAccountsById(account.friends),
+      loadAccountsByIdWithOnlineStatus(account.friends),
       loadAccountsById(account.receivedFriendRequests),
       loadAccountsById(account.sentFriendRequests),
     ]);
@@ -240,7 +263,7 @@ router.get("/player/social/overview", async (req: Request, res: Response) => {
 
   const [friends, incomingFriendRequests, outgoingFriendRequests] =
     await Promise.all([
-      loadAccountsById(account.friends),
+      loadAccountsByIdWithOnlineStatus(account.friends),
       loadAccountsById(account.receivedFriendRequests),
       loadAccountsById(account.sentFriendRequests),
     ]);
@@ -507,6 +530,47 @@ router.post(
 
     return res.status(200).json({
       message: "Friend request cancelled.",
+    });
+  }
+);
+
+router.post(
+  "/player/social/friends/:accountId/remove",
+  async (req: Request, res: Response) => {
+    const account = await requireAccount(req, res);
+    if (!account) {
+      return;
+    }
+
+    const targetId = req.params.accountId;
+
+    if (!containsAccountId(account.friends, targetId)) {
+      return res.status(400).json({
+        message: "That player is not on your friends list.",
+      });
+    }
+
+    const targetAccount = await GameAccount.findById(targetId);
+    if (!targetAccount) {
+      return res.status(404).json({
+        message: "That player could not be found.",
+      });
+    }
+
+    await GameAccount.updateOne(
+      { _id: account._id },
+      { $pull: { friends: targetAccount._id } }
+    );
+    await GameAccount.updateOne(
+      { _id: targetAccount._id },
+      { $pull: { friends: account._id } }
+    );
+
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(targetAccount.id);
+
+    return res.status(200).json({
+      message: "Friend removed.",
     });
   }
 );

@@ -27,6 +27,7 @@ import {
 } from "@/components/game/GameShared";
 import { useMultiplayerGame } from "@/lib/hooks/useMultiplayerGame";
 import { useSocialData } from "@/lib/hooks/useSocialData";
+import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
 import { isGameOver, getWinner, getJumpTargets, arePositionsEqual } from "@shared";
@@ -63,6 +64,7 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
   } = multi;
 
   const social = useSocialData(auth, false);
+  const { socialOverview: liveSocialOverview } = useSocialNotifications();
 
   useEffect(() => {
     if (!auth || !gameId) return;
@@ -352,13 +354,13 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
 
                             // Determine friend relationship for non-self seats
                             const isFriend = !isYourSeat && opponentId
-                              ? social.socialOverview.friends.some(f => f.playerId === opponentId)
+                              ? liveSocialOverview.friends.some(f => f.playerId === opponentId)
                               : false;
                             const hasPendingOutgoing = !isYourSeat && opponentId
-                              ? social.socialOverview.outgoingFriendRequests.some(f => f.playerId === opponentId)
+                              ? liveSocialOverview.outgoingFriendRequests.some(f => f.playerId === opponentId)
                               : false;
                             const hasPendingIncoming = !isYourSeat && opponentId
-                              ? social.socialOverview.incomingFriendRequests.some(f => f.playerId === opponentId)
+                              ? liveSocialOverview.incomingFriendRequests.some(f => f.playerId === opponentId)
                               : false;
                             const canBefriend = isAccount && !isYourSeat && seat && seat.player.kind === "account" && !isFriend && !hasPendingOutgoing && !hasPendingIncoming;
 

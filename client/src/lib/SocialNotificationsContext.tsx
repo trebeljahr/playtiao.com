@@ -19,12 +19,14 @@ import { toastError } from "./errors";
 
 type SocialNotificationsContextValue = {
   pendingFriendRequestCount: number;
+  socialOverview: SocialOverview;
   refreshNotifications: () => void;
 };
 
 const SocialNotificationsContext =
   createContext<SocialNotificationsContextValue>({
     pendingFriendRequestCount: 0,
+    socialOverview: EMPTY_SOCIAL_OVERVIEW,
     refreshNotifications: () => {},
   });
 
@@ -113,6 +115,7 @@ export function SocialNotificationsProvider({
                           toast.success(
                             `You are now friends with ${reqName}`,
                           );
+                          await fetchOverview();
                         } catch (e) {
                           toastError(e);
                         }
@@ -125,6 +128,7 @@ export function SocialNotificationsProvider({
                       void (async () => {
                         try {
                           await declineFriendRequest(reqPlayerId);
+                          await fetchOverview();
                         } catch (e) {
                           toastError(e);
                         }
@@ -168,7 +172,7 @@ export function SocialNotificationsProvider({
 
   return (
     <SocialNotificationsContext.Provider
-      value={{ pendingFriendRequestCount, refreshNotifications: fetchOverview }}
+      value={{ pendingFriendRequestCount, socialOverview: overview, refreshNotifications: fetchOverview }}
     >
       {children}
     </SocialNotificationsContext.Provider>

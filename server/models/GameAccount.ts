@@ -8,6 +8,7 @@ export interface IGameAccount extends Document {
   friends: Schema.Types.ObjectId[];
   receivedFriendRequests: Schema.Types.ObjectId[];
   sentFriendRequests: Schema.Types.ObjectId[];
+  hasSeenTutorial: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +57,10 @@ const GameAccountSchema = new Schema<IGameAccount>(
         default: [],
       },
     ],
+    hasSeenTutorial: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
