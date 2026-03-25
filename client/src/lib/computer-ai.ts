@@ -54,7 +54,7 @@ function countAdjacentPieces(
     const nx = position.x + dx;
     const ny = position.y + dy;
     if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
-      if (state.board[ny][nx] === color) {
+      if (state.positions[ny][nx] === color) {
         count += 1;
       }
     }
