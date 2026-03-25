@@ -19,7 +19,7 @@ import {
   formatGameTimestamp,
 } from "@/components/game/GameShared";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
-import { useLobbySocket } from "@/lib/hooks/useLobbySocket";
+import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { cn } from "@/lib/utils";
 
 type GamesPageProps = {
@@ -39,11 +39,11 @@ export function GamesPage({ auth, onOpenAuth, onLogout }: GamesPageProps) {
   } = useGamesIndex(auth);
 
   // Real-time updates for games page
-  useLobbySocket(
-    auth,
-    () => void refreshMultiplayerGames({ silent: true }),
-    () => {},
-  );
+  useLobbyMessage((payload) => {
+    if (payload.type === "game-update") {
+      void refreshMultiplayerGames({ silent: true });
+    }
+  });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";

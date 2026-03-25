@@ -23,7 +23,8 @@ import {
 } from "@/components/game/GameShared";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useSocialData } from "@/lib/hooks/useSocialData";
-import { useLobbySocket } from "@/lib/hooks/useLobbySocket";
+import { useLobbyMessage } from "@/lib/LobbySocketContext";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createMultiplayerGame, joinMultiplayerGame } from "@/lib/api";
 import { toastError } from "@/lib/errors";
@@ -41,11 +42,32 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
   const { socialOverview, refreshSocialOverview } = useSocialData(auth, true);
 
   // Real-time updates for lobby
-  useLobbySocket(
-    auth,
-    () => void refreshMultiplayerGames({ silent: true }),
-    () => void refreshSocialOverview({ silent: true, allowInviteToast: true }),
-  );
+  useLobbyMessage((payload) => {
+    if (payload.type === "game-update") {
+      void refreshMultiplayerGames({ silent: true });
+
+      const inGame = window.location.pathname.startsWith("/game/");
+      if (
+        payload.summary.status === "active" &&
+        payload.summary.yourSeat === payload.summary.currentTurn &&
+        !inGame
+      ) {
+        const opponentSeat = payload.summary.yourSeat === "white" ? "black" : "white";
+        const opponentName = payload.summary.seats[opponentSeat]?.player.displayName || "your opponent";
+        toast.info(`Your move in ${payload.summary.gameId}`, {
+          id: `your-turn-${payload.summary.gameId}`,
+          description: `It's your turn against ${opponentName}.`,
+          action: {
+            label: "Join Game",
+            onClick: () => window.location.assign(`/game/${payload.summary.gameId}`),
+          },
+        });
+      }
+    }
+    if (payload.type === "social-update") {
+      void refreshSocialOverview({ silent: true, allowInviteToast: true });
+    }
+  });
 
   const [navOpen, setNavOpen] = useState(false);
   const [joinGameId, setJoinGameId] = useState("");

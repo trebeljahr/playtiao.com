@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
+import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { LobbyPage } from "./pages/LobbyPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { LocalGamePage } from "./pages/LocalGamePage";
@@ -211,6 +212,7 @@ export function App() {
   }
 
   return (
+    <LobbySocketProvider auth={auth}>
     <SocialNotificationsProvider auth={auth}>
     <div className="min-h-screen bg-background text-foreground">
       <main className="min-h-screen">
@@ -464,5 +466,6 @@ export function App() {
       />
     </div>
     </SocialNotificationsProvider>
+    </LobbySocketProvider>
   );
 }

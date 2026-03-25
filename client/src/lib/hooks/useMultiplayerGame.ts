@@ -19,6 +19,7 @@ import {
 } from "@shared";
 import { buildWebSocketUrl, accessMultiplayerGame } from "../api";
 import { toastError, readableError, isNetworkError } from "../errors";
+import { createReconnectScheduler } from "../reconnect";
 import { createOptimisticSnapshot } from "../../components/game/GameShared";
 
 export type ConnectionState = "idle" | "connecting" | "connected" | "disconnected";
@@ -48,8 +49,6 @@ export function useMultiplayerGame(
   const confirmedMultiplayerSnapshotRef = useRef<MultiplayerSnapshot | null>(
     null,
   );
-  const reconnectTimerRef = useRef<number | null>(null);
-  const reconnectAttemptRef = useRef(0);
   const pendingOptimisticUpdateRef = useRef(false);
 
   useEffect(() => {
@@ -70,12 +69,12 @@ export function useMultiplayerGame(
     [options.websocketDebugEnabled],
   );
 
-  const clearReconnectTimer = useCallback(() => {
-    if (reconnectTimerRef.current !== null) {
-      window.clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-  }, []);
+  const reconnectRef = useRef(
+    createReconnectScheduler(() => {
+      void reconnectToCurrentRoomRef.current();
+    }),
+  );
+  const reconnectToCurrentRoomRef = useRef<() => Promise<void>>(async () => {});
 
   const commitMultiplayerSnapshot = useCallback(
     (
@@ -113,8 +112,9 @@ export function useMultiplayerGame(
   }, [commitMultiplayerSnapshot, syncMultiplayerSelection]);
 
   const handleUnexpectedMultiplayerDisconnect = useCallback(() => {
+    const reconnect = reconnectRef.current;
     logWebSocketDebug("unexpected-disconnect", {
-      reconnectAttempt: reconnectAttemptRef.current,
+      reconnectAttempt: reconnect.getAttempt(),
       hasSnapshot: !!latestMultiplayerSnapshotRef.current,
     });
     setConnectionState("disconnected");
@@ -123,68 +123,16 @@ export function useMultiplayerGame(
       restoreConfirmedSnapshot();
     }
 
-    if (reconnectAttemptRef.current === 0) {
+    if (reconnect.getAttempt() === 0) {
       toast.error("There was a disconnect from the server. Reconnecting...");
     }
 
-    scheduleMultiplayerReconnect();
-  }, [logWebSocketDebug, restoreConfirmedSnapshot]);
-
-  const scheduleMultiplayerReconnect = useCallback(() => {
     const snapshot = latestMultiplayerSnapshotRef.current;
     const nextAuth = latestAuthRef.current;
-    if (!snapshot || !nextAuth) {
-      return;
+    if (snapshot && nextAuth) {
+      reconnect.schedule();
     }
-
-    clearReconnectTimer();
-    
-    // Jittered exponential backoff: 1.5s, 3s, 6s, max 10s.
-    const baseDelay = Math.min(
-      1500 * Math.pow(2, Math.min(reconnectAttemptRef.current, 3)),
-      10000
-    );
-    const jitter = Math.random() * 1000;
-    const delay = baseDelay + jitter;
-
-    reconnectAttemptRef.current += 1;
-    logWebSocketDebug("schedule-reconnect", {
-      delay,
-      attempt: reconnectAttemptRef.current,
-      gameId: snapshot.gameId,
-    });
-    reconnectTimerRef.current = window.setTimeout(() => {
-      void reconnectToCurrentRoom();
-    }, delay);
-  }, [logWebSocketDebug, clearReconnectTimer]);
-
-  const reconnectToCurrentRoom = useCallback(async () => {
-    const snapshot = latestMultiplayerSnapshotRef.current;
-    if (!snapshot) {
-      return;
-    }
-
-    setConnectionState("connecting");
-    logWebSocketDebug("reconnect-start", {
-      gameId: snapshot.gameId,
-      attempt: reconnectAttemptRef.current,
-    });
-
-    try {
-      // Poll server status before re-establishing websocket
-      const response = await accessMultiplayerGame(snapshot.gameId);
-      connectToRoom(response.snapshot, {
-        preserveView: true,
-      });
-    } catch (error) {
-      if (isNetworkError(error)) {
-        setConnectionState("disconnected");
-        scheduleMultiplayerReconnect();
-        return;
-      }
-      setMultiplayerError(readableError(error));
-    }
-  }, [logWebSocketDebug, scheduleMultiplayerReconnect]);
+  }, [logWebSocketDebug, restoreConfirmedSnapshot]);
 
   const sendMultiplayerMessage = useCallback(
     (message: ClientToServerMessage) => {
@@ -279,7 +227,7 @@ export function useMultiplayerGame(
       } = {},
     ) => {
       if (options.preserveView) {
-        clearReconnectTimer();
+        reconnectRef.current.clear();
         const existingSocket = socketRef.current;
         socketRef.current = null;
         existingSocket?.close();
@@ -301,7 +249,7 @@ export function useMultiplayerGame(
         if (socketRef.current !== socket) {
           return;
         }
-        reconnectAttemptRef.current = 0;
+        reconnectRef.current.reset();
         setConnectionState("connected");
         logWebSocketDebug("open", {
           url: socket.url,
@@ -365,7 +313,6 @@ export function useMultiplayerGame(
     },
     [
       logWebSocketDebug,
-      clearReconnectTimer,
       commitMultiplayerSnapshot,
       syncMultiplayerSelection,
       handleUnexpectedMultiplayerDisconnect,
@@ -373,14 +320,43 @@ export function useMultiplayerGame(
     ],
   );
 
+  const reconnectToCurrentRoom = useCallback(async () => {
+    const snapshot = latestMultiplayerSnapshotRef.current;
+    if (!snapshot) {
+      return;
+    }
+
+    setConnectionState("connecting");
+    logWebSocketDebug("reconnect-start", {
+      gameId: snapshot.gameId,
+      attempt: reconnectRef.current.getAttempt(),
+    });
+
+    try {
+      const response = await accessMultiplayerGame(snapshot.gameId);
+      connectToRoom(response.snapshot, {
+        preserveView: true,
+      });
+    } catch (error) {
+      if (isNetworkError(error)) {
+        setConnectionState("disconnected");
+        reconnectRef.current.schedule();
+        return;
+      }
+      setMultiplayerError(readableError(error));
+    }
+  }, [logWebSocketDebug, connectToRoom]);
+
+  reconnectToCurrentRoomRef.current = reconnectToCurrentRoom;
+
   useEffect(() => {
     return () => {
-      clearReconnectTimer();
+      reconnectRef.current.clear();
       const socket = socketRef.current;
       socketRef.current = null;
       socket?.close();
     };
-  }, [clearReconnectTimer]);
+  }, []);
 
   return {
     multiplayerSnapshot,
