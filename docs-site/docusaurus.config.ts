@@ -12,10 +12,10 @@ const config: Config = {
     v4: true,
   },
 
-  url: "https://your-org.github.io",
-  baseUrl: "/tiao/",
+  url: "https://docs.tiao.ricos.site",
+  baseUrl: "/",
 
-  organizationName: "your-org",
+  organizationName: "trebeljahr",
   projectName: "tiao",
 
   onBrokenLinks: "warn",
