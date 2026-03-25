@@ -498,6 +498,9 @@ router.post("/player/social/friend-requests", async (req: Request, res: Response
 
   await Promise.all([account.save(), targetAccount.save()]);
 
+  void notifyLobbyUpdate(account.id);
+  void notifyLobbyUpdate(targetAccount.id);
+
   return res.status(200).json({
     message: "Friend request sent.",
   });
