@@ -861,6 +861,9 @@ router.post("/player/social/game-invitations", async (req: Request, res: Respons
       existingInvitation.roomType = snapshot.roomType;
       await existingInvitation.save();
 
+      void notifyLobbyUpdate(account.id);
+      void notifyLobbyUpdate(recipient.id);
+
       return res.status(200).json({
         message: "Invitation updated.",
       });
@@ -874,6 +877,9 @@ router.post("/player/social/game-invitations", async (req: Request, res: Respons
       expiresAt,
       status: "pending",
     });
+
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(recipient.id);
 
     return res.status(201).json({
       message: "Invitation sent.",
@@ -940,6 +946,9 @@ router.post(
 
     invitation.status = "revoked";
     await invitation.save();
+
+    void notifyLobbyUpdate(account.id);
+    void notifyLobbyUpdate(invitation.recipientId.toString());
 
     return res.status(200).json({
       message: "Invitation revoked.",

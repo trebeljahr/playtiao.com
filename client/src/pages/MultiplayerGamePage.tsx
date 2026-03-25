@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/components/game/GameShared";
 import { useMultiplayerGame } from "@/lib/hooks/useMultiplayerGame";
 import { useSocialData } from "@/lib/hooks/useSocialData";
+import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
 import { isGameOver, getWinner, getJumpTargets, arePositionsEqual } from "@shared";
@@ -64,6 +66,29 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
 
   const social = useSocialData(auth, false);
   const liveSocialOverview = social.socialOverview;
+
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
+
+  // Real-time social updates (friend online status, invitation state)
+  useLobbyMessage((payload) => {
+    if (payload.type === "social-update") {
+      void social.refreshSocialOverview({ silent: true });
+    }
+  });
+
+  async function handleInviteFriend(friendId: string) {
+    if (!gameId) return;
+    setInviteBusy(friendId);
+    try {
+      await social.handleSendGameInvitation(gameId, friendId, 60);
+      toast.success("Invitation sent!");
+    } catch {
+      // handleSendGameInvitation already toasts errors
+    } finally {
+      setInviteBusy(null);
+    }
+  }
 
   useEffect(() => {
     if (!auth || !gameId) return;
@@ -330,9 +355,21 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
                                     <p className="text-sm text-[#7a6656]">{slot ? formatPlayerName(slot.player, auth?.player.playerId) : "Waiting to join"}</p>
                                   </div>
                                 </div>
-                                <Badge className={cn(slot?.online ? "bg-[#eef2e8] text-[#43513f]" : "bg-[#f2e8d9] text-[#6e5b48]")}>
-                                  {slot?.online ? "Online" : "Offline"}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {!slot && auth?.player.kind === "account" && isMultiplayerParticipant && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="text-xs border-[#dcc7a2]"
+                                      onClick={() => setInviteDialogOpen(true)}
+                                    >
+                                      Invite a Friend
+                                    </Button>
+                                  )}
+                                  <Badge className={cn(slot?.online ? "bg-[#eef2e8] text-[#43513f]" : "bg-[#f2e8d9] text-[#6e5b48]")}>
+                                    {slot?.online ? "Online" : "Offline"}
+                                  </Badge>
+                                </div>
                               </div>
                             );
                           })}
@@ -489,6 +526,61 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
           </div>
         </section>
       </main>
+
+      <Dialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        title="Invite a Friend"
+        description="Choose a friend to invite to this game."
+      >
+        <div className="space-y-2 max-h-[20rem] overflow-y-auto">
+          {liveSocialOverview.friends.length === 0 ? (
+            <p className="text-center text-sm text-[#6e5b48] py-6">
+              No friends yet. Add friends from the Friends page.
+            </p>
+          ) : (
+            liveSocialOverview.friends.map((friend) => {
+              const alreadyInRoom = multiplayerSnapshot?.players.some(
+                (slot) => slot.player.playerId === friend.playerId,
+              );
+              const alreadyInvited = liveSocialOverview.outgoingInvitations.some(
+                (inv) => inv.recipient.playerId === friend.playerId && inv.gameId === gameId,
+              );
+              return (
+                <div
+                  key={friend.playerId}
+                  className="flex items-center justify-between rounded-2xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <PlayerOverviewAvatar player={friend} />
+                    <span className="text-sm font-semibold text-[#2b1e14]">{friend.displayName}</span>
+                    <Badge className={cn(
+                      "text-xs",
+                      friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
+                    )}>
+                      {friend.online ? "Online" : "Offline"}
+                    </Badge>
+                  </div>
+                  {alreadyInRoom ? (
+                    <Badge variant="outline" className="text-xs text-[#43513f]">In game</Badge>
+                  ) : alreadyInvited ? (
+                    <Badge variant="outline" className="text-xs text-[#8d7760]">Invited</Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => handleInviteFriend(friend.playerId)}
+                      disabled={inviteBusy === friend.playerId}
+                    >
+                      {inviteBusy === friend.playerId ? "Sending..." : "Invite"}
+                    </Button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 }

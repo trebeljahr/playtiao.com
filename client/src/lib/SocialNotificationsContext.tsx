@@ -19,12 +19,14 @@ import { useLobbyMessage } from "./LobbySocketContext";
 
 type SocialNotificationsContextValue = {
   pendingFriendRequestCount: number;
+  incomingInvitationCount: number;
   refreshNotifications: () => void;
 };
 
 const SocialNotificationsContext =
   createContext<SocialNotificationsContextValue>({
     pendingFriendRequestCount: 0,
+    incomingInvitationCount: 0,
     refreshNotifications: () => {},
   });
 
@@ -43,6 +45,7 @@ export function SocialNotificationsProvider({
     EMPTY_SOCIAL_OVERVIEW,
   );
   const prevRequestIdsRef = useRef<Set<string>>(new Set());
+  const prevInvitationIdsRef = useRef<Set<string>>(new Set());
   const hydratedRef = useRef(false);
 
   const fetchOverview = useCallback(async () => {
@@ -58,6 +61,9 @@ export function SocialNotificationsProvider({
       const nextOverview = res.overview;
       prevRequestIdsRef.current = new Set(
         nextOverview.incomingFriendRequests.map((r) => r.playerId),
+      );
+      prevInvitationIdsRef.current = new Set(
+        nextOverview.incomingInvitations.map((inv) => inv.id),
       );
       hydratedRef.current = true;
       setOverview(nextOverview);
@@ -117,18 +123,41 @@ export function SocialNotificationsProvider({
       }
     }
 
+    // Show toast for new game invitations
+    if (hydratedRef.current) {
+      for (const inv of nextOverview.incomingInvitations) {
+        if (!prevInvitationIdsRef.current.has(inv.id)) {
+          const invGameId = inv.gameId;
+          const senderName = inv.sender.displayName;
+          toast(`${senderName} invited you to a game`, {
+            duration: 15000,
+            action: {
+              label: "Join",
+              onClick: () => {
+                window.location.assign(`/game/${invGameId}`);
+              },
+            },
+          });
+        }
+      }
+    }
+
     prevRequestIdsRef.current = new Set(
       nextOverview.incomingFriendRequests.map((r) => r.playerId),
+    );
+    prevInvitationIdsRef.current = new Set(
+      nextOverview.incomingInvitations.map((inv) => inv.id),
     );
     hydratedRef.current = true;
     setOverview(nextOverview);
   });
 
   const pendingFriendRequestCount = overview.incomingFriendRequests.length;
+  const incomingInvitationCount = overview.incomingInvitations.length;
 
   return (
     <SocialNotificationsContext.Provider
-      value={{ pendingFriendRequestCount, refreshNotifications: fetchOverview }}
+      value={{ pendingFriendRequestCount, incomingInvitationCount, refreshNotifications: fetchOverview }}
     >
       {children}
     </SocialNotificationsContext.Provider>

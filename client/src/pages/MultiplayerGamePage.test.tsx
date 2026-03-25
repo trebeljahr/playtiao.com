@@ -48,6 +48,7 @@ vi.mock("@/lib/errors", () => ({
 vi.mock("@/lib/SocialNotificationsContext", () => ({
   useSocialNotifications: () => ({
     pendingFriendRequestCount: 0,
+    incomingInvitationCount: 0,
     refreshNotifications: vi.fn(),
   }),
 }));

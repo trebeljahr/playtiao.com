@@ -159,7 +159,7 @@ export function Navbar({
 }: NavbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { pendingFriendRequestCount } = useSocialNotifications();
+  const { pendingFriendRequestCount, incomingInvitationCount } = useSocialNotifications();
   const player = auth?.player;
   const isAccount = player?.kind === "account";
   const gameMode =
@@ -180,7 +180,7 @@ export function Navbar({
       label: "Lobby",
       active: location.pathname === "/",
       onClick: () => handleNav("/"),
-      badge: 0,
+      badge: incomingInvitationCount,
     },
     {
       label: "Over the Board",
