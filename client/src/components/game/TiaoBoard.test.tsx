@@ -1,0 +1,186 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { createInitialGameState, BOARD_SIZE } from "@shared";
+import { touchToGridPosition } from "./TiaoBoard";
+
+// ---------- touchToGridPosition unit tests ----------
+
+describe("touchToGridPosition", () => {
+  const GRID_START = 100 / (BOARD_SIZE * 2);
+  const GRID_SPAN = 100 - 2 * GRID_START;
+  const GRID_STEP = GRID_SPAN / (BOARD_SIZE - 1);
+
+  function makeRect(width: number, height: number): DOMRect {
+    return {
+      left: 0,
+      top: 0,
+      right: width,
+      bottom: height,
+      width,
+      height,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    } as DOMRect;
+  }
+
+  it("snaps center of board to (9,9)", () => {
+    const rect = makeRect(400, 400);
+    // Center of a 400px board → 50% in both axes
+    const pos = touchToGridPosition(200, 200, rect);
+    expect(pos.x).toBe(9);
+    expect(pos.y).toBe(9);
+  });
+
+  it("snaps to (0,0) near top-left corner", () => {
+    const rect = makeRect(400, 400);
+    // GRID_START% of 400px = position of intersection (0,0)
+    const px = (GRID_START / 100) * 400;
+    const pos = touchToGridPosition(px, px, rect);
+    expect(pos.x).toBe(0);
+    expect(pos.y).toBe(0);
+  });
+
+  it("snaps to (18,18) near bottom-right corner", () => {
+    const rect = makeRect(400, 400);
+    const gridEnd = 100 - GRID_START;
+    const px = (gridEnd / 100) * 400;
+    const pos = touchToGridPosition(px, px, rect);
+    expect(pos.x).toBe(18);
+    expect(pos.y).toBe(18);
+  });
+
+  it("clamps negative coordinates to (0,0)", () => {
+    const rect = makeRect(400, 400);
+    const pos = touchToGridPosition(-50, -50, rect);
+    expect(pos.x).toBe(0);
+    expect(pos.y).toBe(0);
+  });
+
+  it("clamps coordinates beyond board to (18,18)", () => {
+    const rect = makeRect(400, 400);
+    const pos = touchToGridPosition(500, 500, rect);
+    expect(pos.x).toBe(18);
+    expect(pos.y).toBe(18);
+  });
+
+  it("snaps to nearest intersection, not floor", () => {
+    const rect = makeRect(400, 400);
+    // Position slightly past intersection (3,3)
+    const target3 = GRID_START + GRID_STEP * 3;
+    const slightlyPast = ((target3 + GRID_STEP * 0.3) / 100) * 400;
+    const pos = touchToGridPosition(slightlyPast, slightlyPast, rect);
+    expect(pos.x).toBe(3);
+    expect(pos.y).toBe(3);
+  });
+
+  it("handles non-square boards (rect offset)", () => {
+    const rect = {
+      left: 100,
+      top: 50,
+      right: 500,
+      bottom: 450,
+      width: 400,
+      height: 400,
+      x: 100,
+      y: 50,
+      toJSON: () => {},
+    } as DOMRect;
+    // Touch at rect center → (9,9)
+    const pos = touchToGridPosition(300, 250, rect);
+    expect(pos.x).toBe(9);
+    expect(pos.y).toBe(9);
+  });
+});
+
+// ---------- TiaoBoard component tests ----------
+
+// We need to dynamically import TiaoBoard after potentially mocking touch detection.
+// Since IS_TOUCH_DEVICE is evaluated at module load, we use vi.hoisted + dynamic import.
+
+describe("TiaoBoard – desktop behavior (no touch)", () => {
+  it("calls onPointClick immediately on click", async () => {
+    // Default environment has no touch support, so IS_TOUCH_DEVICE = false
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const onPointClick = vi.fn();
+    const state = createInitialGameState();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        onPointClick={onPointClick}
+      />
+    );
+
+    const cell = screen.getByTestId("cell-9-9");
+    fireEvent.click(cell);
+
+    expect(onPointClick).toHaveBeenCalledWith({ x: 9, y: 9 });
+    expect(onPointClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render loupe element on desktop click", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+      />
+    );
+
+    const cell = screen.getByTestId("cell-9-9");
+    fireEvent.click(cell);
+
+    // No loupe should be rendered
+    const board = screen.getByTestId("tiao-board");
+    expect(board.querySelector('[class*="z-[100]"]')).toBeNull();
+  });
+});
+
+describe("TiaoBoard – disabled state", () => {
+  it("does not call onPointClick when disabled", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const onPointClick = vi.fn();
+    const state = createInitialGameState();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        disabled={true}
+        onPointClick={onPointClick}
+      />
+    );
+
+    const cell = screen.getByTestId("cell-9-9");
+    fireEvent.click(cell);
+
+    // Button is disabled, so click doesn't propagate to handler
+    expect(onPointClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("TiaoBoard – board testid", () => {
+  it("renders with data-testid tiao-board", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("tiao-board")).toBeTruthy();
+  });
+});

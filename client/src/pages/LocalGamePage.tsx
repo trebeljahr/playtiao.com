@@ -45,7 +45,7 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
 
   const boardWrapStyle = {
-    maxWidth: "min(100%, 84vh)",
+    maxWidth: "min(100%, calc(100dvh - 5rem))",
     aspectRatio: "1/1",
   };
 
@@ -70,7 +70,7 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
 
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
-          <div className="flex justify-center xl:min-h-[calc(100dvh-1.5rem)]">
+          <div className="flex items-center justify-center xl:min-h-[calc(100dvh-1.5rem)]">
             <div className="mx-auto w-full" style={boardWrapStyle}>
               <TiaoBoard
                 state={local.localGame}

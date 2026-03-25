@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BOARD_SIZE,
@@ -26,6 +26,16 @@ const GRID_END = 100 - GRID_START;
 const GRID_SPAN = GRID_END - GRID_START;
 const GRID_STEP = GRID_SPAN / (BOARD_SIZE - 1);
 
+const IS_TOUCH_DEVICE =
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
+const LOUPE_ACTIVATION_MS = 120;
+const LOUPE_SIZE = 120;
+const LOUPE_OFFSET_Y = 80;
+const LOUPE_ZOOM = 3;
+const DRAG_THRESHOLD = 10;
+
 function isStarPoint(position: Position) {
   const starPointIndices = [3, 9, 15];
   return (
@@ -39,6 +49,21 @@ function pointPercent(index: number) {
 
 function getPositionKey(position: Position) {
   return `${position.x}-${position.y}`;
+}
+
+export function touchToGridPosition(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect
+): Position {
+  const percentX = ((clientX - rect.left) / rect.width) * 100;
+  const percentY = ((clientY - rect.top) / rect.height) * 100;
+  const gridX = Math.round((percentX - GRID_START) / GRID_STEP);
+  const gridY = Math.round((percentY - GRID_START) / GRID_STEP);
+  return {
+    x: Math.max(0, Math.min(BOARD_SIZE - 1, gridX)),
+    y: Math.max(0, Math.min(BOARD_SIZE - 1, gridY)),
+  };
 }
 
 function getJumpTrailMetrics(from: Position, to: Position) {
@@ -87,6 +112,173 @@ function getJumpTrailMetrics(from: Position, to: Position) {
   };
 }
 
+function LoupeBubble({
+  position,
+  screenX,
+  screenY,
+  boardRect,
+  state,
+}: {
+  position: Position;
+  screenX: number;
+  screenY: number;
+  boardRect: DOMRect;
+  state: GameState;
+}) {
+  const centerX = pointPercent(position.x);
+  const centerY = pointPercent(position.y);
+  const loupeR = (GRID_STEP * LOUPE_ZOOM) / 2;
+
+  // Position relative to board container
+  let left = screenX - boardRect.left;
+  let top = screenY - boardRect.top - LOUPE_OFFSET_Y;
+
+  // If too close to top edge, show below the finger instead
+  if (top - LOUPE_SIZE / 2 < 0) {
+    top = screenY - boardRect.top + LOUPE_OFFSET_Y;
+  }
+
+  // Clamp horizontally within board bounds
+  left = Math.max(LOUPE_SIZE / 2, Math.min(boardRect.width - LOUPE_SIZE / 2, left));
+
+  const stoneColor = state.currentTurn;
+
+  return (
+    <div
+      className="pointer-events-none absolute z-[100]"
+      style={{
+        left,
+        top,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      <div
+        className="overflow-hidden rounded-full border-[3px] border-[#b89a64] shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(255,255,255,0.3)]"
+        style={{ width: LOUPE_SIZE, height: LOUPE_SIZE }}
+      >
+        <svg
+          viewBox={`${centerX - loupeR} ${centerY - loupeR} ${loupeR * 2} ${loupeR * 2}`}
+          width={LOUPE_SIZE}
+          height={LOUPE_SIZE}
+          className="bg-[#dfc48c]"
+        >
+          {/* Board background */}
+          <rect
+            x={centerX - loupeR}
+            y={centerY - loupeR}
+            width={loupeR * 2}
+            height={loupeR * 2}
+            fill="#dfc48c"
+          />
+
+          {/* Grid lines */}
+          {Array.from({ length: BOARD_SIZE }, (_, index) => {
+            const coordinate = pointPercent(index);
+            return (
+              <g key={index}>
+                <line
+                  x1={GRID_START}
+                  y1={coordinate}
+                  x2={GRID_END}
+                  y2={coordinate}
+                  stroke="#6c4926"
+                  strokeWidth="0.46"
+                  strokeLinecap="square"
+                />
+                <line
+                  x1={coordinate}
+                  y1={GRID_START}
+                  x2={coordinate}
+                  y2={GRID_END}
+                  stroke="#6c4926"
+                  strokeWidth="0.46"
+                  strokeLinecap="square"
+                />
+              </g>
+            );
+          })}
+
+          {/* Star points */}
+          {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
+            const pos = {
+              x: index % BOARD_SIZE,
+              y: Math.floor(index / BOARD_SIZE),
+            };
+            if (!isStarPoint(pos)) return null;
+            return (
+              <circle
+                key={`loupe-star-${pos.x}-${pos.y}`}
+                cx={pointPercent(pos.x)}
+                cy={pointPercent(pos.y)}
+                r={0.55}
+                fill="#573615"
+              />
+            );
+          })}
+
+          {/* Existing stones */}
+          {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
+            const pos = {
+              x: index % BOARD_SIZE,
+              y: Math.floor(index / BOARD_SIZE),
+            };
+            const piece = state.positions[pos.y][pos.x];
+            if (!piece) return null;
+
+            const cx = pointPercent(pos.x);
+            const cy = pointPercent(pos.y);
+            const stoneR = GRID_STEP * 0.44;
+
+            return (
+              <circle
+                key={`loupe-stone-${pos.x}-${pos.y}`}
+                cx={cx}
+                cy={cy}
+                r={stoneR}
+                fill={piece === "black" ? "#1a1210" : "#f0e8d8"}
+                stroke={piece === "black" ? "#191410" : "#ddd2bf"}
+                strokeWidth="0.15"
+              />
+            );
+          })}
+
+          {/* Ghost stone at target position */}
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={GRID_STEP * 0.44}
+            fill={stoneColor === "black" ? "#1a1210" : "#f0e8d8"}
+            stroke={stoneColor === "black" ? "#191410" : "#ddd2bf"}
+            strokeWidth="0.15"
+            opacity={0.7}
+          />
+
+          {/* Crosshair ring */}
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={GRID_STEP * 0.55}
+            fill="none"
+            stroke="#e85d3a"
+            strokeWidth="0.35"
+            opacity={0.9}
+          />
+        </svg>
+      </div>
+
+      {/* Caret pointing down toward finger */}
+      <div
+        className="mx-auto h-0 w-0"
+        style={{
+          borderLeft: "6px solid transparent",
+          borderRight: "6px solid transparent",
+          borderTop: "6px solid #b89a64",
+        }}
+      />
+    </div>
+  );
+}
+
 export function TiaoBoard({
   state,
   selectedPiece,
@@ -128,6 +320,130 @@ export function TiaoBoard({
       : null;
   const showConfirmOverlay =
     !!forcedJumpOrigin && hasPendingJump && confirmReady && confirmHovered;
+
+  // -- Loupe state --
+  const boardRef = useRef<HTMLDivElement>(null);
+  const touchTimerRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const suppressClickRef = useRef(false);
+  const loupeActiveRef = useRef(false);
+  const [loupePosition, setLoupePosition] = useState<Position | null>(null);
+  const [loupeScreenPos, setLoupeScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const [loupeActive, setLoupeActive] = useState(false);
+
+  const activateLoupe = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!boardRef.current || disabled) return;
+      const rect = boardRef.current.getBoundingClientRect();
+      const pos = touchToGridPosition(clientX, clientY, rect);
+      setLoupePosition(pos);
+      setLoupeScreenPos({ x: clientX, y: clientY });
+      setLoupeActive(true);
+      loupeActiveRef.current = true;
+    },
+    [disabled]
+  );
+
+  const clearLoupe = useCallback(() => {
+    setLoupePosition(null);
+    setLoupeScreenPos(null);
+    setLoupeActive(false);
+    loupeActiveRef.current = false;
+    if (touchTimerRef.current !== null) {
+      window.clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  }, []);
+
+  // Clear loupe on state changes
+  useEffect(() => {
+    clearLoupe();
+  }, [state.currentTurn, state.history.length, disabled, clearLoupe]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (touchTimerRef.current !== null) {
+        window.clearTimeout(touchTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!IS_TOUCH_DEVICE || disabled || !boardRef.current) return;
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+
+      touchTimerRef.current = window.setTimeout(() => {
+        activateLoupe(touch.clientX, touch.clientY);
+      }, LOUPE_ACTIVATION_MS);
+    },
+    [disabled, activateLoupe]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!IS_TOUCH_DEVICE || !boardRef.current) return;
+      const touch = e.touches[0];
+
+      if (loupeActiveRef.current) {
+        e.preventDefault();
+        const rect = boardRef.current.getBoundingClientRect();
+        const pos = touchToGridPosition(touch.clientX, touch.clientY, rect);
+        setLoupePosition(pos);
+        setLoupeScreenPos({ x: touch.clientX, y: touch.clientY });
+        return;
+      }
+
+      // If moved too far before activation, cancel (user is scrolling)
+      if (touchStartRef.current) {
+        const dx = touch.clientX - touchStartRef.current.x;
+        const dy = touch.clientY - touchStartRef.current.y;
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+          if (touchTimerRef.current !== null) {
+            window.clearTimeout(touchTimerRef.current);
+            touchTimerRef.current = null;
+          }
+        }
+      }
+    },
+    []
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!IS_TOUCH_DEVICE) return;
+
+      if (touchTimerRef.current !== null) {
+        window.clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+      }
+
+      if (loupeActiveRef.current && loupePosition) {
+        e.preventDefault();
+        onPointClick(loupePosition);
+        suppressClickRef.current = true;
+        clearLoupe();
+        return;
+      }
+
+      // Quick tap — let the regular onClick fire
+      touchStartRef.current = null;
+    },
+    [loupePosition, onPointClick, clearLoupe]
+  );
+
+  const handleButtonClick = useCallback(
+    (position: Position) => {
+      if (IS_TOUCH_DEVICE && suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      onPointClick(position);
+    },
+    [onPointClick]
+  );
 
   useEffect(() => {
     const previousLength = historyLengthRef.current;
@@ -185,7 +501,14 @@ export function TiaoBoard({
   return (
     <div className="relative overflow-hidden rounded-[2rem] border border-[#cdb07f] bg-[linear-gradient(180deg,rgba(234,199,131,0.98),rgba(217,177,104,0.98))] p-3 shadow-[0_52px_120px_-42px_rgba(66,39,11,0.92)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,248,234,0.28),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_42%)]" />
-      <div className="relative aspect-square w-full rounded-[1.55rem] bg-[linear-gradient(180deg,rgba(255,250,240,0.16),rgba(255,255,255,0.04))]">
+      <div
+        ref={boardRef}
+        data-testid="tiao-board"
+        className="relative aspect-square w-full rounded-[1.55rem] bg-[linear-gradient(180deg,rgba(255,250,240,0.16),rgba(255,255,255,0.04))]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -277,7 +600,7 @@ export function TiaoBoard({
           const isJumpTarget = jumpTargetKeys.includes(pieceKey);
           const isMarkedForCapture = isPositionMarkedForCapture(state, position);
           const isSelectableOrigin = selectableOrigins.includes(pieceKey);
-          const isHoveredEmpty = !piece && hoveredEmptyKey === pieceKey && !disabled && !activeOrigin;
+          const isHoveredEmpty = !piece && hoveredEmptyKey === pieceKey && !disabled && !activeOrigin && !IS_TOUCH_DEVICE;
 
           return (
             <button
@@ -286,8 +609,9 @@ export function TiaoBoard({
               data-testid={`cell-${position.x}-${position.y}`}
               data-piece={piece ?? undefined}
               disabled={disabled}
-              onClick={() => onPointClick(position)}
+              onClick={() => handleButtonClick(position)}
               onPointerEnter={() => {
+                if (IS_TOUCH_DEVICE) return;
                 if (isJumpTarget && !disabled) {
                   setHoveredJumpTargetKey(pieceKey);
                 }
@@ -301,6 +625,7 @@ export function TiaoBoard({
                 }
               }}
               onPointerLeave={() => {
+                if (IS_TOUCH_DEVICE) return;
                 if (hoveredJumpTargetKey === pieceKey) {
                   setHoveredJumpTargetKey(null);
                 }
@@ -693,6 +1018,17 @@ export function TiaoBoard({
             </svg>
           </span>
         ) : null}
+
+        {/* Mobile magnifying loupe */}
+        {loupeActive && loupePosition && loupeScreenPos && boardRef.current && (
+          <LoupeBubble
+            position={loupePosition}
+            screenX={loupeScreenPos.x}
+            screenY={loupeScreenPos.y}
+            boardRect={boardRef.current.getBoundingClientRect()}
+            state={state}
+          />
+        )}
       </div>
     </div>
   );
