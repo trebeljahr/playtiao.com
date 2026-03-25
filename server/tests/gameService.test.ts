@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import WebSocket from "ws";
 import type { PlayerIdentity } from "../../shared/src";
 import { GameService, GameServiceError } from "../game/gameService";
@@ -260,4 +260,127 @@ test("players can decline a rematch offer", async () => {
   });
   assert.equal(declined.status, "finished");
   assert.equal(declined.rematch, null);
+});
+
+test("re-entering matchmaking after being matched puts the player in the queue for a new game", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+  const carol = createPlayer("carol");
+
+  // Alice searches, Bob matches with Alice
+  await service.enterMatchmaking(alice);
+  const matched = await service.enterMatchmaking(bob);
+  assert.equal(matched.status, "matched");
+  const firstGameId = matched.snapshot.gameId;
+
+  // Alice re-enters matchmaking (went back to lobby)
+  const reEntered = await service.enterMatchmaking(alice);
+  assert.equal(reEntered.status, "searching");
+
+  // The original game still exists and is accessible
+  const originalGame = await service.getSnapshot(firstGameId);
+  assert.equal(originalGame.status, "active");
+
+  // Carol enters and should be matched with Alice into a NEW game
+  const carolMatched = await service.enterMatchmaking(carol);
+  assert.equal(carolMatched.status, "matched");
+  assert.notEqual(carolMatched.snapshot.gameId, firstGameId);
+});
+
+test("guest game is abandoned after disconnect timeout expires", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+
+  const store = new InMemoryGameRoomStore();
+  const abandonTimeout = 5 * 60 * 1000;
+  const service = new GameService(store, () => 0, abandonTimeout);
+  const guest = createPlayer("guest-abandon", { kind: "guest", displayName: "Guest" });
+  const alice = createPlayer("alice");
+
+  const game = await service.createGame(alice);
+  await service.joinGame(game.gameId, guest);
+
+  const aliceSocket = new FakeSocket() as unknown as WebSocket;
+  const guestSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connect(game.gameId, alice, aliceSocket);
+  await service.connect(game.gameId, guest, guestSocket);
+
+  // Guest disconnects
+  await service.disconnect(guestSocket);
+  let snapshot = await service.getSnapshot(game.gameId);
+  assert.equal(snapshot.status, "active");
+
+  // Advance time past the abandon timeout
+  mock.timers.tick(abandonTimeout + 100);
+
+  // Allow the async abandonGame callback to run
+  await new Promise((resolve) => setImmediate(resolve));
+
+  snapshot = await service.getSnapshot(game.gameId);
+  assert.equal(snapshot.status, "finished");
+
+  mock.timers.reset();
+});
+
+test("guest reconnecting before timeout cancels the abandon timer", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+
+  const store = new InMemoryGameRoomStore();
+  const abandonTimeout = 5 * 60 * 1000;
+  const service = new GameService(store, () => 0, abandonTimeout);
+  const guest = createPlayer("guest-reconnect", { kind: "guest", displayName: "Guest" });
+  const alice = createPlayer("alice");
+
+  const game = await service.createGame(alice);
+  await service.joinGame(game.gameId, guest);
+
+  const aliceSocket = new FakeSocket() as unknown as WebSocket;
+  const guestSocket1 = new FakeSocket() as unknown as WebSocket;
+  await service.connect(game.gameId, alice, aliceSocket);
+  await service.connect(game.gameId, guest, guestSocket1);
+
+  // Guest disconnects then reconnects before timeout
+  await service.disconnect(guestSocket1);
+  mock.timers.tick(2 * 60 * 1000); // 2 minutes
+
+  const guestSocket2 = new FakeSocket() as unknown as WebSocket;
+  await service.connect(game.gameId, guest, guestSocket2);
+
+  // Advance past original timeout
+  mock.timers.tick(4 * 60 * 1000);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const snapshot = await service.getSnapshot(game.gameId);
+  assert.equal(snapshot.status, "active");
+
+  mock.timers.reset();
+});
+
+test("account player disconnect does not trigger abandon timer", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+
+  const store = new InMemoryGameRoomStore();
+  const abandonTimeout = 5 * 60 * 1000;
+  const service = new GameService(store, () => 0, abandonTimeout);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const game = await service.createGame(alice);
+  await service.joinGame(game.gameId, bob);
+
+  const aliceSocket = new FakeSocket() as unknown as WebSocket;
+  const bobSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connect(game.gameId, alice, aliceSocket);
+  await service.connect(game.gameId, bob, bobSocket);
+
+  // Account player disconnects
+  await service.disconnect(bobSocket);
+  mock.timers.tick(abandonTimeout + 100);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const snapshot = await service.getSnapshot(game.gameId);
+  assert.equal(snapshot.status, "active");
+
+  mock.timers.reset();
 });

@@ -44,6 +44,8 @@ type MatchmakingQueueEntry = {
   queuedAt: number;
 };
 
+const GUEST_ABANDON_TIMEOUT_MS = 5 * 60 * 1000;
+
 export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
   private readonly lobbyConnections = new Map<string, Set<WebSocket>>();
@@ -51,10 +53,12 @@ export class GameService {
   private readonly locks = new Map<string, Promise<void>>();
   private readonly matchmakingQueue: MatchmakingQueueEntry[] = [];
   private readonly matchmakingMatches = new Map<string, string>();
+  private readonly guestAbandonTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
-    private readonly seatRandom: () => number = Math.random
+    private readonly seatRandom: () => number = Math.random,
+    private readonly abandonTimeoutMs: number = GUEST_ABANDON_TIMEOUT_MS
   ) {}
 
   async connectLobby(player: PlayerIdentity, socket: WebSocket): Promise<void> {
@@ -175,6 +179,8 @@ export class GameService {
   ): Promise<void> {
     const room = await this.getRoom(gameId);
 
+    this.clearAbandonTimer(room.id, player.playerId);
+
     const connections = this.getConnections(room.id);
     connections.set(socket, player.playerId);
     this.socketRooms.set(socket, room.id);
@@ -194,15 +200,33 @@ export class GameService {
       return;
     }
 
+    const disconnectedPlayerId = connections.get(socket);
     connections.delete(socket);
+
     if (connections.size === 0) {
       this.connections.delete(roomId);
-      return;
     }
 
     const room = await this.store.getRoom(roomId);
-    if (room) {
-      this.broadcastSnapshot(this.deriveRoomStatus(room));
+    if (!room) {
+      return;
+    }
+
+    const derivedRoom = this.deriveRoomStatus(room);
+    this.broadcastSnapshot(derivedRoom);
+
+    // Start abandon timer for guest players who fully disconnect from an active game
+    if (
+      disconnectedPlayerId &&
+      derivedRoom.status === "active" &&
+      !this.isPlayerOnline(roomId, disconnectedPlayerId)
+    ) {
+      const disconnectedPlayer = derivedRoom.players.find(
+        (p) => p.playerId === disconnectedPlayerId
+      );
+      if (disconnectedPlayer?.kind === "guest") {
+        this.startAbandonTimer(roomId, disconnectedPlayerId);
+      }
     }
   }
 
@@ -275,13 +299,9 @@ export class GameService {
 
   async enterMatchmaking(player: PlayerIdentity): Promise<MatchmakingState> {
     return this.withLock(this.matchmakingLockKey(), async () => {
-      const matchedGameId = this.matchmakingMatches.get(player.playerId);
-      if (matchedGameId) {
-        return {
-          status: "matched",
-          snapshot: await this.getSnapshot(matchedGameId),
-        };
-      }
+      // Clear any previous match so the player re-enters the queue
+      // instead of being reconnected to the same game.
+      this.matchmakingMatches.delete(player.playerId);
 
       const existingEntry = this.matchmakingQueue.find(
         (entry) => entry.player.playerId === player.playerId
@@ -862,6 +882,60 @@ export class GameService {
       "code" in error &&
       error.code === 11000
     );
+  }
+
+  private abandonTimerKey(roomId: string, playerId: string): string {
+    return `${roomId}:${playerId}`;
+  }
+
+  private startAbandonTimer(roomId: string, playerId: string): void {
+    const key = this.abandonTimerKey(roomId, playerId);
+    if (this.guestAbandonTimers.has(key)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void this.abandonGame(roomId, playerId);
+    }, this.abandonTimeoutMs);
+
+    timer.unref?.();
+    this.guestAbandonTimers.set(key, timer);
+  }
+
+  private clearAbandonTimer(roomId: string, playerId: string): void {
+    const key = this.abandonTimerKey(roomId, playerId);
+    const timer = this.guestAbandonTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      this.guestAbandonTimers.delete(key);
+    }
+  }
+
+  private async abandonGame(roomId: string, playerId: string): Promise<void> {
+    this.guestAbandonTimers.delete(this.abandonTimerKey(roomId, playerId));
+
+    try {
+      await this.withLock(this.roomLockKey(roomId), async () => {
+        const room = await this.store.getRoom(roomId);
+        if (!room) return;
+
+        const derived = this.deriveRoomStatus(room);
+        if (derived.status !== "active") return;
+
+        // Only abandon if the guest is still offline
+        if (this.isPlayerOnline(roomId, playerId)) return;
+
+        const playerColor = getPlayerColorForRoom(derived, playerId);
+        if (!playerColor) return;
+
+        const opponentColor = playerColor === "white" ? "black" : "white";
+        derived.state.score[opponentColor] = 10;
+        const savedRoom = await this.saveRoom(derived);
+        this.broadcastSnapshot(savedRoom);
+      });
+    } catch {
+      // Best-effort cleanup; don't crash the server.
+    }
   }
 
   private matchmakingLockKey(): string {
