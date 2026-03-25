@@ -1,118 +1,138 @@
 # Tiao
 
-Tiao is a monorepo with:
-- `client/`: Vite + React frontend
-- `server/`: Express + WebSocket backend
-- `shared/`: shared protocol and game logic
+Tiao (跳, "jump") is an open-source multiplayer board game platform. Two players place and jump pieces on a 19x19 board, competing to be the first to capture 10 enemy stones. Think of it as the [Lichess](https://lichess.org) for Tiao -- free, open-source, and community-driven.
 
-## Development
+## The Game
 
-The default local workflow is:
-- `npm run dev`: starts the Express/WebSocket server on `5005` and the Vite dev server on `3000` with HMR.
+Players take turns placing pieces or jumping over enemy pieces to capture them:
 
-How requests flow in development:
-- the browser loads the frontend from Vite on `http://localhost:3000`
-- Vite proxies `/api` and `/ws` to the backend on `http://localhost:5005`
-- that keeps the app code on relative URLs while preserving a fast HMR loop
+```
+  Place a piece:          Jump to capture:
 
-Useful direct commands:
-- `npm run client`
-- `npm run server`
+  . . . . .              . . . . .         . . . . .
+  . . . . .              . W . . .         . . . . .
+  . . W . .              . . B . .   -->   . . x . .
+  . . . . .              . . . . .         . . . W .
+  . . . . .              . . . . .         . . . . .
+```
 
-`vite preview` is not part of the normal development loop here.
+Jumps can chain -- keep jumping with the same piece if more captures are available. First to 10 captures wins.
 
-## Deployment shape
+For the complete rulebook, see [docs/GAME_RULES.md](docs/GAME_RULES.md).
 
-Production is designed to run as two services:
-- `client/`: a static frontend container built with Vite
-- `server/`: the Express + WebSocket backend container
+## Features
 
-The default production setup keeps a single browser origin even though the services are split:
-- the frontend container serves the app
-- the frontend container proxies `/api` and `/ws` to the backend container
-- the backend does not serve frontend assets anymore
+- **Local play** -- two players on the same device
+- **Computer opponent** -- play against an AI
+- **Online multiplayer** -- real-time games over WebSocket
+- **Matchmaking** -- automatic opponent pairing
+- **Friends and invitations** -- add friends, invite them to games
+- **Game history** -- browse your past matches
+- **Accounts** -- optional signup with profile pictures, or play as a guest
 
-That gives you the DX benefits of a split frontend/backend architecture without reintroducing cross-origin cookie pain.
+## Quick Start
 
-Authentication now uses an opaque `HttpOnly` session cookie backed by MongoDB:
-- the browser stores only the session handle
-- player/account identity is resolved on the server from the session collection
-- the default same-origin proxy setup keeps cookie auth simple for both `/api` and `/api/ws`
+**Prerequisites:** Node.js 22.x, MongoDB, npm
 
-Two production routing styles are supported:
-- frontend-proxy mode: the frontend container proxies `/api` and `/api/ws` to the backend via `BACKEND_UPSTREAM`
-- path-routing mode: your platform routes `https://your-domain/api` and `https://your-domain/api/ws` straight to the backend app, while the frontend still serves `/`
+```bash
+git clone https://github.com/YOUR_USERNAME/tiao.git
+cd tiao
 
-Local development keeps using the Vite proxy on `http://localhost:3000` to reach the backend on `http://localhost:5005`.
+# Install all dependencies
+npm install
+cd server && npm install && cd ..
+cd client && npm install && cd ..
 
-## Coolify / Docker deployment
+# Set up environment
+cp server/.env.example server/.env
+# Edit server/.env with your MONGODB_URI and TOKEN_SECRET
 
-This repo includes:
-- [client/Dockerfile](/Users/rico/projects/tiao/client/Dockerfile)
-- [server/Dockerfile](/Users/rico/projects/tiao/server/Dockerfile)
-- [client/nginx/default.conf.template](/Users/rico/projects/tiao/client/nginx/default.conf.template)
-- [.dockerignore](/Users/rico/projects/tiao/.dockerignore)
-- [build-and-deploy.yml](/Users/rico/projects/tiao/.github/workflows/build-and-deploy.yml)
-- [client/.env.example](/Users/rico/projects/tiao/client/.env.example)
-- [server/.env.example](/Users/rico/projects/tiao/server/.env.example)
+# Start development servers
+npm run dev
+```
 
-The deployment split now looks like this:
-- the client image serves the built frontend on port `80`
-- the client image can proxy `/api` and `/api/ws` to `BACKEND_UPSTREAM`
-- the server image exposes the API and WebSocket service on port `3000`
-- the server health endpoint stays at `/api/health`
-- the client health endpoint is `/healthz`
+Open `http://localhost:3000`. The Vite frontend runs on port 3000 and proxies API/WebSocket requests to the Express backend on port 5005.
 
-## Required environment variables
+### Available Commands
 
-See [server/.env.example](/Users/rico/projects/tiao/server/.env.example) and [client/.env.example](/Users/rico/projects/tiao/client/.env.example) for concrete templates.
+```bash
+npm run dev          # Start both client and server with hot reload
+npm run client       # Start only the Vite frontend
+npm run server       # Start only the Express backend
+npm test             # Run server unit tests
+```
 
-Backend core variables:
-- `MONGODB_URI`
-- `TOKEN_SECRET`
-- `S3_BUCKET_NAME`
-- `S3_PUBLIC_URL` or `CLOUDFRONT_URL`
-- `AWS_REGION`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+## Project Structure
 
-Optional for S3-compatible providers:
-- `S3_ENDPOINT`
-- `S3_FORCE_PATH_STYLE`
+```
+tiao/
+├── client/          React + Vite + Tailwind frontend
+├── server/          Express + WebSocket backend
+├── shared/          Pure TypeScript game engine + protocol types
+├── e2e/             Playwright end-to-end tests
+└── docs/            Documentation
+```
 
-Notes:
-- backend `PORT` defaults to `3000` if not provided
-- `FRONTEND_URL` is useful when the browser talks to the backend directly across origins
-- same-origin deployments do not require cross-site cookies because the browser stays on the frontend origin
-- `VITE_API_BASE_URL` is optional and only needed if you choose a direct browser-to-backend deployment instead of the proxy-based one
-- MongoDB now stores account data, social data, room data, and session records
+The game engine (`shared/src/tiao.ts`) is a set of pure functions with no side effects -- both the server and client use it to validate and apply moves.
 
-## CI/CD
+## Documentation
 
-The GitHub Actions workflow:
-- installs dependencies
-- runs the repo build
-- runs server tests
-- builds and pushes a client image to GHCR on every push to `main`
-- builds and pushes a server image to GHCR on every push to `main`
+| Document | Description |
+|----------|-------------|
+| [docs/GAME_RULES.md](docs/GAME_RULES.md) | Complete game rules with diagrams |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, data flow, and technical decisions |
+| [docs/API.md](docs/API.md) | REST and WebSocket API reference |
+| [docs/TESTING.md](docs/TESTING.md) | Testing guide, harnesses, and how to add tests |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [docs/coolify-deployment.md](docs/coolify-deployment.md) | Coolify/Docker deployment guide |
 
-If you set these GitHub secrets, the workflow will also trigger a Coolify deployment after the image push:
-- `COOLIFY_BASE_URL`
-- `COOLIFY_API_TOKEN`
-- `COOLIFY_CLIENT_RESOURCE_UUID`
-- `COOLIFY_SERVER_RESOURCE_UUID`
+## Testing
 
-There are also legacy webhook fallbacks if you prefer them:
-- `COOLIFY_CLIENT_DEPLOY_WEBHOOK`
-- `COOLIFY_SERVER_DEPLOY_WEBHOOK`
+```bash
+# Server unit tests (68 tests)
+npm --prefix server test
 
-There is a concrete Coolify setup guide in [docs/coolify-deployment.md](/Users/rico/projects/tiao/docs/coolify-deployment.md), including:
-- first-deploy steps
-- frontend/backend application settings
-- internal proxy wiring
-- MongoDB/internal URL guidance
-- troubleshooting for frontend routing, backend health, and GHCR pull issues
+# Client unit tests (63 tests)
+cd client && npx vitest run
 
-## Realtime deployment note
+# E2E tests (requires running servers)
+npx playwright test
+```
 
-Tiao multiplayer currently keeps live room/socket coordination in a single Node process. That means deploys can be graceful, but active websocket matches may briefly reconnect during a deployment. True near-zero-downtime multiplayer would require shared realtime state outside the process.
+See [docs/TESTING.md](docs/TESTING.md) for the full guide.
+
+## Deployment
+
+Production runs as two Docker containers:
+
+- **client** -- Nginx serving the Vite build, proxying `/api` and `/ws` to the backend
+- **server** -- Express + WebSocket on a single Node.js process
+
+### Required Environment Variables
+
+**Backend:**
+- `MONGODB_URI` -- MongoDB connection string
+- `TOKEN_SECRET` -- secret for session token hashing
+- `S3_BUCKET_NAME`, `S3_PUBLIC_URL` -- for profile picture uploads
+- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+
+**Optional:**
+- `FRONTEND_URL` -- for cross-origin CORS setups
+- `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` -- for S3-compatible providers (MinIO, etc.)
+- `PORT` -- server port (defaults to 5005 in dev, 3000 in production)
+
+See `.env.example` files in `server/` and `client/` for templates.
+
+### CI/CD
+
+The GitHub Actions workflow (`build-and-deploy.yml`) builds and tests on every push to `main`, then pushes Docker images to GHCR. Optional Coolify deployment is triggered via API if the secrets are configured.
+
+See [docs/coolify-deployment.md](docs/coolify-deployment.md) for the full deployment guide.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding conventions, and how to submit changes.
+
+## License
+
+TBD
