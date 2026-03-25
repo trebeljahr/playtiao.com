@@ -634,10 +634,11 @@ router.put("/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { displayName, email, password } = req.body as {
+  const { displayName, email, password, currentPassword } = req.body as {
     displayName?: string;
     email?: string;
     password?: string;
+    currentPassword?: string;
   };
 
   const normalizedEmail = email?.trim().toLowerCase();
@@ -697,6 +698,19 @@ router.put("/profile", async (req: Request, res: Response) => {
   }
 
   if (password !== undefined) {
+    if (!currentPassword) {
+      return res.status(400).json({
+        message: "Current password is required to set a new password.",
+      });
+    }
+
+    const passwordMatches = bcrypt.compareSync(currentPassword, account.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({
+        message: "Current password is incorrect.",
+      });
+    }
+
     if (password.length < 8) {
       return res.status(400).json({
         message: "Passwords must be at least 8 characters long.",

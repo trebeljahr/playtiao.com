@@ -295,6 +295,7 @@ export function updateAccountProfile(
     displayName?: string;
     email?: string;
     password?: string;
+    currentPassword?: string;
   }
 ) {
   return request<{ auth: AuthResponse; profile: AccountProfile }>(

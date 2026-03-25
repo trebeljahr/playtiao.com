@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   getAccountProfile,
@@ -97,7 +98,12 @@ export function ProfilePage({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -186,13 +192,11 @@ export function ProfilePage({
       const response = await updateAccountProfile({
         displayName,
         email: email || undefined,
-        password: password || undefined,
       });
       onAuthChange(response.auth);
       setProfile(response.profile);
       setDisplayName(response.profile.displayName);
       setEmail(response.profile.email || "");
-      setPassword("");
       setSuccessMessage("Profile saved.");
     } catch (error) {
       if (isNetworkError(error)) {
@@ -202,6 +206,44 @@ export function ProfilePage({
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    setSavingPassword(true);
+
+    try {
+      const response = await updateAccountProfile({
+        currentPassword,
+        password: newPassword,
+      });
+      onAuthChange(response.auth);
+      setProfile(response.profile);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordModalOpen(false);
+      setSuccessMessage("Password changed.");
+    } catch (error) {
+      if (isNetworkError(error)) {
+        toastError(error);
+      } else {
+        setPasswordError(readableError(error));
+      }
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -452,22 +494,20 @@ export function ProfilePage({
                       />
                     </div>
 
-                    <div className="grid gap-2">
-                      <label
-                        htmlFor="profile-password"
-                        className="text-sm font-medium text-[#4e3d2c]"
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmPassword("");
+                          setPasswordModalOpen(true);
+                        }}
                       >
-                        New Password (Optional)
-                      </label>
-                      <Input
-                        id="profile-password"
-                        name="password"
-                        type="password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        placeholder="••••••••"
-                        autoComplete="new-password"
-                      />
+                        Change password
+                      </Button>
                     </div>
 
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
@@ -500,6 +540,85 @@ export function ProfilePage({
           </div>
         ) : null}
       </main>
+
+      <Dialog
+        open={passwordModalOpen}
+        onOpenChange={setPasswordModalOpen}
+        title="Change password"
+        description="Enter your current password and choose a new one."
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleChangePassword();
+          }}
+          className="space-y-4"
+        >
+          <div className="grid gap-2">
+            <label htmlFor="current-password" className="text-sm font-medium text-[#4e3d2c]">
+              Current password
+            </label>
+            <Input
+              id="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label htmlFor="new-password" className="text-sm font-medium text-[#4e3d2c]">
+              New password
+            </label>
+            <Input
+              id="new-password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label htmlFor="confirm-password" className="text-sm font-medium text-[#4e3d2c]">
+              Confirm new password
+            </label>
+            <Input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          {passwordError ? (
+            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {passwordError}
+            </p>
+          ) : null}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" disabled={savingPassword}>
+              {savingPassword ? "Saving..." : "Update password"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPasswordModalOpen(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

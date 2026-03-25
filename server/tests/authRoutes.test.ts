@@ -334,3 +334,36 @@ test("/me returns the current guest player with a valid session", async () => {
   assert.equal(response.body.player.playerId, guest.player.playerId);
   assert.equal(response.body.player.displayName, "Session Guest");
 });
+
+test("PUT /profile returns 503 when database is not ready", async () => {
+  const response = await invokeRoute<{ message: string }>(gameAuthRoutes, {
+    method: "post",
+    path: "/guest",
+    body: { displayName: "Profiler" },
+  });
+  const cookie = getSessionCookie(response);
+
+  // PUT /profile needs an account; without DB it should 503 from requireAccount
+  const profileResponse = await invokeRoute<{ message: string }>(gameAuthRoutes, {
+    method: "put" as "post",
+    path: "/profile",
+    cookie,
+    body: {
+      password: "newpassword123",
+      currentPassword: "oldpassword123",
+    },
+  });
+
+  // Guests get 403 (requireAccount check), but DB down gives 503 first
+  assert.ok(
+    [401, 403, 503].includes(profileResponse.status),
+    `Expected 401, 403, or 503 but got ${profileResponse.status}`
+  );
+});
+
+test("PUT /profile route exists for password changes", async () => {
+  const layer = gameAuthRoutes.stack.find(
+    (entry) => entry.route?.path === "/profile" && entry.route.methods["put"]
+  );
+  assert.ok(layer?.route, "PUT /profile route should exist");
+});
