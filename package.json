@@ -12,6 +12,7 @@
     "build:client": "npm --prefix client run build",
     "build:server": "npm --prefix server run build",
     "dev": "node scripts/dev.mjs",
+    "dev:fixed": "node scripts/dev.mjs --fixed",
     "test": "npm --prefix server test",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",

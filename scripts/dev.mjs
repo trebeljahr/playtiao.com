@@ -1,10 +1,16 @@
 #!/usr/bin/env node
-// Starts both client and server for preview/worktree environments.
-// Picks random free ports: client in 3000-4000, server in 5000-6000.
-// Retries with a different random port if the chosen one is taken.
+// Starts both client and server for development.
+//
+// Usage:
+//   node scripts/dev.mjs           Random ports (3000-4000 client, 5000-6000 server)
+//   node scripts/dev.mjs --fixed   Fixed ports (3000 client, 5005 server)
+//   npm run dev                    Random ports
+//   npm run dev:fixed              Fixed ports (3000/5005)
 
 import { createServer } from "net";
 import { execSync } from "child_process";
+
+const fixedMode = process.argv.includes("--fixed");
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -30,10 +36,19 @@ async function findRandomFreePort(min, max, maxAttempts = 20) {
   throw new Error(`Could not find a free port in range ${min}-${max} after ${maxAttempts} attempts`);
 }
 
-const clientPort = await findRandomFreePort(3000, 4000);
-const apiPort = await findRandomFreePort(5000, 6000);
+let clientPort;
+let apiPort;
 
-console.log(`\n  Client: http://127.0.0.1:${clientPort}`);
+if (fixedMode) {
+  clientPort = 3000;
+  apiPort = 5005;
+} else {
+  clientPort = await findRandomFreePort(3000, 4000);
+  apiPort = await findRandomFreePort(5000, 6000);
+}
+
+console.log(`\n  Mode:   ${fixedMode ? "fixed" : "random"}`);
+console.log(`  Client: http://127.0.0.1:${clientPort}`);
 console.log(`  Server: http://127.0.0.1:${apiPort}\n`);
 
 try {

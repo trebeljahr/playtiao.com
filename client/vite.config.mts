@@ -37,18 +37,18 @@ export default defineConfig({
     },
     proxy: {
       "/api/ws": {
-        target: `ws://localhost:${apiPort}`,
+        target: `ws://127.0.0.1:${apiPort}`,
         changeOrigin: true,
         ws: true,
         configure: silenceProxyErrors,
       },
       "/api": {
-        target: `http://localhost:${apiPort}`,
+        target: `http://127.0.0.1:${apiPort}`,
         changeOrigin: true,
         configure: silenceProxyErrors,
       },
       "/ws": {
-        target: `ws://localhost:${apiPort}`,
+        target: `ws://127.0.0.1:${apiPort}`,
         changeOrigin: true,
         ws: true,
         configure: silenceProxyErrors,
