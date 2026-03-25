@@ -154,6 +154,9 @@ export type GameActionMessage =
     }
   | {
       type: "decline-takeback";
+    }
+  | {
+      type: "forfeit";
     };
 
 export type ClientToServerMessage = GameActionMessage;
@@ -167,6 +170,10 @@ export type ServerToClientMessage =
       type: "error";
       code?: string;
       message: string;
+    }
+  | {
+      type: "rematch-started";
+      gameId: string;
     };
 
 export type AuthResponse = {

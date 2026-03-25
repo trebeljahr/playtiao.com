@@ -31,7 +31,7 @@ export function useLocalGame() {
   useEffect(() => {
     if (localGame.history.length > localHistoryLengthRef.current) {
       const lastTurn = localGame.history[localGame.history.length - 1];
-      if (lastTurn.type === "place" || lastTurn.type === "confirm-jump") {
+      if (lastTurn.type === "put" || lastTurn.type === "jump") {
         setLocalScorePulse((prev) => ({
           ...prev,
           [localGame.currentTurn === "white" ? "black" : "white"]: Date.now(),
@@ -48,6 +48,17 @@ export function useLocalGame() {
     setLocalError(null);
     setLastMove(null);
   }, []);
+
+  const handleLocalConfirmPendingJump = useCallback(() => {
+    const result = confirmPendingJump(localGame);
+    if (result.ok) {
+      setLocalGame(result.value);
+      setLocalSelection(null);
+      setLocalError(null);
+    } else {
+      setLocalError(result.reason);
+    }
+  }, [localGame]);
 
   const handleLocalBoardClick = useCallback(
     (position: Position) => {
@@ -107,19 +118,8 @@ export function useLocalGame() {
 
       setLocalSelection(null);
     },
-    [localGame, localSelection],
+    [localGame, localSelection, handleLocalConfirmPendingJump],
   );
-
-  const handleLocalConfirmPendingJump = useCallback(() => {
-    const result = confirmPendingJump(localGame);
-    if (result.ok) {
-      setLocalGame(result.value);
-      setLocalSelection(null);
-      setLocalError(null);
-    } else {
-      setLocalError(result.reason);
-    }
-  }, [localGame]);
 
   const handleLocalUndoPendingJump = useCallback(() => {
     const result = undoPendingJumpStep(localGame);
@@ -127,7 +127,7 @@ export function useLocalGame() {
       setLocalGame(result.value);
       setLocalSelection(
         result.value.pendingJump.length > 0
-          ? result.value.pendingJump[result.value.pendingJump.length - 1]
+          ? result.value.pendingJump[result.value.pendingJump.length - 1].to
           : null,
       );
       setLocalError(null);

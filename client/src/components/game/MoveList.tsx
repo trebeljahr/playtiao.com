@@ -9,13 +9,81 @@ type MoveListProps = {
   currentMoveIndex: number | null;
   onSelectMove?: (index: number) => void;
   interactive?: boolean;
+  /** When true, the navigation buttons are rendered externally (e.g. below the board). */
+  hideNavButtons?: boolean;
 };
+
+export function MoveListNavButtons({
+  history,
+  currentMoveIndex,
+  onSelectMove,
+}: {
+  history: TurnRecord[];
+  currentMoveIndex: number | null;
+  onSelectMove: (index: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-xs"
+        onClick={() => onSelectMove(-1)}
+        disabled={currentMoveIndex === null || currentMoveIndex < 0}
+        aria-label="Go to start"
+      >
+        ⏮
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-xs"
+        onClick={() =>
+          onSelectMove(currentMoveIndex !== null ? currentMoveIndex - 1 : -1)
+        }
+        disabled={currentMoveIndex === null || currentMoveIndex < 0}
+        aria-label="Previous move"
+      >
+        ◀
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-xs"
+        onClick={() =>
+          onSelectMove(currentMoveIndex !== null ? currentMoveIndex + 1 : 0)
+        }
+        disabled={
+          currentMoveIndex === null ||
+          currentMoveIndex >= history.length - 1
+        }
+        aria-label="Next move"
+      >
+        ▶
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-xs"
+        onClick={() => onSelectMove(history.length - 1)}
+        disabled={
+          currentMoveIndex === null ||
+          currentMoveIndex >= history.length - 1
+        }
+        aria-label="Go to end"
+      >
+        ⏭
+      </Button>
+    </div>
+  );
+}
 
 export function MoveList({
   history,
   currentMoveIndex,
   onSelectMove,
   interactive = false,
+  hideNavButtons = false,
 }: MoveListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -50,65 +118,12 @@ export function MoveList({
 
   return (
     <div className="space-y-2" data-testid="move-list">
-      {interactive && (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-xs"
-            onClick={() => onSelectMove?.(-1)}
-            disabled={currentMoveIndex === null || currentMoveIndex < 0}
-            aria-label="Go to start"
-          >
-            ⏮
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-xs"
-            onClick={() =>
-              onSelectMove?.(
-                currentMoveIndex !== null ? currentMoveIndex - 1 : -1,
-              )
-            }
-            disabled={currentMoveIndex === null || currentMoveIndex < 0}
-            aria-label="Previous move"
-          >
-            ◀
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-xs"
-            onClick={() =>
-              onSelectMove?.(
-                currentMoveIndex !== null
-                  ? currentMoveIndex + 1
-                  : 0,
-              )
-            }
-            disabled={
-              currentMoveIndex === null ||
-              currentMoveIndex >= history.length - 1
-            }
-            aria-label="Next move"
-          >
-            ▶
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-xs"
-            onClick={() => onSelectMove?.(history.length - 1)}
-            disabled={
-              currentMoveIndex === null ||
-              currentMoveIndex >= history.length - 1
-            }
-            aria-label="Go to end"
-          >
-            ⏭
-          </Button>
-        </div>
+      {interactive && !hideNavButtons && onSelectMove && (
+        <MoveListNavButtons
+          history={history}
+          currentMoveIndex={currentMoveIndex}
+          onSelectMove={onSelectMove}
+        />
       )}
 
       <div

@@ -113,6 +113,75 @@ describe("useLocalGame – turn alternation", () => {
   });
 });
 
+describe("useLocalGame – stale closure fix for handleLocalConfirmPendingJump", () => {
+  /**
+   * Regression test for a stale-closure bug where handleLocalBoardClick's
+   * dependency array did not include handleLocalConfirmPendingJump. This
+   * caused the inline "click same piece to confirm" path to call
+   * confirmPendingJump with a stale game state.
+   *
+   * The fix: handleLocalBoardClick's deps include handleLocalConfirmPendingJump.
+   */
+  it("confirms a pending jump correctly when triggered by re-clicking the selected piece", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    const jumpState = stateWithJumpOpportunity();
+    act(() => result.current.setLocalGame(jumpState));
+
+    // Select white piece at (5,5)
+    act(() => result.current.handleLocalBoardClick({ x: 5, y: 5 }));
+    expect(result.current.localSelection).toEqual({ x: 5, y: 5 });
+
+    // Jump over black to (7,5)
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 5 }));
+    expect(result.current.localGame.pendingJump.length).toBe(1);
+    expect(result.current.localGame.currentTurn).toBe("white");
+
+    // Now the piece has landed at (7,5) and is selected there.
+    // Re-click the same position to confirm via the inline path in
+    // handleLocalBoardClick (the path that calls handleLocalConfirmPendingJump).
+    // If the closure were stale, this would use the OLD game state (before
+    // the jump) and confirmPendingJump would fail or produce wrong results.
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 5 }));
+
+    // After confirmation, turn should switch to black
+    expect(result.current.localGame.currentTurn).toBe("black");
+    // Pending jump should be cleared
+    expect(result.current.localGame.pendingJump.length).toBe(0);
+    // Selection should be cleared
+    expect(result.current.localSelection).toBeNull();
+  });
+
+  it("confirms pending jump correctly even after intermediate state changes", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    // Start fresh — place some pieces first to evolve the game state
+    // White places at (9,9)
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    expect(result.current.localGame.currentTurn).toBe("black");
+
+    // Black places at (9,10)
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 10 }));
+    expect(result.current.localGame.currentTurn).toBe("white");
+
+    // Now set up a jump opportunity — game state has evolved through multiple changes
+    const jumpState = stateWithJumpOpportunity();
+    // Preserve existing history to simulate multiple state transitions
+    jumpState.history = [...result.current.localGame.history];
+    act(() => result.current.setLocalGame(jumpState));
+
+    // Select and jump
+    act(() => result.current.handleLocalBoardClick({ x: 5, y: 5 }));
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 5 }));
+    expect(result.current.localGame.pendingJump.length).toBe(1);
+
+    // Confirm via handleLocalConfirmPendingJump directly — should use fresh state
+    act(() => result.current.handleLocalConfirmPendingJump());
+    expect(result.current.localGame.currentTurn).toBe("black");
+    expect(result.current.localGame.pendingJump.length).toBe(0);
+  });
+});
+
 describe("getJumpTargets – color parameter", () => {
   it("defaults to the piece color at the position", () => {
     const state = stateWithJumpOpportunity();

@@ -235,12 +235,14 @@ export function Navbar({
           key={item.label}
           variant="ghost"
           size="sm"
-          disabled={item.active}
+          aria-current={item.active ? "page" : undefined}
           className={cn(
-            "relative justify-start px-3 text-[#28170e] disabled:opacity-100 disabled:text-[#28170e]",
-            item.active ? activeNavItemClasses : navItemClasses
+            "relative justify-start px-3 text-[#28170e]",
+            item.active
+              ? cn(activeNavItemClasses, "pointer-events-none")
+              : navItemClasses,
           )}
-          onClick={item.onClick}
+          onClick={item.active ? undefined : item.onClick}
         >
           {item.label}
           {item.badge > 0 && (
@@ -312,13 +314,14 @@ export function Navbar({
           <Button
             key={item.label}
             variant="ghost"
-            disabled={item.active}
+            aria-current={item.active ? "page" : undefined}
             className={cn(
               navItemClasses,
-              "disabled:opacity-100 disabled:text-[#28170e]",
-              item.active && activeNavItemClasses
+              item.active
+                ? cn(activeNavItemClasses, "pointer-events-none")
+                : "",
             )}
-            onClick={item.onClick}
+            onClick={item.active ? undefined : item.onClick}
           >
             {item.label}
             {item.badge > 0 && (

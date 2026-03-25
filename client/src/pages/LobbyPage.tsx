@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import type {
@@ -41,25 +41,35 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
 
   const { socialOverview, refreshSocialOverview } = useSocialData(auth, true);
 
+  // Track the last seen history length per game to avoid spurious "your move" toasts
+  // (e.g. when leaving a game, the departure triggers a game-update but no new move).
+  const seenHistoryRef = useRef<Record<string, number>>({});
+
   // Real-time updates for lobby
   useLobbyMessage((payload) => {
     if (payload.type === "game-update") {
       void refreshMultiplayerGames({ silent: true });
 
+      const { summary } = payload;
+      const prevLen = seenHistoryRef.current[summary.gameId] ?? 0;
+      seenHistoryRef.current[summary.gameId] = summary.historyLength;
+
       const inGame = window.location.pathname.startsWith("/game/");
+      const newMoveOccurred = summary.historyLength > prevLen;
       if (
-        payload.summary.status === "active" &&
-        payload.summary.yourSeat === payload.summary.currentTurn &&
-        !inGame
+        summary.status === "active" &&
+        summary.yourSeat === summary.currentTurn &&
+        !inGame &&
+        newMoveOccurred
       ) {
-        const opponentSeat = payload.summary.yourSeat === "white" ? "black" : "white";
-        const opponentName = payload.summary.seats[opponentSeat]?.player.displayName || "your opponent";
-        toast.info(`Your move in ${payload.summary.gameId}`, {
-          id: `your-turn-${payload.summary.gameId}`,
+        const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
+        const opponentName = summary.seats[opponentSeat]?.player.displayName || "your opponent";
+        toast.info(`Your move in ${summary.gameId}`, {
+          id: `your-turn-${summary.gameId}`,
           description: `It's your turn against ${opponentName}.`,
           action: {
             label: "Join Game",
-            onClick: () => window.location.assign(`/game/${payload.summary.gameId}`),
+            onClick: () => window.location.assign(`/game/${summary.gameId}`),
           },
         });
       }
@@ -321,10 +331,17 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                 <CardContent className="space-y-3 pt-6">
                   {sortedActiveGames.slice(0, 3).map((game) => {
                     const isYourTurn = isSummaryYourTurn(game);
+                    const opponentSeat = game.yourSeat === "white" ? "black" : "white";
+                    const opponentOnline = game.seats[opponentSeat]?.online ?? false;
                     return (
                       <div
                         key={game.gameId}
-                        className="flex items-center justify-between rounded-2xl border border-[#d7c39e] bg-[#fffaf3] p-4 shadow-sm hover:border-[#b98d49] transition-colors group"
+                        className={cn(
+                          "flex items-center justify-between rounded-2xl border p-4 shadow-sm hover:border-[#b98d49] transition-colors group",
+                          opponentOnline
+                            ? "border-[#b8cc8f] bg-[#f9fcf3]"
+                            : "border-[#d7c39e] bg-[#fffaf3]",
+                        )}
                       >
                         <div className="flex items-center gap-4">
                           <div className="flex flex-col">
@@ -333,6 +350,9 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                             </p>
                             <p className="text-sm text-[#6e5b48]">
                               vs {getOpponentLabel(game, auth.player.playerId)}
+                              {opponentOnline && (
+                                <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-[#6ba34a]" title="Opponent is online" />
+                              )}
                             </p>
                           </div>
                           <Badge
@@ -374,14 +394,6 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                   <CardTitle className="text-2xl text-[#2b1e14]">
                     Invitations
                   </CardTitle>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-[#f4e8d2] hover:bg-[#ecd4a6] border-[#dcc7a2] text-[#6c543c]"
-                    onClick={() => refreshSocialOverview()}
-                  >
-                    Refresh
-                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-6">
                   {socialOverview.incomingInvitations.slice(0, 3).map((inv) => (

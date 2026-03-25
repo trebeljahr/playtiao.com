@@ -28,7 +28,12 @@ export type JumpTurn = {
   jumps: JumpStep[];
 };
 
-export type TurnRecord = PutTurn | JumpTurn;
+export type ForfeitTurn = {
+  type: "forfeit";
+  color: PlayerColor;
+};
+
+export type TurnRecord = PutTurn | JumpTurn | ForfeitTurn;
 
 export type ScoreState = Record<PlayerColor, number>;
 
@@ -112,6 +117,10 @@ function cloneHistoryRecord(record: TurnRecord): TurnRecord {
     };
   }
 
+  if (record.type === "forfeit") {
+    return { type: "forfeit", color: record.color };
+  }
+
   return {
     type: "jump",
     color: record.color,
@@ -185,6 +194,31 @@ export function getWinner(state: GameState): PlayerColor | null {
   }
 
   return null;
+}
+
+export function forfeitGame(
+  state: GameState,
+  forfeitingColor: PlayerColor
+): RuleResult<GameState> {
+  if (isGameOver(state)) {
+    return {
+      ok: false,
+      code: "GAME_OVER",
+      reason: "The game is already over.",
+    };
+  }
+
+  const winnerColor = otherColor(forfeitingColor);
+  const nextState = cloneGameState(state);
+  nextState.score[winnerColor] = SCORE_TO_WIN;
+  nextState.pendingJump = [];
+  nextState.pendingCaptures = [];
+  nextState.history.push({
+    type: "forfeit",
+    color: forfeitingColor,
+  });
+
+  return { ok: true, value: nextState };
 }
 
 export function getPendingJumpDestination(state: GameState): Position | null {
@@ -686,6 +720,14 @@ export function undoLastTurn(state: GameState): RuleResult<GameState> {
     };
   }
 
+  if (lastTurn.type === "forfeit") {
+    return {
+      ok: false,
+      code: "GAME_OVER",
+      reason: "Cannot undo a forfeit.",
+    };
+  }
+
   const nextState = cloneGameState(state);
   nextState.history.pop();
 
@@ -756,6 +798,10 @@ export function formatTurnRecord(record: TurnRecord, index: number): string {
   const moveNumber = index + 1;
   const colorInitial = record.color === "white" ? "W" : "B";
 
+  if (record.type === "forfeit") {
+    return `${moveNumber}. ${colorInitial} forfeits`;
+  }
+
   if (record.type === "put") {
     return `${moveNumber}. ${colorInitial} ${formatPosition(record.position)}`;
   }
@@ -777,7 +823,12 @@ export function replayToMove(
   for (let i = 0; i < end; i++) {
     const record = history[i];
 
-    if (record.type === "put") {
+    if (record.type === "forfeit") {
+      const result = forfeitGame(state, record.color);
+      if (result.ok) {
+        state = result.value;
+      }
+    } else if (record.type === "put") {
       const result = placePiece(state, record.position);
       if (result.ok) {
         state = result.value;

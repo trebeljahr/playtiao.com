@@ -1,16 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { PlayerColor } from "@shared";
-import { isGameOver, undoLastTurn } from "@shared";
+import {
+  isGameOver,
+  undoLastTurn,
+  jumpPiece,
+  placePiece,
+  confirmPendingJump,
+} from "@shared";
 import { useLocalGame } from "./useLocalGame";
 import {
   COMPUTER_THINK_MS,
   randomComputerColor,
   requestComputerMove,
-  applyComputerTurnPlan,
   type AIDifficulty,
+  type ComputerTurnPlan,
 } from "../computer-ai";
+import type { GameState } from "@shared";
 
 const AI_LINGER_MS = 600;
+const AI_JUMP_STEP_MS = 350;
 
 export function useComputerGame(difficulty: AIDifficulty = 3) {
   const local = useLocalGame();
@@ -67,9 +75,40 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     cancelRef.current = doCancel;
 
     promise
-      .then((plan) => {
+      .then(async (plan) => {
+        if (cancelled || !plan) {
+          if (!cancelled) {
+            setComputerThinking(false);
+            setThinkProgress(0);
+            searchedForRef.current = -1;
+            cancelRef.current = null;
+          }
+          return;
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, COMPUTER_THINK_MS - elapsed);
+
+        await sleep(remaining);
         if (cancelled) return;
-        if (!plan) {
+
+        // Animate the plan step by step
+        const finalState = await animatePlan(
+          gameAtRequest,
+          plan,
+          cancelled,
+          (state) => {
+            if (!cancelled) {
+              local.setLocalGame(state);
+              local.setLocalSelection(null);
+              local.setLocalError(null);
+            }
+          },
+        );
+
+        if (cancelled) return;
+
+        if (!finalState) {
           setComputerThinking(false);
           setThinkProgress(0);
           searchedForRef.current = -1;
@@ -77,31 +116,12 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
           return;
         }
 
-        const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, COMPUTER_THINK_MS - elapsed);
+        await sleep(AI_LINGER_MS);
+        if (cancelled) return;
 
-        setTimeout(() => {
-          if (cancelled) return;
-
-          const result = applyComputerTurnPlan(gameAtRequest, plan);
-          if (result.ok) {
-            local.setLocalGame(result.value);
-            local.setLocalSelection(null);
-            local.setLocalError(null);
-
-            setTimeout(() => {
-              if (cancelled) return;
-              setComputerThinking(false);
-              setThinkProgress(0);
-              cancelRef.current = null;
-            }, AI_LINGER_MS);
-          } else {
-            local.setLocalError(result.reason);
-            setComputerThinking(false);
-            setThinkProgress(0);
-            cancelRef.current = null;
-          }
-        }, remaining);
+        setComputerThinking(false);
+        setThinkProgress(0);
+        cancelRef.current = null;
       })
       .catch(() => {
         if (!cancelled) {
@@ -189,4 +209,59 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     controlsDisabled:
       computerThinking || local.localGame.currentTurn === computerColor,
   };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Animate a computer turn plan step by step.
+ * For placements, applies immediately.
+ * For multi-jump sequences, shows each hop with a delay.
+ */
+async function animatePlan(
+  state: GameState,
+  plan: ComputerTurnPlan,
+  cancelled: boolean,
+  onUpdate: (state: GameState) => void,
+): Promise<GameState | null> {
+  if (plan.type === "place") {
+    const result = placePiece(state, plan.position);
+    if (!result.ok) return null;
+    onUpdate(result.value);
+    return result.value;
+  }
+
+  // Multi-jump: animate each step
+  let current = state;
+  let from = plan.from;
+
+  for (let i = 0; i < plan.path.length; i++) {
+    if (cancelled) return null;
+
+    const destination = plan.path[i];
+    const jumped = jumpPiece(current, from, destination);
+    if (!jumped.ok) return null;
+
+    current = jumped.value;
+    from = destination;
+
+    // Show intermediate state (pending jump, not yet confirmed)
+    onUpdate(current);
+
+    // Delay between jump steps (but not after the last step)
+    if (i < plan.path.length - 1) {
+      await sleep(AI_JUMP_STEP_MS);
+    }
+  }
+
+  if (cancelled) return null;
+
+  // Confirm the full jump
+  const confirmed = confirmPendingJump(current);
+  if (!confirmed.ok) return null;
+
+  onUpdate(confirmed.value);
+  return confirmed.value;
 }

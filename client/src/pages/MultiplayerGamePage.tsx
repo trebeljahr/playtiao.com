@@ -38,7 +38,7 @@ import {
   arePositionsEqual,
   replayToMove,
 } from "@shared";
-import { MoveList } from "@/components/game/MoveList";
+import { MoveList, MoveListNavButtons } from "@/components/game/MoveList";
 import { cn } from "@/lib/utils";
 import { accessMultiplayerGame } from "@/lib/api";
 
@@ -64,6 +64,9 @@ export function MultiplayerGamePage({
 
   const multi = useMultiplayerGame(auth, gameId ?? null, {
     websocketDebugEnabled,
+    onRematchStarted: (newGameId) => {
+      navigate(`/game/${newGameId}`, { replace: true });
+    },
   });
 
   const {
@@ -146,8 +149,6 @@ export function MultiplayerGamePage({
       ? getWinner(multiplayerSnapshot.state)
       : null
     : null;
-  useWinConfetti(winner);
-
   const isReviewMode = multiplayerSnapshot?.status === "finished";
   const [reviewMoveIndex, setReviewMoveIndex] = useState<number | null>(null);
 
@@ -174,6 +175,8 @@ export function MultiplayerGamePage({
           ([, seat]) => seat?.player.playerId === auth.player.playerId,
         )?.[0] as PlayerColor | undefined)
       : null;
+
+  useWinConfetti(isReviewMode ? null : winner, { viewerColor: playerSeat ?? null });
 
   const isMultiplayerParticipant = !!playerSeat;
 
@@ -352,6 +355,15 @@ export function MultiplayerGamePage({
                   }
                 />
               )}
+              {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null && (
+                <div className="mt-2">
+                  <MoveListNavButtons
+                    history={multiplayerSnapshot.state.history}
+                    currentMoveIndex={reviewMoveIndex}
+                    onSelectMove={setReviewMoveIndex}
+                  />
+                </div>
+              )}
               {multiplayerSnapshot?.status === "waiting" && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
@@ -421,7 +433,7 @@ export function MultiplayerGamePage({
                           : multiplayerStatusTitle}
                       </CardTitle>
                     </div>
-                    {multiplayerSnapshot && (
+                    {multiplayerSnapshot && !isReviewMode && (
                       <div className="flex items-center gap-2">
                         <RoomCodeCopyPill
                           gameId={multiplayerSnapshot.gameId}
@@ -685,26 +697,25 @@ export function MultiplayerGamePage({
                         </div>
                       )}
 
-                      {multiplayerSnapshot.state.pendingJump.length > 0 &&
-                        multiplayerYourTurn && (
-                          <div className="grid gap-2">
+                      {multiplayerSnapshot.status === "active" &&
+                        isMultiplayerParticipant &&
+                        connectionState === "connected" && (
+                          <div className="border-t border-[#dbc6a2] pt-3">
                             <Button
-                              variant="outline"
-                              onClick={() =>
-                                sendMultiplayerMessage({
-                                  type: "undo-pending-jump-step",
-                                })
-                              }
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-[#9b4030] hover:bg-[#fdf0ed] hover:text-[#7a2e22]"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    "Are you sure you want to forfeit? Your opponent will win.",
+                                  )
+                                ) {
+                                  sendMultiplayerMessage({ type: "forfeit" });
+                                }
+                              }}
                             >
-                              Undo jump
-                            </Button>
-                            <Button
-                              className="w-full"
-                              onClick={() =>
-                                sendMultiplayerMessage({ type: "confirm-jump" })
-                              }
-                            >
-                              Confirm jump
+                              Forfeit
                             </Button>
                           </div>
                         )}
@@ -872,6 +883,7 @@ export function MultiplayerGamePage({
                               isReviewMode ? setReviewMoveIndex : undefined
                             }
                             interactive={isReviewMode}
+                            hideNavButtons={isReviewMode}
                           />
                         </div>
                       )}

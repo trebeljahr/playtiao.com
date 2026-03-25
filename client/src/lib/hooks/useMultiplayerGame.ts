@@ -29,6 +29,7 @@ export function useMultiplayerGame(
   gameId: string | null,
   options: {
     onSync?: () => void;
+    onRematchStarted?: (newGameId: string) => void;
     websocketDebugEnabled?: boolean;
   } = {},
 ) {
@@ -40,6 +41,9 @@ export function useMultiplayerGame(
   const [multiplayerBusy, setMultiplayerBusy] = useState(false);
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("idle");
+
+  const onRematchStartedRef = useRef(options.onRematchStarted);
+  onRematchStartedRef.current = options.onRematchStarted;
 
   const socketRef = useRef<WebSocket | null>(null);
   const latestAuthRef = useRef<AuthResponse | null>(auth);
@@ -273,6 +277,12 @@ export function useMultiplayerGame(
           commitMultiplayerSnapshot(payload.snapshot);
           syncMultiplayerSelection(payload.snapshot);
           setMultiplayerError(null);
+          return;
+        }
+
+        if (payload.type === "rematch-started") {
+          logWebSocketDebug("rematch-started", { gameId: payload.gameId });
+          onRematchStartedRef.current?.(payload.gameId);
           return;
         }
 

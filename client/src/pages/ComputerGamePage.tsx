@@ -4,6 +4,7 @@ import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
 import {
@@ -55,7 +56,29 @@ export function ComputerGamePage({
   const winner = isGameOver(computer.localGame)
     ? getWinner(computer.localGame)
     : null;
-  useWinConfetti(winner);
+  useWinConfetti(winner, { viewerColor: "white" });
+
+  const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
+  const prevWinnerRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (winner && prevWinnerRef.current !== winner) {
+      prevWinnerRef.current = winner;
+      // Small delay so confetti/particles start first
+      const id = setTimeout(() => setGameOverDialogOpen(true), 600);
+      return () => clearTimeout(id);
+    }
+    if (!winner) {
+      prevWinnerRef.current = null;
+      setGameOverDialogOpen(false);
+    }
+  }, [winner]);
+
+  const playerWon = winner === "white";
+  const gameOverTitle = playerWon ? "You won!" : "You lost!";
+  const gameOverDescription = playerWon
+    ? "Great game! Ready for another round?"
+    : "Better luck next time. Want to try again?";
 
   const localStatusTitle = winner
     ? `${formatPlayerColor(winner)} wins!`
@@ -221,6 +244,25 @@ export function ComputerGamePage({
           </section>
         )}
       </main>
+
+      <Dialog
+        open={gameOverDialogOpen}
+        onOpenChange={setGameOverDialogOpen}
+        title={gameOverTitle}
+        description={gameOverDescription}
+      >
+        <div className="grid gap-2">
+          <Button onClick={() => { setGameOverDialogOpen(false); computer.resetLocalGame(); }}>
+            {playerWon ? "Play again" : "Try again"}
+          </Button>
+          <Button variant="secondary" onClick={() => { setGameOverDialogOpen(false); handleChangeDifficulty(); }}>
+            Change difficulty
+          </Button>
+          <Button variant="ghost" onClick={() => navigate("/")}>
+            Back to lobby
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

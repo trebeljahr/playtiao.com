@@ -116,16 +116,6 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
                     >
                       Undo turn
                     </Button>
-                    {local.localGame.pendingJump.length > 0 && (
-                      <>
-                        <Button variant="outline" onClick={local.handleLocalUndoPendingJump}>
-                          Undo jump
-                        </Button>
-                        <Button onClick={local.handleLocalConfirmPendingJump}>
-                          Confirm jump
-                        </Button>
-                      </>
-                    )}
                   </div>
 
                   {winner && (

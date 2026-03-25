@@ -15,6 +15,7 @@ import {
   PlayerSlot,
   confirmPendingJump,
   createInitialGameState,
+  forfeitGame,
   getWinner,
   isGameOver,
   jumpPiece,
@@ -281,6 +282,17 @@ export class GameService {
           this.broadcastSnapshot(savedRoom);
           return this.toSnapshot(savedRoom);
         }
+        case "forfeit": {
+          if (room.status !== "active") {
+            throw new GameServiceError(
+              409,
+              "GAME_NOT_ACTIVE",
+              "You can only forfeit an active game."
+            );
+          }
+          result = forfeitGame(room.state, playerColor);
+          break;
+        }
         case "place-piece":
           this.ensureActionableRoom(room, playerColor);
           result = placePiece(room.state, message.position);
@@ -478,6 +490,7 @@ export class GameService {
           state: room.state,
           players: room.players,
           rematch: room.rematch,
+          takeback: room.takeback,
           seats: room.seats,
         });
       } catch (error) {
@@ -807,9 +820,40 @@ export class GameService {
     );
 
     if (requestedBy.length === 2) {
+      // Both players agreed — create a new game room
+      const whitePlayer = room.seats.white;
+      const blackPlayer = room.seats.black;
+      const newRoom = await this.createRoomRecord({
+        players: [whitePlayer, blackPlayer],
+        roomType: room.roomType,
+        assignSeats: true,
+      });
+
+      // Notify all connections on the OLD room about the new game
+      const rematchMessage = JSON.stringify({
+        type: "rematch-started",
+        gameId: newRoom.id,
+      });
+      const connections = this.connections.get(room.id);
+      if (connections) {
+        for (const [socket] of connections.entries()) {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(rematchMessage);
+          }
+        }
+      }
+
+      // Also notify via lobby for players who may not be connected to the game
+      for (const player of room.players) {
+        this.broadcastLobby(player.playerId, {
+          type: "game-update",
+          summary: this.toSummary(newRoom, player.playerId),
+        });
+      }
+
+      // Mark old room rematch as null (completed)
       return this.saveRoom({
         ...room,
-        state: createInitialGameState(),
         rematch: null,
         takeback: null,
         seats: this.assignSeats(room.seats.white, room.seats.black),

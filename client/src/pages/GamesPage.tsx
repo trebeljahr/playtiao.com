@@ -75,9 +75,6 @@ export function GamesPage({ auth, onOpenAuth, onLogout }: GamesPageProps) {
       <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-display font-bold text-[#2b1e14]">My Games</h1>
-          <Button variant="secondary" onClick={() => refreshMultiplayerGames()} disabled={multiplayerGamesLoading}>
-            {multiplayerGamesLoading ? "Refreshing..." : "Refresh"}
-          </Button>
         </div>
 
         <section className="space-y-6">
