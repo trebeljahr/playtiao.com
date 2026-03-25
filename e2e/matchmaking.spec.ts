@@ -1,4 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function startMatchmaking(page: Page) {
+  await page.goto('/');
+  // Try both button labels — the UI has changed between versions
+  const quickMatch = page.locator('button:has-text("Quick match")');
+  const findMatch = page.locator('button:has-text("Find match")');
+  if (await quickMatch.isVisible().catch(() => false)) {
+    await quickMatch.click();
+  } else {
+    await findMatch.click();
+  }
+}
 
 test('matchmaking pairs two players into a game', async ({ browser }) => {
   const aliceContext = await browser.newContext();
@@ -6,15 +18,11 @@ test('matchmaking pairs two players into a game', async ({ browser }) => {
   const alicePage = await aliceContext.newPage();
   const bobPage = await bobContext.newPage();
 
-  // Alice navigates to matchmaking
-  await alicePage.goto('/');
-  await alicePage.click('button:has-text("Find match")');
+  await startMatchmaking(alicePage);
   await expect(alicePage).toHaveURL(/\/matchmaking/);
   await expect(alicePage.locator('text=Searching')).toBeVisible();
 
-  // Bob navigates to matchmaking
-  await bobPage.goto('/');
-  await bobPage.click('button:has-text("Find match")');
+  await startMatchmaking(bobPage);
 
   // Both should eventually land in a game
   await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
@@ -23,6 +31,52 @@ test('matchmaking pairs two players into a game', async ({ browser }) => {
   // Both should see "Live match"
   await expect(alicePage.locator('text=Live match')).toBeVisible();
   await expect(bobPage.locator('text=Live match')).toBeVisible();
+
+  await aliceContext.close();
+  await bobContext.close();
+});
+
+test('two anonymous players in matchmaking game have no console errors', async ({ browser }) => {
+  const aliceContext = await browser.newContext();
+  const bobContext = await browser.newContext();
+  const alicePage = await aliceContext.newPage();
+  const bobPage = await bobContext.newPage();
+
+  // Collect console errors from both pages
+  const aliceErrors: string[] = [];
+  const bobErrors: string[] = [];
+  alicePage.on('console', (msg) => {
+    if (msg.type() === 'error') aliceErrors.push(msg.text());
+  });
+  bobPage.on('console', (msg) => {
+    if (msg.type() === 'error') bobErrors.push(msg.text());
+  });
+
+  // Also catch uncaught page errors
+  alicePage.on('pageerror', (err) => aliceErrors.push(err.message));
+  bobPage.on('pageerror', (err) => bobErrors.push(err.message));
+
+  await startMatchmaking(alicePage);
+  await startMatchmaking(bobPage);
+
+  // Both should land in a game
+  await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
+  await expect(bobPage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
+
+  // Wait for the game page to fully render
+  await expect(alicePage.locator('text=Live match')).toBeVisible();
+  await expect(bobPage.locator('text=Live match')).toBeVisible();
+
+  // Give a moment for any deferred errors to surface
+  await alicePage.waitForTimeout(1000);
+  await bobPage.waitForTimeout(1000);
+
+  // Filter out unrelated browser extension errors
+  const relevantErrors = (errors: string[]) =>
+    errors.filter(e => !e.includes('runtime.lastError') && !e.includes('DevTools'));
+
+  expect(relevantErrors(aliceErrors)).toEqual([]);
+  expect(relevantErrors(bobErrors)).toEqual([]);
 
   await aliceContext.close();
   await bobContext.close();

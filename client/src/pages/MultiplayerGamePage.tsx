@@ -27,7 +27,6 @@ import {
 } from "@/components/game/GameShared";
 import { useMultiplayerGame } from "@/lib/hooks/useMultiplayerGame";
 import { useSocialData } from "@/lib/hooks/useSocialData";
-import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
 import { isGameOver, getWinner, getJumpTargets, arePositionsEqual } from "@shared";
@@ -64,7 +63,7 @@ export function MultiplayerGamePage({ auth, onOpenAuth, onLogout }: MultiplayerG
   } = multi;
 
   const social = useSocialData(auth, false);
-  const { socialOverview: liveSocialOverview } = useSocialNotifications();
+  const liveSocialOverview = social.socialOverview;
 
   useEffect(() => {
     if (!auth || !gameId) return;
