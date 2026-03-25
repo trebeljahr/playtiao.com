@@ -158,7 +158,7 @@ export function Navbar({
   const navigate = useNavigate();
   const location = useLocation();
   const { pendingFriendRequestCount } = useSocialNotifications();
-  const isAccount = auth?.player.kind === "account";
+  const isAccount = auth?.player?.kind === "account";
   const gameMode =
     mode === "local" || mode === "computer" || mode === "multiplayer";
   const minimalMode = gameMode || mode === "lobby";
@@ -245,7 +245,7 @@ export function Navbar({
   );
 
   const accountControls =
-    auth?.player.kind === "account" ? (
+    auth?.player?.kind === "account" ? (
       <>
         <Button variant="secondary" size="sm" onClick={() => handleNav("/profile")}>
           Profile
@@ -326,10 +326,10 @@ export function Navbar({
           <PlayerAvatar auth={auth} />
           <div className="min-w-0">
             <p className="truncate text-base font-semibold">
-              {auth?.player.kind === "account" ? auth.player.displayName : "Anonymous"}
+              {auth?.player?.kind === "account" ? auth.player.displayName : "Anonymous"}
             </p>
             <p className="truncate text-sm text-[#6e5b48]">
-              {auth?.player.kind === "account"
+              {auth?.player?.kind === "account"
                 ? auth.player.email
                 : "Sign in to save your profile"}
             </p>
@@ -337,7 +337,7 @@ export function Navbar({
         </div>
 
         <div className="mt-4 grid gap-2">
-          {auth?.player.kind === "account" ? (
+          {auth?.player?.kind === "account" ? (
             <>
               <Button variant="secondary" className="w-full justify-start" onClick={() => handleNav("/profile")}>
                 Profile
