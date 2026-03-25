@@ -38,7 +38,9 @@ async function findRandomFreePort(min, max, maxAttempts = 20) {
       return port;
     }
   }
-  throw new Error(`Could not find a free port in range ${min}-${max} after ${maxAttempts} attempts`);
+  throw new Error(
+    `Could not find a free port in range ${min}-${max} after ${maxAttempts} attempts`,
+  );
 }
 
 let clientPort;
@@ -56,7 +58,7 @@ if (process.env.PORT) {
 if (process.env.DOCS_PORT) {
   docsPort = parseInt(process.env.DOCS_PORT, 10);
 } else if (fixedMode) {
-  docsPort = 4000;
+  docsPort = 4004;
 } else {
   docsPort = await findRandomFreePort(4100, 4999);
 }
@@ -64,7 +66,7 @@ if (process.env.DOCS_PORT) {
 if (process.env.API_PORT) {
   apiPort = parseInt(process.env.API_PORT, 10);
 } else if (fixedMode) {
-  apiPort = 5000;
+  apiPort = 5005;
 } else {
   apiPort = await findRandomFreePort(5100, 5999);
 }
@@ -92,7 +94,7 @@ if (includeDocs) {
 try {
   execSync(
     `npx concurrently -k -n ${names.join(",")} -c ${colors.join(",")}` +
-    ` ${processes.join(" ")}`,
+      ` ${processes.join(" ")}`,
     { stdio: "inherit" },
   );
 } catch {
