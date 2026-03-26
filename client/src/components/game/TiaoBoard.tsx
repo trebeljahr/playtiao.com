@@ -181,6 +181,7 @@ export function TiaoBoard({
   const [mobilePreviewDragging, setMobilePreviewDragging] = useState(false);
   const [mobilePreviewVisible, setMobilePreviewVisible] = useState(false);
   const isDraggingPreviewRef = useRef(false);
+  const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
   const lastTapTimeRef = useRef(0);
   const lastTapPosRef = useRef<Position | null>(null);
 
@@ -243,13 +244,32 @@ export function TiaoBoard({
         const dy = touch.clientY - touchStartRef.current.y;
 
         if (isDraggingPreviewRef.current || Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-          isDraggingPreviewRef.current = true;
-          setMobilePreviewDragging(true);
+          if (!isDraggingPreviewRef.current) {
+            // First drag frame — compute offset between finger and current preview
+            isDraggingPreviewRef.current = true;
+            setMobilePreviewDragging(true);
+            const rect = boardRef.current.getBoundingClientRect();
+            const fingerPos = touchToGridPosition(touch.clientX, touch.clientY, rect);
+            // If this is a fresh placement (no existing preview near finger),
+            // apply default offset; otherwise preserve the existing gap
+            const existingGapY = mobilePreview.y - fingerPos.y;
+            const existingGapX = mobilePreview.x - fingerPos.x;
+            if (Math.abs(existingGapX) <= 1 && Math.abs(existingGapY) <= 1) {
+              // Finger is on/near the preview — apply default upward offset
+              dragOffsetRef.current = { dx: 0, dy: -DRAG_Y_OFFSET };
+            } else {
+              // Reconnecting — keep the existing gap
+              dragOffsetRef.current = { dx: existingGapX, dy: existingGapY };
+            }
+          }
           e.preventDefault();
           const rect = boardRef.current.getBoundingClientRect();
           const pos = touchToGridPosition(touch.clientX, touch.clientY, rect);
-          // Offset upward so finger doesn't cover the intersection
-          const offsetPos = { x: pos.x, y: Math.max(0, pos.y - DRAG_Y_OFFSET) };
+          const off = dragOffsetRef.current ?? { dx: 0, dy: -DRAG_Y_OFFSET };
+          const offsetPos = {
+            x: Math.max(0, Math.min(BOARD_SIZE - 1, pos.x + off.dx)),
+            y: Math.max(0, Math.min(BOARD_SIZE - 1, pos.y + off.dy)),
+          };
           // Only move preview to empty intersections
           const piece = state.positions[offsetPos.y]?.[offsetPos.x];
           if (!piece && !arePositionsEqual(mobilePreview, offsetPos)) {
@@ -278,6 +298,7 @@ export function TiaoBoard({
         e.preventDefault();
         suppressClickRef.current = true;
         isDraggingPreviewRef.current = false;
+        dragOffsetRef.current = null;
         setMobilePreviewDragging(false);
         touchStartRef.current = null;
         // Keep preview in place — confirm/cancel buttons will show
@@ -285,6 +306,7 @@ export function TiaoBoard({
       }
 
       isDraggingPreviewRef.current = false;
+      dragOffsetRef.current = null;
       setMobilePreviewDragging(false);
       const touch = e.changedTouches[0];
 
@@ -1097,58 +1119,6 @@ export function TiaoBoard({
           </span>
         )}
 
-        {/* Magnifier loupe — shown during drag */}
-        {mobilePreview && mobilePreviewDragging && !disabled && IS_TOUCH_DEVICE && (
-          <span
-            className="pointer-events-none absolute z-40 overflow-hidden rounded-full border-2 border-[#d4be8e]/80 shadow-[0_8px_24px_-6px_rgba(40,24,10,0.5)]"
-            style={{
-              width: `${100 / BOARD_SIZE * 4}%`,
-              aspectRatio: "1",
-              left: `${pointPercent(mobilePreview.x)}%`,
-              top: `${pointPercent(mobilePreview.y)}%`,
-              transform: `translate(-50%, calc(-100% - ${100 / BOARD_SIZE * 1.2}%))`,
-              transition: "left 70ms ease-out, top 70ms ease-out",
-            }}
-          >
-            {/* Magnified board region — 2x zoom of the area around the preview */}
-            <span
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: "linear-gradient(180deg, rgba(234,199,131,0.98), rgba(217,177,104,0.98))",
-              }}
-            />
-            {/* Magnified grid lines around the intersection */}
-            <svg
-              className="absolute inset-0 h-full w-full"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-            >
-              {/* Horizontal and vertical lines through center */}
-              <line x1="0" y1="50" x2="100" y2="50" stroke="#6c4926" strokeWidth="0.8" />
-              <line x1="50" y1="0" x2="50" y2="100" stroke="#6c4926" strokeWidth="0.8" />
-              {/* Adjacent grid lines */}
-              <line x1="0" y1="25" x2="100" y2="25" stroke="#6c4926" strokeWidth="0.4" strokeOpacity="0.5" />
-              <line x1="0" y1="75" x2="100" y2="75" stroke="#6c4926" strokeWidth="0.4" strokeOpacity="0.5" />
-              <line x1="25" y1="0" x2="25" y2="100" stroke="#6c4926" strokeWidth="0.4" strokeOpacity="0.5" />
-              <line x1="75" y1="0" x2="75" y2="100" stroke="#6c4926" strokeWidth="0.4" strokeOpacity="0.5" />
-            </svg>
-            {/* Stone in magnifier */}
-            <span
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ width: "38%", aspectRatio: "1" }}
-            >
-              <span
-                className={cn(
-                  "block h-full w-full rounded-full opacity-80",
-                  state.currentTurn === "black"
-                    ? "border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]"
-                    : "border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]",
-                )}
-                style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.2), inset 0 1px 6px rgba(255,255,255,0.15)" }}
-              />
-            </span>
-          </span>
-        )}
       </div>
 
       {/* Bottom-right floating controls */}
