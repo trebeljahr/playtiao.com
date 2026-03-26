@@ -57,6 +57,7 @@ export function usePinchZoom({ containerRef, panDisabled }: UsePinchZoomOptions)
   const pinchStartScale = useRef(1);
   const pinchStartMidpoint = useRef<Point | null>(null);
   const pinchStartTranslate = useRef<Point>({ x: 0, y: 0 });
+  const pinchStartCenter = useRef<Point | null>(null);
 
   const panStartPoint = useRef<Point | null>(null);
   const panStartTranslate = useRef<Point>({ x: 0, y: 0 });
@@ -77,7 +78,9 @@ export function usePinchZoom({ containerRef, panDisabled }: UsePinchZoomOptions)
     (newScale: number, newTx: number, newTy: number) => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const clamped = clampTranslate(newTx, newTy, newScale, rect.width, rect.height);
+      // rect is the visual (transformed) rect — divide by current scale to get original dims
+      const currentScale = scaleRef.current || 1;
+      const clamped = clampTranslate(newTx, newTy, newScale, rect.width / currentScale, rect.height / currentScale);
       scaleRef.current = newScale;
       translateXRef.current = clamped.x;
       translateYRef.current = clamped.y;
@@ -115,6 +118,12 @@ export function usePinchZoom({ containerRef, panDisabled }: UsePinchZoomOptions)
           x: translateXRef.current,
           y: translateYRef.current,
         };
+        // Save the visual center at gesture start so we don't re-read it
+        // from gBCR during the gesture (which would drift as transform updates)
+        const rect = containerRef.current?.getBoundingClientRect();
+        pinchStartCenter.current = rect
+          ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+          : null;
         isPanningRef.current = false;
         panStartPoint.current = null;
         setIsAnimating(false);
@@ -134,7 +143,7 @@ export function usePinchZoom({ containerRef, panDisabled }: UsePinchZoomOptions)
         isPanningRef.current = false;
       }
     },
-    [panDisabled],
+    [panDisabled, containerRef],
   );
 
   const onTouchMove = useCallback(
@@ -152,13 +161,13 @@ export function usePinchZoom({ containerRef, panDisabled }: UsePinchZoomOptions)
         const ratio = newDist / pinchStartDistance.current;
         const newScale = clampScale(pinchStartScale.current * ratio);
 
-        // Zoom toward pinch midpoint: adjust translate so midpoint stays fixed
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (rect) {
+        // Zoom toward pinch midpoint: adjust translate so midpoint stays fixed.
+        // Use the center saved at gesture start — re-reading gBCR here would
+        // use the already-shifted center, creating a feedback loop that drifts.
+        if (pinchStartCenter.current) {
           const mid = pinchStartMidpoint.current;
-          // Offset of midpoint from container center
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
+          const cx = pinchStartCenter.current.x;
+          const cy = pinchStartCenter.current.y;
           const offsetX = mid.x - cx;
           const offsetY = mid.y - cy;
 

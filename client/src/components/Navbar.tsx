@@ -4,6 +4,7 @@ import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
+import { useToggleSound } from "@/lib/useSoundPreference";
 
 export type AuthDialogMode = "login" | "signup";
 export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "tutorial";
@@ -89,20 +90,102 @@ function PlayerAvatar({ auth }: { auth: AuthResponse | null }) {
   );
 }
 
+function SoundToggle() {
+  const [enabled, toggle] = useToggleSound();
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="relative flex h-8 w-8 items-center justify-center rounded-full text-[#6e5b48] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#28170e]"
+      aria-label={enabled ? "Mute sounds" : "Unmute sounds"}
+    >
+      <motion.svg
+        key={enabled ? "on" : "off"}
+        viewBox="0 0 20 20"
+        fill="none"
+        className="h-[18px] w-[18px]"
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+      >
+        {enabled ? (
+          <>
+            <path
+              d="M10 3.5L5.5 7H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2.5L10 16.5V3.5Z"
+              fill="currentColor"
+            />
+            <motion.path
+              d="M13 7.5c.8.7 1.25 1.6 1.25 2.5s-.45 1.8-1.25 2.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            />
+            <motion.path
+              d="M15 5.5c1.4 1.2 2.25 2.8 2.25 4.5s-.85 3.3-2.25 4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+            />
+          </>
+        ) : (
+          <>
+            <path
+              d="M10 3.5L5.5 7H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2.5L10 16.5V3.5Z"
+              fill="currentColor"
+              opacity="0.5"
+            />
+            <motion.line
+              x1="13"
+              y1="7.5"
+              x2="17.5"
+              y2="12.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.2 }}
+            />
+            <motion.line
+              x1="17.5"
+              y1="7.5"
+              x2="13"
+              y2="12.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+            />
+          </>
+        )}
+      </motion.svg>
+    </button>
+  );
+}
+
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
   const player = auth?.player;
   const isAnonymous = player?.kind !== "account";
 
   return (
-    <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
-      <PlayerAvatar auth={auth} />
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">
-          {isAnonymous ? "Anonymous" : player.displayName}
-        </p>
-        <p className="truncate text-xs text-[#6e5b48]">
-          {isAnonymous ? "Not signed in" : "Account"}
-        </p>
+    <div className="flex items-center gap-1.5">
+      <SoundToggle />
+      <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
+        <PlayerAvatar auth={auth} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            {isAnonymous ? "Anonymous" : player.displayName}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -336,16 +419,12 @@ export function Navbar({
       <div className="mt-6 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4 text-left">
         <div className="flex items-center gap-3 text-left">
           <PlayerAvatar auth={auth} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold">
               {player?.kind === "account" ? player.displayName : "Anonymous"}
             </p>
-            <p className="truncate text-sm text-[#6e5b48]">
-              {player?.kind === "account"
-                ? player.email
-                : "Sign in to save your profile"}
-            </p>
           </div>
+          <SoundToggle />
         </div>
 
         <div className="mt-4 grid gap-2">
