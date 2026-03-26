@@ -42,12 +42,14 @@ export class GameServiceError extends Error {
   }
 }
 
+import { InMemoryLockProvider, LockProvider } from "./lockProvider";
+import {
+  InMemoryMatchmakingStore,
+  MatchmakingStore,
+  type MatchmakingQueueEntry,
+} from "./matchmakingStore";
+
 type RoomConnections = Map<WebSocket, string>;
-type MatchmakingQueueEntry = {
-  player: PlayerIdentity;
-  queuedAt: number;
-  timeControl: TimeControl;
-};
 
 const GUEST_ABANDON_TIMEOUT_MS = 5 * 60 * 1000;
 const FIRST_MOVE_TIMEOUT_MS = 30 * 1000;
@@ -56,9 +58,8 @@ export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
   private readonly lobbyConnections = new Map<string, Set<WebSocket>>();
   private readonly socketRooms = new Map<WebSocket, string>();
-  private readonly locks = new Map<string, Promise<void>>();
-  private readonly matchmakingQueue: MatchmakingQueueEntry[] = [];
-  private readonly matchmakingMatches = new Map<string, string>();
+  private readonly matchmaking: MatchmakingStore;
+  private readonly lockProvider: LockProvider;
   private readonly guestAbandonTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly clockTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly firstMoveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -66,8 +67,13 @@ export class GameService {
   constructor(
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
     private readonly seatRandom: () => number = Math.random,
-    private readonly abandonTimeoutMs: number = GUEST_ABANDON_TIMEOUT_MS
-  ) {}
+    private readonly abandonTimeoutMs: number = GUEST_ABANDON_TIMEOUT_MS,
+    matchmaking?: MatchmakingStore,
+    lockProvider?: LockProvider,
+  ) {
+    this.matchmaking = matchmaking ?? new InMemoryMatchmakingStore();
+    this.lockProvider = lockProvider ?? new InMemoryLockProvider();
+  }
 
   isPlayerConnectedToLobby(playerId: string): boolean {
     const sockets = this.lobbyConnections.get(playerId);
@@ -417,11 +423,9 @@ export class GameService {
     return this.withLock(this.matchmakingLockKey(), async () => {
       // Clear any previous match so the player re-enters the queue
       // instead of being reconnected to the same game.
-      this.matchmakingMatches.delete(player.playerId);
+      await this.matchmaking.deleteMatch(player.playerId);
 
-      const existingEntry = this.matchmakingQueue.find(
-        (entry) => entry.player.playerId === player.playerId
-      );
+      const existingEntry = await this.matchmaking.findEntry(player.playerId);
       if (existingEntry) {
         return {
           status: "searching",
@@ -432,16 +436,12 @@ export class GameService {
 
       await this.ensureGuestPlayerHasSingleOpenGame(player);
 
-      // Find a matching opponent with the same time control
-      const matchIndex = this.matchmakingQueue.findIndex(
-        (entry) =>
-          entry.player.playerId !== player.playerId &&
-          this.timeControlsMatch(entry.timeControl, timeControl),
+      const opponentEntry = await this.matchmaking.findAndRemoveOpponent(
+        player.playerId,
+        timeControl
       );
 
-      if (matchIndex >= 0) {
-        const opponentEntry = this.matchmakingQueue.splice(matchIndex, 1)[0];
-
+      if (opponentEntry) {
         const snapshot = await this.withLocks(
           [
             this.playerLockKey(player.playerId),
@@ -458,8 +458,8 @@ export class GameService {
               timeControl,
             });
 
-            this.matchmakingMatches.set(opponentEntry.player.playerId, room.id);
-            this.matchmakingMatches.set(player.playerId, room.id);
+            await this.matchmaking.setMatch(opponentEntry.player.playerId, room.id);
+            await this.matchmaking.setMatch(player.playerId, room.id);
 
             return this.toSnapshot(room);
           }
@@ -472,7 +472,7 @@ export class GameService {
       }
 
       const queuedAt = Date.now();
-      this.matchmakingQueue.push({
+      await this.matchmaking.addToQueue({
         player,
         queuedAt,
         timeControl,
@@ -486,15 +486,9 @@ export class GameService {
     });
   }
 
-  private timeControlsMatch(a: TimeControl, b: TimeControl): boolean {
-    if (a === null && b === null) return true;
-    if (a === null || b === null) return false;
-    return a.initialMs === b.initialMs && a.incrementMs === b.incrementMs;
-  }
-
   async getMatchmakingState(player: PlayerIdentity): Promise<MatchmakingState> {
     return this.withLock(this.matchmakingLockKey(), async () => {
-      const matchedGameId = this.matchmakingMatches.get(player.playerId);
+      const matchedGameId = await this.matchmaking.getMatch(player.playerId);
       if (matchedGameId) {
         return {
           status: "matched",
@@ -502,9 +496,7 @@ export class GameService {
         };
       }
 
-      const existingEntry = this.matchmakingQueue.find(
-        (entry) => entry.player.playerId === player.playerId
-      );
+      const existingEntry = await this.matchmaking.findEntry(player.playerId);
       if (existingEntry) {
         return {
           status: "searching",
@@ -520,15 +512,8 @@ export class GameService {
 
   async leaveMatchmaking(player: PlayerIdentity): Promise<void> {
     await this.withLock(this.matchmakingLockKey(), async () => {
-      const queueIndex = this.matchmakingQueue.findIndex(
-        (entry) => entry.player.playerId === player.playerId
-      );
-
-      if (queueIndex >= 0) {
-        this.matchmakingQueue.splice(queueIndex, 1);
-      }
-
-      this.matchmakingMatches.delete(player.playerId);
+      await this.matchmaking.removeFromQueue(player.playerId);
+      await this.matchmaking.deleteMatch(player.playerId);
     });
   }
 
@@ -1519,50 +1504,39 @@ export class GameService {
   ): Promise<T> {
     const uniqueKeys = Array.from(new Set(keys)).sort();
 
-    async function run(
-      service: GameService,
-      index: number
-    ): Promise<T> {
+    const run = (index: number): Promise<T> => {
       if (index >= uniqueKeys.length) {
         return operation();
       }
+      return this.withLock(uniqueKeys[index], () => run(index + 1));
+    };
 
-      return service.withLock(uniqueKeys[index], () => run(service, index + 1));
-    }
-
-    return run(this, 0);
+    return run(0);
   }
 
-  private async withLock<T>(
-    key: string,
-    operation: () => Promise<T>
-  ): Promise<T> {
-    const previous = this.locks.get(key) ?? Promise.resolve();
-    let release: () => void = () => {};
-    const current = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    this.locks.set(key, current);
-
-    const LOCK_TIMEOUT_MS = 15_000;
-    await Promise.race([
-      previous.catch(() => undefined),
-      new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, LOCK_TIMEOUT_MS);
-        timer.unref?.();
-      }),
-    ]);
-
-    try {
-      return await operation();
-    } finally {
-      release();
-      if (this.locks.get(key) === current) {
-        this.locks.delete(key);
-      }
-    }
+  private withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    return this.lockProvider.withLock(key, operation);
   }
 }
 
-export const gameService = new GameService();
+import { getRedisClient } from "../config/redisClient";
+import { RedisLockProvider } from "./lockProvider";
+import { RedisMatchmakingStore } from "./matchmakingStore";
+
+function createGameService(): GameService {
+  const redis = getRedisClient();
+  if (redis) {
+    console.info("[game] Using Redis-backed matchmaking and locks.");
+    return new GameService(
+      new MongoGameRoomStore(),
+      Math.random,
+      GUEST_ABANDON_TIMEOUT_MS,
+      new RedisMatchmakingStore(redis),
+      new RedisLockProvider(redis)
+    );
+  }
+
+  return new GameService();
+}
+
+export const gameService = createGameService();
