@@ -80,8 +80,8 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
       />
 
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
-        <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
-          <div className="flex items-center justify-center xl:min-h-[calc(100dvh-1.5rem)]">
+        <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+          <div className="flex items-center justify-center xl:items-start xl:justify-end">
             <div className="mx-auto w-full" style={boardWrapStyle}>
               <TiaoBoard
                 state={local.localGame}
@@ -95,8 +95,8 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
             </div>
           </div>
 
-          <div className="space-y-4 xl:max-h-[calc(100dvh-1.5rem)] xl:overflow-auto">
-            <div className="mx-auto w-full xl:mx-0" style={boardWrapStyle}>
+          <div className="space-y-4 xl:min-w-[20rem] xl:max-w-[28rem]">
+            <div className="mx-auto w-full xl:mx-0">
               <Card className={paperCard}>
                 <CardHeader>
                   <GamePanelBrand />
@@ -107,20 +107,20 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
                     {localStatusTitle}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                <CardContent className="space-y-5">
+                  <div className="grid grid-cols-1 gap-4">
                     <AnimatedScoreTile
                       label="Black"
                       value={local.localGame.score.black}
                       pulseKey={local.localScorePulse.black}
-                      className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
+                      className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-5 text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)]"
                       labelClassName="text-xs uppercase tracking-[0.24em] text-[#d9cec2]"
                     />
                     <AnimatedScoreTile
                       label="White"
                       value={local.localGame.score.white}
                       pulseKey={local.localScorePulse.white}
-                      className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
+                      className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-5 text-[#2b1e14] shadow-[0_18px_32px_-26px_rgba(84,61,36,0.45)]"
                       labelClassName="text-xs uppercase tracking-[0.24em] text-[#847261]"
                     />
                   </div>

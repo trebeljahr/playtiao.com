@@ -461,8 +461,8 @@ export function MultiplayerGamePage({
       />
 
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
-        <section className="grid gap-3 xl:gap-1.5 xl:grid-cols-[minmax(0,1fr)_17.75rem] xl:items-start">
-          <div className="flex items-center justify-center xl:min-h-[calc(100dvh-1.5rem)]">
+        <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+          <div className="flex items-center justify-center xl:items-start xl:justify-end">
             <div className="relative mx-auto w-full" style={boardWrapStyle}>
               {displayState && (
                 <TiaoBoard
@@ -495,8 +495,8 @@ export function MultiplayerGamePage({
             </div>
           </div>
 
-          <div className="space-y-4 xl:max-h-[calc(100dvh-1.5rem)] xl:overflow-auto">
-            <div className="mx-auto w-full xl:mx-0" style={boardWrapStyle}>
+          <div className="space-y-4 xl:min-w-[20rem] xl:max-w-[28rem]">
+            <div className="mx-auto w-full xl:mx-0">
               <Card
                 className={cn(
                   paperCard,
@@ -615,12 +615,12 @@ export function MultiplayerGamePage({
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {multiplayerSnapshot ? (
                     <>
                       {multiplayerSnapshot.status === "waiting" ? (
                         <>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 gap-4">
                             <AnimatedScoreTile
                               label="Black"
                               value={
@@ -628,7 +628,7 @@ export function MultiplayerGamePage({
                                   .score.black
                               }
                               pulseKey={0}
-                              className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8]"
+                              className="rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-5 text-[#f9f2e8]"
                               labelClassName="text-xs uppercase tracking-wider"
                             />
                             <AnimatedScoreTile
@@ -638,7 +638,7 @@ export function MultiplayerGamePage({
                                   .score.white
                               }
                               pulseKey={0}
-                              className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14]"
+                              className="rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-5 text-[#2b1e14]"
                               labelClassName="text-xs uppercase tracking-wider"
                             />
                           </div>
@@ -712,7 +712,7 @@ export function MultiplayerGamePage({
                           </div>
                         </>
                       ) : (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-4">
                           {(["black", "white"] as PlayerColor[]).map(
                             (color) => {
                               const seat = multiplayerSnapshot.seats[color];
@@ -752,8 +752,8 @@ export function MultiplayerGamePage({
                                 color === "black" ? "dark" : "light";
                               const tileStyle =
                                 color === "black"
-                                  ? "rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-4 text-[#f9f2e8]"
-                                  : "rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-4 text-[#2b1e14]";
+                                  ? "rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#39312b,#14100d)] p-5 text-[#f9f2e8]"
+                                  : "rounded-3xl border border-[#d3c3ad] bg-[linear-gradient(180deg,#fffef8,#efe4d1)] p-5 text-[#2b1e14]";
 
                               return (
                                 <AnimatedScoreTile
