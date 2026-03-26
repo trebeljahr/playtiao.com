@@ -37,7 +37,7 @@ const IS_TOUCH_DEVICE =
   ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
 const DRAG_THRESHOLD = 10;
-const DRAG_Y_OFFSET = 3; // grid cells to offset above finger during drag
+const DRAG_Y_OFFSET = 4; // grid cells to offset above finger during drag
 
 function isStarPoint(position: Position) {
   const starPointIndices = [3, 9, 15];
@@ -324,21 +324,23 @@ export function TiaoBoard({
       }
 
       // Empty intersection with no selection — mobile preview flow
-      if (mobilePreview) {
-        // Tap elsewhere dismisses current preview
-        if (!arePositionsEqual(mobilePreview, pos)) {
-          e.preventDefault();
-          suppressClickRef.current = true;
-          setMobilePreview(pos);
-        }
-        // Tap on same position — do nothing, user should use confirm button
-        return;
+      if (mobilePreview && arePositionsEqual(mobilePreview, pos)) {
+        // Second tap on same position → confirm placement
+        e.preventDefault();
+        suppressClickRef.current = true;
+        setMobilePreview(null);
+        onPointClick(pos);
+      } else if (mobilePreview) {
+        // Tap elsewhere → move preview
+        e.preventDefault();
+        suppressClickRef.current = true;
+        setMobilePreview(pos);
+      } else {
+        // First tap → show preview ghost stone
+        e.preventDefault();
+        suppressClickRef.current = true;
+        setMobilePreview(pos);
       }
-
-      // First tap → show preview ghost stone with confirm/cancel
-      e.preventDefault();
-      suppressClickRef.current = true;
-      setMobilePreview(pos);
     },
     [state.positions, activeOrigin, mobilePreview, onPointClick, zoom.handlers, zoom.gestureActiveRef]
   );
@@ -1026,85 +1028,92 @@ export function TiaoBoard({
           {mobilePreview && !disabled && (
             <motion.span
               key="mobile-preview"
-              className="absolute z-30 -translate-x-1/2 -translate-y-1/2"
+              className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2"
               style={{
+                left: `${pointPercent(mobilePreview.x)}%`,
+                top: `${pointPercent(mobilePreview.y)}%`,
                 width: `${100 / BOARD_SIZE * 0.88}%`,
                 aspectRatio: "1",
               }}
-              initial={{ left: `${pointPercent(mobilePreview.x)}%`, top: `${pointPercent(mobilePreview.y)}%`, scale: 0.7, opacity: 0 }}
-              animate={{
-                left: `${pointPercent(mobilePreview.x)}%`,
-                top: `${pointPercent(mobilePreview.y)}%`,
-                scale: 1,
-                opacity: 1,
-              }}
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.7, opacity: 0 }}
               transition={{ duration: 0.1, ease: "easeOut" }}
             >
               <span
                 className={cn(
-                  "pointer-events-none block h-full w-full rounded-full",
+                  "block h-full w-full rounded-full",
                   mobilePreviewDragging ? "opacity-50" : "opacity-70",
                   state.currentTurn === "black"
                     ? "border border-[#191410] bg-[#1a1210] shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
                     : "border border-[#ddd2bf] bg-[#f0e8d8] shadow-[0_2px_6px_rgba(0,0,0,0.15)]",
                 )}
               />
-              {/* Confirm/cancel pill — shown when not dragging */}
+              {/* Pulsing "tap to confirm" ring — shown when not dragging */}
               {!mobilePreviewDragging && IS_TOUCH_DEVICE && (
-                <motion.span
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.12, delay: 0.05 }}
-                  className="absolute left-1/2 bottom-[calc(100%+6px)] -translate-x-1/2 flex items-center gap-0 rounded-full border border-[#c4a978]/60 bg-[rgba(255,248,232,0.96)] shadow-[0_6px_16px_-6px_rgba(66,39,11,0.45)]"
-                >
-                  <button
-                    type="button"
-                    className="flex h-7 w-8 items-center justify-center rounded-l-full text-[#9a6e4a] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#6e3d1a] active:bg-[rgba(0,0,0,0.1)]"
-                    onClick={(evt) => { evt.stopPropagation(); setMobilePreview(null); }}
-                    aria-label="Cancel placement"
-                  >
-                    <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3">
-                      <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                  <span className="h-4 w-px bg-[#c4a978]/40" />
-                  <button
-                    type="button"
-                    className="flex h-7 w-8 items-center justify-center rounded-r-full text-[#5e7b4e] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#3a5a2a] active:bg-[rgba(0,0,0,0.1)]"
-                    onClick={(evt) => { evt.stopPropagation(); const pos = mobilePreview; setMobilePreview(null); onPointClick(pos); }}
-                    aria-label="Confirm placement"
-                  >
-                    <svg viewBox="0 0 14 14" fill="none" className="h-3.5 w-3.5">
-                      <path d="M3 7.5l2.8 2.8L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </motion.span>
+                <>
+                  <motion.span
+                    className="pointer-events-none absolute inset-[-20%] rounded-full border-2 border-[#56703f]"
+                    animate={{
+                      scale: [1, 1.15, 1],
+                      opacity: [0.7, 0.3, 0.7],
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  <span className="absolute left-1/2 top-[calc(100%+4px)] -translate-x-1/2 whitespace-nowrap rounded-full border border-[#d7c39e] bg-[#fffaf3] px-2 py-0.5 text-[9px] font-semibold text-[#6c543c] shadow-sm">
+                    Tap to place
+                  </span>
+                </>
               )}
             </motion.span>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Zoom indicator — tap to reset */}
+      {/* Bottom-right floating controls */}
       <AnimatePresence>
-        {zoom.isZoomed && IS_TOUCH_DEVICE && (
-          <motion.button
-            type="button"
+        {IS_TOUCH_DEVICE && (zoom.isZoomed || mobilePreview) && (
+          <motion.div
+            key="board-controls"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.15 }}
-            onClick={zoom.resetZoom}
-            className="absolute bottom-5 right-5 z-[100] flex h-9 items-center gap-1.5 rounded-full border border-[#af8a56]/50 bg-[rgba(255,248,232,0.92)] px-3 text-[#3a2818] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur"
+            className="absolute bottom-5 right-5 z-[100] flex items-center gap-2"
           >
-            <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" aria-hidden="true">
-              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M5 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span className="text-xs font-semibold">{Math.round(zoom.scale * 10) / 10}x</span>
-          </motion.button>
+            {/* Cancel placement */}
+            {mobilePreview && !disabled && (
+              <button
+                type="button"
+                onClick={() => setMobilePreview(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
+                aria-label="Cancel placement"
+              >
+                <svg viewBox="0 0 14 14" fill="none" className="h-3.5 w-3.5">
+                  <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+            {/* Zoom indicator — tap to reset */}
+            {zoom.isZoomed && (
+              <button
+                type="button"
+                onClick={zoom.resetZoom}
+                className="flex h-9 items-center gap-1.5 rounded-full border border-[#af8a56]/50 bg-[rgba(255,248,232,0.92)] px-3 text-[#3a2818] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur"
+              >
+                <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" aria-hidden="true">
+                  <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M5 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="text-xs font-semibold">{Math.round(zoom.scale * 10) / 10}x</span>
+              </button>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
