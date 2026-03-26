@@ -167,6 +167,7 @@ function serializeAccountProfile(account: {
 async function requireAccount(req: Request, res: Response) {
   if (!isDatabaseReady()) {
     res.status(503).json({
+      code: "SERVICE_UNAVAILABLE",
       message:
         "Account features are unavailable right now. You can still keep playing as a guest.",
     });
@@ -176,6 +177,7 @@ async function requireAccount(req: Request, res: Response) {
   const player = await getPlayerFromRequest(req);
   if (!player) {
     res.status(401).json({
+      code: "NOT_AUTHENTICATED",
       message: "Not authenticated.",
     });
     return null;
@@ -183,6 +185,7 @@ async function requireAccount(req: Request, res: Response) {
 
   if (player.kind !== "account") {
     res.status(403).json({
+      code: "ACCOUNT_REQUIRED",
       message: "Only account players can edit a server profile.",
     });
     return null;
@@ -191,6 +194,7 @@ async function requireAccount(req: Request, res: Response) {
   const account = await GameAccount.findById(player.playerId);
   if (!account) {
     res.status(404).json({
+      code: "ACCOUNT_NOT_FOUND",
       message: "That account could not be found.",
     });
     return null;
@@ -277,6 +281,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
   try {
     if (!isDatabaseReady()) {
       return res.status(503).json({
+        code: "SERVICE_UNAVAILABLE",
         message:
           "Account signup is unavailable right now. You can still keep playing as a guest.",
       });
@@ -297,6 +302,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
       (!normalizedEmail && !trimmedDisplayName)
     ) {
       return res.status(400).json({
+        code: "VALIDATION_ERROR",
         message: "Provide a username or email address, and a password.",
       });
     }
@@ -305,6 +311,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!emailRegex.test(normalizedEmail)) {
         return res.status(400).json({
+          code: "INVALID_EMAIL",
           message: "Provide a valid email address.",
         });
       }
@@ -315,6 +322,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
 
       if (existingAccountByEmail) {
         return res.status(409).json({
+          code: "DUPLICATE_EMAIL",
           message: "An account with that email already exists.",
         });
       }
@@ -323,6 +331,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
     if (trimmedDisplayName) {
       if (trimmedDisplayName.length < 3) {
         return res.status(400).json({
+          code: "DISPLAY_NAME_TOO_SHORT",
           message: "Usernames must be at least 3 characters long.",
         });
       }
@@ -333,6 +342,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
 
       if (existingAccountByDisplayName) {
         return res.status(409).json({
+          code: "DUPLICATE_USERNAME",
           message: "That username is already taken.",
         });
       }
@@ -340,6 +350,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
 
     if (password.length < 8 || password.length > 128) {
       return res.status(400).json({
+        code: "INVALID_PASSWORD",
         message: "Passwords must be between 8 and 128 characters.",
       });
     }
@@ -399,6 +410,7 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
   try {
     if (!isDatabaseReady()) {
       return res.status(503).json({
+        code: "SERVICE_UNAVAILABLE",
         message:
           "Account login is unavailable right now. You can still keep playing as a guest.",
       });
@@ -416,6 +428,7 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
       typeof password !== "string"
     ) {
       return res.status(400).json({
+        code: "VALIDATION_ERROR",
         message: "Provide a username or email address, and a password.",
       });
     }
@@ -432,6 +445,7 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
 
     if (!account) {
       return res.status(401).json({
+        code: "INVALID_CREDENTIALS",
         message: "Invalid credentials.",
       });
     }
@@ -439,6 +453,7 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
     const passwordMatches = bcrypt.compareSync(password, account.passwordHash);
     if (!passwordMatches) {
       return res.status(401).json({
+        code: "INVALID_CREDENTIALS",
         message: "Invalid credentials.",
       });
     }
@@ -500,6 +515,7 @@ router.get("/me", async (req: Request, res: Response) => {
     const player = await getPlayerFromRequest(req);
     if (!player) {
       return res.status(401).json({
+        code: "NOT_AUTHENTICATED",
         message: "Not authenticated.",
       });
     }
@@ -516,6 +532,7 @@ router.get("/me", async (req: Request, res: Response) => {
 
       await clearPlayerSession(req, res);
       return res.status(401).json({
+        code: "SESSION_EXPIRED",
         message: "That account session is no longer valid.",
       });
     }
@@ -711,6 +728,7 @@ router.put("/profile", async (req: Request, res: Response) => {
 
     if (!normalizedEmail && !sanitizedDisplayName && !password) {
       return res.status(400).json({
+        code: "VALIDATION_ERROR",
         message: "Provide a display name, email address, or password to update.",
       });
     }
@@ -718,6 +736,7 @@ router.put("/profile", async (req: Request, res: Response) => {
     if (sanitizedDisplayName !== undefined) {
       if (!sanitizedDisplayName || sanitizedDisplayName.length < 3) {
         return res.status(400).json({
+          code: "DISPLAY_NAME_TOO_SHORT",
           message: "Display name must be at least 3 characters long.",
         });
       }
@@ -729,6 +748,7 @@ router.put("/profile", async (req: Request, res: Response) => {
 
       if (existingAccountByDisplayName) {
         return res.status(409).json({
+          code: "DUPLICATE_USERNAME",
           message: "That username is already taken.",
         });
       }
@@ -741,6 +761,7 @@ router.put("/profile", async (req: Request, res: Response) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         if (!emailRegex.test(normalizedEmail)) {
           return res.status(400).json({
+            code: "INVALID_EMAIL",
             message: "Provide a valid email address.",
           });
         }
@@ -752,6 +773,7 @@ router.put("/profile", async (req: Request, res: Response) => {
 
         if (existingAccount) {
           return res.status(409).json({
+            code: "DUPLICATE_EMAIL",
             message: "An account with that email already exists.",
           });
         }
@@ -765,6 +787,7 @@ router.put("/profile", async (req: Request, res: Response) => {
     if (password !== undefined) {
       if (!currentPassword) {
         return res.status(400).json({
+          code: "CURRENT_PASSWORD_REQUIRED",
           message: "Current password is required to set a new password.",
         });
       }
@@ -772,12 +795,14 @@ router.put("/profile", async (req: Request, res: Response) => {
       const passwordMatches = bcrypt.compareSync(currentPassword, account.passwordHash);
       if (!passwordMatches) {
         return res.status(401).json({
+          code: "INVALID_CREDENTIALS",
           message: "Current password is incorrect.",
         });
       }
 
       if (password.length < 8) {
         return res.status(400).json({
+          code: "INVALID_PASSWORD",
           message: "Passwords must be at least 8 characters long.",
         });
       }
@@ -868,6 +893,7 @@ router.post(
 
     if (!req.file) {
       return res.status(400).json({
+        code: "MISSING_FILE",
         message: "Choose an image to upload.",
       });
     }
@@ -916,6 +942,7 @@ router.post(
     } catch (error) {
       console.error("Error uploading game account profile picture:", error);
       return res.status(500).json({
+        code: "UPLOAD_FAILED",
         message: "Unable to upload that profile picture right now.",
       });
     }

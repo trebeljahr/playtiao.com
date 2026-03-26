@@ -11,6 +11,7 @@ async function getAuthenticatedPlayer(req: Request, res: Response) {
   const player = await getPlayerFromRequest(req);
   if (!player) {
     res.status(401).json({
+      code: "NOT_AUTHENTICATED",
       message: "Authenticate as a guest or account before using multiplayer.",
     });
     return null;
@@ -244,7 +245,7 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
   }
 
   if (!isValidGameId(req.params.gameId)) {
-    return res.status(400).json({ message: "Invalid game ID." });
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
@@ -302,7 +303,7 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
   }
 
   if (!isValidGameId(req.params.gameId)) {
-    return res.status(400).json({ message: "Invalid game ID." });
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
@@ -364,7 +365,7 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
   }
 
   if (!isValidGameId(req.params.gameId)) {
-    return res.status(400).json({ message: "Invalid game ID." });
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
@@ -424,6 +425,7 @@ router.post("/matchmaking", async (req: Request, res: Response) => {
         incrementMs < 0
       ) {
         return res.status(400).json({
+          code: "INVALID_TIME_CONTROL",
           message:
             "Invalid time control. Provide positive initialMs and non-negative incrementMs.",
         });
@@ -562,21 +564,21 @@ router.delete("/matchmaking", async (req: Request, res: Response) => {
  */
 router.post("/:gameId/test-finish", async (req: Request, res: Response) => {
   if (process.env.NODE_ENV !== "test") {
-    return res.status(403).json({ message: "Only available in test environment." });
+    return res.status(403).json({ code: "FORBIDDEN", message: "Only available in test environment." });
   }
 
   const { gameId } = req.params;
   const { winner } = req.body as { winner: string };
 
   if (typeof winner !== "string" || (winner !== "white" && winner !== "black")) {
-    return res.status(400).json({ message: "Winner must be 'white' or 'black'." });
+    return res.status(400).json({ code: "VALIDATION_ERROR", message: "Winner must be 'white' or 'black'." });
   }
 
   try {
     await gameService.testForceFinishGame(gameId, winner);
     res.status(200).json({ message: "Game finished." });
   } catch (error) {
-    res.status(500).json({ message: "Failed to finish game." });
+    res.status(500).json({ code: "INTERNAL_ERROR", message: "Failed to finish game." });
   }
 });
 

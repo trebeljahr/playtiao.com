@@ -44,18 +44,21 @@ export function profilePictureUpload(fieldName: string) {
       if (err instanceof MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
           return res.status(413).json({
+            code: "FILE_TOO_LARGE",
             message: `File is too large. Maximum size is ${MAX_FILE_SIZE / 1024}KB.`,
           });
         }
 
         if (err.code === "LIMIT_UNEXPECTED_FILE") {
           return res.status(415).json({
+            code: "UNSUPPORTED_FILE_TYPE",
             message:
               "Unsupported file type. Only JPEG, PNG, WebP, and GIF images are allowed.",
           });
         }
 
         return res.status(400).json({
+          code: "UPLOAD_ERROR",
           message: "There was a problem with the uploaded file.",
         });
       }

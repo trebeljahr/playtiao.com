@@ -41,7 +41,7 @@ export function classifyMongoError(
 
 export const addErrorHandlingToApp = (app: Application) => {
   app.use((_: Request, res: Response, _next: NextFunction) => {
-    res.status(404).json({ message: "This route does not exist" });
+    res.status(404).json({ code: "NOT_FOUND", message: "This route does not exist." });
   });
 
   app.use(((err: unknown, req: Request, res: Response, _next: NextFunction) => {

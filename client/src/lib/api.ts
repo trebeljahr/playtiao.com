@@ -20,10 +20,12 @@ export type AccountProfile = {
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -72,12 +74,14 @@ async function request<T>(
 
   const data = (await response.json().catch(() => ({}))) as {
     message?: string;
+    code?: string;
   } & T;
 
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      data.message || "The request could not be completed."
+      data.message || "The request could not be completed.",
+      data.code
     );
   }
 
@@ -102,12 +106,14 @@ async function upload<T>(path: string, formData: FormData): Promise<T> {
 
   const data = (await response.json().catch(() => ({}))) as {
     message?: string;
+    code?: string;
   } & T;
 
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      data.message || "The request could not be completed."
+      data.message || "The request could not be completed.",
+      data.code
     );
   }
 
