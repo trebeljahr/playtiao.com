@@ -79,7 +79,7 @@ if (includeDocs) {
 console.log(`  Server: http://127.0.0.1:${apiPort}\n`);
 
 const processes = [
-  `"PORT=${clientPort} API_PORT=${apiPort} npm --prefix client run dev"`,
+  `"node scripts/wait-for-port.mjs ${apiPort} && PORT=${clientPort} API_PORT=${apiPort} npm --prefix client run dev"`,
   `"PORT=${apiPort} npm --prefix server run dev"`,
 ];
 const names = ["client", "server"];
