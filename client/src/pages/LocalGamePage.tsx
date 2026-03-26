@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
 import {
@@ -35,7 +36,22 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
 
   useStonePlacementSound(local.localGame);
   const winner = isGameOver(local.localGame) ? getWinner(local.localGame) : null;
-  const { resultBanner } = useWinConfetti(winner);
+  useWinConfetti(winner);
+
+  const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
+  const prevWinnerRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (winner && prevWinnerRef.current !== winner) {
+      prevWinnerRef.current = winner;
+      const id = setTimeout(() => setGameOverDialogOpen(true), 600);
+      return () => clearTimeout(id);
+    }
+    if (!winner) {
+      prevWinnerRef.current = null;
+      setGameOverDialogOpen(false);
+    }
+  }, [winner]);
 
   const localStatusTitle = winner
     ? `${formatPlayerColor(winner)} wins!`
@@ -51,7 +67,6 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {resultBanner}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar
@@ -135,6 +150,22 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
           </div>
         </section>
       </main>
+
+      <Dialog
+        open={gameOverDialogOpen}
+        onOpenChange={setGameOverDialogOpen}
+        title={`${formatPlayerColor(winner!)} wins!`}
+        description="Great game! Ready for another round?"
+      >
+        <div className="grid gap-2">
+          <Button onClick={() => { setGameOverDialogOpen(false); local.resetLocalGame(); }}>
+            Play again
+          </Button>
+          <Button variant="ghost" onClick={() => navigate("/")}>
+            Back to lobby
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

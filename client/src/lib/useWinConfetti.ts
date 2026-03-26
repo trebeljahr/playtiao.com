@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, createElement } from "react";
+import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import type { PlayerColor } from "@shared";
 
@@ -7,16 +7,12 @@ type WinConfettiOptions = {
   viewerColor?: PlayerColor | null;
 };
 
-const BANNER_DURATION_MS = 2200;
-
 export function useWinConfetti(
   winner: PlayerColor | null,
   options: WinConfettiOptions = {},
 ) {
   const { viewerColor = null } = options;
   const lastWinnerRef = useRef<PlayerColor | null>(null);
-  const [bannerText, setBannerText] = useState<string | null>(null);
-  const [bannerVisible, setBannerVisible] = useState(false);
 
   useEffect(() => {
     if (!winner) {
@@ -34,47 +30,10 @@ export function useWinConfetti(
 
     if (isLoser) {
       playDefeatParticles();
-      setBannerText("You lost");
     } else {
       playVictoryConfetti();
-      setBannerText(viewerColor !== null ? "You won!" : `${winner === "white" ? "White" : "Black"} wins!`);
     }
-    setBannerVisible(true);
-
-    const timer = setTimeout(() => {
-      setBannerVisible(false);
-    }, BANNER_DURATION_MS);
-
-    return () => clearTimeout(timer);
   }, [winner, viewerColor]);
-
-  const resultBanner =
-    bannerText !== null
-      ? createElement(
-          "div",
-          {
-            key: "win-banner",
-            className: `pointer-events-none fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-500 ${bannerVisible ? "opacity-100" : "opacity-0"}`,
-            onTransitionEnd: () => {
-              if (!bannerVisible) setBannerText(null);
-            },
-          },
-          createElement(
-            "div",
-            {
-              className:
-                "rounded-3xl border border-[#d0bb94]/60 bg-[linear-gradient(180deg,rgba(255,250,242,0.97),rgba(244,231,207,0.95))] px-12 py-6 shadow-[0_24px_48px_-16px_rgba(37,23,13,0.35)]",
-            },
-            createElement(
-              "p",
-              { className: "font-display text-5xl tracking-tight text-[#2b1e14]" },
-              bannerText,
-            ),
-          ),
-        )
-      : null;
-
-  return { resultBanner };
 }
 
 function playVictoryConfetti() {

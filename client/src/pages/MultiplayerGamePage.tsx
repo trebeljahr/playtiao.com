@@ -191,7 +191,37 @@ export function MultiplayerGamePage({
         )?.[0] as PlayerColor | undefined)
       : null;
 
-  const { resultBanner } = useWinConfetti(wasFinishedOnLoadRef.current ? null : winner, { viewerColor: playerSeat ?? null });
+  useWinConfetti(wasFinishedOnLoadRef.current ? null : winner, { viewerColor: playerSeat ?? null });
+
+  const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
+  const prevWinnerRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (winner && prevWinnerRef.current !== winner && !wasFinishedOnLoadRef.current) {
+      prevWinnerRef.current = winner;
+      const id = setTimeout(() => setGameOverDialogOpen(true), 600);
+      return () => clearTimeout(id);
+    }
+    if (!winner) {
+      prevWinnerRef.current = null;
+      setGameOverDialogOpen(false);
+    }
+  }, [winner]);
+
+  const playerWon = playerSeat !== null && winner === playerSeat;
+  const playerLost = playerSeat !== null && winner !== null && winner !== playerSeat;
+  const gameOverTitle = playerWon
+    ? "You won!"
+    : playerLost
+      ? "You lost!"
+      : winner
+        ? `${formatPlayerColor(winner)} wins!`
+        : "";
+  const gameOverDescription = playerWon
+    ? "Great game! Ready for another round?"
+    : playerLost
+      ? "Better luck next time. Want to try again?"
+      : "The game is over.";
 
   const { whiteTime, blackTime } = useGameClock(
     multiplayerSnapshot?.clock ?? null,
@@ -400,7 +430,6 @@ export function MultiplayerGamePage({
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {resultBanner}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar
@@ -1050,6 +1079,44 @@ export function MultiplayerGamePage({
             }}
           >
             Forfeit
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={gameOverDialogOpen}
+        onOpenChange={setGameOverDialogOpen}
+        title={gameOverTitle}
+        description={gameOverDescription}
+      >
+        <div className="grid gap-2">
+          {isMultiplayerParticipant &&
+            connectionState === "connected" &&
+            multiplayerSnapshot?.seats[playerSeat === "white" ? "black" : "white"]?.online ? (
+            <>
+              {multiplayerSnapshot?.rematch?.requestedBy.includes(playerSeat as PlayerColor) ? (
+                <p className="text-center text-sm font-medium text-[#56703f] py-2">
+                  Rematch requested. Waiting for opponent...
+                </p>
+              ) : (
+                <Button
+                  onClick={() => {
+                    sendMultiplayerMessage({ type: "request-rematch" });
+                    if (!multiplayerSnapshot?.rematch?.requestedBy.length) {
+                      toast.success("Rematch request sent!");
+                    }
+                    setGameOverDialogOpen(false);
+                  }}
+                >
+                  {multiplayerSnapshot?.rematch?.requestedBy.length
+                    ? "Accept Rematch"
+                    : "Rematch"}
+                </Button>
+              )}
+            </>
+          ) : null}
+          <Button variant="ghost" onClick={() => { setGameOverDialogOpen(false); navigate("/"); }}>
+            Back to lobby
           </Button>
         </div>
       </Dialog>
