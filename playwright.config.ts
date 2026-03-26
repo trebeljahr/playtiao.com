@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 const E2E_MONGO_URI = 'mongodb://127.0.0.1:27018/tiao-e2e';
 const E2E_SERVER_PORT = '5006';
 const E2E_CLIENT_PORT = '3001';
+const E2E_REDIS_PORT = '6380';
+const E2E_MINIO_PORT = '9002';
 
 export default defineConfig({
   testDir: './e2e',
@@ -32,6 +34,17 @@ export default defineConfig({
         MONGODB_URI: E2E_MONGO_URI,
         TOKEN_SECRET: 'e2e-secret',
         PORT: E2E_SERVER_PORT,
+        REDIS_URL: `redis://localhost:${E2E_REDIS_PORT}`,
+        S3_ENDPOINT: `http://localhost:${E2E_MINIO_PORT}`,
+        S3_FORCE_PATH_STYLE: 'true',
+        S3_BUCKET_NAME: 'tiao-e2e',
+        S3_PUBLIC_URL: `http://localhost:${E2E_MINIO_PORT}/tiao-e2e`,
+        AWS_ACCESS_KEY_ID: 'minioadmin',
+        AWS_SECRET_ACCESS_KEY: 'minioadmin',
+        AWS_REGION: 'us-east-1',
+        E2E_MONGO_PORT: '27018',
+        E2E_REDIS_PORT: E2E_REDIS_PORT,
+        E2E_MINIO_PORT: E2E_MINIO_PORT,
       },
     },
     {
