@@ -391,18 +391,10 @@ export function TiaoBoard({
       }
 
       // Empty intersection with no selection — mobile preview flow
-      if (mobilePreview) {
-        // Preview already showing — tap anywhere on board dismisses it
-        // (user should use confirm/cancel buttons in bottom-right)
-        e.preventDefault();
-        suppressClickRef.current = true;
-        setMobilePreview(null);
-      } else {
-        // First tap → show preview ghost stone
-        e.preventDefault();
-        suppressClickRef.current = true;
-        setMobilePreview(pos);
-      }
+      e.preventDefault();
+      suppressClickRef.current = true;
+      // Tap repositions the preview (or creates it if none exists)
+      setMobilePreview(pos);
     },
     [state.positions, activeOrigin, mobilePreview, onPointClick, zoom.handlers, zoom.gestureActiveRef]
   );
