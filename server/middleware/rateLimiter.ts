@@ -3,6 +3,8 @@ import { rateLimit } from "express-rate-limit";
 import { getRedisClient } from "../config/redisClient";
 import { getPlayerFromRequest } from "../game/playerTokens";
 
+const isTest = process.env.NODE_ENV === "test";
+
 function createStore() {
   const redis = getRedisClient();
   if (!redis) return undefined; // falls back to built-in MemoryStore
@@ -44,6 +46,7 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   store,
   keyGenerator: perAccountKey,
+  validate: !isTest,
   message: {
     code: "RATE_LIMITED",
     message: "Too many attempts. Please try again later.",
@@ -57,6 +60,7 @@ export const userSearchRateLimiter = rateLimit({
   legacyHeaders: false,
   store,
   keyGenerator: perAccountKey,
+  validate: !isTest,
   message: {
     code: "RATE_LIMITED",
     message: "Too many search requests. Please try again later.",

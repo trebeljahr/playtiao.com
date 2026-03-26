@@ -310,6 +310,17 @@ describe("classifyMongoError", () => {
 // ── Integration tests: routes recover from thrown errors ───────────────
 
 describe("auth route error handling", () => {
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  beforeEach(() => {
+    console.error = () => {};
+    console.warn = () => {};
+  });
+  afterEach(() => {
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
+  });
+
   test("POST /guest recovers from session store failure", async () => {
     // Temporarily break commitPlayerSession by patching it to throw
     const playerTokens = await import("../game/playerTokens");
@@ -364,6 +375,17 @@ describe("auth route error handling", () => {
 });
 
 describe("game route error handling", () => {
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  beforeEach(() => {
+    console.error = () => {};
+    console.warn = () => {};
+  });
+  afterEach(() => {
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
+  });
+
   test("POST /games recovers from game service failure", async () => {
     const guest = await createGuest("GameErrorGuest");
 
@@ -420,6 +442,14 @@ describe("game route error handling", () => {
 });
 
 describe("MongoDB duplicate key error surfaces as 409", () => {
+  const originalConsoleWarn = console.warn;
+  beforeEach(() => {
+    console.warn = () => {};
+  });
+  afterEach(() => {
+    console.warn = originalConsoleWarn;
+  });
+
   test("signup handles duplicate key error from GameAccount.create gracefully", async () => {
     // Simulate a race condition: the findOne check passes, but create() throws
     // E11000 because another request inserted the same record between check and create.
