@@ -5,7 +5,7 @@ import { getPlayerFromRequest } from "../game/playerTokens";
 
 const isTest = process.env.NODE_ENV === "test";
 
-function createStore() {
+function createStore(prefix: string) {
   const redis = getRedisClient();
   if (!redis) return undefined; // falls back to built-in MemoryStore
 
@@ -15,7 +15,7 @@ function createStore() {
     const { RedisStore } = require("rate-limit-redis");
     return new RedisStore({
       sendCommand: (...args: string[]) => redis.call(...(args as [string, ...string[]])),
-      prefix: "tiao:rl:",
+      prefix,
     });
   } catch {
     console.warn("[rate-limit] rate-limit-redis not available, using in-memory store.");
@@ -37,14 +37,12 @@ async function perAccountKey(req: Request): Promise<string> {
   return `ip:${req.ip}`;
 }
 
-const store = createStore();
-
 export const authRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   limit: 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  store,
+  store: createStore("tiao:rl:auth:"),
   keyGenerator: perAccountKey,
   validate: !isTest,
   message: {
@@ -58,7 +56,7 @@ export const userSearchRateLimiter = rateLimit({
   limit: 50,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  store,
+  store: createStore("tiao:rl:search:"),
   keyGenerator: perAccountKey,
   validate: !isTest,
   message: {

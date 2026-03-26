@@ -48,6 +48,15 @@ jobs:
         image: mongo:7
         ports:
           - 27018:27017
+      redis-e2e:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -73,6 +82,24 @@ jobs:
 
       - name: Build repo
         run: npm run build
+
+      - name: Start MinIO and initialize bucket
+        run: |
+          docker run -d --name tiao-e2e-minio \
+            -p 9002:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            --tmpfs /data \
+            minio/minio:latest server /data
+          # Wait for MinIO to be ready
+          for i in $(seq 1 15); do
+            if curl -sf http://127.0.0.1:9002/minio/health/live; then break; fi
+            sleep 1
+          done
+          curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc && chmod +x /tmp/mc
+          /tmp/mc alias set ci http://127.0.0.1:9002 minioadmin minioadmin
+          /tmp/mc mb --ignore-existing ci/tiao-e2e
+          /tmp/mc anonymous set download ci/tiao-e2e
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
