@@ -88,7 +88,7 @@ export class GameService {
     });
   }
 
-  private broadcastLobby(playerId: string, payload: any): void {
+  broadcastLobby(playerId: string, payload: Record<string, unknown>): void {
     const userSockets = this.lobbyConnections.get(playerId);
     if (!userSockets) return;
 
@@ -1402,7 +1402,15 @@ export class GameService {
     });
 
     this.locks.set(key, current);
-    await previous.catch(() => undefined);
+
+    const LOCK_TIMEOUT_MS = 15_000;
+    await Promise.race([
+      previous.catch(() => undefined),
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, LOCK_TIMEOUT_MS);
+        timer.unref?.();
+      }),
+    ]);
 
     try {
       return await operation();

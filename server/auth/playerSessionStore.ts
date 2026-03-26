@@ -8,7 +8,8 @@ type StoredSession = {
   expiresAt: Date;
 };
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+export const SESSION_TTL_DAYS = 30;
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * SESSION_TTL_DAYS;
 
 function digestSessionToken(token: string): string {
   return createHmac("sha256", TOKEN_SECRET).update(token).digest("hex");

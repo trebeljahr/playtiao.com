@@ -7,6 +7,7 @@ import {
   deleteStoredPlayerSession,
   readStoredPlayerSession,
   replaceStoredPlayerSession,
+  SESSION_TTL_DAYS,
 } from "../auth/playerSessionStore";
 
 const SESSION_COOKIE_BASE = "tiao.session";
@@ -14,7 +15,7 @@ const SESSION_COOKIE_NAME =
   process.env.NODE_ENV === "development" && process.env.PORT
     ? `${SESSION_COOKIE_BASE}.${process.env.PORT}`
     : SESSION_COOKIE_BASE;
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * SESSION_TTL_DAYS;
 
 export function sanitizeDisplayName(displayName?: string): string {
   const trimmed = displayName?.trim();

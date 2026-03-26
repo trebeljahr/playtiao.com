@@ -97,7 +97,7 @@ async function revokeAllPendingInvitationsForGame(gameId: string) {
 
   // Notify each affected player via lobby websocket
   for (const playerId of affectedPlayerIds) {
-    gameService["broadcastLobby"](playerId, {
+    gameService.broadcastLobby(playerId, {
       type: "social-update",
     });
   }
@@ -380,7 +380,28 @@ router.post("/matchmaking", async (req: Request, res: Response) => {
   }
 
   try {
-    const timeControl = req.body?.timeControl ?? null;
+    const raw = req.body?.timeControl ?? null;
+    let timeControl: { initialMs: number; incrementMs: number } | null = null;
+
+    if (raw !== null) {
+      const initialMs = Number(raw?.initialMs);
+      const incrementMs = Number(raw?.incrementMs);
+
+      if (
+        !Number.isFinite(initialMs) ||
+        !Number.isFinite(incrementMs) ||
+        initialMs <= 0 ||
+        incrementMs < 0
+      ) {
+        return res.status(400).json({
+          message:
+            "Invalid time control. Provide positive initialMs and non-negative incrementMs.",
+        });
+      }
+
+      timeControl = { initialMs, incrementMs };
+    }
+
     const matchmaking = await gameService.enterMatchmaking(player, timeControl);
     return res.status(200).json({ matchmaking });
   } catch (error) {

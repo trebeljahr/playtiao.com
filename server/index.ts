@@ -89,11 +89,11 @@ websocketServer.on("connection", (socket, request) => {
       return;
     }
 
-    if (!gameId) {
+    if (!gameId || !/^[A-Z2-9]{6}$/.test(gameId)) {
       sendJson(socket, {
         type: "error",
         code: "BAD_CONNECTION",
-        message: "A gameId is required to connect.",
+        message: "A valid 6-character game ID is required to connect.",
       });
       socket.close();
       return;

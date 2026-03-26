@@ -244,6 +244,7 @@ export class MongoGameRoomStore implements GameRoomStore {
       ],
     })
       .sort({ updatedAt: -1 })
+      .limit(100)
       .lean<PersistedGameRoom[]>()
       .exec();
 

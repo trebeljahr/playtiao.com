@@ -161,6 +161,7 @@ async function loadInvitationSummaries(
     .populate("senderId", "displayName profilePicture email")
     .populate("recipientId", "displayName profilePicture email")
     .sort({ createdAt: -1 })
+    .limit(50)
     .exec();
 
   return invitations.map((invitation) => {
@@ -234,7 +235,7 @@ async function notifyLobbyUpdate(playerId: string) {
     outgoingInvitations,
   };
 
-  gameService["broadcastLobby"](playerId, {
+  gameService.broadcastLobby(playerId, {
     type: "social-update",
     overview,
   });
@@ -372,7 +373,13 @@ router.get("/player/social/search", async (req: Request, res: Response) => {
     return;
   }
 
-  const query = String(req.query.q ?? "").trim();
+  if (typeof req.query.q !== "string") {
+    return res.status(400).json({
+      message: "Provide a single search query.",
+    });
+  }
+
+  const query = req.query.q.trim();
   if (query.length < 2) {
     return res.status(400).json({
       message: "Search with at least 2 characters.",
