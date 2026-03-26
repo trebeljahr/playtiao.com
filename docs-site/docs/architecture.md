@@ -102,9 +102,11 @@ The server is an Express application with a WebSocket server attached to the sam
 
 `GameService` (in `server/game/gameService.ts`) is the central orchestrator. It manages:
 
-- **Matchmaking queue** — in-memory queue pairing players into games
+- **Matchmaking queue** — pairs players into games via a `MatchmakingStore` abstraction (in-memory or Redis-backed)
 - **Socket connection maps** — tracks which WebSocket belongs to which player/game
-- **Lock system** — room locks, player locks, and a matchmaking lock to prevent race conditions under concurrent access
+- **Lock system** — room locks, player locks, and a matchmaking lock via a `LockProvider` abstraction (in-memory or Redis-backed) to prevent race conditions under concurrent access
+
+The server auto-detects Redis when `REDIS_URL` is set and falls back to in-memory implementations when it is not configured.
 - **Move validation** — `applyAction()` validates every move server-side using the shared game engine before persisting
 - **State broadcast** — `broadcastSnapshot()` pushes updated state to all connected players and lobby listeners
 
@@ -261,6 +263,10 @@ Tiao uses MongoDB with four collections.
 }
 ```
 
+### Redis
+
+Redis is optional. When available (configured via `REDIS_URL`), it backs the matchmaking queue, distributed locks, and rate limiting. This enables horizontal scaling across multiple server instances and allows stateful services to survive server restarts. WebSocket connections and game timers remain in-memory on each server instance.
+
 ---
 
 ## Real-Time Sync
@@ -328,9 +334,14 @@ Key properties:
               +--------+--------+
               |    MongoDB      |
               +-----------------+
+              +--------+--------+
+              |  Redis (optional)|
+              +-----------------+
 ```
 
 Both containers are deployed as Docker images. The client container runs Nginx, which serves the static frontend bundle and reverse-proxies all `/api` requests to the server container over the internal Docker network. Although the frontend and backend are separate containers (and separate Coolify applications), the browser only ever talks to a single public domain — all API and WebSocket traffic flows through the Nginx reverse proxy. This single-origin setup avoids cross-origin cookie issues with the `HttpOnly` session cookie.
+
+When Redis is available, the server can scale horizontally — matchmaking state and locks are shared across instances rather than held in a single process. Set the `REDIS_URL` environment variable to configure the connection. Without Redis, the server runs as a single instance with in-memory state, which is sufficient for low-traffic deployments.
 
 ### CI/CD Pipeline
 
