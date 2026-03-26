@@ -42,6 +42,7 @@ const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true";
 const CORRECT_PATH = process.cwd();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const REDIS_URL = process.env.REDIS_URL;
 
 export {
   TOKEN_SECRET,
@@ -53,4 +54,5 @@ export {
   CLOUDFRONT_URL,
   S3_ENDPOINT,
   S3_FORCE_PATH_STYLE,
+  REDIS_URL,
 };
