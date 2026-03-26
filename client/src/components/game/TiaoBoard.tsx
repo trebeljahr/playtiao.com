@@ -38,6 +38,7 @@ const IS_TOUCH_DEVICE =
 
 const DRAG_THRESHOLD = 10;
 const DRAG_Y_OFFSET = 4; // grid cells to offset above finger during drag
+const DIRECT_PLACE_CELL_PX = 44; // min cell size in px for direct placement (Apple HIG tap target)
 
 function isStarPoint(position: Position) {
   const starPointIndices = [3, 9, 15];
@@ -377,6 +378,17 @@ export function TiaoBoard({
       }
       lastTapTimeRef.current = now;
       lastTapPosRef.current = pos;
+
+      // Direct placement when zoomed in enough that cells are large
+      // (>= 44px, Apple HIG recommended tap target)
+      const cellPx = rect.width / BOARD_SIZE;
+      if (cellPx >= DIRECT_PLACE_CELL_PX) {
+        e.preventDefault();
+        suppressClickRef.current = true;
+        setMobilePreview(null);
+        onPointClick(pos);
+        return;
+      }
 
       // Empty intersection with no selection — mobile preview flow
       if (mobilePreview) {
