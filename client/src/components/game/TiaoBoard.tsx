@@ -183,6 +183,7 @@ export function TiaoBoard({
   const [mobilePreviewVisible, setMobilePreviewVisible] = useState(false);
   const isDraggingPreviewRef = useRef(false);
   const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
+  const touchStartTimeRef = useRef(0);
 
   // -- Pinch-to-zoom --
   const zoom = usePinchZoom({
@@ -223,6 +224,7 @@ export function TiaoBoard({
 
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      touchStartTimeRef.current = Date.now();
       isDraggingPreviewRef.current = false;
     },
     [disabled, zoom.handlers]
@@ -355,6 +357,19 @@ export function TiaoBoard({
             return; // let onClick handle it
           }
         }
+      }
+
+      // Quick tap to confirm: if preview is showing, position is valid,
+      // and the tap was short and sharp (< 150ms), confirm placement
+      const tapDuration = Date.now() - touchStartTimeRef.current;
+      const previewValid = mobilePreview && state.positions[mobilePreview.y]?.[mobilePreview.x] == null;
+      if (mobilePreview && previewValid && tapDuration < 150) {
+        e.preventDefault();
+        suppressClickRef.current = true;
+        const confirmPos = mobilePreview;
+        setMobilePreview(null);
+        onPointClick(confirmPos);
+        return;
       }
 
       // Empty intersection with no selection — mobile preview flow
