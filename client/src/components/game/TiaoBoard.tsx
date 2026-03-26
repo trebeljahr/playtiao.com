@@ -324,17 +324,12 @@ export function TiaoBoard({
       }
 
       // Empty intersection with no selection — mobile preview flow
-      if (mobilePreview && arePositionsEqual(mobilePreview, pos)) {
-        // Second tap on same position → confirm placement
+      if (mobilePreview) {
+        // Preview already showing — tap anywhere on board dismisses it
+        // (user should use confirm/cancel buttons in bottom-right)
         e.preventDefault();
         suppressClickRef.current = true;
         setMobilePreview(null);
-        onPointClick(pos);
-      } else if (mobilePreview) {
-        // Tap elsewhere → move preview
-        e.preventDefault();
-        suppressClickRef.current = true;
-        setMobilePreview(pos);
       } else {
         // First tap → show preview ghost stone
         e.preventDefault();
@@ -1024,54 +1019,28 @@ export function TiaoBoard({
         )}
 
         {/* Mobile ghost stone preview */}
-        <AnimatePresence>
-          {mobilePreview && !disabled && (
-            <motion.span
-              key="mobile-preview"
-              className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2"
-              style={{
-                left: `${pointPercent(mobilePreview.x)}%`,
-                top: `${pointPercent(mobilePreview.y)}%`,
-                width: `${100 / BOARD_SIZE * 0.88}%`,
-                aspectRatio: "1",
-              }}
-              initial={{ scale: 0.7, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.7, opacity: 0 }}
-              transition={{ duration: 0.1, ease: "easeOut" }}
-            >
-              <span
-                className={cn(
-                  "block h-full w-full rounded-full",
-                  mobilePreviewDragging ? "opacity-50" : "opacity-70",
-                  state.currentTurn === "black"
-                    ? "border border-[#191410] bg-[#1a1210] shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
-                    : "border border-[#ddd2bf] bg-[#f0e8d8] shadow-[0_2px_6px_rgba(0,0,0,0.15)]",
-                )}
-              />
-              {/* Pulsing "tap to confirm" ring — shown when not dragging */}
-              {!mobilePreviewDragging && IS_TOUCH_DEVICE && (
-                <>
-                  <motion.span
-                    className="pointer-events-none absolute inset-[-20%] rounded-full border-2 border-[#56703f]"
-                    animate={{
-                      scale: [1, 1.15, 1],
-                      opacity: [0.7, 0.3, 0.7],
-                    }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  <span className="absolute left-1/2 top-[calc(100%+4px)] -translate-x-1/2 whitespace-nowrap rounded-full border border-[#d7c39e] bg-[#fffaf3] px-2 py-0.5 text-[9px] font-semibold text-[#6c543c] shadow-sm">
-                    Tap to place
-                  </span>
-                </>
+        {mobilePreview && !disabled && (
+          <span
+            className="pointer-events-none absolute z-30"
+            style={{
+              left: `${pointPercent(mobilePreview.x)}%`,
+              top: `${pointPercent(mobilePreview.y)}%`,
+              width: `${100 / BOARD_SIZE * 0.88}%`,
+              aspectRatio: "1",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <span
+              className={cn(
+                "block h-full w-full rounded-full",
+                mobilePreviewDragging ? "opacity-50" : "opacity-70",
+                state.currentTurn === "black"
+                  ? "border border-[#191410] bg-[#1a1210] shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
+                  : "border border-[#ddd2bf] bg-[#f0e8d8] shadow-[0_2px_6px_rgba(0,0,0,0.15)]",
               )}
-            </motion.span>
-          )}
-        </AnimatePresence>
+            />
+          </span>
+        )}
       </div>
 
       {/* Bottom-right floating controls */}
@@ -1085,18 +1054,31 @@ export function TiaoBoard({
             transition={{ duration: 0.15 }}
             className="absolute bottom-5 right-5 z-[100] flex items-center gap-2"
           >
-            {/* Cancel placement */}
+            {/* Cancel + Confirm placement */}
             {mobilePreview && !disabled && (
-              <button
-                type="button"
-                onClick={() => setMobilePreview(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
-                aria-label="Cancel placement"
-              >
-                <svg viewBox="0 0 14 14" fill="none" className="h-3.5 w-3.5">
-                  <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setMobilePreview(null)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
+                  aria-label="Cancel placement"
+                >
+                  <svg viewBox="0 0 14 14" fill="none" className="h-3.5 w-3.5">
+                    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { const pos = mobilePreview; setMobilePreview(null); onPointClick(pos); }}
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-[#8aad6a]/50 bg-[rgba(255,248,232,0.92)] px-3 text-[#5e7b4e] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,220,180,0.9)]"
+                  aria-label="Confirm placement"
+                >
+                  <svg viewBox="0 0 14 14" fill="none" className="h-3.5 w-3.5">
+                    <path d="M3 7.5l2.8 2.8L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-xs font-semibold">Place</span>
+                </button>
+              </>
             )}
             {/* Zoom indicator — tap to reset */}
             {zoom.isZoomed && (
