@@ -38,6 +38,14 @@ export function useLocalGame() {
         }));
         setLastMove(lastTurn);
       }
+    } else if (localGame.history.length < localHistoryLengthRef.current) {
+      // History shrank (undo): update lastMove to reflect the new last turn
+      const lastTurn = localGame.history[localGame.history.length - 1];
+      if (lastTurn && (lastTurn.type === "put" || lastTurn.type === "jump")) {
+        setLastMove(lastTurn);
+      } else {
+        setLastMove(null);
+      }
     }
     localHistoryLengthRef.current = localGame.history.length;
   }, [localGame]);

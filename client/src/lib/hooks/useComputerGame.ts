@@ -34,6 +34,10 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
   // Ref to cancel the current AI operation (search + timeouts)
   const cancelRef = useRef<(() => void) | null>(null);
 
+  // Stores the game state before the AI started its turn, so undo can
+  // safely restore it even if the AI is mid-animation with pending jumps.
+  const preAIStateRef = useRef<GameState | null>(null);
+
   const needsMove =
     !isGameOver(local.localGame) &&
     local.localGame.currentTurn === computerColor;
@@ -51,23 +55,30 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
 
     setComputerThinking(true);
     setThinkProgress(0);
-    let cancelled = false;
+    const cancelledRef = { current: false };
     const startTime = Date.now();
     const gameAtRequest = local.localGame;
+
+    // Save the pre-AI state so undo can restore it.
+    // Only set if not already set — during animation, state updates
+    // cause the effect to re-run and we must preserve the ORIGINAL
+    // pre-AI state, not an intermediate animation state.
+    if (!preAIStateRef.current) {
+      preAIStateRef.current = gameAtRequest;
+    }
 
     const { promise, cancel: cancelWorker } = requestComputerMove(
       gameAtRequest,
       difficulty,
       (progress) => {
-        if (!cancelled) setThinkProgress(progress);
+        if (!cancelledRef.current) setThinkProgress(progress);
       },
       computerColor,
     );
 
     const doCancel = () => {
-      cancelled = true;
+      cancelledRef.current = true;
       cancelWorker();
-      searchedForRef.current = -1;
       setComputerThinking(false);
       setThinkProgress(0);
     };
@@ -76,12 +87,13 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
 
     promise
       .then(async (plan) => {
-        if (cancelled || !plan) {
-          if (!cancelled) {
+        if (cancelledRef.current || !plan) {
+          if (!cancelledRef.current) {
             setComputerThinking(false);
             setThinkProgress(0);
             searchedForRef.current = -1;
             cancelRef.current = null;
+            preAIStateRef.current = null;
           }
           return;
         }
@@ -90,15 +102,15 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
         const remaining = Math.max(0, COMPUTER_THINK_MS - elapsed);
 
         await sleep(remaining);
-        if (cancelled) return;
+        if (cancelledRef.current) return;
 
         // Animate the plan step by step
         const finalState = await animatePlan(
           gameAtRequest,
           plan,
-          cancelled,
+          cancelledRef,
           (state) => {
-            if (!cancelled) {
+            if (!cancelledRef.current) {
               local.setLocalGame(state);
               local.setLocalSelection(null);
               local.setLocalError(null);
@@ -106,29 +118,32 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
           },
         );
 
-        if (cancelled) return;
+        if (cancelledRef.current) return;
 
         if (!finalState) {
           setComputerThinking(false);
           setThinkProgress(0);
           searchedForRef.current = -1;
           cancelRef.current = null;
+          preAIStateRef.current = null;
           return;
         }
 
         await sleep(AI_LINGER_MS);
-        if (cancelled) return;
+        if (cancelledRef.current) return;
 
         setComputerThinking(false);
         setThinkProgress(0);
         cancelRef.current = null;
+        preAIStateRef.current = null;
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelledRef.current) {
           setComputerThinking(false);
           setThinkProgress(0);
           searchedForRef.current = -1;
           cancelRef.current = null;
+          preAIStateRef.current = null;
         }
       });
 
@@ -156,27 +171,42 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
   // Undo for AI games: cancel AI thinking if active, then undo moves
   // until it's the player's turn again.
   const handleUndoForAI = useCallback(() => {
-    // 1. Cancel any in-flight AI operation
+    // 1. Cancel any in-flight AI operation and reset search guard
+    //    so the effect can re-trigger for the new (undone) state.
     if (cancelRef.current) {
       cancelRef.current();
       cancelRef.current = null;
     }
+    searchedForRef.current = -1;
 
-    let state = local.localGame;
+    // 2. If preAIStateRef is set, the AI was mid-turn (thinking or
+    //    animating). The current localGame may be an intermediate state
+    //    with pending jumps that undoLastTurn would reject. Restore to
+    //    the clean pre-AI snapshot instead.
+    //    Note: we check preAIStateRef rather than cancelRef because
+    //    React effect cleanup may have already cleared cancelRef during
+    //    a re-render triggered by animation state updates.
+    const restoredFromSnapshot = preAIStateRef.current !== null;
+    let state: GameState;
+    if (preAIStateRef.current) {
+      state = preAIStateRef.current;
+      preAIStateRef.current = null;
+    } else {
+      state = local.localGame;
+    }
 
-    // 2. If it's currently the computer's turn (AI was thinking but hadn't
-    //    moved yet), we just need to undo the player's last move.
-    //    If it's the player's turn, the AI already moved, so undo the AI's
-    //    move first, then undo the player's move before it.
-    if (state.currentTurn !== computerColor && state.history.length > 0) {
-      // Undo the AI's last move first
+    // 3. If we're using the live state (AI already finished its turn)
+    //    and it's the player's turn, undo the AI's move first.
+    //    If we restored from the snapshot, the AI hadn't committed
+    //    anything so skip this step.
+    if (!restoredFromSnapshot && state.currentTurn !== computerColor && state.history.length > 0) {
       const undoAI = undoLastTurn(state);
       if (undoAI.ok) {
         state = undoAI.value;
       }
     }
 
-    // 3. Now undo the player's last move
+    // 4. Now undo the player's last move
     if (state.history.length > 0) {
       const undoPlayer = undoLastTurn(state);
       if (undoPlayer.ok) {
@@ -194,6 +224,7 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
       cancelRef.current();
       cancelRef.current = null;
     }
+    preAIStateRef.current = null;
     setComputerColor(randomComputerColor());
     local.resetLocalGame();
   }, [local.resetLocalGame]);
@@ -223,10 +254,11 @@ function sleep(ms: number): Promise<void> {
 async function animatePlan(
   state: GameState,
   plan: ComputerTurnPlan,
-  cancelled: boolean,
+  cancelledRef: { current: boolean },
   onUpdate: (state: GameState) => void,
 ): Promise<GameState | null> {
   if (plan.type === "place") {
+    if (cancelledRef.current) return null;
     const result = placePiece(state, plan.position);
     if (!result.ok) return null;
     onUpdate(result.value);
@@ -238,7 +270,7 @@ async function animatePlan(
   let from = plan.from;
 
   for (let i = 0; i < plan.path.length; i++) {
-    if (cancelled) return null;
+    if (cancelledRef.current) return null;
 
     const destination = plan.path[i];
     const jumped = jumpPiece(current, from, destination);
@@ -256,7 +288,7 @@ async function animatePlan(
     }
   }
 
-  if (cancelled) return null;
+  if (cancelledRef.current) return null;
 
   // Confirm the full jump
   const confirmed = confirmPendingJump(current);

@@ -182,6 +182,75 @@ describe("useLocalGame – stale closure fix for handleLocalConfirmPendingJump",
   });
 });
 
+describe("useLocalGame – lastMove tracking on undo", () => {
+  it("clears lastMove when undoing the only move", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    // Place a piece — lastMove should be set
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    expect(result.current.lastMove).not.toBeNull();
+    expect(result.current.lastMove!.type).toBe("put");
+
+    // Undo — lastMove should be null (no history left)
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.lastMove).toBeNull();
+  });
+
+  it("updates lastMove to the previous move when undoing", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    // White places
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    const firstMove = result.current.lastMove;
+    expect(firstMove).not.toBeNull();
+
+    // Black places
+    act(() => result.current.handleLocalBoardClick({ x: 8, y: 8 }));
+    const secondMove = result.current.lastMove;
+    expect(secondMove).not.toBeNull();
+    expect(secondMove).not.toBe(firstMove);
+
+    // Undo black's move — lastMove should revert to white's move
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.lastMove).not.toBeNull();
+    expect(result.current.lastMove!.type).toBe("put");
+    // Should match the first move (white's placement at 9,9)
+    if (result.current.lastMove!.type === "put") {
+      expect(result.current.lastMove!.position).toEqual({ x: 9, y: 9 });
+    }
+  });
+
+  it("clears lastMove after multiple undos back to empty board", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    act(() => result.current.handleLocalBoardClick({ x: 8, y: 8 }));
+    expect(result.current.lastMove).not.toBeNull();
+
+    // Undo both moves
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.lastMove).not.toBeNull(); // still has white's move
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.lastMove).toBeNull(); // no moves left
+  });
+
+  it("sets lastMove correctly after undo then new placement", () => {
+    const { result } = renderHook(() => useLocalGame());
+
+    // Place and undo
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.lastMove).toBeNull();
+
+    // Place again at different position
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 7 }));
+    expect(result.current.lastMove).not.toBeNull();
+    if (result.current.lastMove!.type === "put") {
+      expect(result.current.lastMove!.position).toEqual({ x: 7, y: 7 });
+    }
+  });
+});
+
 describe("getJumpTargets – color parameter", () => {
   it("defaults to the piece color at the position", () => {
     const state = stateWithJumpOpportunity();
