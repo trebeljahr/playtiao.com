@@ -9,6 +9,10 @@ server {
   add_header Referrer-Policy "strict-origin-when-cross-origin" always;
   add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
+  if (${ESC}host = "tiao.ricos.site") {
+    return 301 https://playtiao.com${ESC}request_uri;
+  }
+
   location = /healthz {
     access_log off;
     add_header Content-Type text/plain;
