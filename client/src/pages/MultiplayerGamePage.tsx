@@ -521,7 +521,7 @@ export function MultiplayerGamePage({
                         Multiplayer
                       </Badge>
                     </div>
-                    <div className="flex shrink-0 justify-end">
+                    <div className="flex min-w-0 shrink justify-end">
                       {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null ? (
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -580,17 +580,17 @@ export function MultiplayerGamePage({
                           </motion.div>
                         </div>
                       ) : multiplayerWaitingOnOpponent ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           {hasClock && (
                             <InlineClockBadge timeMs={activeClockMs} className="ml-0 text-base" />
                           )}
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur min-w-0"
                           >
-                            <HourglassSpinner className="text-[#7b5f3f]" />
-                            Waiting For Opponent To Move
+                            <HourglassSpinner className="shrink-0 text-[#7b5f3f]" />
+                            <span className="truncate">Waiting For Opponent</span>
                           </motion.div>
                         </div>
                       ) : null}
