@@ -236,7 +236,7 @@ export function ComputerGamePage({
                       <Button
                         variant="secondary"
                         onClick={computer.handleLocalUndoTurn}
-                        disabled={computer.localGame.history.length === 0}
+                        disabled={!computer.canUndo}
                       >
                         Undo move
                       </Button>

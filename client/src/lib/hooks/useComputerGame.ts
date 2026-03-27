@@ -228,6 +228,14 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
       }
     }
 
+    // Don't apply if we'd land on the computer's turn — that would
+    // trigger an immediate AI move, which looks like a full restart.
+    // This happens when undoing past the AI's first move with no
+    // player move left to pair.
+    if (state.currentTurn === computerColor) {
+      return;
+    }
+
     local.setLocalGame(state);
     local.setLocalSelection(null);
     local.setLocalError(null);
@@ -244,11 +252,18 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     local.resetLocalGame();
   }, [local.resetLocalGame]);
 
+  // Player can undo if they have at least one move in history
+  const canUndo = local.localGame.history.some(
+    (t) =>
+      (t.type === "put" || t.type === "jump") && t.color !== computerColor,
+  );
+
   return {
     ...local,
     computerColor,
     computerThinking,
     thinkProgress,
+    canUndo,
     handleLocalBoardClick: handleBoardClick,
     handleLocalUndoTurn: handleUndoForAI,
     resetLocalGame: resetComputerGame,
