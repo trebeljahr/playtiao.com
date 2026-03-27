@@ -19,7 +19,7 @@ import { GameService, GameServiceError, TournamentGameCallback } from "./gameSer
 import { StoredMultiplayerRoom, getPlayerColorForRoom } from "./gameStore";
 import { LockProvider, InMemoryLockProvider } from "./lockProvider";
 import { TournamentStore, StoredTournament, MongoTournamentStore } from "./tournamentStore";
-import { getWinner } from "../../shared/src";
+import { getWinner, getFinishReason } from "../../shared/src";
 import GameAccount from "../models/GameAccount";
 
 // ── Helpers ──
@@ -619,8 +619,10 @@ export class TournamentService implements TournamentGameCallback {
       match.winner = winnerSeat.player.playerId;
       match.status = "finished";
 
-      // Update score from game state
+      // Update score and game details from game state
       match.score = [room.state.score.white, room.state.score.black];
+      match.finishReason = getFinishReason(room.state);
+      match.historyLength = room.state.history.length;
 
       // Update group standings if applicable
       if (match.groupId) {

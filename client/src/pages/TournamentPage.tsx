@@ -222,7 +222,7 @@ export function TournamentPage({
               <CardTitle>Current Matches</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-2">
                 {activeMatches.map((match) => (
                   <MatchCard
                     key={match.matchId}
@@ -282,31 +282,25 @@ export function TournamentPage({
           <>
             {/* Round Robin */}
             {tournament.settings.format === "round-robin" &&
-              tournament.rounds.length > 0 && (
-                <Card>
+              tournament.rounds.length > 0 &&
+              tournament.rounds.map((round) => (
+                <Card key={round.roundIndex}>
                   <CardHeader>
-                    <CardTitle>Rounds</CardTitle>
+                    <CardTitle className="text-lg">{round.label}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {tournament.rounds.map((round) => (
-                      <div key={round.roundIndex} className="mb-4 last:mb-0">
-                        <h4 className="text-sm font-medium mb-2">
-                          {round.label}
-                        </h4>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {round.matches.map((match) => (
-                            <MatchCard
-                              key={match.matchId}
-                              match={match}
-                              currentPlayerId={playerId}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                    <div className="space-y-2">
+                      {round.matches.map((match) => (
+                        <MatchCard
+                          key={match.matchId}
+                          match={match}
+                          currentPlayerId={playerId}
+                        />
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
-              )}
+              ))}
 
             {/* Single Elimination Bracket */}
             {tournament.settings.format === "single-elimination" &&
@@ -345,7 +339,7 @@ export function TournamentPage({
                             <h4 className="text-sm font-medium mb-2">
                               {round.label}
                             </h4>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="space-y-2">
                               {round.matches.map((match) => (
                                 <MatchCard
                                   key={match.matchId}

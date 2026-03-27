@@ -50,6 +50,8 @@ const TournamentMatchSchema = new Schema(
       enum: ["pending", "active", "finished", "forfeit", "bye"],
       default: "pending",
     },
+    finishReason: { type: String, enum: ["captured", "forfeit", "timeout"], default: null },
+    historyLength: { type: Number },
     scheduledAt: { type: String },
     deadline: { type: String },
   },

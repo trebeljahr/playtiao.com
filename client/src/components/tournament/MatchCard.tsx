@@ -2,6 +2,7 @@ import type { TournamentMatch } from "@shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
+import { formatFinishReason } from "@/components/game/GameShared";
 import { useNavigate } from "react-router-dom";
 
 function statusLabel(status: TournamentMatch["status"]): string {
@@ -46,6 +47,8 @@ export function MatchCard({
   const isMyMatch =
     currentPlayerId &&
     match.players.some((p) => p?.playerId === currentPlayerId);
+  const isDone = match.status === "finished" || match.status === "forfeit";
+  const reason = isDone ? formatFinishReason(match.finishReason ?? null) : "";
 
   return (
     <div
@@ -82,6 +85,11 @@ export function MatchCard({
               ) : (
                 <span className="truncate text-muted-foreground">TBD</span>
               )}
+              {isDone && player?.playerId === match.winner && (
+                <Badge className="border-green-400 bg-green-50 text-green-700 text-[10px] px-1.5 py-0">
+                  Won
+                </Badge>
+              )}
               {match.status !== "pending" && match.status !== "bye" && (
                 <span className="text-xs text-muted-foreground">
                   {match.score[i]}
@@ -92,9 +100,23 @@ export function MatchCard({
         </div>
 
         <div className="flex flex-col items-end gap-1">
-          <Badge className={statusColor(match.status)}>
-            {statusLabel(match.status)}
-          </Badge>
+          {!isDone && (
+            <Badge className={statusColor(match.status)}>
+              {statusLabel(match.status)}
+            </Badge>
+          )}
+          {isDone && (
+            <div className="flex flex-col items-end gap-0.5">
+              {reason && (
+                <span className="text-[11px] text-muted-foreground">{reason}</span>
+              )}
+              {match.historyLength != null && (
+                <span className="text-[11px] text-muted-foreground">
+                  {match.historyLength} moves
+                </span>
+              )}
+            </div>
+          )}
           {match.roomId && match.status === "active" && (
             <Button
               size="sm"
@@ -102,6 +124,15 @@ export function MatchCard({
               onClick={() => navigate(`/game/${match.roomId}`)}
             >
               {isMyMatch ? "Play" : "Watch"}
+            </Button>
+          )}
+          {match.roomId && isDone && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/game/${match.roomId}`)}
+            >
+              Review
             </Button>
           )}
         </div>

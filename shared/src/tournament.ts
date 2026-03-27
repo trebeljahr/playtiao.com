@@ -1,4 +1,4 @@
-import type { PlayerIdentity, TimeControl } from "./protocol";
+import type { FinishReason, PlayerIdentity, TimeControl } from "./protocol";
 
 // ── Format & Status ──
 
@@ -82,6 +82,8 @@ export type TournamentMatch = {
   winner: string | null;
   score: [number, number];
   status: TournamentMatchStatus;
+  finishReason?: FinishReason | null;
+  historyLength?: number;
   scheduledAt?: string;
   deadline?: string;
 };
