@@ -37,6 +37,7 @@ test('AI completes a multi-jump without the board getting stuck', async ({ page 
   test.setTimeout(60000);
   await page.goto('/computer');
   await page.click('button:has-text("Easy")');
+  await page.click('button:has-text("Start Game")');
   await expect(cell(page, 9, 9)).toBeVisible();
 
   // Wait to determine which color the human is

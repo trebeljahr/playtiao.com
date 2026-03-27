@@ -10,6 +10,7 @@ test.describe('Computer game end dialog', () => {
 
     // Select a difficulty to start the game
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     // Force a game-over state by injecting a winning score through React fiber
@@ -87,6 +88,7 @@ test.describe('Computer game end dialog', () => {
 
     // Select a difficulty to start the game
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     // Force game-over state

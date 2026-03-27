@@ -30,6 +30,7 @@ test.describe('Computer game undo', () => {
   test('undo removes the human piece and lets the human place again', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
@@ -69,6 +70,7 @@ test.describe('Computer game undo', () => {
   test('undo after AI responds removes the round of moves', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
@@ -112,6 +114,7 @@ test.describe('Computer game undo', () => {
   test('multiple undo-place cycles work correctly', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
@@ -165,6 +168,7 @@ test.describe('Computer game undo', () => {
   test('last move indicators update correctly after undo', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
@@ -209,6 +213,7 @@ test.describe('Computer game undo', () => {
   test('undo goes back one round, not to the beginning (no restart)', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
@@ -265,6 +270,7 @@ test.describe('Computer game undo', () => {
   test('no stale pieces remain on the board after undo during AI thinking', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
+    await page.click('button:has-text("Start Game")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);

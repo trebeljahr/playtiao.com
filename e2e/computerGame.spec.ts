@@ -45,6 +45,7 @@ test('computer game lets human place and AI responds', async ({ page }) => {
   test.setTimeout(60000);
   await page.goto('/computer');
   await page.click('button:has-text("Easy")');
+  await page.click('button:has-text("Start Game")');
   await expect(cell(page, 9, 9)).toBeVisible();
 
   // Wait for the human's turn (computer color is random, may go first)
@@ -70,6 +71,7 @@ test('cannot place during computer turn', async ({ page }) => {
   test.setTimeout(60000);
   await page.goto('/computer');
   await page.click('button:has-text("Easy")');
+  await page.click('button:has-text("Start Game")');
   await expect(cell(page, 9, 9)).toBeVisible();
 
   // Wait for the human's turn
