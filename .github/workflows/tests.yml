@@ -19,21 +19,28 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
+
+      - name: Cache node_modules
+        id: nm-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('client/package-lock.json', 'server/package-lock.json') }}
 
       - name: Install client dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm --prefix client ci
 
       - name: Install server dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm --prefix server ci
 
       - name: Build repo
         run: npm run build
 
-      - name: Run server unit tests
+      - name: Run unit tests
         run: npm run test:unit
 
   e2e:
@@ -60,19 +67,27 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
-            package-lock.json
+
+      - name: Cache node_modules
+        id: nm-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            client/node_modules
+            server/node_modules
+          key: nm-e2e-${{ runner.os }}-${{ hashFiles('package-lock.json', 'client/package-lock.json', 'server/package-lock.json') }}
 
       - name: Install root dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm ci --ignore-scripts
 
       - name: Install client dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm --prefix client ci
 
       - name: Install server dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm --prefix server ci
 
       - name: Build repo
@@ -96,8 +111,20 @@ jobs:
           /tmp/mc mb --ignore-existing ci/tiao-e2e
           /tmp/mc anonymous set download ci/tiao-e2e
 
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (on cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run e2e tests
         run: npx playwright test
