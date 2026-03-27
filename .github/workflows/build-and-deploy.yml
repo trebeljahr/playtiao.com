@@ -112,7 +112,7 @@ jobs:
           TOKEN_SECRET: e2e-secret
 
   build-client:
-    needs: [verify, e2e]
+    needs: [verify]
     runs-on: ubuntu-latest
     env:
       COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
@@ -164,7 +164,7 @@ jobs:
         run: curl -fsS -X POST "$COOLIFY_DEPLOY_WEBHOOK"
 
   build-server:
-    needs: [verify, e2e]
+    needs: [verify]
     runs-on: ubuntu-latest
     env:
       COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}

@@ -1,12 +1,12 @@
 import { test, expect, devices } from "@playwright/test";
 
+test.use({ ...devices["iPhone 13"] });
+
 function cell(page: import("@playwright/test").Page, x: number, y: number) {
   return page.locator(`[data-testid="cell-${x}-${y}"]`);
 }
 
 test.describe("Mobile jump controls", () => {
-  test.use({ ...devices["iPhone 13"] });
-
   test.beforeEach(async ({ page }) => {
     await page.goto("/local");
     await expect(cell(page, 9, 9)).toBeVisible();
