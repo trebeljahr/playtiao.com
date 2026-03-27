@@ -8,10 +8,10 @@ const E2E_MINIO_PORT = '9002';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: 3,
   reporter: 'html',
   globalTeardown: './e2e/global-teardown.ts',
   use: {
