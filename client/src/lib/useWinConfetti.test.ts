@@ -35,10 +35,10 @@ describe("useWinConfetti", () => {
     );
 
     expect(mockConfetti).toHaveBeenCalled();
-    // Victory confetti uses particleCount: 5
+    // Victory confetti uses particleCount: 120
     const call = mockConfetti.mock.calls[0][0];
-    expect(call.particleCount).toBe(5);
-    expect(call.startVelocity).toBe(20);
+    expect(call.particleCount).toBe(120);
+    expect(call.startVelocity).toBe(45);
   });
 
   it("fires defeat particles when winner does NOT match viewerColor", () => {
@@ -61,7 +61,7 @@ describe("useWinConfetti", () => {
 
     expect(mockConfetti).toHaveBeenCalled();
     const call = mockConfetti.mock.calls[0][0];
-    expect(call.particleCount).toBe(5);
+    expect(call.particleCount).toBe(120);
   });
 
   it("fires victory confetti when options are omitted entirely (local mode default)", () => {
@@ -69,7 +69,7 @@ describe("useWinConfetti", () => {
 
     expect(mockConfetti).toHaveBeenCalled();
     const call = mockConfetti.mock.calls[0][0];
-    expect(call.particleCount).toBe(5);
+    expect(call.particleCount).toBe(120);
   });
 
   it("does NOT fire confetti when winner is null", () => {
@@ -121,7 +121,7 @@ describe("useWinConfetti", () => {
     );
 
     const call = mockConfetti.mock.calls[0][0];
-    expect(call.colors).toEqual(["#f7f3ea", "#d7cab8", "#e0c28a", "#7f6445"]);
+    expect(call.colors).toEqual(["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff", "#5f27cd", "#01a3a4", "#f368e0", "#ff9f43", "#00d2d3"]);
   });
 
   it("uses correct colors for black winner victory confetti", () => {
@@ -130,6 +130,6 @@ describe("useWinConfetti", () => {
     );
 
     const call = mockConfetti.mock.calls[0][0];
-    expect(call.colors).toEqual(["#1a1410", "#5f554d", "#e0c28a", "#f7ecda"]);
+    expect(call.colors).toEqual(["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff", "#5f27cd", "#01a3a4", "#f368e0", "#ff9f43", "#00d2d3"]);
   });
 });

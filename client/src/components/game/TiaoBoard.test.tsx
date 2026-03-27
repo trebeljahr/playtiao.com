@@ -211,7 +211,7 @@ describe("TiaoBoard – last move highlighting", () => {
 
     // The cell at (9,9) should contain a highlight span with the gold border
     const cell = screen.getByTestId("cell-9-9");
-    const highlightSpan = cell.querySelector("span[class*='border-[#c4963c]']");
+    const highlightSpan = cell.querySelector("span[class*='border-[#4a8ac4]']");
     expect(highlightSpan).toBeTruthy();
   });
 
@@ -250,9 +250,9 @@ describe("TiaoBoard – last move highlighting", () => {
     const svgOverlay = board.querySelectorAll("svg")[1]; // Second SVG is the overlay
     expect(svgOverlay).toBeTruthy();
 
-    // Check for gold-colored arrow lines (stroke="#c4963c")
-    const goldLines = svgOverlay.querySelectorAll('line[stroke="#c4963c"]');
-    expect(goldLines.length).toBeGreaterThan(0);
+    // Check for blue-colored arrow lines (stroke="#4a8ac4" or stroke="#365f8a")
+    const blueLines = svgOverlay.querySelectorAll('line[stroke="#4a8ac4"], line[stroke="#365f8a"]');
+    expect(blueLines.length).toBeGreaterThan(0);
   });
 
   it("does not render jump trail arrows when lastMove is undefined", async () => {

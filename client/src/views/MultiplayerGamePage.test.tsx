@@ -303,7 +303,9 @@ describe("MultiplayerGamePage", () => {
     expect(toast).toHaveBeenCalledWith(
       "Opponent wants a rematch!",
       expect.objectContaining({
-        description: "Accept or decline in the game panel.",
+        action: expect.objectContaining({ label: "Accept" }),
+        cancel: expect.objectContaining({ label: "Decline" }),
+        duration: Infinity,
       }),
     );
   });
@@ -374,8 +376,9 @@ describe("MultiplayerGamePage", () => {
       },
     };
 
-    const { useAuth } = await import("@/lib/AuthContext");
-    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+    // Re-mock useAuth to return spectator identity
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
       auth: spectatorAuth,
       authLoading: false,
       onOpenAuth: vi.fn(),
@@ -387,7 +390,8 @@ describe("MultiplayerGamePage", () => {
     await setupMocks(snapshot);
     render(<MultiplayerGamePage />);
 
-    expect(screen.getByText("Spectating")).toBeInTheDocument();
+    const spectatingElements = screen.getAllByText("Spectating");
+    expect(spectatingElements.length).toBeGreaterThan(0);
   });
 
   it("shows 'Back to lobby' button for spectators", async () => {
@@ -399,8 +403,9 @@ describe("MultiplayerGamePage", () => {
       },
     };
 
-    const { useAuth } = await import("@/lib/AuthContext");
-    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+    // Re-mock useAuth to return spectator identity
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
       auth: spectatorAuth,
       authLoading: false,
       onOpenAuth: vi.fn(),
