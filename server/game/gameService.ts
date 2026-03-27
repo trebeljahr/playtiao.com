@@ -1324,9 +1324,9 @@ export class GameService {
         throw new GameServiceError(409, undo.code, undo.reason);
       }
       reverseClock(lastMove, prevTs);
-      if (lastMove.type === "put" || lastMove.type === "jump") {
-        lastMoveAt = prevTs ? new Date(prevTs) : lastMoveAt;
-      }
+      // Reset lastMoveAt to now so the restored clock values aren't
+      // immediately eroded by computeLiveClock subtracting stale elapsed time.
+      lastMoveAt = new Date();
       state = undo.value;
     } else if (state.currentTurn === requester && state.history.length >= 2) {
       // It's the requester's turn, so undo the accepting player's move first,
@@ -1347,9 +1347,7 @@ export class GameService {
         throw new GameServiceError(409, undo2.code, undo2.reason);
       }
       reverseClock(secondLastMove, prevTs2);
-      if (secondLastMove.type === "put" || secondLastMove.type === "jump") {
-        lastMoveAt = prevTs2 ? new Date(prevTs2) : lastMoveAt;
-      }
+      lastMoveAt = new Date();
       state = undo2.value;
     }
 
