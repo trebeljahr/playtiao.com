@@ -6,6 +6,10 @@ import type {
   PlayerIdentity,
   SocialOverview,
   SocialSearchResult,
+  TournamentListItem,
+  TournamentSettings,
+  TournamentSnapshot,
+  TournamentStatus,
 } from "@shared";
 
 type JsonBody = Record<string, unknown> | undefined;
@@ -332,5 +336,111 @@ export function uploadAccountProfilePicture(file: File) {
   return upload<{ auth: AuthResponse; profile: AccountProfile }>(
     "/api/player/profile-picture",
     formData
+  );
+}
+
+// ── Tournament API ──
+
+export function listPublicTournaments(status?: TournamentStatus) {
+  const qs = status ? `?status=${status}` : "";
+  return request<{ tournaments: TournamentListItem[] }>(`/api/tournaments${qs}`);
+}
+
+export function listMyTournaments() {
+  return request<{ tournaments: TournamentListItem[] }>("/api/tournaments/my");
+}
+
+export function createTournament(body: {
+  name: string;
+  description?: string;
+  settings: TournamentSettings;
+}) {
+  return request<{ tournament: TournamentSnapshot }>("/api/tournaments", {
+    method: "POST",
+    body: body as unknown as Record<string, unknown>,
+  });
+}
+
+export function getTournament(tournamentId: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}`
+  );
+}
+
+export function registerForTournament(tournamentId: string, inviteCode?: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/register`,
+    {
+      method: "POST",
+      body: inviteCode ? { inviteCode } : undefined,
+    }
+  );
+}
+
+export function unregisterFromTournament(tournamentId: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/unregister`,
+    { method: "POST" }
+  );
+}
+
+export function startTournament(tournamentId: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/start`,
+    { method: "POST" }
+  );
+}
+
+export function cancelTournament(tournamentId: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/cancel`,
+    { method: "POST" }
+  );
+}
+
+export function updateTournamentSeeding(
+  tournamentId: string,
+  seeds: { playerId: string; seed: number }[]
+) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/seeding`,
+    {
+      method: "PUT",
+      body: { seeds } as unknown as Record<string, unknown>,
+    }
+  );
+}
+
+export function randomizeTournamentSeeding(tournamentId: string) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/seeding/randomize`,
+    { method: "POST" }
+  );
+}
+
+export function setTournamentFeaturedMatch(
+  tournamentId: string,
+  matchId: string | null
+) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/featured-match`,
+    {
+      method: "PUT",
+      body: { matchId },
+    }
+  );
+}
+
+export function forfeitTournamentMatch(
+  tournamentId: string,
+  matchId: string,
+  loserId: string
+) {
+  return request<{ tournament: TournamentSnapshot }>(
+    `/api/tournaments/${tournamentId}/matches/${matchId}/forfeit`,
+    {
+      method: "POST",
+      body: { loserId },
+    }
   );
 }

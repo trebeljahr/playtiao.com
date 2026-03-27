@@ -16,7 +16,7 @@ export type PlayerSlot = {
   online: boolean;
 };
 
-export type MultiplayerRoomType = "direct" | "matchmaking";
+export type MultiplayerRoomType = "direct" | "matchmaking" | "tournament";
 
 export type MultiplayerStatus = "waiting" | "active" | "finished";
 
@@ -60,6 +60,8 @@ export type MultiplayerSnapshot = {
   clock: ClockState | null;
   /** ISO timestamp deadline for the first move in timed games, or null if first move already made / no time control */
   firstMoveDeadline: string | null;
+  /** Tournament ID if this is a tournament game */
+  tournamentId?: string | null;
 };
 
 export type MultiplayerGameSummary = {

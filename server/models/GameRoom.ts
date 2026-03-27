@@ -53,6 +53,8 @@ export interface IGameRoom extends Document {
   clockMs: { white: number; black: number } | null;
   lastMoveAt: Date | null;
   firstMoveDeadline: Date | null;
+  tournamentId: string | null;
+  tournamentMatchId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,7 +71,7 @@ const GameRoomSchema = new Schema<IGameRoom>(
     roomType: {
       type: String,
       required: true,
-      enum: ["direct", "matchmaking"],
+      enum: ["direct", "matchmaking", "tournament"],
       default: "direct",
       index: true,
     },
@@ -155,6 +157,17 @@ const GameRoomSchema = new Schema<IGameRoom>(
       type: Date,
       default: null,
     },
+    tournamentId: {
+      type: String,
+      default: null,
+      sparse: true,
+      index: true,
+    },
+    tournamentMatchId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
   },
   {
     timestamps: true,
@@ -162,6 +175,7 @@ const GameRoomSchema = new Schema<IGameRoom>(
 );
 
 GameRoomSchema.index({ "players.playerId": 1, status: 1, updatedAt: -1 });
+GameRoomSchema.index({ tournamentId: 1, tournamentMatchId: 1 }, { sparse: true });
 
 const GameRoom = models.GameRoom || model<IGameRoom>("GameRoom", GameRoomSchema);
 

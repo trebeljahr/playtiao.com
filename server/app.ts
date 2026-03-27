@@ -6,6 +6,7 @@ import gameAuthRoutes from "./routes/game-auth.routes";
 import gameRoutes from "./routes/game.routes";
 import indexRoutes from "./routes/index.routes";
 import socialRoutes from "./routes/social.routes";
+import tournamentRoutes from "./routes/tournament.routes";
 const app = express();
 
 configureApp(app);
@@ -30,6 +31,7 @@ mountRouteVariants("/", indexRoutes);
 mountRouteVariants("/player", gameAuthRoutes);
 mountRouteVariants("/", gameRoutes);
 mountRouteVariants("/", socialRoutes);
+mountRouteVariants("/", tournamentRoutes);
 
 addErrorHandlingToApp(app);
 

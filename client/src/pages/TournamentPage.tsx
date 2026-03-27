@@ -1,0 +1,404 @@
+import { useCallback, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import type { AuthResponse, TournamentSnapshot } from "@shared";
+import { Navbar } from "@/components/Navbar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BracketVisualization } from "@/components/tournament/BracketVisualization";
+import { StandingsTable } from "@/components/tournament/StandingsTable";
+import { MatchCard } from "@/components/tournament/MatchCard";
+import { useTournament } from "@/lib/hooks/useTournament";
+import {
+  registerForTournament,
+  unregisterFromTournament,
+  startTournament as apiStartTournament,
+  cancelTournament as apiCancelTournament,
+  randomizeTournamentSeeding,
+} from "@/lib/api";
+import { toastError } from "@/lib/errors";
+import { toast } from "sonner";
+
+function formatLabel(format: string): string {
+  switch (format) {
+    case "round-robin":
+      return "Round Robin";
+    case "single-elimination":
+      return "Single Elimination";
+    case "groups-knockout":
+      return "Groups + Knockout";
+    default:
+      return format;
+  }
+}
+
+export function TournamentPage({
+  auth,
+  onOpenAuth,
+  onLogout,
+}: {
+  auth: AuthResponse | null;
+  onOpenAuth: (mode: "login" | "signup") => void;
+  onLogout: () => void;
+}) {
+  const { tournamentId } = useParams<{ tournamentId: string }>();
+  const navigate = useNavigate();
+  const playerId = auth?.player?.playerId;
+  const isAccount = auth?.player?.kind === "account";
+  const [busy, setBusy] = useState(false);
+
+  const onMatchReady = useCallback(
+    (matchId: string, roomId: string) => {
+      toast("Your tournament match is ready!", {
+        action: {
+          label: "Play",
+          onClick: () => navigate(`/game/${roomId}`),
+        },
+      });
+    },
+    [navigate]
+  );
+
+  const { tournament, loading, error, refresh } = useTournament(
+    auth,
+    tournamentId ?? null,
+    { onMatchReady }
+  );
+
+  if (loading && !tournament) {
+    return (
+      <>
+        <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          <p className="text-muted-foreground">Loading tournament...</p>
+        </div>
+      </>
+    );
+  }
+
+  if (error || !tournament) {
+    return (
+      <>
+        <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          <p className="text-red-600">{error ?? "Tournament not found."}</p>
+        </div>
+      </>
+    );
+  }
+
+  const isAdmin = playerId === tournament.creatorId;
+  const isRegistered = tournament.participants.some(
+    (p) => p.playerId === playerId
+  );
+  const canJoin =
+    isAccount &&
+    !isRegistered &&
+    tournament.status === "registration" &&
+    tournament.participants.length < tournament.settings.maxPlayers;
+  const canStart =
+    isAdmin &&
+    tournament.status === "registration" &&
+    tournament.participants.length >= tournament.settings.minPlayers;
+
+  async function handleAction(action: () => Promise<any>) {
+    setBusy(true);
+    try {
+      await action();
+      refresh({ silent: true });
+    } catch (err: any) {
+      toastError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Find current round matches for featured section
+  const activeMatches = getAllActiveMatches(tournament);
+
+  return (
+    <>
+      <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+
+      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-display text-3xl font-bold">{tournament.name}</h1>
+            <Badge>{tournament.status}</Badge>
+            <Badge>{formatLabel(tournament.settings.format)}</Badge>
+          </div>
+          {tournament.description && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {tournament.description}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            {tournament.participants.length}/{tournament.settings.maxPlayers} players
+          </p>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
+          {canJoin && (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                handleAction(() =>
+                  registerForTournament(tournament.tournamentId)
+                )
+              }
+            >
+              Join Tournament
+            </Button>
+          )}
+          {isRegistered && tournament.status === "registration" && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() =>
+                handleAction(() =>
+                  unregisterFromTournament(tournament.tournamentId)
+                )
+              }
+            >
+              Leave
+            </Button>
+          )}
+          {canStart && (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                handleAction(() =>
+                  apiStartTournament(tournament.tournamentId)
+                )
+              }
+            >
+              Start Tournament
+            </Button>
+          )}
+          {isAdmin && tournament.status === "registration" && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() =>
+                handleAction(() =>
+                  randomizeTournamentSeeding(tournament.tournamentId)
+                )
+              }
+            >
+              Randomize Seeds
+            </Button>
+          )}
+          {isAdmin &&
+            tournament.status !== "finished" &&
+            tournament.status !== "cancelled" && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  handleAction(() =>
+                    apiCancelTournament(tournament.tournamentId)
+                  )
+                }
+              >
+                Cancel Tournament
+              </Button>
+            )}
+        </div>
+
+        {/* Featured / active matches */}
+        {activeMatches.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Matches</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {activeMatches.map((match) => (
+                  <MatchCard
+                    key={match.matchId}
+                    match={match}
+                    currentPlayerId={playerId}
+                    featured={match.matchId === tournament.featuredMatchId}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Registration phase: participant list */}
+        {tournament.status === "registration" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Participants</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tournament.participants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No participants yet. Be the first to join!
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {tournament.participants
+                    .sort((a, b) => a.seed - b.seed)
+                    .map((p) => (
+                      <div
+                        key={p.playerId}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                          p.playerId === playerId
+                            ? "bg-amber-50/60 font-medium"
+                            : ""
+                        }`}
+                      >
+                        <span className="w-6 text-right text-xs text-muted-foreground">
+                          #{p.seed}
+                        </span>
+                        <span className="truncate">{p.displayName}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active/Finished: Bracket or Standings */}
+        {(tournament.status === "active" || tournament.status === "finished") && (
+          <>
+            {/* Round Robin */}
+            {tournament.settings.format === "round-robin" &&
+              tournament.rounds.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Rounds</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {tournament.rounds.map((round) => (
+                      <div key={round.roundIndex} className="mb-4 last:mb-0">
+                        <h4 className="text-sm font-medium mb-2">
+                          {round.label}
+                        </h4>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {round.matches.map((match) => (
+                            <MatchCard
+                              key={match.matchId}
+                              match={match}
+                              currentPlayerId={playerId}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+            {/* Single Elimination Bracket */}
+            {tournament.settings.format === "single-elimination" &&
+              tournament.rounds.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bracket</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BracketVisualization
+                      rounds={tournament.rounds}
+                      currentPlayerId={playerId}
+                      featuredMatchId={tournament.featuredMatchId}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+            {/* Groups + Knockout */}
+            {tournament.settings.format === "groups-knockout" && (
+              <>
+                {tournament.groups.map((group) => (
+                  <Card key={group.groupId}>
+                    <CardHeader>
+                      <CardTitle>{group.label}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <StandingsTable
+                        standings={group.standings}
+                        highlightPlayerId={playerId}
+                      />
+                      {group.rounds
+                        .filter((r) => r.status === "active")
+                        .map((round) => (
+                          <div key={round.roundIndex}>
+                            <h4 className="text-sm font-medium mb-2">
+                              {round.label}
+                            </h4>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {round.matches.map((match) => (
+                                <MatchCard
+                                  key={match.matchId}
+                                  match={match}
+                                  currentPlayerId={playerId}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                    </CardContent>
+                  </Card>
+                ))}
+                {tournament.knockoutRounds.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Knockout Stage</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <BracketVisualization
+                        rounds={tournament.knockoutRounds}
+                        currentPlayerId={playerId}
+                        featuredMatchId={tournament.featuredMatchId}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Winner banner */}
+        {tournament.status === "finished" && (
+          <Card className="border-amber-400/60 bg-amber-50/50">
+            <CardContent className="py-6 text-center">
+              <p className="text-sm font-semibold uppercase tracking-wider text-amber-600 mb-1">
+                Winner
+              </p>
+              <p className="text-xl font-bold">
+                {tournament.participants.find((p) => p.status === "winner")
+                  ?.displayName ?? "Unknown"}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </>
+  );
+}
+
+function getAllActiveMatches(tournament: TournamentSnapshot) {
+  const matches: TournamentSnapshot["rounds"][number]["matches"] = [];
+
+  for (const round of [...tournament.rounds, ...tournament.knockoutRounds]) {
+    for (const match of round.matches) {
+      if (match.status === "active") matches.push(match);
+    }
+  }
+  for (const group of tournament.groups) {
+    for (const round of group.rounds) {
+      for (const match of round.matches) {
+        if (match.status === "active") matches.push(match);
+      }
+    }
+  }
+
+  return matches;
+}

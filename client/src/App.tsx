@@ -25,6 +25,8 @@ import { MatchmakingPage } from "./pages/MatchmakingPage";
 import { FriendsPage } from "./pages/FriendsPage";
 import { GamesPage } from "./pages/GamesPage";
 import { TutorialPage } from "./pages/TutorialPage";
+import { TournamentListPage } from "./pages/TournamentListPage";
+import { TournamentPage } from "./pages/TournamentPage";
 
 const ANONYMOUS_NAME = "Anonymous";
 
@@ -312,6 +314,26 @@ export function App() {
               <TutorialPage
                 auth={auth}
                 onAuthChange={applyAuth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/tournaments"
+            element={
+              <TournamentListPage
+                auth={auth}
+                onOpenAuth={openAuthDialog}
+                onLogout={handleLogout}
+              />
+            }
+          />
+          <Route
+            path="/tournament/:tournamentId"
+            element={
+              <TournamentPage
+                auth={auth}
                 onOpenAuth={openAuthDialog}
                 onLogout={handleLogout}
               />

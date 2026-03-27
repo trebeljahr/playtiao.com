@@ -26,6 +26,8 @@ export type StoredMultiplayerRoom = {
   lastMoveAt: Date | null;
   /** Deadline for the first move in timed games; null after first move or in untimed games */
   firstMoveDeadline: Date | null;
+  tournamentId: string | null;
+  tournamentMatchId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -43,6 +45,8 @@ export type CreateStoredMultiplayerRoomInput = {
   clockMs: { white: number; black: number } | null;
   lastMoveAt: Date | null;
   firstMoveDeadline: Date | null;
+  tournamentId?: string | null;
+  tournamentMatchId?: string | null;
 };
 
 export interface GameRoomStore {
@@ -52,6 +56,10 @@ export interface GameRoomStore {
   listRoomsForPlayer(playerId: string): Promise<StoredMultiplayerRoom[]>;
   findUnfinishedRoomByPlayer(
     playerId: string
+  ): Promise<StoredMultiplayerRoom | null>;
+  findRoomByTournamentMatch(
+    tournamentId: string,
+    matchId: string
   ): Promise<StoredMultiplayerRoom | null>;
 }
 
@@ -109,6 +117,8 @@ export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerR
     clockMs: room.clockMs ? { ...room.clockMs } : null,
     lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
     firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+    tournamentId: room.tournamentId,
+    tournamentMatchId: room.tournamentMatchId,
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
   };
@@ -127,6 +137,8 @@ type PersistedGameRoom = {
   clockMs?: { white: number; black: number } | null;
   lastMoveAt?: Date | null;
   firstMoveDeadline?: Date | null;
+  tournamentId?: string | null;
+  tournamentMatchId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -158,6 +170,8 @@ function toStoredRoom(room: PersistedGameRoom): StoredMultiplayerRoom {
     clockMs: room.clockMs ?? null,
     lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
     firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+    tournamentId: room.tournamentId ?? null,
+    tournamentMatchId: room.tournamentMatchId ?? null,
     createdAt: new Date(room.createdAt),
     updatedAt: new Date(room.updatedAt),
   };
@@ -180,6 +194,8 @@ export class MongoGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs,
       lastMoveAt: room.lastMoveAt,
       firstMoveDeadline: room.firstMoveDeadline,
+      tournamentId: room.tournamentId ?? null,
+      tournamentMatchId: room.tournamentMatchId ?? null,
     });
 
     return toStoredRoom({
@@ -228,6 +244,8 @@ export class MongoGameRoomStore implements GameRoomStore {
           clockMs: room.clockMs,
           lastMoveAt: room.lastMoveAt,
           firstMoveDeadline: room.firstMoveDeadline,
+          tournamentId: room.tournamentId,
+          tournamentMatchId: room.tournamentMatchId,
         },
       },
       {
@@ -279,6 +297,20 @@ export class MongoGameRoomStore implements GameRoomStore {
 
     return room ? toStoredRoom(room) : null;
   }
+
+  async findRoomByTournamentMatch(
+    tournamentId: string,
+    matchId: string
+  ): Promise<StoredMultiplayerRoom | null> {
+    const room = await GameRoom.findOne({
+      tournamentId,
+      tournamentMatchId: matchId,
+    })
+      .lean<PersistedGameRoom>()
+      .exec();
+
+    return room ? toStoredRoom(room) : null;
+  }
 }
 
 export class InMemoryGameRoomStore implements GameRoomStore {
@@ -308,6 +340,8 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs ? { ...room.clockMs } : null,
       lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
       firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+      tournamentId: room.tournamentId ?? null,
+      tournamentMatchId: room.tournamentMatchId ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -341,6 +375,8 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs ? { ...room.clockMs } : null,
       lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
       firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+      tournamentId: room.tournamentId,
+      tournamentMatchId: room.tournamentMatchId,
       createdAt: new Date(existingRoom.createdAt),
       updatedAt: new Date(),
     };
@@ -370,6 +406,16 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       )
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
 
+    return room ? cloneStoredRoom(room) : null;
+  }
+
+  async findRoomByTournamentMatch(
+    tournamentId: string,
+    matchId: string
+  ): Promise<StoredMultiplayerRoom | null> {
+    const room = Array.from(this.rooms.values()).find(
+      (r) => r.tournamentId === tournamentId && r.tournamentMatchId === matchId
+    );
     return room ? cloneStoredRoom(room) : null;
   }
 }

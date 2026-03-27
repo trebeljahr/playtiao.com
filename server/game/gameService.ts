@@ -54,6 +54,10 @@ type RoomConnections = Map<WebSocket, string>;
 const GUEST_ABANDON_TIMEOUT_MS = 5 * 60 * 1000;
 const FIRST_MOVE_TIMEOUT_MS = 30 * 1000;
 
+export interface TournamentGameCallback {
+  onGameCompleted(roomId: string): Promise<void>;
+}
+
 export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
   private readonly lobbyConnections = new Map<string, Set<WebSocket>>();
@@ -65,6 +69,7 @@ export class GameService {
   private readonly guestAbandonTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly clockTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly firstMoveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private tournamentCallback: TournamentGameCallback | null = null;
 
   constructor(
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
@@ -75,6 +80,82 @@ export class GameService {
   ) {
     this.matchmaking = matchmaking ?? new InMemoryMatchmakingStore();
     this.lockProvider = lockProvider ?? new InMemoryLockProvider();
+  }
+
+  setTournamentService(svc: TournamentGameCallback): void {
+    this.tournamentCallback = svc;
+  }
+
+  async createTournamentGame(
+    player1: PlayerIdentity,
+    player2: PlayerIdentity,
+    timeControl: TimeControl,
+    tournamentId: string,
+    matchId: string
+  ): Promise<StoredMultiplayerRoom> {
+    const tc = timeControl ?? null;
+    const clockMs = tc ? { white: tc.initialMs, black: tc.initialMs } : null;
+    const willBeActive = true;
+    const firstMoveDeadline = tc
+      ? new Date(Date.now() + FIRST_MOVE_TIMEOUT_MS)
+      : null;
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const room = this.deriveRoomStatus({
+        id: this.generateRoomId(),
+        roomType: "tournament",
+        status: "waiting",
+        state: createInitialGameState(),
+        players: [{ ...player1 }, { ...player2 }],
+        rematch: null,
+        takeback: null,
+        seats: this.assignSeats(player1, player2),
+        timeControl: tc,
+        clockMs,
+        lastMoveAt: null,
+        firstMoveDeadline,
+        tournamentId,
+        tournamentMatchId: matchId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      try {
+        const createdRoom = await this.store.createRoom({
+          id: room.id,
+          roomType: room.roomType,
+          status: room.status,
+          state: room.state,
+          players: room.players,
+          rematch: room.rematch,
+          takeback: room.takeback,
+          seats: room.seats,
+          timeControl: room.timeControl,
+          clockMs: room.clockMs,
+          lastMoveAt: room.lastMoveAt,
+          firstMoveDeadline: room.firstMoveDeadline,
+          tournamentId: room.tournamentId,
+          tournamentMatchId: room.tournamentMatchId,
+        });
+
+        if (createdRoom.firstMoveDeadline) {
+          this.scheduleFirstMoveTimer(createdRoom);
+        }
+
+        return createdRoom;
+      } catch (error) {
+        if (this.isDuplicateRoomError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new GameServiceError(
+      500,
+      "ROOM_CREATE_FAILED",
+      "Unable to create a tournament game room right now."
+    );
   }
 
   isPlayerConnectedToLobby(playerId: string): boolean {
@@ -600,6 +681,8 @@ export class GameService {
         clockMs,
         lastMoveAt: null,
         firstMoveDeadline,
+        tournamentId: null,
+        tournamentMatchId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -705,7 +788,24 @@ export class GameService {
   private async saveRoom(
     room: StoredMultiplayerRoom
   ): Promise<StoredMultiplayerRoom> {
-    return this.deriveRoomStatus(await this.store.saveRoom(this.deriveRoomStatus(room)));
+    const previousStatus = room.status;
+    const saved = this.deriveRoomStatus(await this.store.saveRoom(this.deriveRoomStatus(room)));
+
+    // Fire tournament callback when a tournament game finishes
+    if (
+      saved.status === "finished" &&
+      previousStatus !== "finished" &&
+      saved.roomType === "tournament" &&
+      saved.tournamentId &&
+      this.tournamentCallback
+    ) {
+      // Fire asynchronously to avoid blocking the save path
+      void this.tournamentCallback.onGameCompleted(saved.id).catch((err) => {
+        console.error("[game] Tournament callback failed for room", saved.id, err);
+      });
+    }
+
+    return saved;
   }
 
   private async ensureGuestPlayerHasSingleOpenGame(
@@ -889,6 +989,7 @@ export class GameService {
       timeControl: room.timeControl,
       clock: this.computeLiveClock(room),
       firstMoveDeadline: room.firstMoveDeadline?.toISOString() ?? null,
+      tournamentId: room.tournamentId ?? null,
     };
   }
 
@@ -981,6 +1082,14 @@ export class GameService {
     room: StoredMultiplayerRoom,
     playerColor: PlayerColor
   ): Promise<StoredMultiplayerRoom> {
+    if (room.roomType === "tournament") {
+      throw new GameServiceError(
+        409,
+        "TOURNAMENT_NO_REMATCH",
+        "Rematches are not available in tournament games."
+      );
+    }
+
     if (room.status !== "finished") {
       throw new GameServiceError(
         409,

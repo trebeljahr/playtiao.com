@@ -301,6 +301,12 @@ export function Navbar({
             onClick: () => handleNav("/games"),
             badge: 0,
           },
+          {
+            label: "Tournaments",
+            active: location.pathname.startsWith("/tournament"),
+            onClick: () => handleNav("/tournaments"),
+            badge: 0,
+          },
         ]
       : []),
     {
