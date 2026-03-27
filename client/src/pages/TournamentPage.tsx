@@ -5,6 +5,8 @@ import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { BracketVisualization } from "@/components/tournament/BracketVisualization";
 import { StandingsTable } from "@/components/tournament/StandingsTable";
 import { MatchCard } from "@/components/tournament/MatchCard";
@@ -48,6 +50,9 @@ export function TournamentPage({
   const isAccount = auth?.player?.kind === "account";
   const [busy, setBusy] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [inviteCodeDialogOpen, setInviteCodeDialogOpen] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
 
   const onMatchReady = useCallback(
     (matchId: string, roomId: string) => {
@@ -71,7 +76,7 @@ export function TournamentPage({
     return (
       <>
         <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
-        <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
           <p className="text-muted-foreground">Loading tournament...</p>
         </div>
       </>
@@ -82,7 +87,7 @@ export function TournamentPage({
     return (
       <>
         <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
-        <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
           <p className="text-red-600">{error ?? "Tournament not found."}</p>
         </div>
       </>
@@ -122,7 +127,7 @@ export function TournamentPage({
     <>
       <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
 
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+      <div className="mx-auto max-w-5xl px-4 pb-5 pt-20 space-y-6">
         {/* Header */}
         <div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -145,11 +150,16 @@ export function TournamentPage({
           {canJoin && (
             <Button
               disabled={busy}
-              onClick={() =>
-                handleAction(() =>
-                  registerForTournament(tournament.tournamentId)
-                )
-              }
+              onClick={() => {
+                if (tournament.settings.visibility === "private") {
+                  setInviteCodeInput("");
+                  setInviteCodeDialogOpen(true);
+                } else {
+                  handleAction(() =>
+                    registerForTournament(tournament.tournamentId)
+                  );
+                }
+              }}
             >
               Join Tournament
             </Button>
@@ -198,11 +208,7 @@ export function TournamentPage({
               <Button
                 variant="outline"
                 disabled={busy}
-                onClick={() =>
-                  handleAction(() =>
-                    apiCancelTournament(tournament.tournamentId)
-                  )
-                }
+                onClick={() => setCancelDialogOpen(true)}
               >
                 Cancel Tournament
               </Button>
@@ -396,6 +402,78 @@ export function TournamentPage({
           );
         })()}
       </div>
+
+      {/* Cancel confirmation dialog */}
+      <Dialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        title="Cancel Tournament"
+        description="Are you sure you want to cancel this tournament? This cannot be undone."
+      >
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+            Keep Tournament
+          </Button>
+          <Button
+            className="bg-[#9b4030] text-white hover:bg-[#7a2e22]"
+            disabled={busy}
+            onClick={async () => {
+              setCancelDialogOpen(false);
+              setBusy(true);
+              try {
+                await apiCancelTournament(tournament.tournamentId);
+                toast.success("Tournament cancelled.");
+                navigate("/tournaments");
+              } catch (err: any) {
+                toastError(err.message ?? "Failed to cancel tournament.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Cancel Tournament
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Invite code dialog for private tournaments */}
+      <Dialog
+        open={inviteCodeDialogOpen}
+        onOpenChange={setInviteCodeDialogOpen}
+        title="Enter Invite Code"
+        description="This is a private tournament. Enter the invite code to join."
+      >
+        <div className="space-y-4">
+          <Input
+            value={inviteCodeInput}
+            onChange={(e) => setInviteCodeInput(e.target.value)}
+            placeholder="Invite code"
+            autoFocus
+          />
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setInviteCodeDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!inviteCodeInput.trim() || busy}
+              onClick={async () => {
+                setInviteCodeDialogOpen(false);
+                handleAction(() =>
+                  registerForTournament(
+                    tournament.tournamentId,
+                    inviteCodeInput.trim()
+                  )
+                );
+              }}
+            >
+              Join
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </>
   );
 }

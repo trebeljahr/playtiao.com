@@ -14,14 +14,15 @@ async function createTournamentViaApi(
   name: string,
   format: 'single-elimination' | 'round-robin' | 'groups-knockout' = 'single-elimination',
   minPlayers = 2,
-  maxPlayers = 8
+  maxPlayers = 8,
+  timeControl: { initialMs: number; incrementMs: number } | null = null
 ): Promise<string> {
   const response = await page.request.post('/api/tournaments', {
     data: {
       name,
       settings: {
         format,
-        timeControl: null,
+        timeControl,
         scheduling: 'simultaneous',
         noShow: { type: 'auto-forfeit', timeoutMs: 60000 },
         visibility: 'public',
@@ -32,6 +33,34 @@ async function createTournamentViaApi(
   });
   const data = await response.json();
   return data.tournament.tournamentId;
+}
+
+/**
+ * Helper to start a 2-player tournament and return the match room ID.
+ */
+async function startTwoPlayerTournament(
+  alicePage: Page,
+  bobPage: Page,
+  name: string,
+  timeControl: { initialMs: number; incrementMs: number } | null = null
+): Promise<{ tournamentId: string; roomId: string }> {
+  const tournamentId = await createTournamentViaApi(
+    alicePage,
+    name,
+    'single-elimination',
+    2,
+    4,
+    timeControl
+  );
+
+  await alicePage.request.post(`/api/tournaments/${tournamentId}/register`);
+  await bobPage.request.post(`/api/tournaments/${tournamentId}/register`);
+
+  const startRes = await alicePage.request.post(`/api/tournaments/${tournamentId}/start`);
+  const startData = await startRes.json();
+  const roomId = startData.tournament.rounds[0]?.matches[0]?.roomId;
+
+  return { tournamentId, roomId };
 }
 
 test.describe('Tournament list page', () => {
@@ -232,6 +261,100 @@ test.describe('Tournament with multiple players', () => {
     expect(errors).toEqual([]);
 
     await context.close();
+  });
+});
+
+test.describe('Tournament game lifecycle', () => {
+  test('timed tournament game shows "waiting for opponent" overlay when only one player connects', async ({ browser }) => {
+    const aliceContext = await browser.newContext();
+    const bobContext = await browser.newContext();
+    const alicePage = await aliceContext.newPage();
+    const bobPage = await bobContext.newPage();
+
+    const aliceName = uniqueName('alice');
+    const bobName = uniqueName('bob');
+    await signUpViaUI(alicePage, aliceName, 'password123');
+    await signUpViaUI(bobPage, bobName, 'password123');
+
+    const { roomId } = await startTwoPlayerTournament(
+      alicePage,
+      bobPage,
+      'Timer Overlay Test',
+      { initialMs: 300000, incrementMs: 0 }
+    );
+
+    // Alice navigates to game — she's the only one connected
+    await alicePage.goto(`/game/${roomId}`);
+    await expect(alicePage.locator('text=Waiting for opponent to connect')).toBeVisible({ timeout: 5000 });
+
+    // Verify the tournament context bar is visible
+    await expect(alicePage.locator('text=Back to bracket')).toBeVisible();
+
+    await aliceContext.close();
+    await bobContext.close();
+  });
+
+  test('waiting overlay disappears when second player connects to timed game', async ({ browser }) => {
+    const aliceContext = await browser.newContext();
+    const bobContext = await browser.newContext();
+    const alicePage = await aliceContext.newPage();
+    const bobPage = await bobContext.newPage();
+
+    const aliceName = uniqueName('alice');
+    const bobName = uniqueName('bob');
+    await signUpViaUI(alicePage, aliceName, 'password123');
+    await signUpViaUI(bobPage, bobName, 'password123');
+
+    const { roomId } = await startTwoPlayerTournament(
+      alicePage,
+      bobPage,
+      'Both Connect Test',
+      { initialMs: 300000, incrementMs: 0 }
+    );
+
+    // Alice connects first
+    await alicePage.goto(`/game/${roomId}`);
+    await expect(alicePage.locator('text=Waiting for opponent to connect')).toBeVisible({ timeout: 5000 });
+
+    // Bob connects
+    await bobPage.goto(`/game/${roomId}`);
+
+    // Overlay should disappear for Alice (game is now "ready")
+    await expect(alicePage.locator('text=Waiting for opponent to connect')).not.toBeVisible({ timeout: 10000 });
+
+    // Both should see "Live match"
+    await expect(alicePage.locator('text=Live match')).toBeVisible({ timeout: 5000 });
+    await expect(bobPage.locator('text=Live match')).toBeVisible({ timeout: 5000 });
+
+    await aliceContext.close();
+    await bobContext.close();
+  });
+
+  test('untimed tournament game has no waiting overlay', async ({ browser }) => {
+    const aliceContext = await browser.newContext();
+    const bobContext = await browser.newContext();
+    const alicePage = await aliceContext.newPage();
+    const bobPage = await bobContext.newPage();
+
+    const aliceName = uniqueName('alice');
+    const bobName = uniqueName('bob');
+    await signUpViaUI(alicePage, aliceName, 'password123');
+    await signUpViaUI(bobPage, bobName, 'password123');
+
+    const { roomId } = await startTwoPlayerTournament(
+      alicePage,
+      bobPage,
+      'Untimed No Overlay Test',
+      null // untimed
+    );
+
+    // Alice connects — should NOT see waiting overlay
+    await alicePage.goto(`/game/${roomId}`);
+    await expect(alicePage.locator('text=Live match')).toBeVisible({ timeout: 5000 });
+    await expect(alicePage.locator('text=Waiting for opponent to connect')).not.toBeVisible();
+
+    await aliceContext.close();
+    await bobContext.close();
   });
 });
 

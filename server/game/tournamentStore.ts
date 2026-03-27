@@ -33,6 +33,7 @@ export interface TournamentStore {
   listPublicTournaments(options?: { status?: TournamentStatus }): Promise<StoredTournament[]>;
   listTournamentsForPlayer(playerId: string): Promise<StoredTournament[]>;
   findTournamentByMatchRoomId(roomId: string): Promise<StoredTournament | null>;
+  findRegistrationTournamentsByParticipant(playerId: string): Promise<StoredTournament[]>;
 }
 
 function toStoredTournament(doc: any): StoredTournament {
@@ -141,6 +142,17 @@ export class MongoTournamentStore implements TournamentStore {
 
     return doc ? toStoredTournament(doc) : null;
   }
+
+  async findRegistrationTournamentsByParticipant(playerId: string): Promise<StoredTournament[]> {
+    const docs = await Tournament.find({
+      "participants.playerId": playerId,
+      status: "registration",
+    })
+      .lean()
+      .exec();
+
+    return docs.map(toStoredTournament);
+  }
 }
 
 export class InMemoryTournamentStore implements TournamentStore {
@@ -217,5 +229,13 @@ export class InMemoryTournamentStore implements TournamentStore {
       }
     }
     return null;
+  }
+
+  async findRegistrationTournamentsByParticipant(playerId: string): Promise<StoredTournament[]> {
+    return Array.from(this.tournaments.values()).filter(
+      (t) =>
+        t.status === "registration" &&
+        t.participants.some((p) => p.playerId === playerId)
+    );
   }
 }

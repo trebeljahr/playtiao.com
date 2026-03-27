@@ -586,6 +586,200 @@ describe("Admin forfeit", () => {
   });
 });
 
+// ── Deferred timer start ──
+
+describe("Deferred timer for tournament games", () => {
+  test("timed tournament games are created with no firstMoveDeadline", async () => {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: { initialMs: 300_000, incrementMs: 0 } }),
+      "Deferred Timer"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    const room = await gameStore.getRoom(roomId);
+    assert.ok(room);
+    assert.equal(room.firstMoveDeadline, null, "firstMoveDeadline should be null until both connect");
+    assert.equal(room.status, "active", "room should be active (both seated)");
+    assert.ok(room.timeControl, "room should have time control");
+  });
+
+  test("untimed tournament games have no firstMoveDeadline (and that's fine)", async () => {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: null }),
+      "Untimed"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    const room = await gameStore.getRoom(roomId);
+    assert.ok(room);
+    assert.equal(room.firstMoveDeadline, null);
+    assert.equal(room.timeControl, null);
+  });
+});
+
+// ── Move blocking in unstarted tournament games ──
+
+describe("Move blocking in unstarted tournament games", () => {
+  test("moves are rejected in timed tournament games before both players connect", async () => {
+    const { tournamentService, gameService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: { initialMs: 300_000, incrementMs: 0 } }),
+      "Block Moves"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    // Try to place a piece — should fail because neither player has connected via WebSocket
+    await assert.rejects(
+      () => gameService.applyAction(roomId, alice, { type: "place-piece", position: { x: 9, y: 9 } }),
+      (error) => isGameServiceError(error, "TOURNAMENT_NOT_STARTED")
+    );
+  });
+
+  test("moves are allowed in untimed tournament games immediately", async () => {
+    const { tournamentService, gameService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: null }),
+      "Untimed Moves"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    // Determine which player is white (the one whose turn it is)
+    const gameSnapshot = await gameService.getSnapshot(roomId);
+    const whiteSeat = gameSnapshot.seats.white;
+    assert.ok(whiteSeat, "white seat should be assigned");
+    const whitePlayer = whiteSeat.player.playerId === alice.playerId ? alice : bob;
+
+    // Place a piece — should succeed in untimed tournament games
+    const result = await gameService.applyAction(roomId, whitePlayer, {
+      type: "place-piece",
+      position: { x: 9, y: 9 },
+    });
+    assert.equal(result.state.currentTurn, "black");
+  });
+});
+
+// ── tournamentReady snapshot field ──
+
+describe("tournamentReady snapshot field", () => {
+  test("timed tournament game snapshot has tournamentReady = false before connect", async () => {
+    const { tournamentService, gameService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: { initialMs: 300_000, incrementMs: 0 } }),
+      "Ready Field"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    const gameSnapshot = await gameService.getSnapshot(roomId);
+    assert.equal(gameSnapshot.tournamentReady, false);
+  });
+
+  test("untimed tournament game snapshot has tournamentReady = true", async () => {
+    const { tournamentService, gameService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2, timeControl: null }),
+      "Untimed Ready"
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const roomId = snapshot.rounds[0].matches[0].roomId;
+    assert.ok(roomId);
+
+    const gameSnapshot = await gameService.getSnapshot(roomId);
+    assert.equal(gameSnapshot.tournamentReady, true);
+  });
+
+  test("non-tournament game snapshot has tournamentReady = undefined", async () => {
+    const { gameService } = createServices();
+    const alice = createPlayer("alice");
+
+    const snapshot = await gameService.createGame(alice);
+    assert.equal(snapshot.tournamentReady, undefined);
+  });
+});
+
+// ── Auto-drop on lobby disconnect ──
+
+describe("Auto-drop on lobby disconnect", () => {
+  test("findRegistrationTournamentsByParticipant returns correct tournaments", async () => {
+    const { tournamentService, tournamentStore } = createServices();
+    const alice = createPlayer("alice");
+
+    const t1 = await tournamentService.createTournament(alice, defaultSettings(), "Active Reg");
+    await tournamentService.registerPlayer(t1.tournamentId, alice);
+
+    const t2 = await tournamentService.createTournament(alice, defaultSettings(), "Another");
+    await tournamentService.registerPlayer(t2.tournamentId, alice);
+
+    // Start t2 so it's no longer in registration
+    const bob = createPlayer("bob");
+    await tournamentService.registerPlayer(t2.tournamentId, bob);
+    await tournamentService.startTournament(t2.tournamentId, "alice");
+
+    const result = await tournamentStore.findRegistrationTournamentsByParticipant("alice");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].tournamentId, t1.tournamentId);
+  });
+});
+
 // ── Rematch blocking ──
 
 describe("Tournament rematch blocking", () => {

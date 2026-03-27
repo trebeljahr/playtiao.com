@@ -54,6 +54,7 @@ type RoomConnections = Map<WebSocket, string>;
 
 const GUEST_ABANDON_TIMEOUT_MS = 5 * 60 * 1000;
 const FIRST_MOVE_TIMEOUT_MS = 30 * 1000;
+const TOURNAMENT_FIRST_MOVE_TIMEOUT_MS = 60 * 1000;
 
 export interface TournamentGameCallback {
   onGameCompleted(roomId: string): Promise<void>;
@@ -71,6 +72,7 @@ export class GameService {
   private readonly clockTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly firstMoveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private tournamentCallback: TournamentGameCallback | null = null;
+  private readonly lobbyDisconnectCallbacks: Array<(playerId: string) => void> = [];
 
   constructor(
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
@@ -87,6 +89,10 @@ export class GameService {
     this.tournamentCallback = svc;
   }
 
+  onLobbyDisconnect(callback: (playerId: string) => void): void {
+    this.lobbyDisconnectCallbacks.push(callback);
+  }
+
   async createTournamentGame(
     player1: PlayerIdentity,
     player2: PlayerIdentity,
@@ -96,10 +102,9 @@ export class GameService {
   ): Promise<StoredMultiplayerRoom> {
     const tc = timeControl ?? null;
     const clockMs = tc ? { white: tc.initialMs, black: tc.initialMs } : null;
-    const willBeActive = true;
-    const firstMoveDeadline = tc
-      ? new Date(Date.now() + FIRST_MOVE_TIMEOUT_MS)
-      : null;
+
+    // Tournament games defer the first-move deadline until both players connect
+    const firstMoveDeadline = null;
 
     for (let attempt = 0; attempt < 12; attempt += 1) {
       const room = this.deriveRoomStatus({
@@ -139,10 +144,7 @@ export class GameService {
           tournamentMatchId: room.tournamentMatchId,
         });
 
-        if (createdRoom.firstMoveDeadline) {
-          this.scheduleFirstMoveTimer(createdRoom);
-        }
-
+        // Timer is NOT scheduled here — it starts when both players connect
         return createdRoom;
       } catch (error) {
         if (this.isDuplicateRoomError(error)) {
@@ -176,6 +178,9 @@ export class GameService {
       userSockets?.delete(socket);
       if (userSockets?.size === 0) {
         this.lobbyConnections.delete(player.playerId);
+        for (const cb of this.lobbyDisconnectCallbacks) {
+          try { cb(player.playerId); } catch { /* best-effort */ }
+        }
       }
     });
   }
@@ -296,6 +301,31 @@ export class GameService {
         this.spectatorIdentities.set(room.id, roomSpectators);
       }
       roomSpectators.set(player.playerId, player);
+    }
+
+    // For timed tournament games: start the first-move timer when both players connect
+    if (
+      room.roomType === "tournament" &&
+      room.timeControl &&
+      room.status === "active" &&
+      !room.lastMoveAt &&
+      !room.firstMoveDeadline &&
+      this.areBothPlayersConnected(room)
+    ) {
+      await this.withLock(this.roomLockKey(room.id), async () => {
+        // Re-fetch inside lock to avoid race
+        const freshRoom = await this.getRoom(room.id);
+        if (freshRoom.firstMoveDeadline || freshRoom.lastMoveAt) return;
+
+        const deadline = new Date(Date.now() + TOURNAMENT_FIRST_MOVE_TIMEOUT_MS);
+        const savedRoom = await this.saveRoom({
+          ...freshRoom,
+          firstMoveDeadline: deadline,
+        });
+        this.scheduleFirstMoveTimer(savedRoom);
+        this.broadcastSnapshot(savedRoom);
+      });
+      return;
     }
 
     this.broadcastSnapshot(room);
@@ -945,6 +975,15 @@ export class GameService {
     return Array.from(this.getConnections(roomId).values()).includes(playerId);
   }
 
+  private areBothPlayersConnected(room: StoredMultiplayerRoom): boolean {
+    const conns = this.connections.get(room.id);
+    if (!conns) return false;
+    const connected = new Set(conns.values());
+    const whiteId = room.seats.white?.playerId;
+    const blackId = room.seats.black?.playerId;
+    return !!(whiteId && blackId && connected.has(whiteId) && connected.has(blackId));
+  }
+
   private toPlayerSlot(roomId: string, player: PlayerIdentity): PlayerSlot {
     return {
       player,
@@ -991,6 +1030,9 @@ export class GameService {
       clock: this.computeLiveClock(room),
       firstMoveDeadline: room.firstMoveDeadline?.toISOString() ?? null,
       tournamentId: room.tournamentId ?? null,
+      tournamentReady: room.roomType === "tournament"
+        ? !!(room.firstMoveDeadline || room.lastMoveAt) || !room.timeControl
+        : undefined,
     };
   }
 
@@ -1087,6 +1129,20 @@ export class GameService {
         409,
         "WAITING_FOR_OPPONENT",
         "The game cannot start until both players have joined."
+      );
+    }
+
+    // Block moves in timed tournament games until both players have connected
+    if (
+      room.roomType === "tournament" &&
+      room.timeControl &&
+      !room.lastMoveAt &&
+      !room.firstMoveDeadline
+    ) {
+      throw new GameServiceError(
+        409,
+        "TOURNAMENT_NOT_STARTED",
+        "Waiting for both players to connect before the game can begin."
       );
     }
 
@@ -1657,6 +1713,8 @@ export class GameService {
 
       // Determine who to requeue: the opponent (they didn't do anything wrong)
       const opponentPlayer = derived.seats[opponentColor];
+      const isTournament = derived.roomType === "tournament";
+      const timeoutSeconds = isTournament ? 60 : 30;
 
       // Send game-aborted message to all connections
       const connections = this.connections.get(roomId);
@@ -1670,9 +1728,11 @@ export class GameService {
           socket.send(JSON.stringify({
             type: "game-aborted",
             reason: isAbsentPlayer
-              ? "You did not make a move within 30 seconds. The game has been cancelled."
-              : "Your opponent did not make a move in time. Finding you a new match...",
-            requeuedForMatchmaking: !isAbsentPlayer,
+              ? `You did not make a move within ${timeoutSeconds} seconds. The game has been cancelled.`
+              : isTournament
+                ? "Your opponent did not make a move in time. The match has been forfeited."
+                : "Your opponent did not make a move in time. Finding you a new match...",
+            requeuedForMatchmaking: isTournament ? false : !isAbsentPlayer,
             timeControl: derived.timeControl,
           }));
         }
@@ -1681,8 +1741,8 @@ export class GameService {
       // Broadcast updated snapshot so game shows as finished
       this.broadcastSnapshot(savedRoom);
 
-      // Re-enter the opponent into matchmaking
-      if (opponentPlayer) {
+      // Re-enter the opponent into matchmaking (skip for tournament games)
+      if (!isTournament && opponentPlayer) {
         try {
           await this.enterMatchmaking(opponentPlayer, derived.timeControl);
         } catch {

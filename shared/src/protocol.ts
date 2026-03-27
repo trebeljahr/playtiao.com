@@ -62,6 +62,8 @@ export type MultiplayerSnapshot = {
   firstMoveDeadline: string | null;
   /** Tournament ID if this is a tournament game */
   tournamentId?: string | null;
+  /** For timed tournament games: true once both players have connected and the game can begin */
+  tournamentReady?: boolean;
 };
 
 export type FinishReason = "captured" | "forfeit" | "timeout";

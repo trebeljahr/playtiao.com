@@ -255,6 +255,22 @@ export class TournamentService implements TournamentGameCallback {
   ) {
     // Wire up the callback so GameService notifies us on game completion
     this.gameService.setTournamentService(this);
+
+    // Auto-drop players from registration-phase tournaments when they disconnect
+    this.gameService.onLobbyDisconnect((playerId) => {
+      void this.handleLobbyDisconnect(playerId);
+    });
+  }
+
+  private async handleLobbyDisconnect(playerId: string): Promise<void> {
+    const tournaments = await this.store.findRegistrationTournamentsByParticipant(playerId);
+    for (const t of tournaments) {
+      try {
+        await this.unregisterPlayer(t.tournamentId, playerId);
+      } catch {
+        // Best-effort: player may have already been unregistered
+      }
+    }
   }
 
   // ── Lifecycle ──

@@ -48,8 +48,7 @@ export function TournamentCreationForm({
   const [timeControlIdx, setTimeControlIdx] = useState(2); // Default: 5 min
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(16);
-  const [minPlayers, setMinPlayers] = useState(4);
+  const [maxPlayers, setMaxPlayers] = useState(8);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [inviteCode, setInviteCode] = useState("");
   const [groupSize, setGroupSize] = useState(4);
@@ -65,7 +64,7 @@ export function TournamentCreationForm({
       scheduling: "simultaneous",
       noShow: { type: "auto-forfeit", timeoutMs: 60_000 },
       visibility,
-      minPlayers,
+      minPlayers: 2,
       maxPlayers,
       ...(format === "groups-knockout" ? { groupSize } : {}),
       ...(visibility === "private" && inviteCode ? { inviteCode } : {}),
@@ -126,26 +125,19 @@ export function TournamentCreationForm({
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Min players</label>
-                <Input
-                  type="number"
-                  min={2}
-                  max={128}
-                  value={minPlayers}
-                  onChange={(e) => setMinPlayers(Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Max players</label>
-                <Input
-                  type="number"
-                  min={2}
-                  max={128}
-                  value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                />
+            <div>
+              <label className="text-xs text-muted-foreground">Max players</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {[4, 8, 16, 32, 64].map((n) => (
+                  <Button
+                    key={n}
+                    variant={maxPlayers === n ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMaxPlayers(n)}
+                  >
+                    {n}
+                  </Button>
+                ))}
               </div>
             </div>
 

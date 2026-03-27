@@ -86,7 +86,7 @@ export function TournamentListPage({
         onLogout={onLogout}
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 pb-5 pt-20">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-3xl font-bold">Tournaments</h1>
           {isAccount && (

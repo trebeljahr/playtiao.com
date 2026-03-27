@@ -431,8 +431,14 @@ export function MultiplayerGamePage({
     !!playerSeat &&
     multiplayerSnapshot.state.currentTurn === playerSeat;
 
+  const isTournamentUnstarted =
+    multiplayerSnapshot?.roomType === "tournament" &&
+    multiplayerSnapshot?.status === "active" &&
+    multiplayerSnapshot?.tournamentReady === false;
+
   const multiplayerWaitingOnOpponent =
     multiplayerSnapshot?.status === "active" &&
+    !isTournamentUnstarted &&
     !!playerSeat &&
     multiplayerSnapshot.state.currentTurn !== playerSeat;
 
@@ -442,11 +448,13 @@ export function MultiplayerGamePage({
       ? `${formatPlayerColor(winner)} wins`
       : multiplayerSnapshot.status === "waiting"
         ? "Waiting for player two"
-        : isSpectator
-          ? "Spectating"
-          : multiplayerYourTurn
-            ? "Your move"
-            : "Waiting for opponent";
+        : isTournamentUnstarted
+          ? "Waiting for opponent to connect"
+          : isSpectator
+            ? "Spectating"
+            : multiplayerYourTurn
+              ? "Your move"
+              : "Waiting for opponent";
 
   const [copyFeedbackKey, setCopyFeedbackKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
@@ -607,7 +615,7 @@ export function MultiplayerGamePage({
                   confirmReady={true}
                   lastMove={reviewLastMove}
                   onPointClick={isReviewMode ? undefined : handleBoardClick}
-                  disabled={isReviewMode || !multiplayerYourTurn}
+                  disabled={isReviewMode || !multiplayerYourTurn || isTournamentUnstarted}
                   onUndoLastJump={
                     isReviewMode
                       ? undefined
@@ -627,11 +635,13 @@ export function MultiplayerGamePage({
                 />
               )}
               {/* Review nav buttons moved to card header pill area */}
-              {multiplayerSnapshot?.status === "waiting" && (
+              {(multiplayerSnapshot?.status === "waiting" || isTournamentUnstarted) && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
                     <HourglassSpinner className="text-[#7b5f3f]" />
-                    Waiting For Opponent...
+                    {isTournamentUnstarted
+                      ? "Waiting for opponent to connect..."
+                      : "Waiting For Opponent..."}
                   </div>
                 </div>
               )}
