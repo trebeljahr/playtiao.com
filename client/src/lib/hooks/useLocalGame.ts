@@ -76,12 +76,25 @@ export function useLocalGame() {
 
       setLocalError(null);
 
+      const hasPending = localGame.pendingJump.length > 0;
+
+      // During a pending jump, clicking the jump destination confirms.
+      // This handles the case where localSelection was cleared by clicking
+      // elsewhere and then clicking back on the jumping piece.
+      if (hasPending) {
+        const dest = localGame.pendingJump[localGame.pendingJump.length - 1].to;
+        if (dest.x === position.x && dest.y === position.y) {
+          handleLocalConfirmPendingJump();
+          return;
+        }
+      }
+
       if (localSelection) {
         if (
           localSelection.x === position.x &&
           localSelection.y === position.y
         ) {
-          if (localGame.pendingJump.length > 0) {
+          if (hasPending) {
             handleLocalConfirmPendingJump();
           } else {
             setLocalSelection(null);
@@ -101,6 +114,12 @@ export function useLocalGame() {
           }
           return;
         }
+      }
+
+      // Don't allow selecting a different piece or placing during a pending
+      // jump — the player must confirm or undo the current jump first.
+      if (hasPending) {
+        return;
       }
 
       const placement = canPlacePiece(localGame, position);
