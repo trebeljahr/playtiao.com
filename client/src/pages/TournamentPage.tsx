@@ -16,6 +16,7 @@ import {
   cancelTournament as apiCancelTournament,
   randomizeTournamentSeeding,
 } from "@/lib/api";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { toastError } from "@/lib/errors";
 import { toast } from "sonner";
 
@@ -46,6 +47,7 @@ export function TournamentPage({
   const playerId = auth?.player?.playerId;
   const isAccount = auth?.player?.kind === "account";
   const [busy, setBusy] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   const onMatchReady = useCallback(
     (matchId: string, roomId: string) => {
@@ -68,7 +70,7 @@ export function TournamentPage({
   if (loading && !tournament) {
     return (
       <>
-        <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+        <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
         <div className="mx-auto max-w-4xl px-4 py-8">
           <p className="text-muted-foreground">Loading tournament...</p>
         </div>
@@ -79,7 +81,7 @@ export function TournamentPage({
   if (error || !tournament) {
     return (
       <>
-        <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+        <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
         <div className="mx-auto max-w-4xl px-4 py-8">
           <p className="text-red-600">{error ?? "Tournament not found."}</p>
         </div>
@@ -118,7 +120,7 @@ export function TournamentPage({
 
   return (
     <>
-      <Navbar mode="lobby" auth={auth} onOpenAuth={onOpenAuth} onLogout={onLogout} />
+      <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
 
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         {/* Header */}
@@ -255,7 +257,12 @@ export function TournamentPage({
                         <span className="w-6 text-right text-xs text-muted-foreground">
                           #{p.seed}
                         </span>
-                        <span className="truncate">{p.displayName}</span>
+                        <PlayerIdentityRow
+                          player={p}
+                          currentPlayerId={playerId}
+                          avatarClassName="h-6 w-6"
+                          nameClassName="text-sm"
+                        />
                       </div>
                     ))}
                 </div>
@@ -366,19 +373,28 @@ export function TournamentPage({
         )}
 
         {/* Winner banner */}
-        {tournament.status === "finished" && (
-          <Card className="border-amber-400/60 bg-amber-50/50">
-            <CardContent className="py-6 text-center">
-              <p className="text-sm font-semibold uppercase tracking-wider text-amber-600 mb-1">
-                Winner
-              </p>
-              <p className="text-xl font-bold">
-                {tournament.participants.find((p) => p.status === "winner")
-                  ?.displayName ?? "Unknown"}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {tournament.status === "finished" && (() => {
+          const winner = tournament.participants.find((p) => p.status === "winner");
+          return (
+            <Card className="border-amber-400/60 bg-amber-50/50">
+              <CardContent className="flex flex-col items-center gap-2 py-6">
+                <p className="text-sm font-semibold uppercase tracking-wider text-amber-600">
+                  Winner
+                </p>
+                {winner ? (
+                  <PlayerIdentityRow
+                    player={winner}
+                    avatarClassName="h-10 w-10"
+                    nameClassName="text-xl font-bold"
+                    className="gap-3"
+                  />
+                ) : (
+                  <p className="text-xl font-bold">Unknown</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
     </>
   );

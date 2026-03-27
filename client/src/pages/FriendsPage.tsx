@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/Navbar";
-import { PlayerOverviewAvatar } from "@/components/game/GameShared";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { createMultiplayerGame } from "@/lib/api";
@@ -103,10 +103,7 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
               <div className="space-y-2">
                 {social.friendSearchResults.map((result) => (
                   <div key={result.player.playerId} className="flex items-center justify-between p-2 rounded-xl bg-white/40">
-                    <div className="flex items-center gap-2">
-                      <PlayerOverviewAvatar player={result.player} />
-                      <span className="text-sm font-medium">{result.player.displayName}</span>
-                    </div>
+                    <PlayerIdentityRow player={result.player} />
                     {result.relationship === "friend" ? (
                       <Badge variant="outline">Friend</Badge>
                     ) : result.relationship === "outgoing-request" ? (
@@ -128,10 +125,7 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
               <CardContent className="space-y-2">
                 {social.socialOverview.incomingFriendRequests.map(req => (
                   <div key={req.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
-                    <div className="flex items-center gap-2">
-                      <PlayerOverviewAvatar player={req} />
-                      <span className="font-medium">{req.displayName}</span>
-                    </div>
+                    <PlayerIdentityRow player={req} nameClassName="font-medium" />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => social.handleAcceptFriendRequest(req.playerId)}>Accept</Button>
                       <Button size="sm" variant="ghost" onClick={() => social.handleDeclineFriendRequest(req.playerId)}>Decline</Button>
@@ -147,14 +141,8 @@ export function FriendsPage({ auth, onOpenAuth, onLogout }: FriendsPageProps) {
               <CardContent className="space-y-2">
                 {social.socialOverview.friends.map(friend => (
                   <div key={friend.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
+                    <PlayerIdentityRow player={friend} online={friend.online} nameClassName="font-medium" />
                     <div className="flex items-center gap-2">
-                      <PlayerOverviewAvatar player={friend} />
-                      <span className="font-medium">{friend.displayName}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={friend.online ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
-                        {friend.online ? "Online" : "Offline"}
-                      </Badge>
                       <Button
                         size="sm"
                         variant="secondary"

@@ -1,4 +1,5 @@
 import type { TournamentGroupStanding } from "@shared";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 
 export function StandingsTable({
   standings,
@@ -32,8 +33,13 @@ export function StandingsTable({
               }`}
             >
               <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-              <td className="px-3 py-2 truncate max-w-[160px]">
-                {s.displayName}
+              <td className="px-3 py-2 max-w-[200px]">
+                <PlayerIdentityRow
+                  player={s}
+                  currentPlayerId={highlightPlayerId}
+                  avatarClassName="h-6 w-6"
+                  nameClassName="text-sm"
+                />
               </td>
               <td className="px-3 py-2 text-center">{s.wins}</td>
               <td className="px-3 py-2 text-center">{s.losses}</td>

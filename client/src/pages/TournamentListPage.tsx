@@ -50,6 +50,7 @@ export function TournamentListPage({
   const navigate = useNavigate();
   const isAccount = auth?.player?.kind === "account";
   const { publicTournaments, myTournaments, loading, refresh } = useTournamentList(auth);
+  const [navOpen, setNavOpen] = useState(false);
   const [tab, setTab] = useState<"browse" | "my">("browse");
   const [createOpen, setCreateOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
@@ -78,6 +79,9 @@ export function TournamentListPage({
       <Navbar
         mode="lobby"
         auth={auth}
+        navOpen={navOpen}
+        onToggleNav={() => setNavOpen(!navOpen)}
+        onCloseNav={() => setNavOpen(false)}
         onOpenAuth={onOpenAuth}
         onLogout={onLogout}
       />

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useToggleSound } from "@/lib/useSoundPreference";
+import { PlayerOverviewAvatar } from "@/components/game/GameShared";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 
 export type AuthDialogMode = "login" | "signup";
 export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "tutorial";
@@ -55,38 +57,6 @@ function HamburgerIcon({ open }: { open: boolean }) {
         transition={navMotionTransition}
       />
     </span>
-  );
-}
-
-function PlayerAvatar({ auth }: { auth: AuthResponse | null }) {
-  const player = auth?.player;
-  const isAnonymous = player?.kind !== "account";
-
-  if (player?.profilePicture) {
-    return (
-      <img
-        src={player.profilePicture}
-        alt={player.displayName}
-        className="h-10 w-10 rounded-full border border-black/10 object-cover shadow-sm"
-      />
-    );
-  }
-
-  if (isAnonymous) {
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a37d48]/35 bg-[linear-gradient(180deg,#fbf2dd,#edd7ac)] text-[#594125] shadow-sm">
-        <span className="relative block h-6 w-6">
-          <span className="absolute left-1/2 top-[2px] h-2.5 w-2.5 -translate-x-1/2 rounded-full border border-current" />
-          <span className="absolute bottom-[2px] left-1/2 h-3.5 w-5 -translate-x-1/2 rounded-t-full border border-current border-b-0" />
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a37d48]/35 bg-[linear-gradient(180deg,#f4ecde,#e1cda9)] font-display text-lg text-[#2e2217] shadow-sm">
-      {player.displayName.slice(0, 1).toUpperCase()}
-    </div>
   );
 }
 
@@ -180,7 +150,11 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
     <div className="flex items-center gap-1.5">
       <SoundToggle />
       <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
-        <PlayerAvatar auth={auth} />
+        <PlayerOverviewAvatar
+          player={{ displayName: isAnonymous ? "Anonymous" : player.displayName, profilePicture: player?.profilePicture }}
+          anonymous={isAnonymous}
+          className="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
             {isAnonymous ? "Anonymous" : player.displayName}
@@ -245,6 +219,7 @@ export function Navbar({
   const { pendingFriendRequestCount, incomingInvitationCount } = useSocialNotifications();
   const player = auth?.player;
   const isAccount = player?.kind === "account";
+  const isAnonymous = player?.kind !== "account";
   const gameMode =
     mode === "local" || mode === "computer" || mode === "multiplayer" || mode === "tutorial";
   const minimalMode = gameMode || mode === "lobby";
@@ -424,12 +399,13 @@ export function Navbar({
 
       <div className="mt-6 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4 text-left">
         <div className="flex items-center gap-3 text-left">
-          <PlayerAvatar auth={auth} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold">
-              {player?.kind === "account" ? player.displayName : "Anonymous"}
-            </p>
-          </div>
+          <PlayerIdentityRow
+            player={{ displayName: isAnonymous ? "Anonymous" : player?.displayName, profilePicture: player?.profilePicture }}
+            anonymous={isAnonymous}
+            avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
+            nameClassName="text-base font-semibold"
+            className="min-w-0 flex-1 gap-3"
+          />
           <SoundToggle />
         </div>
 

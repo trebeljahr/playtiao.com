@@ -38,7 +38,7 @@ function generateMatchId(roundIndex: number, matchIndex: number, prefix = ""): s
 }
 
 function participantToMatchPlayer(p: TournamentParticipant): TournamentMatchPlayer {
-  return { playerId: p.playerId, displayName: p.displayName, seed: p.seed };
+  return { playerId: p.playerId, displayName: p.displayName, profilePicture: p.profilePicture, seed: p.seed };
 }
 
 // ── Bracket Generation: Round Robin (circle method) ──
@@ -232,6 +232,7 @@ function generateGroups(
     group.standings = groupParticipants.map((p) => ({
       playerId: p.playerId,
       displayName: p.displayName,
+      profilePicture: p.profilePicture,
       seed: p.seed,
       wins: 0,
       losses: 0,

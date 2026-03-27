@@ -1,6 +1,7 @@
 import type { TournamentMatch } from "@shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useNavigate } from "react-router-dom";
 
 function statusLabel(status: TournamentMatch["status"]): string {
@@ -70,9 +71,17 @@ export function MatchCard({
               <span className="w-5 text-right text-xs text-muted-foreground">
                 #{player?.seed ?? "?"}
               </span>
-              <span className="truncate">
-                {player?.displayName ?? "TBD"}
-              </span>
+              {player ? (
+                <PlayerIdentityRow
+                  player={player}
+                  currentPlayerId={currentPlayerId}
+                  avatarClassName="h-6 w-6"
+                  nameClassName="text-sm"
+                  className="min-w-0 flex-1"
+                />
+              ) : (
+                <span className="truncate text-muted-foreground">TBD</span>
+              )}
               {match.status !== "pending" && match.status !== "bye" && (
                 <span className="text-xs text-muted-foreground">
                   {match.score[i]}

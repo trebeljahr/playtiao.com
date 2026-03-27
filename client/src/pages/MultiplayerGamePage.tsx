@@ -33,6 +33,7 @@ import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { TournamentContextBar } from "@/components/tournament/TournamentContextBar";
 import confetti from "canvas-confetti";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import {
   isGameOver,
   getWinner,
@@ -1216,22 +1217,12 @@ export function MultiplayerGamePage({
                   key={friend.playerId}
                   className="flex items-center justify-between rounded-2xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <PlayerOverviewAvatar player={friend} />
-                    <span className="text-sm font-semibold text-[#2b1e14]">
-                      {friend.displayName}
-                    </span>
-                    <Badge
-                      className={cn(
-                        "text-xs",
-                        friend.online
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500",
-                      )}
-                    >
-                      {friend.online ? "Online" : "Offline"}
-                    </Badge>
-                  </div>
+                  <PlayerIdentityRow
+                    player={friend}
+                    online={friend.online}
+                    nameClassName="text-sm font-semibold text-[#2b1e14]"
+                    className="gap-3"
+                  />
                   {alreadyInRoom ? (
                     <Badge variant="outline" className="text-xs text-[#43513f]">
                       In game
@@ -1366,18 +1357,13 @@ export function MultiplayerGamePage({
                     key={specId}
                     className="flex items-center justify-between rounded-2xl border border-[#d8c29c] bg-[#fffaf1] px-4 py-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <PlayerOverviewAvatar player={slot.player} />
-                        <ConnectionDot
-                          online={slot.online}
-                          className="absolute -bottom-0.5 -right-0.5 ring-2 ring-[#fffaf1]"
-                        />
-                      </div>
-                      <span className="text-sm font-semibold text-[#2b1e14]">
-                        {formatPlayerName(slot.player, auth?.player.playerId)}
-                      </span>
-                    </div>
+                    <PlayerIdentityRow
+                      player={slot.player}
+                      currentPlayerId={auth?.player.playerId}
+                      online={slot.online}
+                      nameClassName="text-sm font-semibold text-[#2b1e14]"
+                      className="gap-3"
+                    />
                     <div className="flex items-center gap-2">
                       {isFriend && (
                         <Badge className="text-xs bg-emerald-100 text-emerald-700">

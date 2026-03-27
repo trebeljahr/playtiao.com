@@ -68,6 +68,7 @@ export type TournamentMatchStatus =
 export type TournamentMatchPlayer = {
   playerId: string;
   displayName: string;
+  profilePicture?: string;
   seed: number;
 };
 
@@ -101,6 +102,7 @@ export type TournamentRound = {
 export type TournamentGroupStanding = {
   playerId: string;
   displayName: string;
+  profilePicture?: string;
   seed: number;
   wins: number;
   losses: number;
