@@ -135,7 +135,7 @@ export function useLocalGame() {
       }
 
       const tile = localGame.positions[position.y]?.[position.x];
-      if (tile === localGame.currentTurn) {
+      if (tile === localGame.currentTurn && localGame.pendingJump.length === 0) {
         const jumpOrigins = getJumpTargets(localGame, position);
         if (jumpOrigins.length > 0) {
           setLocalSelection(position);

@@ -365,10 +365,35 @@ export function MultiplayerGamePage({
   const [copyFeedbackKey, setCopyFeedbackKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
+  function copyToClipboard(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    }
+    return fallbackCopy(text);
+  }
+
+  function fallbackCopy(text: string): Promise<void> {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand("copy");
+      return Promise.resolve();
+    } catch {
+      return Promise.reject(new Error("Copy failed"));
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
   async function handleCopyGameId() {
     if (!multiplayerSnapshot) return;
     try {
-      await navigator.clipboard.writeText(multiplayerSnapshot.gameId);
+      await copyToClipboard(multiplayerSnapshot.gameId);
       setCopyFeedback("Copied!");
       setCopyFeedbackKey("game-id");
       toast.success(`Copied Game ID ${multiplayerSnapshot.gameId}`);
@@ -385,7 +410,7 @@ export function MultiplayerGamePage({
     if (!multiplayerSnapshot) return;
     try {
       const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}`;
-      await navigator.clipboard.writeText(url);
+      await copyToClipboard(url);
       setCopyFeedback("Link copied!");
       setCopyFeedbackKey("share-link");
       toast.success("Copied Share Link");
@@ -440,7 +465,7 @@ export function MultiplayerGamePage({
       return;
     }
 
-    if (tile === playerSeat) {
+    if (tile === playerSeat && state.pendingJump.length === 0) {
       setMultiplayerSelection(position);
       return;
     }
@@ -458,7 +483,7 @@ export function MultiplayerGamePage({
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
 
   const boardWrapStyle = {
-    maxWidth: "min(100%, calc(100dvh - 5rem))",
+    maxWidth: "min(100%, calc(100svh - 5rem))",
     aspectRatio: "1/1",
   };
 
@@ -532,9 +557,11 @@ export function MultiplayerGamePage({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <GamePanelBrand />
-                      <Badge className="w-fit bg-[#eee3cf] text-[#5f4932] mt-1">
-                        Multiplayer
-                      </Badge>
+                      <span className="hidden sm:contents">
+                        <Badge className="w-fit bg-[#eee3cf] text-[#5f4932] mt-1">
+                          Multiplayer
+                        </Badge>
+                      </span>
                     </div>
                     <div className="flex min-w-0 shrink justify-end">
                       {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null ? (
@@ -589,7 +616,7 @@ export function MultiplayerGamePage({
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
+                            className="flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
                           >
                             Your move
                           </motion.div>

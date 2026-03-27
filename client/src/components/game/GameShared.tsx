@@ -538,7 +538,7 @@ export function AnimatedScoreTile({
               <button
                 type="button"
                 title={`Send friend request to ${playerInfo.player.displayName}`}
-                className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/35"
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/35"
                 onClick={playerInfo.onAddFriend}
                 disabled={playerInfo.addFriendBusy}
               >
