@@ -17,6 +17,7 @@ COPY --from=build /app/client/.next ./.next
 COPY --from=build /app/client/public ./public
 COPY --from=build /app/client/package*.json ./
 COPY --from=build /app/client/next.config.mjs ./
+COPY --from=build /app/client/server.mjs ./
 COPY --from=build /app/client/node_modules ./node_modules
 
 ENV NODE_ENV=production
@@ -27,4 +28,4 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=5 \
   CMD wget -q -O /dev/null http://127.0.0.1:80/ || exit 1
 
-CMD ["npx", "next", "start", "-p", "80"]
+CMD ["node", "server.mjs"]

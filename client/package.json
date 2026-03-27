@@ -6,9 +6,9 @@
     "node": "22.20.x"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.mjs",
     "typecheck": "tsc",
     "test": "vitest run"
   },
@@ -17,6 +17,7 @@
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.7",
+    "http-proxy": "^1.18.1",
     "next": "^14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
