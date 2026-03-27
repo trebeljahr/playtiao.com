@@ -28,6 +28,8 @@ import { TutorialPage } from "./pages/TutorialPage";
 
 const ANONYMOUS_NAME = "Anonymous";
 
+console.log(`Tiao v${__APP_VERSION__}`);
+
 export function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -45,6 +47,7 @@ export function App() {
   const [signupDisplayName, setSignupDisplayName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
 
   useEffect(() => {
     if (!appError) {
@@ -164,6 +167,11 @@ export function App() {
   }
 
   async function handleSignupSubmit() {
+    if (signupPassword !== signupConfirmPassword) {
+      setAuthDialogError("Passwords do not match.");
+      return;
+    }
+
     setAuthBusy(true);
     setAuthDialogError(null);
 
@@ -458,6 +466,24 @@ export function App() {
                   type="password"
                   value={signupPassword}
                   onChange={(event) => setSignupPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="signup-confirm-password"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                >
+                  Confirm Password
+                </label>
+                <Input
+                  id="signup-confirm-password"
+                  name="confirm-password"
+                  type="password"
+                  value={signupConfirmPassword}
+                  onChange={(event) => setSignupConfirmPassword(event.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
                   required
