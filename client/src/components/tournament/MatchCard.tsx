@@ -74,6 +74,16 @@ export function MatchCard({
               <span className="w-5 text-right text-xs text-muted-foreground">
                 #{player?.seed ?? "?"}
               </span>
+              {match.playerColors?.[i] && (
+                <span
+                  className={`h-3 w-3 shrink-0 rounded-full border ${
+                    match.playerColors[i] === "white"
+                      ? "border-slate-300 bg-white"
+                      : "border-slate-400 bg-slate-800"
+                  }`}
+                  title={match.playerColors[i] === "white" ? "White" : "Black"}
+                />
+              )}
               {player ? (
                 <PlayerIdentityRow
                   player={player}

@@ -1,4 +1,5 @@
 import type { FinishReason, PlayerIdentity, TimeControl } from "./protocol";
+import type { PlayerColor } from "./tiao";
 
 // ── Format & Status ──
 
@@ -84,6 +85,8 @@ export type TournamentMatch = {
   status: TournamentMatchStatus;
   finishReason?: FinishReason | null;
   historyLength?: number;
+  /** Color each player slot was assigned: [player0Color, player1Color] */
+  playerColors?: [PlayerColor | null, PlayerColor | null];
   scheduledAt?: string;
   deadline?: string;
 };

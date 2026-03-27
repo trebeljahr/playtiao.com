@@ -52,6 +52,7 @@ const TournamentMatchSchema = new Schema(
     },
     finishReason: { type: String, enum: ["captured", "forfeit", "timeout"], default: null },
     historyLength: { type: Number },
+    playerColors: { type: [String], default: undefined },
     scheduledAt: { type: String },
     deadline: { type: String },
   },

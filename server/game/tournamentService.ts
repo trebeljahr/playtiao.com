@@ -1072,6 +1072,13 @@ export class TournamentService implements TournamentGameCallback {
           match.roomId = room.id;
           match.status = "active";
 
+          // Record which color each player was assigned
+          const p0Id = match.players[0].playerId;
+          match.playerColors = [
+            room.seats.white?.playerId === p0Id ? "white" : "black",
+            room.seats.white?.playerId === p0Id ? "black" : "white",
+          ];
+
           // Notify players that their match is ready
           this.gameService.broadcastLobby(match.players[0].playerId, {
             type: "tournament-match-ready",
