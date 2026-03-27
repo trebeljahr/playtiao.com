@@ -212,13 +212,20 @@ export function MultiplayerGamePage({
 
   const displayState = reviewBoardState ?? multiplayerSnapshot?.state ?? null;
 
-  const reviewLastMove =
-    isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null && reviewMoveIndex >= 0
-      ? (() => {
-          const rec = multiplayerSnapshot.state.history[reviewMoveIndex];
-          return rec && isBoardMove(rec) ? rec : null;
-        })()
-      : null;
+  const reviewLastMove = (() => {
+    if (isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null && reviewMoveIndex >= 0) {
+      const rec = multiplayerSnapshot.state.history[reviewMoveIndex];
+      return rec && isBoardMove(rec) ? rec : null;
+    }
+    // During live play, show the most recent board move
+    if (multiplayerSnapshot) {
+      const history = multiplayerSnapshot.state.history;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (isBoardMove(history[i])) return history[i];
+      }
+    }
+    return null;
+  })();
 
   const playerSeat =
     multiplayerSnapshot && auth

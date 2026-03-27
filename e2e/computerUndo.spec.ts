@@ -162,20 +162,26 @@ test.describe('Computer game undo', () => {
     expect(blackAfterCycle2).toBeLessThanOrEqual(blackAfterCycle1);
   });
 
-  test('last move arrows are cleared after undo', async ({ page }) => {
+  test('last move indicators update correctly after undo', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
     await expect(cell(page, 9, 9)).toBeVisible();
 
     const humanColor = await waitForHumanTurn(page);
+    const computerColor = humanColor === 'white' ? 'black' : 'white';
     const humanLabel = humanColor === 'white' ? 'White' : 'Black';
+
+    // Count baseline last-move indicators (computer may have already placed)
+    const baselineLastMove = await page.locator('[data-last-move]').count();
 
     // Human places at an enabled empty cell
     const candidates = [9, 8, 10, 7, 11, 6, 5];
+    let target = { x: 9, y: 9 };
     for (const n of candidates) {
       const piece = await cell(page, n, n).getAttribute('data-piece');
       if (!piece) {
         await expect(cell(page, n, n)).toBeEnabled({ timeout: 20000 });
+        target = { x: n, y: n };
         await cell(page, n, n).click();
         await expect(cell(page, n, n)).toHaveAttribute('data-piece', humanColor);
         break;
@@ -185,12 +191,19 @@ test.describe('Computer game undo', () => {
     // Wait for AI to respond
     await expect(page.locator(`text=${humanLabel} to move`)).toBeVisible({ timeout: 10000 });
 
-    // After undo, no last-move indicators should remain
+    // After undo, last-move indicator should show the previous move
+    // (AI's opening move if computer went first, or nothing if human went first)
     await page.locator('button:has-text("Undo move")').click();
+    await expect(page.locator(`text=${humanLabel} to move`)).toBeVisible({ timeout: 5000 });
 
-    await expect(page.locator('[class*="lastmove"]')).toHaveCount(0, { timeout: 2000 });
-    const jumpTrailArrows = await page.locator('g[class*="lastmove"], line[class*="lastmove"]').count();
-    expect(jumpTrailArrows).toBe(0);
+    const lastMoveCount = await page.locator('[data-last-move]').count();
+    if (computerColor === 'white') {
+      // Computer went first — its opening move should be highlighted
+      expect(lastMoveCount).toBeGreaterThan(0);
+    } else {
+      // Human went first — no moves remain after undo, no indicators
+      expect(lastMoveCount).toBe(0);
+    }
   });
 
   test('undo goes back one round, not to the beginning (no restart)', async ({ page }) => {

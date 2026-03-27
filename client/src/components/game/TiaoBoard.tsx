@@ -567,6 +567,7 @@ export function TiaoBoard({
               type="button"
               data-testid={`cell-${position.x}-${position.y}`}
               data-piece={piece ?? undefined}
+              data-last-move={isLastMove || undefined}
               disabled={disabled}
               onClick={() => handleButtonClick(position)}
               onPointerEnter={() => {
