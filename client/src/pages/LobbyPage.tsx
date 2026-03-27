@@ -607,7 +607,7 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mx-auto sm:max-w-md"
+            className="mx-auto md:max-w-md"
           >
             <Card className={cn("overflow-hidden shadow-lg", paperCard)}>
               <CardHeader className="pb-3">
