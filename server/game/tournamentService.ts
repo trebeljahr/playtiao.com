@@ -20,6 +20,7 @@ import { StoredMultiplayerRoom, getPlayerColorForRoom } from "./gameStore";
 import { LockProvider, InMemoryLockProvider } from "./lockProvider";
 import { TournamentStore, StoredTournament, MongoTournamentStore } from "./tournamentStore";
 import { getWinner } from "../../shared/src";
+import GameAccount from "../models/GameAccount";
 
 // ── Helpers ──
 
@@ -37,8 +38,27 @@ function generateMatchId(roundIndex: number, matchIndex: number, prefix = ""): s
   return `${prefix}R${roundIndex}M${matchIndex}`;
 }
 
+type PlayerProfile = { displayName: string; profilePicture?: string };
+
+async function fetchPlayerProfiles(playerIds: string[]): Promise<Map<string, PlayerProfile>> {
+  const map = new Map<string, PlayerProfile>();
+  if (playerIds.length === 0) return map;
+  try {
+    const accounts = await GameAccount.find(
+      { _id: { $in: playerIds } },
+      { displayName: 1, profilePicture: 1 }
+    ).lean().exec();
+    for (const a of accounts) {
+      map.set(String(a._id), { displayName: a.displayName, profilePicture: a.profilePicture });
+    }
+  } catch {
+    // Graceful fallback when DB is unavailable (e.g. in-memory test stores)
+  }
+  return map;
+}
+
 function participantToMatchPlayer(p: TournamentParticipant): TournamentMatchPlayer {
-  return { playerId: p.playerId, displayName: p.displayName, profilePicture: p.profilePicture, seed: p.seed };
+  return { playerId: p.playerId, displayName: p.displayName, seed: p.seed };
 }
 
 // ── Bracket Generation: Round Robin (circle method) ──
@@ -232,7 +252,6 @@ function generateGroups(
     group.standings = groupParticipants.map((p) => ({
       playerId: p.playerId,
       displayName: p.displayName,
-      profilePicture: p.profilePicture,
       seed: p.seed,
       wins: 0,
       losses: 0,
@@ -337,7 +356,6 @@ export class TournamentService implements TournamentGameCallback {
       tournament.participants.push({
         playerId: player.playerId,
         displayName: player.displayName,
-        profilePicture: player.profilePicture,
         seed: tournament.participants.length + 1,
         status: "registered",
       });
@@ -1002,6 +1020,18 @@ export class TournamentService implements TournamentGameCallback {
       allRounds.push(...group.rounds);
     }
 
+    // Collect player IDs that need rooms and fetch fresh profiles
+    const playerIds = new Set<string>();
+    for (const round of allRounds) {
+      if (round.status !== "active") continue;
+      for (const match of round.matches) {
+        if (match.status !== "pending" || match.roomId) continue;
+        if (match.players[0]) playerIds.add(match.players[0].playerId);
+        if (match.players[1]) playerIds.add(match.players[1].playerId);
+      }
+    }
+    const profiles = await fetchPlayerProfiles([...playerIds]);
+
     for (const round of allRounds) {
       if (round.status !== "active") continue;
 
@@ -1010,27 +1040,23 @@ export class TournamentService implements TournamentGameCallback {
         if (match.roomId) continue;
         if (!match.players[0] || !match.players[1]) continue;
 
-        // Find full participant identities
-        const p1 = tournament.participants.find(
-          (p) => p.playerId === match.players[0]!.playerId
-        );
-        const p2 = tournament.participants.find(
-          (p) => p.playerId === match.players[1]!.playerId
-        );
-        if (!p1 || !p2) continue;
+        const p0 = match.players[0];
+        const p1 = match.players[1];
+        const prof1 = profiles.get(p0.playerId);
+        const prof2 = profiles.get(p1.playerId);
 
         try {
           const identity1: PlayerIdentity = {
-            playerId: p1.playerId,
-            displayName: p1.displayName,
+            playerId: p0.playerId,
+            displayName: prof1?.displayName ?? p0.displayName,
             kind: "account",
-            profilePicture: p1.profilePicture,
+            profilePicture: prof1?.profilePicture,
           };
           const identity2: PlayerIdentity = {
-            playerId: p2.playerId,
-            displayName: p2.displayName,
+            playerId: p1.playerId,
+            displayName: prof2?.displayName ?? p1.displayName,
             kind: "account",
-            profilePicture: p2.profilePicture,
+            profilePicture: prof2?.profilePicture,
           };
 
           const room = await this.gameService.createTournamentGame(
@@ -1045,13 +1071,13 @@ export class TournamentService implements TournamentGameCallback {
           match.status = "active";
 
           // Notify players that their match is ready
-          this.gameService.broadcastLobby(p1.playerId, {
+          this.gameService.broadcastLobby(match.players[0].playerId, {
             type: "tournament-match-ready",
             tournamentId: tournament.tournamentId,
             matchId: match.matchId,
             roomId: room.id,
           });
-          this.gameService.broadcastLobby(p2.playerId, {
+          this.gameService.broadcastLobby(match.players[1].playerId, {
             type: "tournament-match-ready",
             tournamentId: tournament.tournamentId,
             matchId: match.matchId,
@@ -1098,7 +1124,61 @@ export class TournamentService implements TournamentGameCallback {
 
   // ── Serialization ──
 
-  private toSnapshot(t: StoredTournament): TournamentSnapshot {
+  private async toSnapshot(t: StoredTournament): Promise<TournamentSnapshot> {
+    // Collect all unique player IDs across participants, matches, and standings
+    const playerIds = new Set<string>();
+    for (const p of t.participants) playerIds.add(p.playerId);
+    const collectFromRounds = (rounds: TournamentRound[]) => {
+      for (const round of rounds) {
+        for (const match of round.matches) {
+          for (const mp of match.players) {
+            if (mp) playerIds.add(mp.playerId);
+          }
+        }
+      }
+    };
+    collectFromRounds(t.rounds);
+    collectFromRounds(t.knockoutRounds);
+    for (const group of t.groups) {
+      collectFromRounds(group.rounds);
+      for (const s of group.standings) playerIds.add(s.playerId);
+    }
+
+    // Batch-fetch fresh profiles
+    const profiles = await fetchPlayerProfiles([...playerIds]);
+    const enrich = (id: string, fallbackName: string) => {
+      const p = profiles.get(id);
+      return { displayName: p?.displayName ?? fallbackName, profilePicture: p?.profilePicture };
+    };
+
+    // Enrich participants
+    const participants: TournamentParticipant[] = t.participants.map((p) => ({
+      ...p,
+      ...enrich(p.playerId, p.displayName),
+    }));
+
+    // Enrich match players in rounds
+    const enrichRounds = (rounds: TournamentRound[]): TournamentRound[] =>
+      rounds.map((round) => ({
+        ...round,
+        matches: round.matches.map((match) => ({
+          ...match,
+          players: match.players.map((mp) =>
+            mp ? { ...mp, ...enrich(mp.playerId, mp.displayName) } : null
+          ) as TournamentMatch["players"],
+        })),
+      }));
+
+    // Enrich groups
+    const groups: TournamentGroup[] = t.groups.map((group) => ({
+      ...group,
+      rounds: enrichRounds(group.rounds),
+      standings: group.standings.map((s) => ({
+        ...s,
+        ...enrich(s.playerId, s.displayName),
+      })),
+    }));
+
     return {
       tournamentId: t.tournamentId,
       name: t.name,
@@ -1106,10 +1186,10 @@ export class TournamentService implements TournamentGameCallback {
       creatorId: t.creatorId,
       status: t.status,
       settings: t.settings,
-      participants: t.participants,
-      rounds: t.rounds,
-      groups: t.groups,
-      knockoutRounds: t.knockoutRounds,
+      participants,
+      rounds: enrichRounds(t.rounds),
+      groups,
+      knockoutRounds: enrichRounds(t.knockoutRounds),
       featuredMatchId: t.featuredMatchId,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),

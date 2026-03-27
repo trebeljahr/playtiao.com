@@ -138,7 +138,6 @@ const TournamentParticipantSchema = new Schema(
   {
     playerId: { type: String, required: true },
     displayName: { type: String, required: true },
-    profilePicture: { type: String },
     seed: { type: Number, required: true },
     status: {
       type: String,
