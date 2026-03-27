@@ -458,6 +458,10 @@ export function Navbar({
           )}
         </div>
       </div>
+
+      <p className="mt-4 text-center text-[10px] tracking-wide text-[#9b8a78]">
+        v{__APP_VERSION__}
+      </p>
     </motion.aside>
   );
 
