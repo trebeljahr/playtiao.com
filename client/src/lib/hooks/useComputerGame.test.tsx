@@ -302,3 +302,106 @@ describe("useComputerGame – undo during AI animation (mid-jump)", () => {
     expect(result.current.computerThinking).toBe(false);
   });
 });
+
+describe("useComputerGame – undo only goes back one round, not to the beginning", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resolveAI = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("undo after multiple rounds goes back one round, not all the way", async () => {
+    const { result } = renderHook(() => useComputerGame());
+    // computerColor = "black" (from mock), so player is white and goes first.
+
+    // Round 1: player places at (9,9)
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    expect(result.current.localGame.positions[9][9]).toBe("white");
+    expect(result.current.localGame.history.length).toBe(1);
+
+    // AI responds with a placement at (8,8)
+    await act(async () => {
+      resolveAI!({ type: "place", position: { x: 8, y: 8 }, score: 0 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    // Advance past linger
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(result.current.localGame.positions[8][8]).toBe("black");
+    expect(result.current.localGame.history.length).toBe(2);
+    expect(result.current.localGame.currentTurn).toBe("white");
+
+    // Round 2: player places at (7,7)
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 7 }));
+    expect(result.current.localGame.positions[7][7]).toBe("white");
+    expect(result.current.localGame.history.length).toBe(3);
+
+    // AI is now thinking — undo during AI thinking
+    act(() => result.current.handleLocalUndoTurn());
+
+    // Should go back to after round 1 (2 moves in history), NOT to the beginning
+    expect(result.current.localGame.history.length).toBe(2);
+    expect(result.current.localGame.currentTurn).toBe("white");
+    expect(result.current.localGame.positions[9][9]).toBe("white"); // round 1 player piece preserved
+    expect(result.current.localGame.positions[8][8]).toBe("black"); // round 1 AI piece preserved
+    expect(result.current.localGame.positions[7][7]).toBeNull(); // round 2 player piece removed
+  });
+
+  it("undo after AI finishes goes back one round", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // Round 1: player places, AI responds
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    await act(async () => {
+      resolveAI!({ type: "place", position: { x: 8, y: 8 }, score: 0 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    // Round 2: player places, AI responds
+    act(() => result.current.handleLocalBoardClick({ x: 7, y: 7 }));
+    await act(async () => {
+      resolveAI!({ type: "place", position: { x: 6, y: 6 }, score: 0 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(result.current.localGame.history.length).toBe(4);
+    expect(result.current.localGame.currentTurn).toBe("white");
+
+    // Undo after AI finished
+    act(() => result.current.handleLocalUndoTurn());
+
+    // Should go back to after round 1 (2 moves), NOT to beginning
+    expect(result.current.localGame.history.length).toBe(2);
+    expect(result.current.localGame.currentTurn).toBe("white");
+    expect(result.current.localGame.positions[9][9]).toBe("white"); // round 1 preserved
+    expect(result.current.localGame.positions[8][8]).toBe("black"); // round 1 preserved
+    expect(result.current.localGame.positions[7][7]).toBeNull(); // round 2 removed
+    expect(result.current.localGame.positions[6][6]).toBeNull(); // round 2 removed
+  });
+
+  it("canUndo is false when only AI moves exist in history", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // No moves yet — canUndo should be false
+    expect(result.current.canUndo).toBe(false);
+
+    // Player places — canUndo becomes true
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    expect(result.current.canUndo).toBe(true);
+
+    // Undo — canUndo goes back to false
+    act(() => result.current.handleLocalUndoTurn());
+    expect(result.current.canUndo).toBe(false);
+  });
+});

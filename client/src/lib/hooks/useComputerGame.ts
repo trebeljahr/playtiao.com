@@ -164,6 +164,13 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     return () => {
       doCancel();
       cancelRef.current = null;
+      // Clear the pre-AI snapshot so it doesn't go stale.
+      // When the effect re-runs after a successful AI animation,
+      // the cleanup fires (setting cancelledRef = true) before the
+      // promise chain reaches its own preAIStateRef = null cleanup.
+      // Without this, the stale snapshot persists into the next AI
+      // turn and undo would jump back too far.
+      preAIStateRef.current = null;
     };
   }, [needsMove, histLen, currentTurn, difficulty, computerColor]);
 

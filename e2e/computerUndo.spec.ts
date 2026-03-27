@@ -193,6 +193,62 @@ test.describe('Computer game undo', () => {
     expect(jumpTrailArrows).toBe(0);
   });
 
+  test('undo goes back one round, not to the beginning (no restart)', async ({ page }) => {
+    await page.goto('/computer');
+    await page.click('button:has-text("Easy")');
+    await expect(cell(page, 9, 9)).toBeVisible();
+
+    const humanColor = await waitForHumanTurn(page);
+    const computerColor = humanColor === 'white' ? 'black' : 'white';
+    const humanLabel = humanColor === 'white' ? 'White' : 'Black';
+
+    // Round 1: human places, AI responds
+    const candidates = [9, 8, 10, 7, 11, 6, 5];
+    let firstTarget = { x: 9, y: 9 };
+    for (const n of candidates) {
+      const piece = await cell(page, n, n).getAttribute('data-piece');
+      if (!piece) {
+        await expect(cell(page, n, n)).toBeEnabled({ timeout: 20000 });
+        firstTarget = { x: n, y: n };
+        await cell(page, n, n).click();
+        break;
+      }
+    }
+    await expect(cell(page, firstTarget.x, firstTarget.y)).toHaveAttribute('data-piece', humanColor);
+    // Wait for AI to respond
+    await expect(page.locator(`text=${humanLabel} to move`)).toBeVisible({ timeout: 10000 });
+
+    // Count pieces after round 1
+    const whiteAfterRound1 = await countPieces(page, 'white');
+    const blackAfterRound1 = await countPieces(page, 'black');
+
+    // Round 2: human places
+    let secondTarget = { x: 9, y: 9 };
+    for (const n of candidates) {
+      const piece = await cell(page, n, n).getAttribute('data-piece');
+      if (!piece) {
+        await expect(cell(page, n, n)).toBeEnabled({ timeout: 20000 });
+        secondTarget = { x: n, y: n };
+        await cell(page, n, n).click();
+        break;
+      }
+    }
+    await expect(cell(page, secondTarget.x, secondTarget.y)).toHaveAttribute('data-piece', humanColor);
+    // Wait for AI to respond
+    await expect(page.locator(`text=${humanLabel} to move`)).toBeVisible({ timeout: 10000 });
+
+    // Now undo — should go back to after round 1, NOT to the beginning
+    await page.locator('button:has-text("Undo move")').click();
+    await expect(page.locator(`text=${humanLabel} to move`)).toBeVisible({ timeout: 5000 });
+
+    // Round 1 pieces should still be on the board
+    await expect(page.locator(`[data-piece="white"]`)).toHaveCount(whiteAfterRound1, { timeout: 2000 });
+    await expect(page.locator(`[data-piece="black"]`)).toHaveCount(blackAfterRound1, { timeout: 2000 });
+
+    // The first human piece should still be there
+    await expect(cell(page, firstTarget.x, firstTarget.y)).toHaveAttribute('data-piece', humanColor);
+  });
+
   test('no stale pieces remain on the board after undo during AI thinking', async ({ page }) => {
     await page.goto('/computer');
     await page.click('button:has-text("Easy")');
