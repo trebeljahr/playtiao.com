@@ -25,6 +25,7 @@ type TiaoBoardProps = {
   lastMove?: LastMoveHighlight;
   onPointClick: (position: Position) => void;
   onUndoLastJump?: () => void;
+  onConfirmJump?: () => void;
 };
 
 const GRID_START = 100 / (BOARD_SIZE * 2);
@@ -125,6 +126,7 @@ export function TiaoBoard({
   lastMove,
   onPointClick,
   onUndoLastJump,
+  onConfirmJump,
 }: TiaoBoardProps) {
   const jumpTrailMarkerId = "tiao-jump-trail-arrow";
 
@@ -596,6 +598,7 @@ export function TiaoBoard({
                 }
               }}
               onFocus={() => {
+                if (IS_TOUCH_DEVICE) return;
                 if (isJumpTarget && !disabled) {
                   setHoveredJumpTargetKey(pieceKey);
                 }
@@ -605,6 +608,7 @@ export function TiaoBoard({
                 }
               }}
               onBlur={() => {
+                if (IS_TOUCH_DEVICE) return;
                 if (hoveredJumpTargetKey === pieceKey) {
                   setHoveredJumpTargetKey(null);
                 }
@@ -1115,7 +1119,7 @@ export function TiaoBoard({
 
       {/* Bottom-right floating controls */}
       <AnimatePresence>
-        {IS_TOUCH_DEVICE && (zoom.isZoomed || mobilePreview) && (
+        {IS_TOUCH_DEVICE && (zoom.isZoomed || mobilePreview || (hasPendingJump && !disabled)) && (
           <motion.div
             key="board-controls"
             initial={{ opacity: 0, scale: 0.8 }}
@@ -1154,6 +1158,36 @@ export function TiaoBoard({
                   </svg>
                   <span className="text-sm font-semibold">Place</span>
                 </button>
+              </>
+            )}
+            {/* Undo + Confirm jump (mobile only) */}
+            {hasPendingJump && !disabled && !mobilePreview && (
+              <>
+                {onUndoLastJump && (
+                  <button
+                    type="button"
+                    onClick={onUndoLastJump}
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
+                    aria-label="Undo last jump"
+                  >
+                    <svg viewBox="0 0 14 14" fill="none" className="h-4 w-4">
+                      <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+                {onConfirmJump && (
+                  <button
+                    type="button"
+                    onClick={onConfirmJump}
+                    className="flex h-11 items-center gap-1.5 rounded-full border border-[#8aad6a]/50 bg-[rgba(255,248,232,0.92)] px-3.5 text-[#5e7b4e] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,220,180,0.9)]"
+                    aria-label="Confirm jump"
+                  >
+                    <svg viewBox="0 0 14 14" fill="none" className="h-4 w-4">
+                      <path d="M3 7.5l2.8 2.8L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span className="text-sm font-semibold">Confirm</span>
+                  </button>
+                )}
               </>
             )}
             {/* Zoom indicator — tap to reset */}

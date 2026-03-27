@@ -530,6 +530,14 @@ export function MultiplayerGamePage({
                             type: "undo-pending-jump-step",
                           })
                   }
+                  onConfirmJump={
+                    isReviewMode
+                      ? undefined
+                      : () => {
+                          sendMultiplayerMessage({ type: "confirm-jump" });
+                          setMultiplayerSelection(null);
+                        }
+                  }
                 />
               )}
               {/* Review nav buttons moved to card header pill area */}

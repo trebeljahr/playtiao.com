@@ -277,6 +277,83 @@ describe("TiaoBoard – last move highlighting", () => {
   });
 });
 
+describe("TiaoBoard – pending jump controls", () => {
+  function makeStateWithPendingJump() {
+    const state = createInitialGameState();
+    // Set up a board position with a pending jump: white piece jumped from (9,9) over (9,8) to (9,7)
+    state.positions[9][9] = null;
+    state.positions[8][9] = "black"; // jumped over
+    state.positions[7][9] = "white"; // landed
+    state.pendingJump = [
+      { from: { x: 9, y: 9 }, over: { x: 9, y: 8 }, to: { x: 9, y: 7 }, color: "white" },
+    ];
+    state.pendingCaptures = [{ x: 9, y: 8 }];
+    return state;
+  }
+
+  it("renders undo button when there is a pending jump", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = makeStateWithPendingJump();
+    const onUndoLastJump = vi.fn();
+    const onConfirmJump = vi.fn();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={{ x: 9, y: 7 }}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+        onUndoLastJump={onUndoLastJump}
+        onConfirmJump={onConfirmJump}
+      />
+    );
+
+    const undoButtons = screen.getAllByLabelText("Undo last jump");
+    expect(undoButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("calls onUndoLastJump when undo button is clicked", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = makeStateWithPendingJump();
+    const onUndoLastJump = vi.fn();
+    const onConfirmJump = vi.fn();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={{ x: 9, y: 7 }}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+        onUndoLastJump={onUndoLastJump}
+        onConfirmJump={onConfirmJump}
+      />
+    );
+
+    const undoButtons = screen.getAllByLabelText("Undo last jump");
+    fireEvent.click(undoButtons[0]);
+    expect(onUndoLastJump).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render pending jump controls when there is no pending jump", async () => {
+    const { TiaoBoard } = await import("./TiaoBoard");
+    const state = createInitialGameState();
+
+    render(
+      <TiaoBoard
+        state={state}
+        selectedPiece={null}
+        jumpTargets={[]}
+        onPointClick={() => {}}
+        onUndoLastJump={() => {}}
+        onConfirmJump={() => {}}
+      />
+    );
+
+    expect(screen.queryByLabelText("Undo last jump")).toBeNull();
+    expect(screen.queryByLabelText("Confirm jump")).toBeNull();
+  });
+});
+
 describe("TiaoBoard – crosshair overlay", () => {
   it("does not render crosshair on desktop (non-touch)", async () => {
     const { TiaoBoard } = await import("./TiaoBoard");

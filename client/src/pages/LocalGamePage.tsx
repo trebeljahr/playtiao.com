@@ -91,6 +91,7 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
                 lastMove={local.lastMove}
                 onPointClick={local.handleLocalBoardClick}
                 onUndoLastJump={local.handleLocalUndoPendingJump}
+                onConfirmJump={local.handleLocalConfirmPendingJump}
               />
             </div>
           </div>

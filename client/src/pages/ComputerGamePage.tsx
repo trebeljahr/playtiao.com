@@ -176,6 +176,7 @@ export function ComputerGamePage({
                   lastMove={computer.lastMove}
                   onPointClick={computer.handleLocalBoardClick}
                   onUndoLastJump={computer.handleLocalUndoPendingJump}
+                  onConfirmJump={computer.handleLocalConfirmPendingJump}
                   disabled={computer.controlsDisabled}
                 />
                 {computer.computerThinking && (
