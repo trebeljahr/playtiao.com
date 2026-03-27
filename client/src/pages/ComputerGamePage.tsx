@@ -37,19 +37,18 @@ export function ComputerGamePage({
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<AIDifficulty | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>(2);
+  const [selectedColor, setSelectedColor] = useState<PlayerColor | "random">("random");
   const computer = useComputerGame(difficulty ?? 3);
 
-  const handleStartGame = useCallback(
-    (level: AIDifficulty, playerColorChoice?: PlayerColor) => {
-      setDifficulty(level);
-      // If the player chose a color, the computer gets the opposite
-      const computerCol = playerColorChoice
-        ? (playerColorChoice === "white" ? "black" : "white")
-        : undefined;
-      computer.resetLocalGame(computerCol);
-    },
-    [computer.resetLocalGame],
-  );
+  const handleStartGame = useCallback(() => {
+    setDifficulty(selectedDifficulty);
+    const playerColorChoice = selectedColor === "random" ? undefined : selectedColor;
+    const computerCol = playerColorChoice
+      ? (playerColorChoice === "white" ? "black" : "white")
+      : undefined;
+    computer.resetLocalGame(computerCol);
+  }, [selectedDifficulty, selectedColor, computer.resetLocalGame]);
 
   const handleChangeDifficulty = useCallback(() => {
     setDifficulty(null);
@@ -124,40 +123,84 @@ export function ComputerGamePage({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
-                {DIFFICULTY_LEVELS.map((level) => (
-                  <Button
-                    key={level}
-                    variant="secondary"
-                    className="w-full border-[#dcc7a2]"
-                    onClick={() => handleStartGame(level)}
-                  >
-                    {AI_DIFFICULTY_LABELS[level]}
-                  </Button>
-                ))}
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7760]">
+                    Difficulty
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DIFFICULTY_LEVELS.map((level) => (
+                      <Button
+                        key={level}
+                        variant="secondary"
+                        className={cn(
+                          "border-[#dcc7a2]",
+                          selectedDifficulty === level &&
+                            "border-[#7b5f3f] bg-[#7b5f3f] text-white hover:bg-[#6b5030] hover:text-white",
+                        )}
+                        onClick={() => setSelectedDifficulty(level)}
+                      >
+                        {AI_DIFFICULTY_LABELS[level]}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="border-t border-[#dbc6a2] pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7760]">
-                    Play as a specific color
+                    Play as
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <Button
                       variant="secondary"
-                      className="flex items-center gap-2 border-[#dcc7a2]"
-                      onClick={() => handleStartGame(2, "white")}
+                      className={cn(
+                        "flex items-center gap-2 border-[#dcc7a2]",
+                        selectedColor === "random" &&
+                          "border-[#7b5f3f] bg-[#7b5f3f] text-white hover:bg-[#6b5030] hover:text-white",
+                      )}
+                      onClick={() => setSelectedColor("random")}
                     >
-                      <span className="h-4 w-4 rounded-full border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]" />
-                      Play as White
+                      <span
+                        className="h-4 w-4 rounded-full border border-[#999]"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #f4eee3 50%, #2d2622 50%)",
+                        }}
+                      />
+                      Random
                     </Button>
                     <Button
                       variant="secondary"
-                      className="flex items-center gap-2 border-[#dcc7a2]"
-                      onClick={() => handleStartGame(2, "black")}
+                      className={cn(
+                        "flex items-center gap-2 border-[#dcc7a2]",
+                        selectedColor === "white" &&
+                          "border-[#7b5f3f] bg-[#7b5f3f] text-white hover:bg-[#6b5030] hover:text-white",
+                      )}
+                      onClick={() => setSelectedColor("white")}
+                    >
+                      <span className="h-4 w-4 rounded-full border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]" />
+                      White
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className={cn(
+                        "flex items-center gap-2 border-[#dcc7a2]",
+                        selectedColor === "black" &&
+                          "border-[#7b5f3f] bg-[#7b5f3f] text-white hover:bg-[#6b5030] hover:text-white",
+                      )}
+                      onClick={() => setSelectedColor("black")}
                     >
                       <span className="h-4 w-4 rounded-full border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]" />
-                      Play as Black
+                      Black
                     </Button>
                   </div>
                 </div>
+
+                <Button
+                  className="w-full"
+                  onClick={handleStartGame}
+                >
+                  Start Game
+                </Button>
               </CardContent>
             </Card>
           </section>
