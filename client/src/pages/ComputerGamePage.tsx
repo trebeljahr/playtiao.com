@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import type { AuthResponse } from "@shared";
+import type { AuthResponse, PlayerColor } from "@shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,9 +40,13 @@ export function ComputerGamePage({
   const computer = useComputerGame(difficulty ?? 3);
 
   const handleStartGame = useCallback(
-    (level: AIDifficulty) => {
+    (level: AIDifficulty, playerColorChoice?: PlayerColor) => {
       setDifficulty(level);
-      computer.resetLocalGame();
+      // If the player chose a color, the computer gets the opposite
+      const computerCol = playerColorChoice
+        ? (playerColorChoice === "white" ? "black" : "white")
+        : undefined;
+      computer.resetLocalGame(computerCol);
     },
     [computer.resetLocalGame],
   );
@@ -119,7 +123,7 @@ export function ComputerGamePage({
                   Choose Difficulty
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-5">
                 {DIFFICULTY_LEVELS.map((level) => (
                   <Button
                     key={level}
@@ -130,6 +134,30 @@ export function ComputerGamePage({
                     {AI_DIFFICULTY_LABELS[level]}
                   </Button>
                 ))}
+
+                <div className="border-t border-[#dbc6a2] pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7760]">
+                    Play as a specific color
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      className="flex items-center gap-2 border-[#dcc7a2]"
+                      onClick={() => handleStartGame(2, "black")}
+                    >
+                      <span className="h-4 w-4 rounded-full border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]" />
+                      Play as Black
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="flex items-center gap-2 border-[#dcc7a2]"
+                      onClick={() => handleStartGame(2, "white")}
+                    >
+                      <span className="h-4 w-4 rounded-full border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]" />
+                      Play as White
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </section>

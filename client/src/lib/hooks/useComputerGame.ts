@@ -219,13 +219,13 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     local.setLocalError(null);
   }, [local.localGame, computerColor, local.setLocalGame, local.setLocalSelection, local.setLocalError]);
 
-  const resetComputerGame = useCallback(() => {
+  const resetComputerGame = useCallback((preferredComputerColor?: PlayerColor) => {
     if (cancelRef.current) {
       cancelRef.current();
       cancelRef.current = null;
     }
     preAIStateRef.current = null;
-    setComputerColor(randomComputerColor());
+    setComputerColor(preferredComputerColor ?? randomComputerColor());
     local.resetLocalGame();
   }, [local.resetLocalGame]);
 
