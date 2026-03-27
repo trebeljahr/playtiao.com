@@ -225,6 +225,7 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
       cancelRef.current = null;
     }
     preAIStateRef.current = null;
+    searchedForRef.current = -1;
     setComputerColor(preferredComputerColor ?? randomComputerColor());
     local.resetLocalGame();
   }, [local.resetLocalGame]);
