@@ -38,9 +38,24 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
   // safely restore it even if the AI is mid-animation with pending jumps.
   const preAIStateRef = useRef<GameState | null>(null);
 
+  // Keep a ref to the latest localGame so the effect can read it without
+  // needing localGame itself as a dependency (which would re-trigger on
+  // intermediate animation updates).
+  const localGameRef = useRef(local.localGame);
+  localGameRef.current = local.localGame;
+
   const needsMove =
     !isGameOver(local.localGame) &&
     local.localGame.currentTurn === computerColor;
+
+  // Stable trigger that doesn't change during multi-jump animation.
+  // jumpPiece() only updates pendingJump/pendingCaptures — it doesn't
+  // touch history or currentTurn. Using these as deps prevents the
+  // effect from re-running (and its cleanup from cancelling the
+  // in-progress animation) when animatePlan() updates localGame with
+  // intermediate jump states.
+  const histLen = local.localGame.history.length;
+  const currentTurn = local.localGame.currentTurn;
 
   useEffect(() => {
     if (!needsMove) {
@@ -49,7 +64,6 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     }
 
     // Don't re-trigger if we already started a search for this game state
-    const histLen = local.localGame.history.length;
     if (searchedForRef.current === histLen) return;
     searchedForRef.current = histLen;
 
@@ -57,7 +71,7 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
     setThinkProgress(0);
     const cancelledRef = { current: false };
     const startTime = Date.now();
-    const gameAtRequest = local.localGame;
+    const gameAtRequest = localGameRef.current;
 
     // Save the pre-AI state so undo can restore it.
     // Only set if not already set — during animation, state updates
@@ -151,7 +165,7 @@ export function useComputerGame(difficulty: AIDifficulty = 3) {
       doCancel();
       cancelRef.current = null;
     };
-  }, [needsMove, local.localGame, difficulty, computerColor]);
+  }, [needsMove, histLen, currentTurn, difficulty, computerColor]);
 
   const handleBoardClick = useCallback(
     (position: Position) => {

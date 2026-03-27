@@ -125,6 +125,124 @@ describe("useComputerGame – undo while AI is thinking", () => {
   });
 });
 
+describe("useComputerGame – AI multi-jump animation completes", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resolveAI = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("completes a multi-jump animation without the board getting stuck", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // Set up a board where black can perform a multi-hop jump:
+    //   black at (9,6), white pieces at (9,7) and (9,9), empty at (9,8) and (9,10)
+    const state = createInitialGameState();
+    state.positions[6][9] = "black";
+    state.positions[7][9] = "white";
+    state.positions[9][9] = "white";
+    state.currentTurn = "black";
+    state.history = [{
+      type: "put" as const,
+      color: "white" as const,
+      position: { x: 5, y: 5 },
+    }];
+    state.positions[5][5] = "white";
+
+    act(() => {
+      result.current.setLocalGame(state);
+    });
+
+    // AI should now be thinking
+    expect(resolveAI).not.toBeNull();
+    const jumpPlan = {
+      type: "jump" as const,
+      from: { x: 9, y: 6 },
+      path: [{ x: 9, y: 8 }, { x: 9, y: 10 }],
+      score: 200,
+    };
+
+    // Resolve the AI search
+    await act(async () => {
+      resolveAI!(jumpPlan);
+      // Let the first jump step execute (microtask + 1ms timer)
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    // After first jump step, there should be pending jumps (animation in progress)
+    // The critical thing is that the animation is NOT cancelled.
+    // Advance past the AI_JUMP_STEP_MS (350ms) delay between jump steps
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+
+    // Advance past the AI_LINGER_MS (600ms) delay after confirmation
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    // The multi-jump should be fully complete:
+    // - pendingJump cleared (confirmed)
+    // - turn switched to white (human)
+    // - computerThinking is false
+    // - two captures scored
+    expect(result.current.localGame.pendingJump.length).toBe(0);
+    expect(result.current.localGame.currentTurn).toBe("white");
+    expect(result.current.computerThinking).toBe(false);
+    expect(result.current.localGame.score.black).toBe(2);
+
+    // The human should be able to play (not stuck)
+    expect(result.current.controlsDisabled).toBe(false);
+  });
+
+  it("completes a single-hop jump without getting stuck", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // black at (9,6), white at (9,7), empty at (9,8)
+    const state = createInitialGameState();
+    state.positions[6][9] = "black";
+    state.positions[7][9] = "white";
+    state.currentTurn = "black";
+    state.history = [{
+      type: "put" as const,
+      color: "white" as const,
+      position: { x: 5, y: 5 },
+    }];
+    state.positions[5][5] = "white";
+
+    act(() => {
+      result.current.setLocalGame(state);
+    });
+
+    expect(resolveAI).not.toBeNull();
+    const jumpPlan = {
+      type: "jump" as const,
+      from: { x: 9, y: 6 },
+      path: [{ x: 9, y: 8 }],
+      score: 200,
+    };
+
+    await act(async () => {
+      resolveAI!(jumpPlan);
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    // Advance past linger delay
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(result.current.localGame.pendingJump.length).toBe(0);
+    expect(result.current.localGame.currentTurn).toBe("white");
+    expect(result.current.computerThinking).toBe(false);
+    expect(result.current.localGame.score.black).toBe(1);
+    expect(result.current.controlsDisabled).toBe(false);
+  });
+});
+
 describe("useComputerGame – undo during AI animation (mid-jump)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
