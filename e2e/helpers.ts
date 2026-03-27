@@ -14,6 +14,7 @@ export async function signUpViaUI(
   await page.click('button:has-text("Sign up")');
   await page.fill("#signup-display-name", username);
   await page.fill("#signup-password", password);
+  await page.fill("#signup-confirm-password", password);
   const responsePromise = page.waitForResponse(
     (resp) => resp.url().includes("/api/player/signup") && resp.ok()
   );
