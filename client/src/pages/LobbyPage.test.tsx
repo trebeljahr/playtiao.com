@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { LobbyPage } from "./LobbyPage";
 import type { AuthResponse, MultiplayerGameSummary } from "@shared";
@@ -205,5 +205,85 @@ describe("LobbyPage", () => {
 
     // Should NOT show - we already requested, only show opponent's request
     expect(screen.queryByTestId("lobby-game-REM002")).not.toBeInTheDocument();
+  });
+
+  it("shows toast error and blocks navigation when spectating own active game", async () => {
+    const activeGame = makeGameSummary({ gameId: "ABC123", status: "active" });
+    await setupMocks({ active: [activeGame] });
+
+    const { toast } = await import("sonner");
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <LobbyPage
+          auth={accountAuth}
+          onOpenAuth={vi.fn()}
+          onLogout={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const spectateInput = screen.getAllByPlaceholderText("Game ID")
+      .find((el) => el.getAttribute("name") === "spectate-id")!;
+    fireEvent.change(spectateInput, { target: { value: "ABC123" } });
+    fireEvent.submit(spectateInput.closest("form")!);
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "That's your own game! Use the game list above to rejoin it.",
+    );
+  });
+
+  it("shows toast error when spectating own finished game", async () => {
+    const finishedGame = makeGameSummary({
+      gameId: "FIN999",
+      status: "finished",
+      winner: "black",
+    });
+    await setupMocks({ finished: [finishedGame] });
+
+    const { toast } = await import("sonner");
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <LobbyPage
+          auth={accountAuth}
+          onOpenAuth={vi.fn()}
+          onLogout={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const spectateInput = screen.getAllByPlaceholderText("Game ID")
+      .find((el) => el.getAttribute("name") === "spectate-id")!;
+    fireEvent.change(spectateInput, { target: { value: "FIN999" } });
+    fireEvent.submit(spectateInput.closest("form")!);
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "That's your own game! Use the game list above to rejoin it.",
+    );
+  });
+
+  it("allows spectating a game that is not yours", async () => {
+    const activeGame = makeGameSummary({ gameId: "ABC123", status: "active" });
+    await setupMocks({ active: [activeGame] });
+
+    const { toast } = await import("sonner");
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <LobbyPage
+          auth={accountAuth}
+          onOpenAuth={vi.fn()}
+          onLogout={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const spectateInput = screen.getAllByPlaceholderText("Game ID")
+      .find((el) => el.getAttribute("name") === "spectate-id")!;
+    fireEvent.change(spectateInput, { target: { value: "XYZ789" } });
+    fireEvent.submit(spectateInput.closest("form")!);
+
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

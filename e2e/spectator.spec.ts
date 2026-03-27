@@ -93,3 +93,34 @@ test('lobby Watch a Game section navigates to game', async ({ page }) => {
   // Should navigate to the game URL
   await expect(page).toHaveURL(/\/game\/ABCDEF/);
 });
+
+test('spectating own game shows error toast and stays on lobby', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // Sign up and create a game
+  const username = `own_spec_${Math.random().toString(36).slice(2, 7)}`;
+  await signUpViaUI(page, username, 'password123');
+
+  await page.click('button:has-text("Create a game")');
+  await expect(page).toHaveURL(/\/game\/[A-Z0-9]{6}/);
+
+  // Extract the game ID from the URL
+  const gameId = page.url().match(/\/game\/([A-Z0-9]{6})/)?.[1];
+  expect(gameId).toBeTruthy();
+
+  // Go back to lobby
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  // Try to spectate own game via the Watch a Game form
+  const input = page.locator('input[name="spectate-id"]');
+  await input.fill(gameId!);
+  await page.click('button:has-text("Watch")');
+
+  // Should show error toast and stay on lobby
+  await expect(page.locator('text=your own game')).toBeVisible({ timeout: 3000 });
+  await expect(page).toHaveURL('/');
+
+  await context.close();
+});

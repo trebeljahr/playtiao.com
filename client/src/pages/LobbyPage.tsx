@@ -629,9 +629,18 @@ export function LobbyPage({ auth, onOpenAuth, onLogout }: LobbyPageProps) {
                       "spectate-id",
                     ) as HTMLInputElement;
                     const id = input?.value.trim().toUpperCase();
-                    if (id) {
-                      navigate(`/game/${id}`);
+                    if (!id) return;
+                    const allGames = [
+                      ...multiplayerGames.active,
+                      ...multiplayerGames.finished,
+                    ];
+                    if (allGames.some((g) => g.gameId === id)) {
+                      toast.error(
+                        "That's your own game! Use the game list above to rejoin it.",
+                      );
+                      return;
                     }
+                    navigate(`/game/${id}`);
                   }}
                   className="flex gap-2"
                 >
