@@ -135,7 +135,7 @@ export function ComputerGamePage({
                         className={cn(
                           "border-[#dcc7a2]",
                           selectedDifficulty === level
-                            ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white"
+                            ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
                             : "hover:bg-[#ede3d2]",
                         )}
                         onClick={() => setSelectedDifficulty(level)}
@@ -156,7 +156,7 @@ export function ComputerGamePage({
                       className={cn(
                         "flex items-center gap-2 border-[#dcc7a2]",
                         selectedColor === "random"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white"
+                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
                           : "hover:bg-[#ede3d2]",
                       )}
                       onClick={() => setSelectedColor("random")}
@@ -175,7 +175,7 @@ export function ComputerGamePage({
                       className={cn(
                         "flex items-center gap-2 border-[#dcc7a2]",
                         selectedColor === "white"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white"
+                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
                           : "hover:bg-[#ede3d2]",
                       )}
                       onClick={() => setSelectedColor("white")}
@@ -188,7 +188,7 @@ export function ComputerGamePage({
                       className={cn(
                         "flex items-center gap-2 border-[#dcc7a2]",
                         selectedColor === "black"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white"
+                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
                           : "hover:bg-[#ede3d2]",
                       )}
                       onClick={() => setSelectedColor("black")}
