@@ -115,6 +115,60 @@ describe("useGameClock", () => {
     expect(result.current.whiteTime).toBeGreaterThan(59_900);
     expect(result.current.blackTime).toBe(60_000);
   });
+
+  it("does not deduct elapsed time while firstMoveDeadline is set", () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+
+    const clock = {
+      white: 60_000,
+      black: 60_000,
+      lastMoveAt: new Date(now - 10_000).toISOString(), // 10s ago
+    };
+
+    const { result } = renderHook(() =>
+      useGameClock(clock, "white", "active", {
+        firstMoveDeadline: new Date(now + 20_000).toISOString(),
+      }),
+    );
+
+    // Clock should be frozen — no elapsed time deducted
+    expect(result.current.whiteTime).toBe(60_000);
+    expect(result.current.blackTime).toBe(60_000);
+
+    vi.useRealTimers();
+  });
+
+  it("starts ticking once firstMoveDeadline is cleared", () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+
+    const clock = {
+      white: 60_000,
+      black: 60_000,
+      lastMoveAt: new Date(now - 5_000).toISOString(),
+    };
+
+    // First render: deadline still active
+    const { result, rerender } = renderHook(
+      ({ deadline }) =>
+        useGameClock(clock, "white", "active", {
+          firstMoveDeadline: deadline,
+        }),
+      { initialProps: { deadline: new Date(now + 20_000).toISOString() as string | null } },
+    );
+
+    expect(result.current.whiteTime).toBe(60_000);
+
+    // Deadline cleared (first move was made)
+    rerender({ deadline: null });
+
+    // Now clock should tick — white has ~55s
+    expect(result.current.whiteTime).toBeLessThanOrEqual(55_000);
+    expect(result.current.whiteTime).toBeGreaterThan(54_000);
+
+    vi.useRealTimers();
+  });
 });
 
 describe("useFirstMoveCountdown", () => {

@@ -251,6 +251,7 @@ export function MultiplayerGamePage({
     multiplayerSnapshot?.clock ?? null,
     multiplayerSnapshot?.state.currentTurn ?? "white",
     multiplayerSnapshot?.status ?? "waiting",
+    { firstMoveDeadline: multiplayerSnapshot?.firstMoveDeadline },
   );
   const yourClockMs = playerSeat ? (playerSeat === "white" ? whiteTime : blackTime) : null;
   const activeClockMs = multiplayerSnapshot?.state.currentTurn === "white" ? whiteTime : blackTime;

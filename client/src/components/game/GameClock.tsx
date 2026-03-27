@@ -14,10 +14,14 @@ export function useGameClock(
   clock: ClockState | null,
   currentTurn: PlayerColor,
   status: MultiplayerStatus,
+  options?: { firstMoveDeadline?: string | null },
 ): { whiteTime: number; blackTime: number } {
   const [, setTick] = useState(0);
 
-  const isActive = status === "active" && clock !== null;
+  // Clock is frozen while the first-move deadline is active — only start
+  // ticking once the first move has actually been made.
+  const awaitingFirstMove = !!options?.firstMoveDeadline;
+  const isActive = status === "active" && clock !== null && !awaitingFirstMove;
 
   useEffect(() => {
     if (!isActive) return;
