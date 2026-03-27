@@ -513,7 +513,7 @@ export function MultiplayerGamePage({
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
           <div className="flex items-center justify-center xl:items-start xl:justify-end">
-            <div className="relative mx-auto w-full" style={boardWrapStyle}>
+            <div className="relative isolate mx-auto w-full" style={boardWrapStyle}>
               {displayState && (
                 <TiaoBoard
                   state={displayState}

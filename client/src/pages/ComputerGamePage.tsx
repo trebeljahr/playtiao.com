@@ -165,7 +165,7 @@ export function ComputerGamePage({
           <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
             <div className="flex items-center justify-center xl:items-start xl:justify-end">
               <div
-                className="relative mx-auto w-full"
+                className="relative isolate mx-auto w-full"
                 style={boardWrapStyle}
               >
                 <TiaoBoard
