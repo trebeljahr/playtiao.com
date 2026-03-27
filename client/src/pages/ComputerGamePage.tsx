@@ -56,7 +56,8 @@ export function ComputerGamePage({
   const winner = isGameOver(computer.localGame)
     ? getWinner(computer.localGame)
     : null;
-  useWinConfetti(winner, { viewerColor: "white" });
+  const playerColor = computer.computerColor === "white" ? "black" : "white";
+  useWinConfetti(winner, { viewerColor: playerColor });
 
   const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
   const prevWinnerRef = React.useRef<string | null>(null);
@@ -74,7 +75,7 @@ export function ComputerGamePage({
     }
   }, [winner]);
 
-  const playerWon = winner === "white";
+  const playerWon = winner !== null && winner !== computer.computerColor;
   const gameOverTitle = playerWon ? "You won!" : "You lost!";
   const gameOverDescription = playerWon
     ? "Great game! Ready for another round?"
