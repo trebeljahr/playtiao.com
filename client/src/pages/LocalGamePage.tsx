@@ -45,27 +45,31 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
   const local = useLocalGame(gameSettings);
 
   useStonePlacementSound(local.localGame);
-  const winner = isGameOver(local.localGame) ? getWinner(local.localGame) : null;
+  const gameOver = isGameOver(local.localGame);
+  const winner = gameOver ? getWinner(local.localGame) : null;
+  const isDraw = gameOver && !winner;
   useWinConfetti(winner);
 
   const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
-  const prevWinnerRef = useRef<string | null>(null);
+  const prevGameOverRef = useRef(false);
 
   useEffect(() => {
-    if (winner && prevWinnerRef.current !== winner) {
-      prevWinnerRef.current = winner;
+    if (gameOver && !prevGameOverRef.current) {
+      prevGameOverRef.current = true;
       const id = setTimeout(() => setGameOverDialogOpen(true), 600);
       return () => clearTimeout(id);
     }
-    if (!winner) {
-      prevWinnerRef.current = null;
+    if (!gameOver) {
+      prevGameOverRef.current = false;
       setGameOverDialogOpen(false);
     }
-  }, [winner]);
+  }, [gameOver]);
 
-  const localStatusTitle = winner
-    ? `${formatPlayerColor(winner)} wins!`
-    : `${formatPlayerColor(local.localGame.currentTurn)} to move`;
+  const localStatusTitle = isDraw
+    ? "Draw!"
+    : winner
+      ? `${formatPlayerColor(winner)} wins!`
+      : `${formatPlayerColor(local.localGame.currentTurn)} to move`;
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -167,8 +171,8 @@ export function LocalGamePage({ auth, onOpenAuth, onLogout }: LocalGamePageProps
       <Dialog
         open={gameOverDialogOpen}
         onOpenChange={setGameOverDialogOpen}
-        title={`${formatPlayerColor(winner!)} wins!`}
-        description="Great game! Ready for another round?"
+        title={isDraw ? "Draw!" : `${formatPlayerColor(winner!)} wins!`}
+        description={isDraw ? "No moves remaining. Ready for another round?" : "Great game! Ready for another round?"}
       >
         <div className="grid gap-2">
           <Button onClick={() => { setGameOverDialogOpen(false); local.resetLocalGame(); }}>

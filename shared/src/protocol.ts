@@ -66,7 +66,7 @@ export type MultiplayerSnapshot = {
   tournamentReady?: boolean;
 };
 
-export type FinishReason = "captured" | "forfeit" | "timeout";
+export type FinishReason = "captured" | "forfeit" | "timeout" | "board_full";
 
 export type MultiplayerGameSummary = {
   gameId: string;

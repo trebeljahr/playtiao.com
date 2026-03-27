@@ -66,39 +66,43 @@ export function ComputerGamePage({
   }, [computer.resetLocalGame]);
 
   useStonePlacementSound(computer.localGame);
-  const winner = isGameOver(computer.localGame)
-    ? getWinner(computer.localGame)
-    : null;
+  const gameOver = isGameOver(computer.localGame);
+  const winner = gameOver ? getWinner(computer.localGame) : null;
+  const isDraw = gameOver && !winner;
   const playerColor = computer.computerColor === "white" ? "black" : "white";
   useWinConfetti(winner, { viewerColor: playerColor });
 
   const [gameOverDialogOpen, setGameOverDialogOpen] = useState(false);
-  const prevWinnerRef = React.useRef<string | null>(null);
+  const prevGameOverRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (winner && prevWinnerRef.current !== winner) {
-      prevWinnerRef.current = winner;
+    if (gameOver && !prevGameOverRef.current) {
+      prevGameOverRef.current = true;
       // Small delay so confetti/particles start first
       const id = setTimeout(() => setGameOverDialogOpen(true), 600);
       return () => clearTimeout(id);
     }
-    if (!winner) {
-      prevWinnerRef.current = null;
+    if (!gameOver) {
+      prevGameOverRef.current = false;
       setGameOverDialogOpen(false);
     }
-  }, [winner]);
+  }, [gameOver]);
 
   const playerWon = winner !== null && winner !== computer.computerColor;
-  const gameOverTitle = playerWon ? "You won!" : "You lost!";
-  const gameOverDescription = playerWon
-    ? "Great game! Ready for another round?"
-    : "Better luck next time. Want to try again?";
+  const gameOverTitle = isDraw ? "Draw!" : playerWon ? "You won!" : "You lost!";
+  const gameOverDescription = isDraw
+    ? "No moves remaining. Ready for another round?"
+    : playerWon
+      ? "Great game! Ready for another round?"
+      : "Better luck next time. Want to try again?";
 
-  const localStatusTitle = winner
-    ? `${formatPlayerColor(winner)} wins!`
-    : computer.computerThinking
-      ? "Computer thinking..."
-      : `${formatPlayerColor(computer.localGame.currentTurn)} to move`;
+  const localStatusTitle = isDraw
+    ? "Draw!"
+    : winner
+      ? `${formatPlayerColor(winner)} wins!`
+      : computer.computerThinking
+        ? "Computer thinking..."
+        : `${formatPlayerColor(computer.localGame.currentTurn)} to move`;
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";

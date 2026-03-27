@@ -43,7 +43,11 @@ export type WinTurn = {
   color: PlayerColor;
 };
 
-export type TurnRecord = PutTurn | JumpTurn | ForfeitTurn | WinTurn;
+export type DrawTurn = {
+  type: "draw";
+};
+
+export type TurnRecord = PutTurn | JumpTurn | ForfeitTurn | WinTurn | DrawTurn;
 
 /** Records that represent actual board moves (not meta-events like forfeit/win) */
 export function isBoardMove(record: TurnRecord): record is PutTurn | JumpTurn {
@@ -152,6 +156,10 @@ function cloneHistoryRecord(record: TurnRecord): TurnRecord {
     return { type: "win", color: record.color };
   }
 
+  if (record.type === "draw") {
+    return { type: "draw" };
+  }
+
   return {
     type: "jump",
     color: record.color,
@@ -223,7 +231,7 @@ export function isGameOver(state: GameState): boolean {
   if (state.score.black >= target || state.score.white >= target) {
     return true;
   }
-  return state.history.some((r) => r.type === "win");
+  return state.history.some((r) => r.type === "win" || r.type === "draw");
 }
 
 export function getWinner(state: GameState): PlayerColor | null {
@@ -253,6 +261,10 @@ export function getFinishReason(state: GameState): FinishReason | null {
 
   if (forfeitRecord?.reason === "timeout") return "timeout";
   if (forfeitRecord) return "forfeit";
+
+  const drawRecord = state.history.find((r) => r.type === "draw");
+  if (drawRecord) return "board_full";
+
   return "captured";
 }
 
@@ -553,6 +565,30 @@ export function canPlacePiece(state: GameState, position: Position): RuleResult<
   };
 }
 
+/**
+ * Returns true when the given player has no legal moves (no placements and no jumps).
+ * Used to detect the board-full / stalemate end condition.
+ */
+function hasNoLegalMoves(state: GameState, color: PlayerColor): boolean {
+  // Check for any jump origin first (cheaper on sparse boards)
+  for (let y = 0; y < state.boardSize; y += 1) {
+    for (let x = 0; x < state.boardSize; x += 1) {
+      const pos = { x, y };
+      if (getTile(state, pos) === color && getJumpTargets(state, pos, color).length > 0) {
+        return false;
+      }
+    }
+  }
+  // Check for any valid placement
+  for (let y = 0; y < state.boardSize; y += 1) {
+    for (let x = 0; x < state.boardSize; x += 1) {
+      if (state.positions[y][x] !== null) continue;
+      if (canPlacePiece(state, { x, y }).ok) return false;
+    }
+  }
+  return true;
+}
+
 export function placePiece(
   state: GameState,
   position: Position
@@ -572,6 +608,17 @@ export function placePiece(
   nextState.currentTurn = otherColor(nextState.currentTurn);
   nextState.pendingJump = [];
   nextState.pendingCaptures = [];
+
+  // Check if the next player has no legal moves (board full / stalemate)
+  if (hasNoLegalMoves(nextState, nextState.currentTurn)) {
+    if (nextState.score.black > nextState.score.white) {
+      nextState.history.push({ type: "win", color: "black" });
+    } else if (nextState.score.white > nextState.score.black) {
+      nextState.history.push({ type: "win", color: "white" });
+    } else {
+      nextState.history.push({ type: "draw" });
+    }
+  }
 
   return {
     ok: true,
@@ -741,6 +788,17 @@ export function confirmPendingJump(state: GameState): RuleResult<GameState> {
   nextState.pendingCaptures = [];
   nextState.currentTurn = otherColor(state.currentTurn);
 
+  // Check if the next player has no legal moves after captures
+  if (!isGameOver(nextState) && hasNoLegalMoves(nextState, nextState.currentTurn)) {
+    if (nextState.score.black > nextState.score.white) {
+      nextState.history.push({ type: "win", color: "black" });
+    } else if (nextState.score.white > nextState.score.black) {
+      nextState.history.push({ type: "win", color: "white" });
+    } else {
+      nextState.history.push({ type: "draw" });
+    }
+  }
+
   return {
     ok: true,
     value: nextState,
@@ -802,15 +860,22 @@ export function undoLastTurn(state: GameState): RuleResult<GameState> {
     };
   }
 
-  if (lastTurn.type === "win") {
-    // Strip the trailing "win" record and undo the actual winning move
-    const withoutWin = cloneGameState(state);
-    withoutWin.history.pop();
-    return undoLastTurn(withoutWin);
+  if (lastTurn.type === "win" || lastTurn.type === "draw") {
+    // Win/draw are trailing meta-records — pop them and retry on the actual move
+    const stripped = cloneGameState(state);
+    stripped.history.pop();
+    return undoLastTurn(stripped);
   }
 
   const nextState = cloneGameState(state);
   nextState.history.pop();
+
+  // Also pop a trailing win/draw record if present (follows the move that triggered it)
+  const trailingType = nextState.history[nextState.history.length - 1]?.type;
+  if (trailingType === "win" || trailingType === "draw") {
+    nextState.history.pop();
+  }
+
 
   if (lastTurn.type === "put") {
     nextState.positions[lastTurn.position.y][lastTurn.position.x] = null;
@@ -877,6 +942,11 @@ export function formatPosition(pos: Position): string {
 
 export function formatTurnRecord(record: TurnRecord, index: number): string {
   const moveNumber = index + 1;
+
+  if (record.type === "draw") {
+    return `${moveNumber}. draw`;
+  }
+
   const colorInitial = record.color === "white" ? "W" : "B";
 
   if (record.type === "forfeit") {
@@ -910,8 +980,8 @@ export function replayToMove(
   for (let i = 0; i < end; i++) {
     const record = history[i];
 
-    if (record.type === "win") {
-      // Win records are meta-events; the board state doesn't change
+    if (record.type === "win" || record.type === "draw") {
+      // Win/draw records are meta-events; the board state doesn't change
       continue;
     } else if (record.type === "forfeit") {
       const result = forfeitGame(state, record.color, record.reason ?? "forfeit");

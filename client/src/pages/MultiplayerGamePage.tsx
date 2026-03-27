@@ -308,33 +308,40 @@ export function MultiplayerGamePage({
     ? getFinishReason(multiplayerSnapshot.state)
     : null;
 
-  const gameOverTitle = playerWon
-    ? "You won!"
-    : playerLost
-      ? "You lost!"
-      : winner
-        ? `${formatPlayerColor(winner)} wins!`
-        : "";
+  const isDraw = multiplayerSnapshot
+    ? isGameOver(multiplayerSnapshot.state) && !winner
+    : false;
+
+  const gameOverTitle = isDraw
+    ? "Draw!"
+    : playerWon
+      ? "You won!"
+      : playerLost
+        ? "You lost!"
+        : winner
+          ? `${formatPlayerColor(winner)} wins!`
+          : "";
 
   function describeFinishReason(): string {
     if (!finishReason) return "The game is over.";
+    if (finishReason === "board_full") return "No moves remaining — the board is full.";
     if (playerWon) {
       switch (finishReason) {
-        case "captured": return "You captured 10 of your opponent's stones.";
+        case "captured": return "You captured enough of your opponent's stones.";
         case "forfeit": return "Your opponent forfeited the game.";
         case "timeout": return "Your opponent ran out of time.";
       }
     }
     if (playerLost) {
       switch (finishReason) {
-        case "captured": return "Your opponent captured 10 of your stones.";
+        case "captured": return "Your opponent captured enough of your stones.";
         case "forfeit": return "You forfeited the game.";
         case "timeout": return "You ran out of time.";
       }
     }
     // Spectator
     switch (finishReason) {
-      case "captured": return `${formatPlayerColor(winner!)} captured 10 stones.`;
+      case "captured": return `${formatPlayerColor(winner!)} captured enough stones.`;
       case "forfeit": return `${formatPlayerColor(winner === "white" ? "black" : "white")} forfeited the game.`;
       case "timeout": return `${formatPlayerColor(winner === "white" ? "black" : "white")} ran out of time.`;
     }
@@ -454,8 +461,10 @@ export function MultiplayerGamePage({
 
   const multiplayerStatusTitle = !multiplayerSnapshot
     ? "Game"
-    : winner
-      ? `${formatPlayerColor(winner)} wins`
+    : isDraw
+      ? "Draw"
+      : winner
+        ? `${formatPlayerColor(winner)} wins`
       : multiplayerSnapshot.status === "waiting"
         ? "Waiting"
         : isTournamentUnstarted

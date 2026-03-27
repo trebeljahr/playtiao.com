@@ -16,6 +16,7 @@ import {
   PlayerIdentity,
   PlayerSlot,
   TimeControl,
+  TurnRecord,
   confirmPendingJump,
   createInitialGameState,
   forfeitGame,
@@ -1376,7 +1377,8 @@ export class GameService {
     const increment = room.timeControl?.incrementMs ?? 0;
 
     // Helper to reverse clock changes for an undone move
-    const reverseClock = (undoneMove: { color: PlayerColor; timestamp?: number }, prevTimestamp: number | null) => {
+    const reverseClock = (undoneMove: TurnRecord, prevTimestamp: number | null) => {
+      if (undoneMove.type !== "put" && undoneMove.type !== "jump") return;
       if (!clockMs || !undoneMove.timestamp) return;
       // Remove the increment that was added after this move
       clockMs[undoneMove.color] = Math.max(0, clockMs[undoneMove.color] - increment);
