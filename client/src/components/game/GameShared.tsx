@@ -204,16 +204,42 @@ export function createOptimisticSnapshot(
   };
 }
 
-export function formatFinishReason(reason: FinishReason | null): string {
+export function formatFinishReason(reason: FinishReason | null, scoreToWin?: number): string {
   switch (reason) {
     case "captured":
-      return "Captured 10";
+      return `Score reached${scoreToWin ? ` (${scoreToWin})` : ""}`;
     case "forfeit":
       return "Forfeit";
     case "timeout":
-      return "Timeout";
+      return "Time ran out";
+    case "board_full":
+      return "Board full";
     default:
       return "";
+  }
+}
+
+/** Describe a game result for match history — context-aware messages. */
+export function describeResult(
+  result: "won" | "lost" | null,
+  finishReason: FinishReason | null,
+): string {
+  if (!result) return "";
+  if (result === "won") {
+    switch (finishReason) {
+      case "captured": return "You captured enough stones!";
+      case "forfeit": return "Opponent forfeited";
+      case "timeout": return "Opponent ran out of time";
+      case "board_full": return "Board full — you had more points";
+      default: return "You won!";
+    }
+  }
+  switch (finishReason) {
+    case "captured": return "Opponent captured enough stones";
+    case "forfeit": return "You forfeited";
+    case "timeout": return "You ran out of time";
+    case "board_full": return "Board full — opponent had more points";
+    default: return "You lost";
   }
 }
 

@@ -105,6 +105,7 @@ export type MultiplayerGameSummary = {
   boardSize: number;
   scoreToWin: number;
   timeControl: TimeControl;
+  clockMs: { white: number; black: number } | null;
 };
 
 export type MultiplayerGamesIndex = {

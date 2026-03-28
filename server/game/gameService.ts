@@ -1145,6 +1145,7 @@ export class GameService {
       boardSize: room.state.boardSize,
       scoreToWin: room.state.scoreToWin,
       timeControl: room.timeControl,
+      clockMs: room.clockMs ?? null,
     };
   }
 
