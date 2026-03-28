@@ -27,7 +27,7 @@ ENV PORT=80
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=5 \
-  CMD wget -q -O /dev/null http://127.0.0.1:80/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
+  CMD node -e "require('http').get('http://127.0.0.1:80/',r=>{process.exit(r.statusCode<400?0:1)}).on('error',()=>process.exit(1))"
 
 CMD ["node", "server.mjs"]
