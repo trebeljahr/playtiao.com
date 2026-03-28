@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { Navbar } from "@/components/Navbar";
 import {
   getOpponentLabel,
@@ -177,6 +178,13 @@ export function GamesPage() {
                         <span className="text-xs text-[#8d7760]">
                           {game.score.white}-{game.score.black} · {game.historyLength} moves
                         </span>
+                        <GameConfigBadge
+                          boardSize={game.boardSize}
+                          scoreToWin={game.scoreToWin}
+                          timeControl={game.timeControl}
+                          roomType={game.roomType}
+                          compact
+                        />
                       </div>
                     </div>
                     <Button onClick={() => router.push(`/game/${game.gameId}`)}>Resume</Button>

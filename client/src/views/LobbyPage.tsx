@@ -21,6 +21,7 @@ import {
   isSummaryYourTurn,
 } from "@/components/game/GameShared";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
+import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
@@ -482,6 +483,13 @@ export function LobbyPage() {
                               <span className="ml-2 text-xs text-[#8d7760]">
                                 {game.score.white}-{game.score.black} · {game.historyLength} moves
                               </span>
+                              <GameConfigBadge
+                                boardSize={game.boardSize}
+                                scoreToWin={game.scoreToWin}
+                                timeControl={game.timeControl}
+                                roomType={game.roomType}
+                                compact
+                              />
                             </p>
                           </div>
                           <Badge

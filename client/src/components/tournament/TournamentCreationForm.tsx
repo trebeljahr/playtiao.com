@@ -1,17 +1,13 @@
 import { useState } from "react";
 import type { TournamentFormat, TournamentSettings } from "@shared";
+import { TIME_CONTROL_PRESETS } from "@shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 
-const TIME_CONTROL_PRESETS = [
-  { label: "3 min", initialMs: 180_000, incrementMs: 0 },
-  { label: "3+2", initialMs: 180_000, incrementMs: 2_000 },
-  { label: "5 min", initialMs: 300_000, incrementMs: 0 },
-  { label: "5+3", initialMs: 300_000, incrementMs: 3_000 },
-  { label: "10 min", initialMs: 600_000, incrementMs: 0 },
-  { label: "10+5", initialMs: 600_000, incrementMs: 5_000 },
-  { label: "No limit", initialMs: 0, incrementMs: 0 },
+const TOURNAMENT_TC_PRESETS = [
+  ...TIME_CONTROL_PRESETS.filter((p) => p.initialMs >= 180_000), // 3 min+
+  { label: "No limit", category: "Untimed", initialMs: 0, incrementMs: 0 },
 ];
 
 const FORMAT_OPTIONS: { value: TournamentFormat; label: string; description: string }[] = [
@@ -54,7 +50,7 @@ export function TournamentCreationForm({
   const [groupSize, setGroupSize] = useState(4);
 
   function handleSubmit() {
-    const tc = TIME_CONTROL_PRESETS[timeControlIdx];
+    const tc = TOURNAMENT_TC_PRESETS[timeControlIdx];
     const timeControl =
       tc.initialMs === 0 ? null : { initialMs: tc.initialMs, incrementMs: tc.incrementMs };
 
@@ -113,7 +109,7 @@ export function TournamentCreationForm({
           <div className="space-y-3">
             <p className="text-sm font-medium">Time Control</p>
             <div className="flex flex-wrap gap-2">
-              {TIME_CONTROL_PRESETS.map((tc, i) => (
+              {TOURNAMENT_TC_PRESETS.map((tc, i) => (
                 <Button
                   key={tc.label}
                   variant={timeControlIdx === i ? "default" : "outline"}
