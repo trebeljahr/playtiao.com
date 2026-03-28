@@ -25,7 +25,7 @@ function ColorDot({ color }: { color: PlayerColor }) {
   return (
     <span
       className={cn(
-        "inline-block h-3 w-3 shrink-0 rounded-full border",
+        "inline-block h-4 w-4 shrink-0 rounded-full border",
         color === "white"
           ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
           : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
@@ -123,10 +123,16 @@ export function MatchHistoryCard({
       ? "border-[#dba8a0]/60 bg-[#fdf3f1]"
       : "border-[#d7c39e] bg-white/40";
 
-  // Only show reason if we actually have one
-  const reasonText = game.finishReason
-    ? describeResult(result, game.finishReason)
-    : null;
+  // Only show reason if we actually have one and it makes sense
+  const reasonText = (() => {
+    if (!game.finishReason) return null;
+    // Don't say "score target reached" if neither player actually reached it
+    if (game.finishReason === "captured" &&
+        game.score.white < scoreToWin && game.score.black < scoreToWin) {
+      return null;
+    }
+    return describeResult(result, game.finishReason) || null;
+  })();
 
   return (
     <div className={cn("rounded-2xl border p-4 space-y-3", resultBg)}>
@@ -135,10 +141,10 @@ export function MatchHistoryCard({
         <div className="flex flex-wrap items-center gap-2">
           {result && (
             <Badge className={cn(
-              "text-xs font-semibold",
+              "text-xs font-bold border-0",
               result === "won"
-                ? "bg-[#d0eabc] text-[#2d5a14]"
-                : "bg-[#f0c4be] text-[#7a2e24]",
+                ? "bg-[#c2e4a4] text-[#1a4008]"
+                : "bg-[#edb4ac] text-[#5c1a14]",
             )}>
               {result === "won" ? "Won" : "Lost"}
             </Badge>
@@ -149,7 +155,7 @@ export function MatchHistoryCard({
             </Badge>
           )}
           {reasonText && (
-            <span className="text-xs text-[#9a8770]">
+            <span className="text-xs text-[#6e5b48]">
               {reasonText}
             </span>
           )}
