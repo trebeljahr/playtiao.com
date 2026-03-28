@@ -9,7 +9,15 @@ export type BadgeId =
   | "contributor"
   | "super-supporter"
   | "official-champion"
-  | "creator";
+  | "creator"
+  | "badge-1"
+  | "badge-2"
+  | "badge-3"
+  | "badge-4"
+  | "badge-5"
+  | "badge-6"
+  | "badge-7"
+  | "badge-8";
 
 type BadgeTier = 1 | 2 | 3;
 
@@ -65,6 +73,71 @@ export const BADGE_DEFINITIONS: Record<BadgeId, BadgeDefinition> = {
     gradient: "linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #ff6b6b)",
     textColor: "#fff",
     glow: "0 0 8px rgba(255, 107, 107, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+  },
+  // ─── Experimental badge designs ──────────────────────────────────
+  "badge-1": {
+    id: "badge-1",
+    label: "Supporter",
+    tier: 1,
+    gradient: "linear-gradient(135deg, #e8836b, #d4644a)",
+    textColor: "#fff",
+    glow: "0 0 8px rgba(232, 131, 107, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+  },
+  "badge-2": {
+    id: "badge-2",
+    label: "Supporter",
+    tier: 1,
+    gradient: "linear-gradient(135deg, #6366f1, #4f46e5)",
+    textColor: "#fff",
+    glow: "0 0 8px rgba(99, 102, 241, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+  },
+  "badge-3": {
+    id: "badge-3",
+    label: "Supporter",
+    tier: 2,
+    gradient: "linear-gradient(90deg, #f472b6, #ec4899, #f472b6)",
+    textColor: "#fff",
+    glow: "0 0 10px rgba(236, 72, 153, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+  },
+  "badge-4": {
+    id: "badge-4",
+    label: "Supporter",
+    tier: 2,
+    gradient: "linear-gradient(90deg, #14b8a6, #06b6d4, #14b8a6)",
+    textColor: "#fff",
+    glow: "0 0 10px rgba(20, 184, 166, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+  },
+  "badge-5": {
+    id: "badge-5",
+    label: "Supporter",
+    tier: 1,
+    gradient: "linear-gradient(135deg, #78716c, #57534e)",
+    textColor: "#fafaf9",
+    glow: "0 0 6px rgba(120, 113, 108, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
+  },
+  "badge-6": {
+    id: "badge-6",
+    label: "Supporter",
+    tier: 2,
+    gradient: "linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b)",
+    textColor: "#fff",
+    glow: "0 0 10px rgba(245, 158, 11, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+  },
+  "badge-7": {
+    id: "badge-7",
+    label: "Supporter",
+    tier: 3,
+    gradient: "linear-gradient(90deg, #c084fc, #818cf8, #22d3ee, #34d399, #fbbf24, #c084fc)",
+    textColor: "#fff",
+    glow: "0 0 12px rgba(192, 132, 252, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+  },
+  "badge-8": {
+    id: "badge-8",
+    label: "Supporter",
+    tier: 2,
+    gradient: "linear-gradient(90deg, #1e3a5f, #2563eb, #1e3a5f)",
+    textColor: "#93c5fd",
+    glow: "0 0 10px rgba(37, 99, 235, 0.4), inset 0 1px 2px rgba(147, 197, 253, 0.2)",
   },
 };
 
