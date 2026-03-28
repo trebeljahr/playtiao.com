@@ -111,6 +111,26 @@ If the merge fails (branch has diverged), rebase your branch onto main first. Th
 
 6. Push and open a pull request (or push main directly if you have access).
 
+## Code Formatting
+
+This project uses [Prettier](https://prettier.io/) for consistent code formatting. A pre-commit hook (via [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged)) automatically formats staged files when you commit, so you don't need to think about formatting while writing code.
+
+Everything is set up automatically after `npm install` -- no manual configuration needed.
+
+### Useful commands
+
+```bash
+# Format the entire codebase
+npm run format
+
+# Check formatting without writing changes (useful in CI)
+npm run format:check
+```
+
+### Pre-push typechecks
+
+A pre-push hook runs `tsc` on both the client and server before allowing a push. If either typecheck fails, the push is blocked with a clear error message.
+
 ## Code Organization
 
 ### Shared game engine (`shared/src/tiao.ts`)
@@ -140,6 +160,7 @@ The frontend is organized around pages and hooks:
 All changes should include tests where applicable. See [testing](testing) for the full testing guide, including how the test harnesses work and how to add new tests.
 
 Quick summary:
+
 - **Game rule changes** -- add tests in `server/tests/tiaoCore*.test.ts` using the board ASCII harness
 - **API route changes** -- add tests in `server/tests/api.test.ts` or `authRoutes.test.ts`
 - **Service logic changes** -- add tests in `server/tests/gameService*.test.ts`

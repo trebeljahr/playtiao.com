@@ -51,36 +51,34 @@ The game is played on a 19x19 board. The core state type:
 
 ```typescript
 type GameState = {
-  positions: TileState[][]   // 19x19 grid
-  currentTurn: Player
-  pendingJump: PendingJump | null
-  pendingCaptures: Position[]
-  score: { white: number; black: number }
-  history: HistoryEntry[]
-}
+  positions: TileState[][]; // 19x19 grid
+  currentTurn: Player;
+  pendingJump: PendingJump | null;
+  pendingCaptures: Position[];
+  score: { white: number; black: number };
+  history: HistoryEntry[];
+};
 ```
 
 ### Key Functions
 
-| Function                | Purpose                                      |
-|-------------------------|----------------------------------------------|
-| [`placePiece`][fn-placePiece]            | Place a stone on the board                   |
-| [`jumpPiece`][fn-jumpPiece]             | Execute a jump move                          |
-| [`confirmPendingJump`][fn-confirmPendingJump]    | Finalize a multi-step jump sequence          |
-| [`undoPendingJumpStep`][fn-undoPendingJumpStep]   | Roll back one step of a pending jump         |
-| [`undoLastTurn`][fn-undoLastTurn]          | Undo the most recent completed turn          |
-| [`canPlacePiece`][fn-canPlacePiece]         | Check if a placement is legal                |
-| [`getJumpTargets`][fn-getJumpTargets]        | Get valid destinations for a jump            |
-| [`getSelectableJumpOrigins`][fn-getSelectableJumpOrigins] | Get pieces that can initiate a jump      |
+| Function                                                  | Purpose                              |
+| --------------------------------------------------------- | ------------------------------------ |
+| [`placePiece`][fn-placePiece]                             | Place a stone on the board           |
+| [`jumpPiece`][fn-jumpPiece]                               | Execute a jump move                  |
+| [`confirmPendingJump`][fn-confirmPendingJump]             | Finalize a multi-step jump sequence  |
+| [`undoPendingJumpStep`][fn-undoPendingJumpStep]           | Roll back one step of a pending jump |
+| [`undoLastTurn`][fn-undoLastTurn]                         | Undo the most recent completed turn  |
+| [`canPlacePiece`][fn-canPlacePiece]                       | Check if a placement is legal        |
+| [`getJumpTargets`][fn-getJumpTargets]                     | Get valid destinations for a jump    |
+| [`getSelectableJumpOrigins`][fn-getSelectableJumpOrigins] | Get pieces that can initiate a jump  |
 
 ### Result Type
 
 Every function returns a `RuleResult<T>`:
 
 ```typescript
-type RuleResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; code: FailureCode; reason: string }
+type RuleResult<T> = { ok: true; value: T } | { ok: false; code: FailureCode; reason: string };
 ```
 
 This forces callers to handle failures explicitly. Failure codes include:
@@ -107,6 +105,7 @@ The server is an Express application with a WebSocket server attached to the sam
 - **Lock system** — room locks, player locks, and a matchmaking lock via a `LockProvider` abstraction (in-memory or Redis-backed) to prevent race conditions under concurrent access
 
 The server auto-detects Redis when `REDIS_URL` is set and falls back to in-memory implementations when it is not configured.
+
 - **Move validation** — `applyAction()` validates every move server-side using the shared game engine before persisting
 - **State broadcast** — `broadcastSnapshot()` pushes updated state to all connected players and lobby listeners
 
@@ -139,16 +138,16 @@ The frontend is built with React 18, TypeScript, Vite, and Tailwind CSS.
 
 ### Pages
 
-| Page                  | Purpose                              |
-|-----------------------|--------------------------------------|
-| `LobbyPage`          | Live game feed, social activity      |
-| `LocalGamePage`      | Two players on one device            |
-| `ComputerGamePage`   | Play against the AI                  |
-| `MultiplayerGamePage`| Online game via WebSocket            |
-| `MatchmakingPage`    | Queue for a random opponent          |
-| `FriendsPage`        | Friend list and requests             |
-| `GamesPage`          | Game library (active + finished)     |
-| `ProfilePage`        | User profile and settings            |
+| Page                  | Purpose                          |
+| --------------------- | -------------------------------- |
+| `LobbyPage`           | Live game feed, social activity  |
+| `LocalGamePage`       | Two players on one device        |
+| `ComputerGamePage`    | Play against the AI              |
+| `MultiplayerGamePage` | Online game via WebSocket        |
+| `MatchmakingPage`     | Queue for a random opponent      |
+| `FriendsPage`         | Friend list and requests         |
+| `GamesPage`           | Game library (active + finished) |
+| `ProfilePage`         | User profile and settings        |
 
 ### Hooks Architecture
 
@@ -203,10 +202,10 @@ Browser                          Server                    MongoDB
 
 ### Player Types
 
-| Type      | Identity              | Persistence                 |
-|-----------|-----------------------|-----------------------------|
-| `guest`   | Anonymous UUID        | Session only, no saved data |
-| `account` | Email + password      | Full profile, friends, history |
+| Type      | Identity         | Persistence                    |
+| --------- | ---------------- | ------------------------------ |
+| `guest`   | Anonymous UUID   | Session only, no saved data    |
+| `account` | Email + password | Full profile, friends, history |
 
 Account passwords are hashed with bcrypt.
 
@@ -223,6 +222,7 @@ Tiao uses MongoDB with four collections.
 ### Collections
 
 **GameAccount**
+
 ```
 {
   email, passwordHash, displayName, profilePicture,
@@ -231,6 +231,7 @@ Tiao uses MongoDB with four collections.
 ```
 
 **GameRoom**
+
 ```
 {
   roomId          6-character alphanumeric ID
@@ -244,6 +245,7 @@ Tiao uses MongoDB with four collections.
 ```
 
 **GameSession**
+
 ```
 {
   tokenDigest     SHA-256 HMAC of session token
@@ -255,6 +257,7 @@ Tiao uses MongoDB with four collections.
 ```
 
 **GameInvitation**
+
 ```
 {
   gameId, senderId, recipientId,
@@ -307,6 +310,14 @@ Key properties:
 - **Server is authoritative.** The shared game engine validates every move on the server. A malicious client cannot cheat.
 - **Optimistic updates mask latency.** Players see their moves instantly; the server confirms or rejects asynchronously.
 - **Lobby stays in sync.** Lobby listeners receive game-update events so spectators and friend lists reflect current game status.
+
+---
+
+## Tooling
+
+### Code Formatting
+
+All code is formatted with [Prettier](https://prettier.io/). A pre-commit hook (via Husky + lint-staged) automatically formats staged files on every commit. A pre-push hook runs TypeScript type-checking on both the client and server before allowing a push. All tooling is installed and configured automatically by `npm install` -- no manual setup required.
 
 ---
 

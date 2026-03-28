@@ -1,0 +1,7 @@
+command -v git-lfs >/dev/null 2>&1 && git lfs pre-push "$@"
+
+printf "\n[pre-push] Typechecking client...\n"
+npm --prefix client run typecheck || { printf >&2 "\n[pre-push] Client typecheck failed.\n"; exit 1; }
+
+printf "[pre-push] Typechecking server...\n"
+npm --prefix server run build || { printf >&2 "\n[pre-push] Server typecheck failed.\n"; exit 1; }
