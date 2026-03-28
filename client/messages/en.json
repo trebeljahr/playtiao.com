@@ -90,7 +90,10 @@
     "rematchToast": "{opponent} wants a rematch!",
     "viewGame": "View Game",
     "game": "Game {gameId}",
-    "inviteSent": "Game created & invitation sent!"
+    "inviteSent": "Game created & invitation sent!",
+    "timeControlTooltip": "{minutes, plural, one {# min} other {# mins}} per player + {increment}s added per move",
+    "timeControlTooltipNoIncrement": "{minutes, plural, one {# min} other {# mins}} per player, no increment",
+    "opponentOnline": "Opponent is online"
   },
   "game": {
     "white": "White",
@@ -158,7 +161,54 @@
     "opponentWantsRematch": "Opponent wants a rematch!",
     "nMin": "{n} min",
     "nToWin": "{n} to win",
-    "nPts": "{n}pts"
+    "nPts": "{n}pts",
+    "game": "Game",
+    "drawTitle": "Draw",
+    "colorWins": "{color} wins",
+    "waitingForOpponentToConnect": "Waiting for opponent to connect",
+    "spectating": "Spectating",
+    "yourMove": "Your move",
+    "linkCopied": "Link copied!",
+    "multiplayer": "Multiplayer",
+    "connecting": "Connecting",
+    "reconnecting": "Reconnecting",
+    "toMakeFirstMove": "to make first move",
+    "opponentsFirstMove": "Opponent's first move",
+    "liveMatch": "Live match",
+    "lobbyHost": "Lobby host",
+    "secondPlayer": "Second player",
+    "waitingToJoin": "Waiting to join",
+    "online": "Online",
+    "offline": "Offline",
+    "lobbyShareHint": "Share the Game ID or use the share link above to invite a friend. White still starts. The colors are assigned randomly the moment player two joins the lobby.",
+    "gameOver": "The game is over.",
+    "boardFullDesc": "No moves remaining — the board is full.",
+    "youCapturedDesc": "You captured enough of your opponent's stones.",
+    "opponentForfeitedDesc": "Your opponent forfeited the game.",
+    "opponentTimedOutDesc": "Your opponent ran out of time.",
+    "opponentCapturedDesc": "Your opponent captured enough of your stones.",
+    "youForfeitedDesc": "You forfeited the game.",
+    "youTimedOutDesc": "You ran out of time.",
+    "spectatorCaptured": "{color} captured enough stones.",
+    "spectatorForfeit": "{color} forfeited the game.",
+    "spectatorTimeout": "{color} ran out of time.",
+    "forfeitGame": "Forfeit Game",
+    "forfeitConfirm": "Are you sure you want to forfeit? Your opponent will win.",
+    "takebackRequested": "Takeback requested...",
+    "noTakebacksLeft": "No takebacks left",
+    "requestTakeback": "Request Takeback",
+    "inGame": "In game",
+    "invited": "Invited",
+    "sending": "Sending...",
+    "invite": "Invite",
+    "spectatorsCount": "Spectators ({count})",
+    "spectatorsDesc": "People watching this game.",
+    "noSpectatorsYet": "No spectators yet.",
+    "inviteSpectators": "Invite spectators",
+    "copyLink": "Copy link",
+    "shareTitle": "Watch a Tiao game",
+    "shareText": "Come spectate this Tiao match!",
+    "share": "Share"
   },
   "config": {
     "difficulty": "Difficulty",
@@ -189,7 +239,11 @@
     "searching": "Searching for opponent...",
     "cancelSearch": "Cancel Search",
     "initializing": "Initializing matchmaking...",
-    "unlimited": "Unlimited"
+    "unlimited": "Unlimited",
+    "minPerPlayer": "min per player",
+    "secAddedPerMove": "s added per move",
+    "noIncrement": "no increment",
+    "noTimeLimit": "No time limit"
   },
   "games": {
     "title": "My Games",
@@ -238,7 +292,10 @@
     "badgeHidden": "Hidden",
     "badgeActive": "Your {badge} badge will appear next to your name in games, friend lists, and tournaments.",
     "devPreviewBadges": "Dev preview — all badges",
-    "badgeTier": "Tier {tier} — {id}"
+    "badgeTier": "Tier {tier} — {id}",
+    "failedToResizeImage": "Failed to resize image",
+    "failedToLoadImage": "Failed to load image",
+    "justNow": "Just now"
   },
   "friends": {
     "findPlayers": "Find players",
@@ -322,7 +379,8 @@
     "standingsLosses": "L",
     "standingsDraws": "D",
     "standingsPoints": "Pts",
-    "standingsDiff": "+/-"
+    "standingsDiff": "+/-",
+    "failedToCreate": "Failed to create tournament."
   },
   "publicProfile": {
     "loadingProfile": "Loading profile...",

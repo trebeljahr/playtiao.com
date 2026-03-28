@@ -90,7 +90,10 @@
     "rematchToast": "{opponent} will eine Revanche!",
     "viewGame": "Spiel ansehen",
     "game": "Spiel {gameId}",
-    "inviteSent": "Spiel erstellt & Einladung gesendet!"
+    "inviteSent": "Spiel erstellt & Einladung gesendet!",
+    "timeControlTooltip": "{minutes, plural, one {# Min.} other {# Min.}} pro Spieler + {increment}s pro Zug",
+    "timeControlTooltipNoIncrement": "{minutes, plural, one {# Min.} other {# Min.}} pro Spieler, kein Inkrement",
+    "opponentOnline": "Gegner ist online"
   },
   "game": {
     "white": "Weiß",
@@ -158,7 +161,54 @@
     "opponentWantsRematch": "Gegner will eine Revanche!",
     "nMin": "{n} Min.",
     "nToWin": "{n} zum Sieg",
-    "nPts": "{n} Pkt."
+    "nPts": "{n} Pkt.",
+    "game": "Spiel",
+    "drawTitle": "Unentschieden",
+    "colorWins": "{color} gewinnt",
+    "waitingForOpponentToConnect": "Warte auf Gegner...",
+    "spectating": "Zuschauen",
+    "yourMove": "Du bist dran",
+    "linkCopied": "Link kopiert!",
+    "multiplayer": "Mehrspieler",
+    "connecting": "Verbinden",
+    "reconnecting": "Neu verbinden",
+    "toMakeFirstMove": "für den ersten Zug",
+    "opponentsFirstMove": "Erster Zug des Gegners",
+    "liveMatch": "Live-Partie",
+    "lobbyHost": "Lobby-Gastgeber",
+    "secondPlayer": "Zweiter Spieler",
+    "waitingToJoin": "Wartet auf Beitritt",
+    "online": "Online",
+    "offline": "Offline",
+    "lobbyShareHint": "Teile die Spiel-ID oder nutze den Share-Link oben, um einen Freund einzuladen. Weiß beginnt. Die Farben werden zufällig zugewiesen, sobald Spieler zwei der Lobby beitritt.",
+    "gameOver": "Das Spiel ist vorbei.",
+    "boardFullDesc": "Keine Züge mehr möglich — das Brett ist voll.",
+    "youCapturedDesc": "Du hast genug Steine deines Gegners gefangen.",
+    "opponentForfeitedDesc": "Dein Gegner hat aufgegeben.",
+    "opponentTimedOutDesc": "Deinem Gegner ist die Zeit abgelaufen.",
+    "opponentCapturedDesc": "Dein Gegner hat genug deiner Steine gefangen.",
+    "youForfeitedDesc": "Du hast aufgegeben.",
+    "youTimedOutDesc": "Dir ist die Zeit abgelaufen.",
+    "spectatorCaptured": "{color} hat genug Steine gefangen.",
+    "spectatorForfeit": "{color} hat aufgegeben.",
+    "spectatorTimeout": "{color} ist die Zeit abgelaufen.",
+    "forfeitGame": "Spiel aufgeben",
+    "forfeitConfirm": "Bist du sicher, dass du aufgeben möchtest? Dein Gegner gewinnt.",
+    "takebackRequested": "Rücknahme angefragt...",
+    "noTakebacksLeft": "Keine Rücknahmen mehr",
+    "requestTakeback": "Rücknahme anfordern",
+    "inGame": "Im Spiel",
+    "invited": "Eingeladen",
+    "sending": "Senden...",
+    "invite": "Einladen",
+    "spectatorsCount": "Zuschauer ({count})",
+    "spectatorsDesc": "Personen, die dieses Spiel beobachten.",
+    "noSpectatorsYet": "Noch keine Zuschauer.",
+    "inviteSpectators": "Zuschauer einladen",
+    "copyLink": "Link kopieren",
+    "shareTitle": "Ein Tiao-Spiel anschauen",
+    "shareText": "Komm und schau dir dieses Tiao-Match an!",
+    "share": "Teilen"
   },
   "config": {
     "difficulty": "Schwierigkeit",
@@ -189,7 +239,11 @@
     "searching": "Suche nach Gegner...",
     "cancelSearch": "Suche abbrechen",
     "initializing": "Matchmaking wird gestartet...",
-    "unlimited": "Unbegrenzt"
+    "unlimited": "Unbegrenzt",
+    "minPerPlayer": "Min. pro Spieler",
+    "secAddedPerMove": "s pro Zug",
+    "noIncrement": "kein Inkrement",
+    "noTimeLimit": "Kein Zeitlimit"
   },
   "games": {
     "title": "Meine Spiele",
@@ -238,7 +292,10 @@
     "badgeHidden": "Versteckt",
     "badgeActive": "Dein {badge}-Abzeichen wird neben deinem Namen in Spielen, Freundeslisten und Turnieren angezeigt.",
     "devPreviewBadges": "Entwicklervorschau — alle Abzeichen",
-    "badgeTier": "Stufe {tier} — {id}"
+    "badgeTier": "Stufe {tier} — {id}",
+    "failedToResizeImage": "Bild konnte nicht verkleinert werden",
+    "failedToLoadImage": "Bild konnte nicht geladen werden",
+    "justNow": "Gerade eben"
   },
   "friends": {
     "findPlayers": "Spieler finden",
@@ -322,7 +379,8 @@
     "standingsLosses": "N",
     "standingsDraws": "U",
     "standingsPoints": "Pkt.",
-    "standingsDiff": "+/-"
+    "standingsDiff": "+/-",
+    "failedToCreate": "Turnier konnte nicht erstellt werden."
   },
   "publicProfile": {
     "loadingProfile": "Profil wird geladen...",

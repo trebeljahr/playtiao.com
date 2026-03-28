@@ -383,7 +383,9 @@ export function LobbyPage() {
                     {TIME_CONTROL_PRESETS.map((preset) => {
                       const minutes = Math.floor(preset.initialMs / 60_000);
                       const increment = Math.floor(preset.incrementMs / 1_000);
-                      const tooltip = `${minutes} min${minutes !== 1 ? "s" : ""} per player${increment > 0 ? ` + ${increment}s added per move` : ", no increment"}`;
+                      const tooltip = increment > 0
+                        ? t("timeControlTooltip", { minutes, increment })
+                        : t("timeControlTooltipNoIncrement", { minutes });
 
                       return (
                         <Button
@@ -466,7 +468,7 @@ export function LobbyPage() {
                                       ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
                                       : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
                                   )}
-                                  title={`Playing as ${game.yourSeat}`}
+                                  title={tc("playingAs", { color: game.yourSeat })}
                                 />
                               )}
                               <p className="font-mono text-lg font-bold text-[#2b1e14]">
@@ -478,7 +480,7 @@ export function LobbyPage() {
                               {opponentOnline && (
                                 <span
                                   className="ml-1.5 inline-block h-2 w-2 rounded-full bg-[#6ba34a]"
-                                  title="Opponent is online"
+                                  title={t("opponentOnline")}
                                 />
                               )}
                               <span className="ml-2 text-xs text-[#8d7760]">

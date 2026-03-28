@@ -108,8 +108,8 @@ export function MatchmakingPage() {
                     className="text-sm text-[#7a6656]"
                     title={
                       locationTimeControl
-                        ? `${Math.floor(locationTimeControl.initialMs / 60000)} min per player${locationTimeControl.incrementMs > 0 ? ` + ${Math.floor(locationTimeControl.incrementMs / 1000)}s added per move` : ", no increment"}`
-                        : "No time limit"
+                        ? `${Math.floor(locationTimeControl.initialMs / 60000)} ${t("minPerPlayer")}${locationTimeControl.incrementMs > 0 ? ` + ${Math.floor(locationTimeControl.incrementMs / 1000)}${t("secAddedPerMove")}` : `, ${t("noIncrement")}`}`
+                        : t("noTimeLimit")
                     }
                   >
                     {locationTimeControl

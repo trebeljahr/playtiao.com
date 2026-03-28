@@ -31,7 +31,7 @@ import { useTranslations } from "next-intl";
 const PROFILE_PIC_SIZE = 512;
 const PROFILE_PIC_QUALITY = 0.85;
 
-function resizeImage(file: File): Promise<File> {
+function resizeImage(file: File, errorMessages: { failedToResize: string; failedToLoad: string }): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -53,7 +53,7 @@ function resizeImage(file: File): Promise<File> {
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error("Failed to resize image"));
+            reject(new Error(errorMessages.failedToResize));
             return;
           }
           resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
@@ -65,7 +65,7 @@ function resizeImage(file: File): Promise<File> {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image"));
+      reject(new Error(errorMessages.failedToLoad));
     };
 
     img.src = url;
@@ -175,9 +175,9 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
   );
 }
 
-function formatTimestamp(value?: string) {
+function formatTimestamp(value: string | undefined, justNowLabel: string) {
   if (!value) {
-    return "Just now";
+    return justNowLabel;
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -362,7 +362,10 @@ export function ProfilePage() {
       setPageError(null);
 
       try {
-        const resized = await resizeImage(file);
+        const resized = await resizeImage(file, {
+          failedToResize: t("failedToResizeImage"),
+          failedToLoad: t("failedToLoadImage"),
+        });
         const objectUrl = URL.createObjectURL(resized);
         setPreviewUrl(objectUrl);
         setSelectedFile(resized);
@@ -620,8 +623,8 @@ export function ProfilePage() {
                     </div>
 
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                      <p>{t("created", { date: formatTimestamp(profile?.createdAt) })}</p>
-                      <p>{t("updated", { date: formatTimestamp(profile?.updatedAt) })}</p>
+                      <p>{t("created", { date: formatTimestamp(profile?.createdAt, t("justNow")) })}</p>
+                      <p>{t("updated", { date: formatTimestamp(profile?.updatedAt, t("justNow")) })}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-3">

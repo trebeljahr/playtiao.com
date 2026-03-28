@@ -307,37 +307,37 @@ export function MultiplayerGamePage() {
     : false;
 
   const gameOverTitle = isDraw
-    ? "Draw!"
+    ? t("draw")
     : playerWon
-      ? "You won!"
+      ? t("youWon")
       : playerLost
-        ? "You lost!"
+        ? t("youLost")
         : winner
-          ? `${formatPlayerColor(winner)} wins!`
+          ? t("wins", { color: formatPlayerColor(winner)! })
           : "";
 
   function describeFinishReason(): string {
-    if (!finishReason) return "The game is over.";
-    if (finishReason === "board_full") return "No moves remaining — the board is full.";
+    if (!finishReason) return t("gameOver");
+    if (finishReason === "board_full") return t("boardFullDesc");
     if (playerWon) {
       switch (finishReason) {
-        case "captured": return "You captured enough of your opponent's stones.";
-        case "forfeit": return "Your opponent forfeited the game.";
-        case "timeout": return "Your opponent ran out of time.";
+        case "captured": return t("youCapturedDesc");
+        case "forfeit": return t("opponentForfeitedDesc");
+        case "timeout": return t("opponentTimedOutDesc");
       }
     }
     if (playerLost) {
       switch (finishReason) {
-        case "captured": return "Your opponent captured enough of your stones.";
-        case "forfeit": return "You forfeited the game.";
-        case "timeout": return "You ran out of time.";
+        case "captured": return t("opponentCapturedDesc");
+        case "forfeit": return t("youForfeitedDesc");
+        case "timeout": return t("youTimedOutDesc");
       }
     }
     // Spectator
     switch (finishReason) {
-      case "captured": return `${formatPlayerColor(winner!)} captured enough stones.`;
-      case "forfeit": return `${formatPlayerColor(winner === "white" ? "black" : "white")} forfeited the game.`;
-      case "timeout": return `${formatPlayerColor(winner === "white" ? "black" : "white")} ran out of time.`;
+      case "captured": return t("spectatorCaptured", { color: formatPlayerColor(winner!)! });
+      case "forfeit": return t("spectatorForfeit", { color: formatPlayerColor(winner === "white" ? "black" : "white")! });
+      case "timeout": return t("spectatorTimeout", { color: formatPlayerColor(winner === "white" ? "black" : "white")! });
     }
   }
 
@@ -454,20 +454,20 @@ export function MultiplayerGamePage() {
     multiplayerSnapshot.state.currentTurn !== playerSeat;
 
   const multiplayerStatusTitle = !multiplayerSnapshot
-    ? "Game"
+    ? t("game")
     : isDraw
-      ? "Draw"
+      ? t("drawTitle")
       : winner
-        ? `${formatPlayerColor(winner)} wins`
+        ? t("colorWins", { color: formatPlayerColor(winner)! })
       : multiplayerSnapshot.status === "waiting"
-        ? "Waiting"
+        ? t("waiting")
         : isTournamentUnstarted
-          ? "Waiting for opponent to connect"
+          ? t("waitingForOpponentToConnect")
           : isSpectator
-            ? "Spectating"
+            ? t("spectating")
             : multiplayerYourTurn
-              ? "Your move"
-              : "Waiting for opponent";
+              ? t("yourMove")
+              : t("waitingForOpponent");
 
   const [copyFeedbackKey, setCopyFeedbackKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
@@ -491,7 +491,7 @@ export function MultiplayerGamePage() {
       document.execCommand("copy");
       return Promise.resolve();
     } catch {
-      return Promise.reject(new Error("Copy failed"));
+      return Promise.reject(new Error(tCommon("failedToCopy")));
     } finally {
       document.body.removeChild(textarea);
     }
@@ -501,7 +501,7 @@ export function MultiplayerGamePage() {
     if (!multiplayerSnapshot) return;
     try {
       await copyToClipboard(multiplayerSnapshot.gameId);
-      setCopyFeedback("Copied!");
+      setCopyFeedback(tCommon("copied"));
       setCopyFeedbackKey("game-id");
       toast.success(tCommon("copiedGameId", { gameId: multiplayerSnapshot.gameId }));
       setTimeout(() => {
@@ -518,7 +518,7 @@ export function MultiplayerGamePage() {
     try {
       const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}`;
       await copyToClipboard(url);
-      setCopyFeedback("Link copied!");
+      setCopyFeedback(t("linkCopied"));
       setCopyFeedbackKey("share-link");
       toast.success(tCommon("copiedShareLink"));
       setTimeout(() => {
@@ -653,8 +653,8 @@ export function MultiplayerGamePage() {
                   <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
                     <HourglassSpinner className="text-[#7b5f3f]" />
                     {isTournamentUnstarted
-                      ? "Waiting for opponent to connect..."
-                      : "Waiting For Opponent..."}
+                      ? t("waitingForOpponentToConnect")
+                      : t("waitingForOpponent")}
                   </div>
                 </div>
               )}
@@ -676,7 +676,7 @@ export function MultiplayerGamePage() {
                       <GamePanelBrand />
                       <span className="hidden sm:contents">
                         <Badge className="w-fit bg-[#eee3cf] text-[#5f4932] mt-1">
-                          Multiplayer
+                          {t("multiplayer")}
                         </Badge>
                       </span>
                     </div>
@@ -703,8 +703,8 @@ export function MultiplayerGamePage() {
                         >
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           {connectionState === "connecting"
-                            ? "Connecting"
-                            : "Reconnecting"}
+                            ? t("connecting")
+                            : t("reconnecting")}
                         </motion.div>
                       ) : isAwaitingFirstMove && multiplayerYourTurn ? (
                         <motion.div
@@ -713,7 +713,7 @@ export function MultiplayerGamePage() {
                           className="flex items-center gap-2 rounded-full border border-[#c9a84c] bg-[#fffbeb]/96 px-3 py-2 text-sm font-semibold text-[#8b6914] shadow-[0_16px_28px_-22px_rgba(139,105,20,0.42)] backdrop-blur"
                         >
                           <span className="font-mono tabular-nums text-base">{formatClockTime(firstMoveCountdownMs)}</span>
-                          <span>to make first move</span>
+                          <span>{t("toMakeFirstMove")}</span>
                         </motion.div>
                       ) : isAwaitingFirstMove && multiplayerWaitingOnOpponent ? (
                         <motion.div
@@ -723,7 +723,7 @@ export function MultiplayerGamePage() {
                         >
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           <span className="font-mono tabular-nums">{formatClockTime(firstMoveCountdownMs)}</span>
-                          <span>Opponent&apos;s first move</span>
+                          <span>{t("opponentsFirstMove")}</span>
                         </motion.div>
                       ) : multiplayerYourTurn ? (
                         <div className="flex items-center gap-2">
@@ -735,7 +735,7 @@ export function MultiplayerGamePage() {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className="flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
                           >
-                            Your move
+                            {t("yourMove")}
                           </motion.div>
                         </div>
                       ) : multiplayerWaitingOnOpponent ? (
@@ -749,7 +749,7 @@ export function MultiplayerGamePage() {
                             className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur min-w-0"
                           >
                             <HourglassSpinner className="shrink-0 text-[#7b5f3f]" />
-                            <span className="truncate">Waiting For Opponent</span>
+                            <span className="truncate">{t("waitingForOpponent")}</span>
                           </motion.div>
                         </div>
                       ) : isSpectator && multiplayerSnapshot?.status === "active" ? (
@@ -763,7 +763,7 @@ export function MultiplayerGamePage() {
                             className="flex items-center gap-2 rounded-full border border-[#c4b5d4] bg-[#f5f0fc]/96 px-3 py-2 text-sm font-semibold text-[#5a4570] shadow-[0_16px_28px_-22px_rgba(90,69,112,0.42)] backdrop-blur"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                            Spectating
+                            {t("spectating")}
                           </motion.div>
                         </div>
                       ) : null}
@@ -803,8 +803,8 @@ export function MultiplayerGamePage() {
                       <CardTitle className="font-display text-2xl text-[#2b1e14]">
                         {multiplayerSnapshot?.status === "active"
                           ? isSpectator
-                            ? "Spectating"
-                            : "Live match"
+                            ? t("spectating")
+                            : t("liveMatch")
                           : multiplayerStatusTitle}
                         {multiplayerSnapshot?.status === "waiting" && (
                           <AnimatedEllipsis />
@@ -820,7 +820,7 @@ export function MultiplayerGamePage() {
                         <>
                           <div className="grid grid-cols-1 gap-4">
                             <AnimatedScoreTile
-                              label="Black"
+                              label={t("black")}
                               value={
                                 (displayState ?? multiplayerSnapshot.state)
                                   .score.black
@@ -831,7 +831,7 @@ export function MultiplayerGamePage() {
                               scoreToWin={multiplayerSnapshot.state.scoreToWin}
                             />
                             <AnimatedScoreTile
-                              label="White"
+                              label={t("white")}
                               value={
                                 (displayState ?? multiplayerSnapshot.state)
                                   .score.white
@@ -862,8 +862,8 @@ export function MultiplayerGamePage() {
                                     <div>
                                       <p className="text-sm font-semibold text-[#2b1e14]">
                                         {index === 0
-                                          ? "Lobby host"
-                                          : "Second player"}
+                                          ? t("lobbyHost")
+                                          : t("secondPlayer")}
                                       </p>
                                       <p className="text-sm text-[#7a6656]">
                                         {slot
@@ -872,7 +872,7 @@ export function MultiplayerGamePage() {
                                               auth?.player.playerId,
                                               tCommon("you"),
                                             )
-                                          : "Waiting to join"}
+                                          : t("waitingToJoin")}
                                       </p>
                                     </div>
                                   </div>
@@ -898,17 +898,14 @@ export function MultiplayerGamePage() {
                                           : "bg-[#f2e8d9] text-[#6e5b48]",
                                       )}
                                     >
-                                      {slot?.online ? "Online" : "Offline"}
+                                      {slot?.online ? t("online") : t("offline")}
                                     </Badge>
                                   </div>
                                 </div>
                               );
                             })}
                             <p className="mt-4 text-xs leading-relaxed text-[#7a6656]">
-                              Share the Game ID or use the share link above to
-                              invite a friend. White still starts. The colors are
-                              assigned randomly the moment player two joins the
-                              lobby.
+                              {t("lobbyShareHint")}
                             </p>
                           </div>
                         </>
@@ -959,10 +956,7 @@ export function MultiplayerGamePage() {
                               return (
                                 <AnimatedScoreTile
                                   key={color}
-                                  label={
-                                    color.charAt(0).toUpperCase() +
-                                    color.slice(1)
-                                  }
+                                  label={t(color)}
                                   value={
                                     (displayState ?? multiplayerSnapshot.state)
                                       .score[color]
@@ -1022,7 +1016,7 @@ export function MultiplayerGamePage() {
                               className="w-full text-[#9b4030] hover:bg-[#fdf0ed] hover:text-[#7a2e22]"
                               onClick={() => setForfeitDialogOpen(true)}
                             >
-                              Forfeit
+                              {t("forfeit")}
                             </Button>
                           </div>
                         )}
@@ -1067,7 +1061,7 @@ export function MultiplayerGamePage() {
                               <div className="flex items-center gap-2 rounded-2xl border border-[#d8c29c] bg-[#fff8ee] px-4 py-3">
                                 <HourglassSpinner className="text-[#7b5f3f]" />
                                 <p className="text-sm font-medium text-[#5d4732]">
-                                  Takeback requested...
+                                  {t("takebackRequested")}
                                 </p>
                               </div>
                             ) : (
@@ -1085,8 +1079,8 @@ export function MultiplayerGamePage() {
                                 }
                               >
                                 {(multiplayerSnapshot.takeback?.declinedCount?.[playerSeat as PlayerColor] ?? 0) >= 3
-                                  ? "No takebacks left"
-                                  : "Request Takeback"}
+                                  ? t("noTakebacksLeft")
+                                  : t("requestTakeback")}
                               </Button>
                             )}
                           </div>
@@ -1273,11 +1267,11 @@ export function MultiplayerGamePage() {
                   />
                   {alreadyInRoom ? (
                     <Badge variant="outline" className="text-xs text-[#43513f]">
-                      In game
+                      {t("inGame")}
                     </Badge>
                   ) : alreadyInvited ? (
                     <Badge variant="outline" className="text-xs text-[#8d7760]">
-                      Invited
+                      {t("invited")}
                     </Badge>
                   ) : (
                     <Button
@@ -1286,7 +1280,7 @@ export function MultiplayerGamePage() {
                       onClick={() => handleInviteFriend(friend.playerId)}
                       disabled={inviteBusy === friend.playerId}
                     >
-                      {inviteBusy === friend.playerId ? "Sending..." : "Invite"}
+                      {inviteBusy === friend.playerId ? t("sending") : t("invite")}
                     </Button>
                   )}
                 </div>
@@ -1299,15 +1293,15 @@ export function MultiplayerGamePage() {
       <Dialog
         open={forfeitDialogOpen}
         onOpenChange={setForfeitDialogOpen}
-        title="Forfeit Game"
-        description="Are you sure you want to forfeit? Your opponent will win."
+        title={t("forfeitGame")}
+        description={t("forfeitConfirm")}
       >
         <div className="flex gap-3 justify-end">
           <Button
             variant="outline"
             onClick={() => setForfeitDialogOpen(false)}
           >
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button
             className="bg-[#9b4030] text-white hover:bg-[#7a2e22]"
@@ -1316,7 +1310,7 @@ export function MultiplayerGamePage() {
               sendMultiplayerMessage({ type: "forfeit" });
             }}
           >
-            Forfeit
+            {t("forfeit")}
           </Button>
         </div>
       </Dialog>
@@ -1369,14 +1363,14 @@ export function MultiplayerGamePage() {
       <Dialog
         open={spectatorDialogOpen}
         onOpenChange={setSpectatorDialogOpen}
-        title={`Spectators (${spectatorCount})`}
-        description="People watching this game."
+        title={t("spectatorsCount", { count: spectatorCount })}
+        description={t("spectatorsDesc")}
       >
         <div className="space-y-4">
           <div className="space-y-2 max-h-[16rem] overflow-y-auto">
             {multiplayerSnapshot?.spectators.length === 0 ? (
               <p className="text-center text-sm text-[#6e5b48] py-4">
-                No spectators yet.
+                {t("noSpectatorsYet")}
               </p>
             ) : (
               multiplayerSnapshot?.spectators.map((slot) => {
@@ -1417,12 +1411,12 @@ export function MultiplayerGamePage() {
                     <div className="flex items-center gap-2">
                       {isFriend && (
                         <Badge className="text-xs bg-emerald-100 text-emerald-700">
-                          Friend
+                          {tCommon("friend")}
                         </Badge>
                       )}
                       {hasPendingOutgoing && (
                         <Badge className="text-xs bg-[#f2e8d9] text-[#8d7760]">
-                          Pending
+                          {tCommon("pending")}
                         </Badge>
                       )}
                       {canBefriend && (
@@ -1440,8 +1434,8 @@ export function MultiplayerGamePage() {
                         >
                           {social.socialActionBusyKey ===
                           `friend-send:${specId}`
-                            ? "Sending..."
-                            : "Add Friend"}
+                            ? t("sending")
+                            : tCommon("addFriend")}
                         </Button>
                       )}
                     </div>
@@ -1453,7 +1447,7 @@ export function MultiplayerGamePage() {
 
           <div className="space-y-2 border-t border-[#dbc6a2] pt-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
-              Invite spectators
+              {t("inviteSpectators")}
             </p>
             <div className="flex gap-2">
               <Button
@@ -1465,7 +1459,7 @@ export function MultiplayerGamePage() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                 {copyFeedbackKey === "share-link" && copyFeedback
                   ? copyFeedback
-                  : "Copy link"}
+                  : t("copyLink")}
               </Button>
               {typeof navigator !== "undefined" && "share" in navigator && (
                 <Button
@@ -1475,14 +1469,14 @@ export function MultiplayerGamePage() {
                   onClick={() => {
                     const url = `${window.location.origin}/game/${multiplayerSnapshot?.gameId}`;
                     void navigator.share({
-                      title: "Watch a Tiao game",
-                      text: "Come spectate this Tiao match!",
+                      title: t("shareTitle"),
+                      text: t("shareText"),
                       url,
                     });
                   }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
-                  Share
+                  {t("share")}
                 </Button>
               )}
             </div>

@@ -108,7 +108,7 @@ export function GamesPage() {
                                 ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
                                 : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
                             )}
-                            title={`Playing as ${game.yourSeat}`}
+                            title={tCommon("playingAs", { color: game.yourSeat })}
                           />
                         )}
                         {opponent ? (
@@ -129,7 +129,7 @@ export function GamesPage() {
                           {getSummaryStatusLabel(game, tGame)}
                         </Badge>
                         <span className="text-xs text-[#8d7760]">
-                          {game.score.white}-{game.score.black} · {game.historyLength} moves
+                          {game.score.white}-{game.score.black} · {tCommon("moves", { count: game.historyLength })}
                         </span>
                         <GameConfigBadge
                           boardSize={game.boardSize}

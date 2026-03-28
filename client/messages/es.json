@@ -90,7 +90,10 @@
     "rematchToast": "¡{opponent} quiere la revancha!",
     "viewGame": "Ver partida",
     "game": "Partida {gameId}",
-    "inviteSent": "¡Partida creada e invitación enviada!"
+    "inviteSent": "¡Partida creada e invitación enviada!",
+    "timeControlTooltip": "{minutes, plural, one {# min} other {# mins}} por jugador + {increment}s por movimiento",
+    "timeControlTooltipNoIncrement": "{minutes, plural, one {# min} other {# mins}} por jugador, sin incremento",
+    "opponentOnline": "El oponente está en línea"
   },
   "game": {
     "white": "Blancas",
@@ -158,7 +161,54 @@
     "opponentWantsRematch": "¡El oponente quiere la revancha!",
     "nMin": "{n} min",
     "nToWin": "{n} para ganar",
-    "nPts": "{n}pts"
+    "nPts": "{n}pts",
+    "game": "Partida",
+    "drawTitle": "Empate",
+    "colorWins": "{color} gana",
+    "waitingForOpponentToConnect": "Esperando a que el oponente se conecte",
+    "spectating": "Espectando",
+    "yourMove": "Tu turno",
+    "linkCopied": "¡Enlace copiado!",
+    "multiplayer": "Multijugador",
+    "connecting": "Conectando",
+    "reconnecting": "Reconectando",
+    "toMakeFirstMove": "para el primer movimiento",
+    "opponentsFirstMove": "Primer movimiento del oponente",
+    "liveMatch": "Partida en vivo",
+    "lobbyHost": "Anfitrión de la sala",
+    "secondPlayer": "Segundo jugador",
+    "waitingToJoin": "Esperando para unirse",
+    "online": "En línea",
+    "offline": "Desconectado",
+    "lobbyShareHint": "Comparte el ID de la partida o usa el enlace de arriba para invitar a un amigo. Blanco siempre empieza. Los colores se asignan al azar cuando el segundo jugador se une.",
+    "gameOver": "La partida ha terminado.",
+    "boardFullDesc": "No quedan movimientos — el tablero está lleno.",
+    "youCapturedDesc": "Capturaste suficientes piedras de tu oponente.",
+    "opponentForfeitedDesc": "Tu oponente abandonó la partida.",
+    "opponentTimedOutDesc": "A tu oponente se le acabó el tiempo.",
+    "opponentCapturedDesc": "Tu oponente capturó suficientes de tus piedras.",
+    "youForfeitedDesc": "Abandonaste la partida.",
+    "youTimedOutDesc": "Se te acabó el tiempo.",
+    "spectatorCaptured": "{color} capturó suficientes piedras.",
+    "spectatorForfeit": "{color} abandonó la partida.",
+    "spectatorTimeout": "A {color} se le acabó el tiempo.",
+    "forfeitGame": "Abandonar partida",
+    "forfeitConfirm": "¿Estás seguro de que quieres abandonar? Tu oponente ganará.",
+    "takebackRequested": "Retroceso solicitado...",
+    "noTakebacksLeft": "No quedan retrocesos",
+    "requestTakeback": "Solicitar retroceso",
+    "inGame": "En partida",
+    "invited": "Invitado",
+    "sending": "Enviando...",
+    "invite": "Invitar",
+    "spectatorsCount": "Espectadores ({count})",
+    "spectatorsDesc": "Personas viendo esta partida.",
+    "noSpectatorsYet": "Aún no hay espectadores.",
+    "inviteSpectators": "Invitar espectadores",
+    "copyLink": "Copiar enlace",
+    "shareTitle": "Ver una partida de Tiao",
+    "shareText": "¡Ven a ver esta partida de Tiao!",
+    "share": "Compartir"
   },
   "config": {
     "difficulty": "Dificultad",
@@ -189,7 +239,11 @@
     "searching": "Buscando oponente...",
     "cancelSearch": "Cancelar búsqueda",
     "initializing": "Iniciando emparejamiento...",
-    "unlimited": "Sin límite"
+    "unlimited": "Sin límite",
+    "minPerPlayer": "min por jugador",
+    "secAddedPerMove": "s por movimiento",
+    "noIncrement": "sin incremento",
+    "noTimeLimit": "Sin límite de tiempo"
   },
   "games": {
     "title": "Mis partidas",
@@ -238,7 +292,10 @@
     "badgeHidden": "Oculta",
     "badgeActive": "Tu insignia de {badge} aparecerá junto a tu nombre en partidas, lista de amigos y torneos.",
     "devPreviewBadges": "Vista previa dev — todas las insignias",
-    "badgeTier": "Nivel {tier} — {id}"
+    "badgeTier": "Nivel {tier} — {id}",
+    "failedToResizeImage": "Error al redimensionar la imagen",
+    "failedToLoadImage": "Error al cargar la imagen",
+    "justNow": "Ahora mismo"
   },
   "friends": {
     "findPlayers": "Buscar jugadores",
@@ -322,7 +379,8 @@
     "standingsLosses": "D",
     "standingsDraws": "E",
     "standingsPoints": "Pts",
-    "standingsDiff": "+/-"
+    "standingsDiff": "+/-",
+    "failedToCreate": "Error al crear el torneo."
   },
   "publicProfile": {
     "loadingProfile": "Cargando perfil...",

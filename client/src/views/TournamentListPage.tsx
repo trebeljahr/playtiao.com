@@ -63,7 +63,7 @@ export function TournamentListPage() {
       setCreateOpen(false);
       router.push(`/tournament/${tournament.tournamentId}`);
     } catch (err: any) {
-      toastError(err.message ?? "Failed to create tournament.");
+      toastError(err.message ?? t("failedToCreate"));
     } finally {
       setCreateBusy(false);
     }
