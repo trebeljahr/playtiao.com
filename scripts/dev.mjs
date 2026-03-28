@@ -93,7 +93,7 @@ if (lanMode) {
 console.log();
 
 const processes = [
-  `"node scripts/wait-for-port.mjs ${apiPort} && PORT=${clientPort} API_PORT=${apiPort} npm --prefix client run dev"`,
+  `"node scripts/wait-for-port.mjs ${apiPort} && PORT=${clientPort} API_PORT=${apiPort} NEXT_PUBLIC_API_PORT=${apiPort} npm --prefix client run dev"`,
   `"PORT=${apiPort} npm --prefix server run dev"`,
 ];
 const names = ["client", "server"];

@@ -43,8 +43,18 @@ function getApiBaseUrl() {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+function getWebSocketBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  if (process.env.NEXT_PUBLIC_API_PORT && typeof window !== "undefined") {
+    return `http://${window.location.hostname}:${process.env.NEXT_PUBLIC_API_PORT}`;
+  }
+  return typeof window !== "undefined" ? window.location.origin : "";
+}
+
 export function buildWebSocketUrl(gameId: string) {
-  const url = new URL(API_BASE_URL);
+  const url = new URL(getWebSocketBaseUrl());
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/api/ws";
   url.searchParams.set("gameId", gameId);
