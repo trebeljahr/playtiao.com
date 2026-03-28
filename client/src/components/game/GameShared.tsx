@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, useAnimationControls } from "framer-motion";
 import {
   GameState,
@@ -307,12 +307,15 @@ export function PlayerOverviewAvatar({
   className?: string;
   anonymous?: boolean;
 }) {
-  if (player.profilePicture) {
+  const [imgError, setImgError] = useState(false);
+
+  if (player.profilePicture && !imgError) {
     return (
       <img
         src={player.profilePicture}
         alt={player.displayName ?? "Player"}
         className={cn("h-8 w-8 rounded-full object-cover", className)}
+        onError={() => setImgError(true)}
       />
     );
   }
