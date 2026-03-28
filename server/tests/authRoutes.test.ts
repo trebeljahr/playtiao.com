@@ -300,7 +300,7 @@ test("guest auth creates distinct players for distinct calls", async () => {
 
 test("guest auth truncates long display names", async () => {
   const guest = await createGuest("A".repeat(50));
-  assert.ok(guest.player.displayName.length <= 24);
+  assert.ok(guest.player.displayName.length <= 32);
 });
 
 test("guest auth assigns guest kind", async () => {

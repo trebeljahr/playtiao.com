@@ -153,7 +153,8 @@ function AuthDialog() {
                 autoComplete="name"
                 pattern="^[a-z0-9][a-z0-9_-]*$"
                 minLength={3}
-                title="Lowercase letters, numbers, hyphens, and underscores only"
+                maxLength={32}
+                title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
                 required
               />
             </div>

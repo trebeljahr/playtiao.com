@@ -464,11 +464,12 @@ export function ProfilePage() {
                         autoComplete="username"
                         pattern="^[a-z0-9][a-z0-9_-]*$"
                         minLength={3}
-                        title="Lowercase letters, numbers, hyphens, and underscores only"
+                        maxLength={32}
+                        title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
                         required
                       />
                       <p className="text-xs text-[#8d7760]">
-                        Lowercase letters, numbers, hyphens, and underscores only.
+                        3-32 characters. Lowercase letters, numbers, hyphens, and underscores only.
                       </p>
                     </div>
 

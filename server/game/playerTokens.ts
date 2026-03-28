@@ -23,7 +23,7 @@ export function sanitizeDisplayName(displayName?: string): string {
     return `Guest-${randomUUID().slice(0, 6)}`;
   }
 
-  return trimmed.slice(0, 24);
+  return trimmed.slice(0, 32);
 }
 
 export function createGuestAuth(displayName?: string): AuthResponse {

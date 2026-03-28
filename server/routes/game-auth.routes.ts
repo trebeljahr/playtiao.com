@@ -329,10 +329,10 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
     }
 
     if (trimmedDisplayName) {
-      if (trimmedDisplayName.length < 3) {
+      if (trimmedDisplayName.length < 3 || trimmedDisplayName.length > 32) {
         return res.status(400).json({
-          code: "DISPLAY_NAME_TOO_SHORT",
-          message: "Usernames must be at least 3 characters long.",
+          code: trimmedDisplayName.length < 3 ? "DISPLAY_NAME_TOO_SHORT" : "DISPLAY_NAME_TOO_LONG",
+          message: "Usernames must be between 3 and 32 characters.",
         });
       }
 
@@ -766,10 +766,10 @@ router.put("/profile", async (req: Request, res: Response) => {
     }
 
     if (sanitizedDisplayName !== undefined) {
-      if (!sanitizedDisplayName || sanitizedDisplayName.length < 3) {
+      if (!sanitizedDisplayName || sanitizedDisplayName.length < 3 || sanitizedDisplayName.length > 32) {
         return res.status(400).json({
-          code: "DISPLAY_NAME_TOO_SHORT",
-          message: "Display name must be at least 3 characters long.",
+          code: !sanitizedDisplayName || sanitizedDisplayName.length < 3 ? "DISPLAY_NAME_TOO_SHORT" : "DISPLAY_NAME_TOO_LONG",
+          message: "Usernames must be between 3 and 32 characters.",
         });
       }
 
