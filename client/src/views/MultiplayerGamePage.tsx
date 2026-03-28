@@ -106,6 +106,23 @@ export function MultiplayerGamePage() {
   const [spectatorDialogOpen, setSpectatorDialogOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
 
+  // Introduction modal for new players who haven't completed the tutorial (#25)
+  const [rulesIntroOpen, setRulesIntroOpen] = useState(false);
+  const rulesIntroShownRef = useRef(false);
+
+  // Show rules intro once when the game loads and the player hasn't seen the tutorial
+  useEffect(() => {
+    if (
+      multiplayerSnapshot &&
+      auth &&
+      !auth.player.hasSeenTutorial &&
+      !rulesIntroShownRef.current
+    ) {
+      rulesIntroShownRef.current = true;
+      setRulesIntroOpen(true);
+    }
+  }, [multiplayerSnapshot, auth]);
+
   // Real-time social updates (friend online status, invitation state)
   useLobbyMessage((payload) => {
     if (payload.type === "social-update") {
@@ -1480,6 +1497,55 @@ export function MultiplayerGamePage() {
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Rules introduction modal for players who haven't completed the tutorial (#25) */}
+      <Dialog
+        open={rulesIntroOpen}
+        onOpenChange={setRulesIntroOpen}
+        title={t("welcomeToTiao")}
+        description={t("welcomeToTiaoDesc")}
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#d7c39e] bg-[#fffaf3] overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody>
+                {(
+                  [
+                    [t("ruleGeneral"), t("ruleGeneralDesc")],
+                    [t("ruleWin"), t("ruleWinDesc")],
+                    [t("rulePlace"), t("rulePlaceDesc")],
+                    [t("ruleJump"), t("ruleJumpDesc")],
+                    [t("ruleCluster"), t("ruleClusterDesc")],
+                    [t("ruleBorder"), t("ruleBorderDesc")],
+                  ] as const
+                ).map(([rule, desc]) => (
+                  <tr
+                    key={rule}
+                    className="border-b border-[#e8dcc8] last:border-0"
+                  >
+                    <td className="px-3 py-2 font-semibold text-[#2b1e14] whitespace-nowrap">
+                      {rule}
+                    </td>
+                    <td className="px-3 py-2 text-[#6e5b48]">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-2">
+            <Button onClick={() => setRulesIntroOpen(false)}>
+              {t("gotItPlay")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/tutorial")}
+            >
+              {t("learnToPlay")}
+            </Button>
           </div>
         </div>
       </Dialog>
