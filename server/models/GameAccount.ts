@@ -1,5 +1,10 @@
 import { Document, Schema, model, models } from "mongoose";
 
+export interface IRatingEntry {
+  elo: number;
+  gamesPlayed: number;
+}
+
 export interface IGameAccount extends Document {
   email: string;
   passwordHash: string;
@@ -9,6 +14,9 @@ export interface IGameAccount extends Document {
   receivedFriendRequests: Schema.Types.ObjectId[];
   sentFriendRequests: Schema.Types.ObjectId[];
   hasSeenTutorial: boolean;
+  rating: {
+    overall: IRatingEntry;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +68,12 @@ const GameAccountSchema = new Schema<IGameAccount>(
     hasSeenTutorial: {
       type: Boolean,
       default: false,
+    },
+    rating: {
+      overall: {
+        elo: { type: Number, default: 1500 },
+        gamesPlayed: { type: Number, default: 0 },
+      },
     },
   },
   {

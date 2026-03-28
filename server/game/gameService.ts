@@ -51,6 +51,8 @@ import {
   MatchmakingStore,
   type MatchmakingQueueEntry,
 } from "./matchmakingStore";
+import { computeNewRatings, DEFAULT_RATING } from "./elo";
+import GameAccount from "../models/GameAccount";
 
 type RoomConnections = Map<WebSocket, string>;
 
@@ -122,6 +124,8 @@ export class GameService {
         clockMs,
         lastMoveAt: null,
         firstMoveDeadline,
+        ratingBefore: null,
+        ratingAfter: null,
         tournamentId,
         tournamentMatchId: matchId,
         createdAt: new Date(),
@@ -599,9 +603,11 @@ export class GameService {
         };
       }
 
+      const playerRating = player.rating ?? DEFAULT_RATING;
       const opponentEntry = await this.matchmaking.findAndRemoveOpponent(
         player.playerId,
-        timeControl
+        timeControl,
+        playerRating,
       );
 
       if (opponentEntry) {
@@ -636,6 +642,7 @@ export class GameService {
         player,
         queuedAt,
         timeControl,
+        rating: playerRating,
       });
 
       return {
@@ -728,6 +735,8 @@ export class GameService {
         clockMs,
         lastMoveAt: null,
         firstMoveDeadline,
+        ratingBefore: null,
+        ratingAfter: null,
         tournamentId: null,
         tournamentMatchId: null,
         createdAt: new Date(),
@@ -868,7 +877,72 @@ export class GameService {
       });
     }
 
+    // Update Elo ratings when a matchmaking game finishes
+    if (
+      saved.status === "finished" &&
+      previousStatus !== "finished" &&
+      saved.roomType === "matchmaking"
+    ) {
+      void this.updateEloRatings(saved).catch((err) => {
+        console.error("[game] Elo update failed for room", saved.id, err);
+      });
+    }
+
     return saved;
+  }
+
+  private async updateEloRatings(room: StoredMultiplayerRoom): Promise<void> {
+    const whitePlayer = room.seats.white;
+    const blackPlayer = room.seats.black;
+
+    // Only rate games where both players are accounts
+    if (
+      !whitePlayer || !blackPlayer ||
+      whitePlayer.kind !== "account" || blackPlayer.kind !== "account"
+    ) {
+      return;
+    }
+
+    const winner = getWinner(room.state);
+    const scoreWhite = winner === "white" ? 1.0 : winner === "black" ? 0.0 : 0.5;
+
+    const [whiteAccount, blackAccount] = await Promise.all([
+      GameAccount.findById(whitePlayer.playerId),
+      GameAccount.findById(blackPlayer.playerId),
+    ]);
+
+    if (!whiteAccount || !blackAccount) return;
+
+    const whiteElo = whiteAccount.rating?.overall?.elo ?? DEFAULT_RATING;
+    const blackElo = blackAccount.rating?.overall?.elo ?? DEFAULT_RATING;
+    const whiteGames = whiteAccount.rating?.overall?.gamesPlayed ?? 0;
+    const blackGames = blackAccount.rating?.overall?.gamesPlayed ?? 0;
+
+    const { newRatingA, newRatingB } = computeNewRatings(
+      whiteElo, whiteGames,
+      blackElo, blackGames,
+      scoreWhite,
+    );
+
+    await Promise.all([
+      GameAccount.findByIdAndUpdate(whitePlayer.playerId, {
+        $set: { "rating.overall.elo": newRatingA },
+        $inc: { "rating.overall.gamesPlayed": 1 },
+      }),
+      GameAccount.findByIdAndUpdate(blackPlayer.playerId, {
+        $set: { "rating.overall.elo": newRatingB },
+        $inc: { "rating.overall.gamesPlayed": 1 },
+      }),
+    ]);
+
+    // Store rating snapshots on the room
+    room.ratingBefore = { white: whiteElo, black: blackElo };
+    room.ratingAfter = { white: newRatingA, black: newRatingB };
+    await this.store.saveRoom(room);
+
+    console.log(
+      `[game] Elo updated for room ${room.id}: white ${whiteElo}->${newRatingA}, black ${blackElo}->${newRatingB}`
+    );
   }
 
   private deriveRoomStatus(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
@@ -1132,6 +1206,8 @@ export class GameService {
       scoreToWin: room.state.scoreToWin,
       timeControl: room.timeControl,
       clockMs: room.clockMs ?? null,
+      ratingBefore: room.ratingBefore ?? null,
+      ratingAfter: room.ratingAfter ?? null,
     };
   }
 

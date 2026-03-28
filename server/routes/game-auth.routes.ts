@@ -140,12 +140,14 @@ function buildAccountAuth(account: {
   email?: string;
   displayName: string;
   profilePicture?: string;
+  rating?: { overall: { elo: number; gamesPlayed: number } };
 }) {
   return createAccountAuth({
     id: account.id,
     email: account.email,
     displayName: account.displayName,
     profilePicture: account.profilePicture,
+    rating: account.rating?.overall?.elo,
   });
 }
 

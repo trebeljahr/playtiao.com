@@ -85,6 +85,7 @@ export function createAccountAuth(account: {
   displayName: string;
   profilePicture?: string;
   hasSeenTutorial?: boolean;
+  rating?: number;
 }): AuthResponse {
   const player: PlayerIdentity = {
     playerId: account.id,
@@ -93,6 +94,7 @@ export function createAccountAuth(account: {
     kind: "account",
     profilePicture: account.profilePicture,
     hasSeenTutorial: account.hasSeenTutorial ?? false,
+    rating: account.rating,
   };
 
   return {

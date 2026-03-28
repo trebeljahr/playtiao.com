@@ -26,6 +26,8 @@ export type StoredMultiplayerRoom = {
   lastMoveAt: Date | null;
   /** Deadline for the first move in timed games; null after first move or in untimed games */
   firstMoveDeadline: Date | null;
+  ratingBefore: { white: number; black: number } | null;
+  ratingAfter: { white: number; black: number } | null;
   tournamentId: string | null;
   tournamentMatchId: string | null;
   createdAt: Date;
@@ -45,6 +47,8 @@ export type CreateStoredMultiplayerRoomInput = {
   clockMs: { white: number; black: number } | null;
   lastMoveAt: Date | null;
   firstMoveDeadline: Date | null;
+  ratingBefore?: { white: number; black: number } | null;
+  ratingAfter?: { white: number; black: number } | null;
   tournamentId?: string | null;
   tournamentMatchId?: string | null;
 };
@@ -121,6 +125,8 @@ export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerR
     clockMs: room.clockMs ? { ...room.clockMs } : null,
     lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
     firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+    ratingBefore: room.ratingBefore ? { ...room.ratingBefore } : null,
+    ratingAfter: room.ratingAfter ? { ...room.ratingAfter } : null,
     tournamentId: room.tournamentId,
     tournamentMatchId: room.tournamentMatchId,
     createdAt: new Date(room.createdAt),
@@ -141,6 +147,8 @@ type PersistedGameRoom = {
   clockMs?: { white: number; black: number } | null;
   lastMoveAt?: Date | null;
   firstMoveDeadline?: Date | null;
+  ratingBefore?: { white: number; black: number } | null;
+  ratingAfter?: { white: number; black: number } | null;
   tournamentId?: string | null;
   tournamentMatchId?: string | null;
   createdAt: Date;
@@ -174,6 +182,8 @@ function toStoredRoom(room: PersistedGameRoom): StoredMultiplayerRoom {
     clockMs: room.clockMs ?? null,
     lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
     firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+    ratingBefore: room.ratingBefore ?? null,
+    ratingAfter: room.ratingAfter ?? null,
     tournamentId: room.tournamentId ?? null,
     tournamentMatchId: room.tournamentMatchId ?? null,
     createdAt: new Date(room.createdAt),
@@ -198,6 +208,8 @@ export class MongoGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs,
       lastMoveAt: room.lastMoveAt,
       firstMoveDeadline: room.firstMoveDeadline,
+      ratingBefore: room.ratingBefore ?? null,
+      ratingAfter: room.ratingAfter ?? null,
       tournamentId: room.tournamentId ?? null,
       tournamentMatchId: room.tournamentMatchId ?? null,
       staleAt: room.status === "waiting" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
@@ -249,6 +261,8 @@ export class MongoGameRoomStore implements GameRoomStore {
           clockMs: room.clockMs,
           lastMoveAt: room.lastMoveAt,
           firstMoveDeadline: room.firstMoveDeadline,
+          ratingBefore: room.ratingBefore,
+          ratingAfter: room.ratingAfter,
           tournamentId: room.tournamentId,
           tournamentMatchId: room.tournamentMatchId,
           staleAt: room.status === "waiting" ? undefined : null,
@@ -397,6 +411,8 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs ? { ...room.clockMs } : null,
       lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
       firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+      ratingBefore: room.ratingBefore ?? null,
+      ratingAfter: room.ratingAfter ?? null,
       tournamentId: room.tournamentId ?? null,
       tournamentMatchId: room.tournamentMatchId ?? null,
       createdAt: now,
@@ -432,6 +448,8 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       clockMs: room.clockMs ? { ...room.clockMs } : null,
       lastMoveAt: room.lastMoveAt ? new Date(room.lastMoveAt) : null,
       firstMoveDeadline: room.firstMoveDeadline ? new Date(room.firstMoveDeadline) : null,
+      ratingBefore: room.ratingBefore ? { ...room.ratingBefore } : null,
+      ratingAfter: room.ratingAfter ? { ...room.ratingAfter } : null,
       tournamentId: room.tournamentId,
       tournamentMatchId: room.tournamentMatchId,
       createdAt: new Date(existingRoom.createdAt),

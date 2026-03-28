@@ -6,7 +6,7 @@ import { resolvePlayerBadge } from "@/lib/featureGate";
 import { useActiveBadgeId } from "@/lib/useActiveBadge";
 
 type PlayerIdentityRowProps = {
-  player: { playerId?: string; displayName?: string; profilePicture?: string; activeBadge?: string };
+  player: { playerId?: string; displayName?: string; profilePicture?: string; activeBadge?: string; rating?: number };
   anonymous?: boolean;
   currentPlayerId?: string;
   avatarClassName?: string;
@@ -64,6 +64,9 @@ export function PlayerIdentityRow({
       <span className={cn("truncate text-sm font-medium", nameClassName)}>
         {player.displayName ?? "Player"}
         {isYou && <span className="opacity-60"> (you)</span>}
+        {player.rating != null && (
+          <span className="ml-1 text-xs font-normal opacity-50">({player.rating})</span>
+        )}
       </span>
 
       {badgeToShow && (

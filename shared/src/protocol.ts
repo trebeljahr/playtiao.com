@@ -13,6 +13,7 @@ export type PlayerIdentity = {
   badges?: string[];
   /** Which badge the player chose to display (null = hidden). */
   activeBadge?: string;
+  rating?: number;
 };
 
 export type PlayerSlot = {
@@ -110,6 +111,8 @@ export type MultiplayerGameSummary = {
   scoreToWin: number;
   timeControl: TimeControl;
   clockMs: { white: number; black: number } | null;
+  ratingBefore?: { white: number; black: number } | null;
+  ratingAfter?: { white: number; black: number } | null;
 };
 
 export type MultiplayerGamesIndex = {

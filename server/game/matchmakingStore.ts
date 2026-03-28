@@ -1,17 +1,20 @@
 import type Redis from "ioredis";
 import type { PlayerIdentity, TimeControl } from "../../shared/src";
+import { DEFAULT_RATING } from "./elo";
 
 export type MatchmakingQueueEntry = {
   player: PlayerIdentity;
   queuedAt: number;
   timeControl: TimeControl;
+  rating: number;
 };
 
 export interface MatchmakingStore {
   findEntry(playerId: string): Promise<MatchmakingQueueEntry | null>;
   findAndRemoveOpponent(
     playerId: string,
-    timeControl: TimeControl
+    timeControl: TimeControl,
+    rating: number,
   ): Promise<MatchmakingQueueEntry | null>;
   addToQueue(entry: MatchmakingQueueEntry): Promise<void>;
   removeFromQueue(playerId: string): Promise<void>;
@@ -24,6 +27,26 @@ function timeControlsMatch(a: TimeControl, b: TimeControl): boolean {
   if (a === null && b === null) return true;
   if (a === null || b === null) return false;
   return a.initialMs === b.initialMs && a.incrementMs === b.incrementMs;
+}
+
+/** Expanding window: starts at 100 Elo, grows by 5/second, capped at 1000. */
+const BASE_WINDOW = 100;
+const EXPANSION_PER_SECOND = 5;
+const MAX_WINDOW = 1000;
+
+function computeEloWindow(waitMs: number): number {
+  const waitSeconds = waitMs / 1000;
+  return Math.min(BASE_WINDOW + EXPANSION_PER_SECOND * waitSeconds, MAX_WINDOW);
+}
+
+function isEloEligible(
+  candidateRating: number,
+  candidateQueuedAt: number,
+  incomingRating: number,
+  now: number
+): boolean {
+  const window = computeEloWindow(now - candidateQueuedAt);
+  return Math.abs(incomingRating - candidateRating) <= window;
 }
 
 /**
@@ -41,16 +64,30 @@ export class InMemoryMatchmakingStore implements MatchmakingStore {
 
   async findAndRemoveOpponent(
     playerId: string,
-    timeControl: TimeControl
+    timeControl: TimeControl,
+    rating: number,
   ): Promise<MatchmakingQueueEntry | null> {
-    const index = this.queue.findIndex(
-      (e) =>
-        e.player.playerId !== playerId &&
-        timeControlsMatch(e.timeControl, timeControl)
-    );
+    const now = Date.now();
+    let bestIndex = -1;
+    let bestEloDiff = Infinity;
 
-    if (index < 0) return null;
-    return this.queue.splice(index, 1)[0];
+    for (let i = 0; i < this.queue.length; i++) {
+      const e = this.queue[i];
+      if (e.player.playerId === playerId) continue;
+      if (!timeControlsMatch(e.timeControl, timeControl)) continue;
+
+      const candidateRating = e.rating ?? DEFAULT_RATING;
+      if (!isEloEligible(candidateRating, e.queuedAt, rating, now)) continue;
+
+      const diff = Math.abs(rating - candidateRating);
+      if (diff < bestEloDiff) {
+        bestEloDiff = diff;
+        bestIndex = i;
+      }
+    }
+
+    if (bestIndex < 0) return null;
+    return this.queue.splice(bestIndex, 1)[0];
   }
 
   async addToQueue(entry: MatchmakingQueueEntry): Promise<void> {
@@ -99,20 +136,35 @@ export class RedisMatchmakingStore implements MatchmakingStore {
 
   async findAndRemoveOpponent(
     playerId: string,
-    timeControl: TimeControl
+    timeControl: TimeControl,
+    rating: number,
   ): Promise<MatchmakingQueueEntry | null> {
-    // Scan oldest-first for a matching opponent
+    const now = Date.now();
     const members = await this.redis.zrange(QUEUE_KEY, 0, -1);
+
+    let bestRaw: string | null = null;
+    let bestEntry: MatchmakingQueueEntry | null = null;
+    let bestEloDiff = Infinity;
+
     for (const raw of members) {
       const entry = JSON.parse(raw) as MatchmakingQueueEntry;
-      if (
-        entry.player.playerId !== playerId &&
-        timeControlsMatch(entry.timeControl, timeControl)
-      ) {
-        const removed = await this.redis.zrem(QUEUE_KEY, raw);
-        if (removed > 0) return entry;
+      if (entry.player.playerId === playerId) continue;
+      if (!timeControlsMatch(entry.timeControl, timeControl)) continue;
+
+      const candidateRating = entry.rating ?? DEFAULT_RATING;
+      if (!isEloEligible(candidateRating, entry.queuedAt, rating, now)) continue;
+
+      const diff = Math.abs(rating - candidateRating);
+      if (diff < bestEloDiff) {
+        bestEloDiff = diff;
+        bestRaw = raw;
+        bestEntry = entry;
       }
     }
+
+    if (!bestRaw || !bestEntry) return null;
+    const removed = await this.redis.zrem(QUEUE_KEY, bestRaw);
+    if (removed > 0) return bestEntry;
     return null;
   }
 

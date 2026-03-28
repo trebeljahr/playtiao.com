@@ -43,6 +43,7 @@ function PlayerRow({
   isYou,
   isWinner,
   clockMs,
+  ratingChange,
 }: {
   player: { displayName?: string; profilePicture?: string } | null;
   color: PlayerColor;
@@ -50,6 +51,7 @@ function PlayerRow({
   isYou: boolean;
   isWinner: boolean;
   clockMs?: number | null;
+  ratingChange?: number | null;
 }) {
   return (
     <div className={cn(
@@ -66,6 +68,14 @@ function PlayerRow({
         {player?.displayName ?? "Unknown"}
         {isYou && <span className="ml-1 text-[#8d7760]">(you)</span>}
       </span>
+      {ratingChange != null && (
+        <span className={cn(
+          "text-xs font-semibold tabular-nums",
+          ratingChange > 0 ? "text-[#3d7a1e]" : ratingChange < 0 ? "text-[#b5443a]" : "text-[#9a8770]",
+        )}>
+          {ratingChange > 0 ? "+" : ""}{ratingChange}
+        </span>
+      )}
       <span className={cn(
         "font-mono text-lg font-bold tabular-nums",
         isWinner ? "text-[#2b1e14]" : "text-[#9a8770]",
@@ -95,6 +105,14 @@ export function MatchHistoryCard({
   const isBlackYou = blackPlayer?.playerId === playerId;
   const whiteWon = game.winner === "white";
   const blackWon = game.winner === "black";
+
+  const whiteRatingChange = game.ratingBefore && game.ratingAfter
+    ? game.ratingAfter.white - game.ratingBefore.white
+    : null;
+  const blackRatingChange = game.ratingBefore && game.ratingAfter
+    ? game.ratingAfter.black - game.ratingBefore.black
+    : null;
+
 
   const resultBg = result === "won"
     ? "border-[#a3c98a]/60 bg-[#f4fae9]"
@@ -140,6 +158,7 @@ export function MatchHistoryCard({
           isYou={isWhiteYou}
           isWinner={whiteWon}
           clockMs={game.clockMs?.white}
+          ratingChange={whiteRatingChange}
         />
         <PlayerRow
           player={blackPlayer}
@@ -148,6 +167,7 @@ export function MatchHistoryCard({
           isYou={isBlackYou}
           isWinner={blackWon}
           clockMs={game.clockMs?.black}
+          ratingChange={blackRatingChange}
         />
       </div>
 

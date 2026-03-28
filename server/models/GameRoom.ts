@@ -34,6 +34,9 @@ const PlayerIdentitySchema = new Schema<PlayerIdentity>(
       type: String,
       trim: true,
     },
+    rating: {
+      type: Number,
+    },
   },
   {
     _id: false,
@@ -53,6 +56,8 @@ export interface IGameRoom extends Document {
   clockMs: { white: number; black: number } | null;
   lastMoveAt: Date | null;
   firstMoveDeadline: Date | null;
+  ratingBefore: { white: number; black: number } | null;
+  ratingAfter: { white: number; black: number } | null;
   tournamentId: string | null;
   tournamentMatchId: string | null;
   staleAt: Date | null;
@@ -156,6 +161,26 @@ const GameRoomSchema = new Schema<IGameRoom>(
     },
     firstMoveDeadline: {
       type: Date,
+      default: null,
+    },
+    ratingBefore: {
+      type: new Schema(
+        {
+          white: { type: Number, required: true },
+          black: { type: Number, required: true },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
+    ratingAfter: {
+      type: new Schema(
+        {
+          white: { type: Number, required: true },
+          black: { type: Number, required: true },
+        },
+        { _id: false }
+      ),
       default: null,
     },
     tournamentId: {
