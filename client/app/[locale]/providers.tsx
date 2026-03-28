@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import type { AuthDialogMode } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
+import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 
 function LoadingScreen() {
   return (
@@ -20,6 +22,47 @@ function LoadingScreen() {
         </div>
         <p className="mt-4 font-display text-3xl">Opening Tiao</p>
         <p className="mt-2 text-sm text-muted-foreground">Preparing the board.</p>
+      </div>
+    </div>
+  );
+}
+
+function OAuthButtons() {
+  const { handleOAuthSignIn } = useAuth();
+
+  return (
+    <div className="space-y-2">
+      <p className="text-center text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
+        Or continue with
+      </p>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={() => void handleOAuthSignIn("github")}
+        >
+          <FaGithub className="h-4 w-4" />
+          GitHub
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={() => void handleOAuthSignIn("google")}
+        >
+          <FaGoogle className="h-4 w-4" />
+          Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={() => void handleOAuthSignIn("discord")}
+        >
+          <FaDiscord className="h-4 w-4" />
+          Discord
+        </Button>
       </div>
     </div>
   );
@@ -47,177 +90,264 @@ function AuthDialog() {
     setSignupConfirmPassword,
     handleLoginSubmit,
     handleSignupSubmit,
+    handleForgotPassword,
   } = useAuth();
+
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+
+  const dialogTitle = forgotMode
+    ? "Reset password"
+    : authDialogMode === "login"
+    ? "Sign in"
+    : "Create account";
 
   return (
     <Dialog
       open={authDialogOpen}
-      onOpenChange={setAuthDialogOpen}
-      title={authDialogMode === "login" ? "Sign in" : "Create account"}
-      description="Sign in or create an account to save your profile."
+      onOpenChange={(open) => {
+        setAuthDialogOpen(open);
+        if (!open) setForgotMode(false);
+      }}
+      title={dialogTitle}
+      description={
+        forgotMode
+          ? "Enter your email to receive a password reset link."
+          : "Sign in or create an account to save your profile."
+      }
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {(["login", "signup"] as AuthDialogMode[]).map((item) => (
-            <Button
-              key={item}
-              type="button"
-              variant={authDialogMode === item ? "default" : "outline"}
-              onClick={() => {
-                setAuthDialogMode(item);
-                setAuthDialogError(null);
-              }}
-            >
-              {item === "signup"
-                ? "Sign up"
-                : item === "login"
-                ? "Sign in"
-                : null}
-            </Button>
-          ))}
-        </div>
-
-        {authDialogMode === "login" ? (
+        {forgotMode ? (
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              void handleLoginSubmit();
+              setForgotBusy(true);
+              const ok = await handleForgotPassword(forgotEmail);
+              setForgotBusy(false);
+              if (ok) {
+                toast.success("Reset link sent! Check your email.");
+                setForgotMode(false);
+              }
             }}
             className="space-y-3"
           >
             <div className="space-y-1">
               <label
-                htmlFor="login-email"
+                htmlFor="forgot-email"
                 className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
               >
-                Username or Email
+                Email
               </label>
               <Input
-                id="login-email"
-                name="identifier"
-                value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
-                placeholder="name or name@example.com"
-                autoComplete="username email"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="login-password"
-                className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
-              >
-                Password
-              </label>
-              <PasswordInput
-                id="login-password"
-                name="password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={authBusy}
-            >
-              {authBusy ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-        ) : null}
-
-        {authDialogMode === "signup" ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSignupSubmit();
-            }}
-            className="space-y-3"
-          >
-            <div className="space-y-1">
-              <label
-                htmlFor="signup-display-name"
-                className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
-              >
-                Username
-              </label>
-              <Input
-                id="signup-display-name"
-                name="name"
-                value={signupDisplayName}
-                onChange={(event) => setSignupDisplayName(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                placeholder="username"
-                autoComplete="name"
-                pattern="^[a-z0-9][a-z0-9_-]*$"
-                minLength={3}
-                maxLength={32}
-                title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="signup-email"
-                className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
-              >
-                Email (Optional)
-              </label>
-              <Input
-                id="signup-email"
+                id="forgot-email"
                 name="email"
                 type="email"
-                value={signupEmail}
-                onChange={(event) => setSignupEmail(event.target.value)}
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
                 placeholder="name@example.com"
                 autoComplete="email"
-              />
-            </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="signup-password"
-                className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
-              >
-                Password
-              </label>
-              <PasswordInput
-                id="signup-password"
-                name="password"
-                value={signupPassword}
-                onChange={(event) => setSignupPassword(event.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="new-password"
                 required
               />
             </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="signup-confirm-password"
-                className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
-              >
-                Confirm Password
-              </label>
-              <PasswordInput
-                id="signup-confirm-password"
-                name="confirm-password"
-                value={signupConfirmPassword}
-                onChange={(event) => setSignupConfirmPassword(event.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="new-password"
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={authBusy}
-            >
-              {authBusy ? "Creating..." : "Create account"}
+            <Button type="submit" className="w-full" disabled={forgotBusy}>
+              {forgotBusy ? "Sending..." : "Send reset link"}
             </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline"
+              onClick={() => setForgotMode(false)}
+            >
+              Back to sign in
+            </button>
           </form>
-        ) : null}
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {(["login", "signup"] as AuthDialogMode[]).map((item) => (
+                <Button
+                  key={item}
+                  type="button"
+                  variant={authDialogMode === item ? "default" : "outline"}
+                  onClick={() => {
+                    setAuthDialogMode(item);
+                    setAuthDialogError(null);
+                  }}
+                >
+                  {item === "signup"
+                    ? "Sign up"
+                    : item === "login"
+                    ? "Sign in"
+                    : null}
+                </Button>
+              ))}
+            </div>
+
+            {authDialogMode === "login" ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleLoginSubmit();
+                }}
+                className="space-y-3"
+              >
+                <div className="space-y-1">
+                  <label
+                    htmlFor="login-email"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Username or Email
+                  </label>
+                  <Input
+                    id="login-email"
+                    name="identifier"
+                    value={loginEmail}
+                    onChange={(event) => setLoginEmail(event.target.value)}
+                    placeholder="name or name@example.com"
+                    autoComplete="username email"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="login-password"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Password
+                  </label>
+                  <PasswordInput
+                    id="login-password"
+                    name="password"
+                    value={loginPassword}
+                    onChange={(event) => setLoginPassword(event.target.value)}
+                    placeholder="••••••••••••"
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setForgotEmail(loginEmail);
+                    setForgotMode(true);
+                  }}
+                >
+                  Forgot password?
+                </button>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={authBusy}
+                >
+                  {authBusy ? "Signing in..." : "Sign in"}
+                </Button>
+              </form>
+            ) : null}
+
+            {authDialogMode === "signup" ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSignupSubmit();
+                }}
+                className="space-y-3"
+              >
+                <div className="space-y-1">
+                  <label
+                    htmlFor="signup-display-name"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Username
+                  </label>
+                  <Input
+                    id="signup-display-name"
+                    name="name"
+                    value={signupDisplayName}
+                    onChange={(event) => setSignupDisplayName(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                    placeholder="username"
+                    autoComplete="name"
+                    pattern="^[a-z0-9][a-z0-9_-]*$"
+                    minLength={3}
+                    maxLength={32}
+                    title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="signup-email"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Email
+                  </label>
+                  <Input
+                    id="signup-email"
+                    name="email"
+                    type="email"
+                    value={signupEmail}
+                    onChange={(event) => setSignupEmail(event.target.value)}
+                    placeholder="name@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="signup-password"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Password
+                  </label>
+                  <PasswordInput
+                    id="signup-password"
+                    name="password"
+                    value={signupPassword}
+                    onChange={(event) => setSignupPassword(event.target.value)}
+                    placeholder="••••••••••••"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="signup-confirm-password"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
+                  >
+                    Confirm Password
+                  </label>
+                  <PasswordInput
+                    id="signup-confirm-password"
+                    name="confirm-password"
+                    value={signupConfirmPassword}
+                    onChange={(event) => setSignupConfirmPassword(event.target.value)}
+                    placeholder="••••••••••••"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={authBusy}
+                >
+                  {authBusy ? "Creating..." : "Create account"}
+                </Button>
+              </form>
+            ) : null}
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-card px-3 text-xs text-muted-foreground">or</span>
+              </div>
+            </div>
+
+            <OAuthButtons />
+          </>
+        )}
       </div>
     </Dialog>
   );

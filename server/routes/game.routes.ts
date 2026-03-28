@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import { classifyMongoError } from "../error-handling";
 import { gameService, GameServiceError } from "../game/gameService";
-import { getPlayerFromRequest } from "../game/playerTokens";
+import { getPlayerFromRequest } from "../auth/sessionHelper";
 import GameInvitation from "../models/GameInvitation";
 
 const router = express.Router();

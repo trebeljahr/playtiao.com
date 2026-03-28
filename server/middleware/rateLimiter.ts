@@ -1,7 +1,7 @@
 import { Request } from "express";
 import { rateLimit } from "express-rate-limit";
 import { getRedisClient } from "../config/redisClient";
-import { getPlayerFromRequest } from "../game/playerTokens";
+import { getPlayerFromRequest } from "../auth/sessionHelper";
 
 const isTest = process.env.NODE_ENV === "test";
 

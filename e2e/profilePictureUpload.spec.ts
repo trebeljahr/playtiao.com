@@ -9,14 +9,15 @@ async function signUpViaApi(page: import("@playwright/test").Page) {
 
   const result = await page.evaluate(
     async ({ name, mail }) => {
-      const res = await fetch("/api/player/signup", {
+      const res = await fetch("/api/auth/sign-up/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          displayName: name,
+          name,
           email: mail,
           password: "testpass123",
+          displayName: name,
         }),
       });
       return { status: res.status, body: await res.text() };
@@ -24,7 +25,7 @@ async function signUpViaApi(page: import("@playwright/test").Page) {
     { name: username, mail: email }
   );
 
-  expect(result.status).toBe(201);
+  expect(result.status).toBe(200);
   return username;
 }
 

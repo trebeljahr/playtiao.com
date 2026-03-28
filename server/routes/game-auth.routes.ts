@@ -1,21 +1,15 @@
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
-import express, { NextFunction, Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { Jimp } from "jimp";
 import mongoose from "mongoose";
 import GameAccount from "../models/GameAccount";
-import GameRoom from "../models/GameRoom";
+import { auth } from "../auth/auth";
 import {
-  clearPlayerSession,
-  commitPlayerSession,
-  createAccountAuth,
-  createGuestAuth,
-  deriveDisplayNameFromEmail,
   getPlayerFromRequest,
-  refreshPlayerSession,
-  sanitizeDisplayName,
-} from "../game/playerTokens";
+  requireAccount,
+} from "../auth/sessionHelper";
+import { sanitizeDisplayName } from "../game/playerTokens";
 import { BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
 import { s3Client } from "../config/s3Client";
 import { classifyMongoError } from "../error-handling";
@@ -23,19 +17,18 @@ import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
 import { authRateLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
-const saltRounds = 10;
 
 function handleRouteError(
   error: unknown,
   req: Request,
   res: Response,
-  fallbackMessage: string
+  fallbackMessage: string,
 ) {
   const mongoError = classifyMongoError(error);
   if (mongoError) {
     console.warn(
       `[${req.method} ${req.path}] MongoDB ${mongoError.code}:`,
-      error
+      error,
     );
     return res.status(mongoError.status).json({
       code: mongoError.code,
@@ -50,123 +43,55 @@ function handleRouteError(
   });
 }
 
-/**
- * @openapi
- * components:
- *   schemas:
- *     PlayerIdentity:
- *       type: object
- *       properties:
- *         playerId:
- *           type: string
- *         displayName:
- *           type: string
- *         kind:
- *           type: string
- *           enum: [guest, account]
- *         email:
- *           type: string
- *         profilePicture:
- *           type: string
- *     AuthResponse:
- *       type: object
- *       properties:
- *         player:
- *           $ref: '#/components/schemas/PlayerIdentity'
- *     MultiplayerSnapshot:
- *       type: object
- *       properties:
- *         gameId:
- *           type: string
- *         roomType:
- *           type: string
- *           enum: [direct, matchmaking]
- *         status:
- *           type: string
- *           enum: [waiting, active, finished]
- *         state:
- *           type: object
- *         players:
- *           type: array
- *           items:
- *             type: object
- *         seats:
- *           type: object
- *         rematch:
- *           type: object
- *           nullable: true
- *     MatchmakingState:
- *       type: object
- *       properties:
- *         status:
- *           type: string
- *           enum: [idle, searching, matched]
- *     SocialOverview:
- *       type: object
- *       properties:
- *         friends:
- *           type: array
- *           items:
- *             type: object
- *         incomingFriendRequests:
- *           type: array
- *           items:
- *             type: object
- *         outgoingFriendRequests:
- *           type: array
- *           items:
- *             type: object
- *         incomingInvitations:
- *           type: array
- *           items:
- *             type: object
- *         outgoingInvitations:
- *           type: array
- *           items:
- *             type: object
- *   securitySchemes:
- *     sessionCookie:
- *       type: apiKey
- *       in: cookie
- *       name: tiao.session
- */
-
 function isDatabaseReady(): boolean {
   return mongoose.connection.readyState === 1;
 }
 
-function buildAccountAuth(account: {
-  id: string;
-  email?: string;
-  displayName: string;
-  profilePicture?: string;
-  badges?: string[];
-  activeBadges?: string[];
-  rating?: { overall: { elo: number; gamesPlayed: number } };
-}) {
-  return createAccountAuth({
-    id: account.id,
-    email: account.email,
+/** Look up a user's email from better-auth's user collection. */
+async function getEmailForAccount(accountId: string): Promise<string | undefined> {
+  const db = mongoose.connection.getClient().db();
+  const baUser = await db.collection("user").findOne({ _id: accountId as any });
+  return baUser?.email ?? undefined;
+}
+
+function buildPlayerIdentityFromAccount(
+  account: {
+    id: string;
+    displayName: string;
+    profilePicture?: string;
+    badges?: string[];
+    activeBadges?: string[];
+    rating?: { overall: { elo: number; gamesPlayed: number } };
+  },
+  email?: string,
+) {
+  return {
+    playerId: account.id,
+    email,
     displayName: account.displayName,
+    kind: "account" as const,
     profilePicture: account.profilePicture,
+    hasSeenTutorial: false,
     badges: account.badges ?? [],
     activeBadges: account.activeBadges ?? [],
     rating: account.rating?.overall?.elo,
-  });
+  };
 }
 
-function serializeAccountProfile(account: {
-  displayName: string;
-  email?: string;
-  profilePicture?: string;
-  badges?: string[];
-  activeBadges?: string[];
-  createdAt?: Date;
-  updatedAt?: Date;
-}) {
+function serializeAccountProfile(
+  account: {
+    displayName: string;
+    profilePicture?: string;
+    badges?: string[];
+    activeBadges?: string[];
+    createdAt?: Date;
+    updatedAt?: Date;
+  },
+  email?: string,
+) {
   return {
     displayName: account.displayName,
-    email: account.email,
+    email,
     profilePicture: account.profilePicture,
     badges: account.badges ?? [],
     activeBadges: account.activeBadges ?? [],
@@ -175,279 +100,11 @@ function serializeAccountProfile(account: {
   };
 }
 
-async function requireAccount(req: Request, res: Response) {
-  if (!isDatabaseReady()) {
-    res.status(503).json({
-      code: "SERVICE_UNAVAILABLE",
-      message:
-        "Account features are unavailable right now. You can still keep playing as a guest.",
-    });
-    return null;
-  }
+// ---------------------------------------------------------------------------
+// Custom login wrapper: supports login by username OR email
+// better-auth only accepts email, so we resolve username -> email first
+// ---------------------------------------------------------------------------
 
-  const player = await getPlayerFromRequest(req);
-  if (!player) {
-    res.status(401).json({
-      code: "NOT_AUTHENTICATED",
-      message: "Not authenticated.",
-    });
-    return null;
-  }
-
-  if (player.kind !== "account") {
-    res.status(403).json({
-      code: "ACCOUNT_REQUIRED",
-      message: "Only account players can edit a server profile.",
-    });
-    return null;
-  }
-
-  const account = await GameAccount.findById(player.playerId);
-  if (!account) {
-    res.status(404).json({
-      code: "ACCOUNT_NOT_FOUND",
-      message: "That account could not be found.",
-    });
-    return null;
-  }
-
-  return account;
-}
-
-/**
- * @openapi
- * /api/player/guest:
- *   post:
- *     summary: Create a guest session
- *     tags:
- *       - Authentication
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               displayName:
- *                 type: string
- *     responses:
- *       201:
- *         description: Guest session created
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- */
-router.post("/guest", async (req: Request, res: Response) => {
-  try {
-    const { displayName } = req.body as {
-      displayName?: string;
-    };
-
-    const auth = createGuestAuth(displayName);
-    await commitPlayerSession(req, res, auth.player);
-    res.status(201).json(auth);
-  } catch (error) {
-    handleRouteError(error, req, res, "Unable to create a guest session right now.");
-  }
-});
-
-/**
- * @openapi
- * /api/player/signup:
- *   post:
- *     summary: Create a new account
- *     tags:
- *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 minLength: 8
- *               displayName:
- *                 type: string
- *                 minLength: 3
- *     responses:
- *       201:
- *         description: Account created
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         description: Validation error (missing fields, short password, short username, invalid email)
- *       409:
- *         description: Email or username already taken
- *       503:
- *         description: Account signup unavailable
- */
-router.post("/signup", authRateLimiter, async (req: Request, res: Response) => {
-  try {
-    if (!isDatabaseReady()) {
-      return res.status(503).json({
-        code: "SERVICE_UNAVAILABLE",
-        message:
-          "Account signup is unavailable right now. You can still keep playing as a guest.",
-      });
-    }
-
-    const { email, password, displayName } = req.body as {
-      email?: string;
-      password?: string;
-      displayName?: string;
-    };
-
-    const normalizedEmail = email?.trim().toLowerCase();
-    const trimmedDisplayName = displayName?.trim().toLowerCase();
-
-    if (
-      !password ||
-      typeof password !== "string" ||
-      (!normalizedEmail && !trimmedDisplayName)
-    ) {
-      return res.status(400).json({
-        code: "VALIDATION_ERROR",
-        message: "Provide a username or email address, and a password.",
-      });
-    }
-
-    if (normalizedEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-      if (!emailRegex.test(normalizedEmail)) {
-        return res.status(400).json({
-          code: "INVALID_EMAIL",
-          message: "Provide a valid email address.",
-        });
-      }
-
-      const existingAccountByEmail = await GameAccount.findOne({
-        email: normalizedEmail,
-      });
-
-      if (existingAccountByEmail) {
-        return res.status(409).json({
-          code: "DUPLICATE_EMAIL",
-          message: "An account with that email already exists.",
-        });
-      }
-    }
-
-    if (trimmedDisplayName) {
-      if (trimmedDisplayName.length < 3 || trimmedDisplayName.length > 32) {
-        return res.status(400).json({
-          code: trimmedDisplayName.length < 3 ? "DISPLAY_NAME_TOO_SHORT" : "DISPLAY_NAME_TOO_LONG",
-          message: "Usernames must be between 3 and 32 characters.",
-        });
-      }
-
-      if (!/^[a-z0-9][a-z0-9_-]*$/.test(trimmedDisplayName)) {
-        return res.status(400).json({
-          code: "INVALID_DISPLAY_NAME",
-          message:
-            "Usernames must be lowercase and can only contain letters, numbers, hyphens, and underscores.",
-        });
-      }
-
-      const existingAccountByDisplayName = await GameAccount.findOne({
-        displayName: trimmedDisplayName,
-      });
-
-      if (existingAccountByDisplayName) {
-        return res.status(409).json({
-          code: "DUPLICATE_USERNAME",
-          message: "That username is already taken.",
-        });
-      }
-    }
-
-    if (password.length < 8 || password.length > 128) {
-      return res.status(400).json({
-        code: "INVALID_PASSWORD",
-        message: "Passwords must be between 8 and 128 characters.",
-      });
-    }
-
-    // Capture the current guest identity before replacing the session
-    const currentPlayer = await getPlayerFromRequest(req);
-    const guestPlayerId = currentPlayer?.kind === "guest" ? currentPlayer.playerId : null;
-
-    const passwordHash = bcrypt.hashSync(password, saltRounds);
-    const account = await GameAccount.create({
-      email: normalizedEmail || undefined,
-      passwordHash,
-      displayName: trimmedDisplayName || (normalizedEmail ? deriveDisplayNameFromEmail(normalizedEmail) : `Player-${randomUUID().slice(0, 8)}`),
-    });
-
-    const auth = buildAccountAuth(account);
-
-    // Migrate guest's unfinished games to the new account
-    if (guestPlayerId) {
-      const newIdentity = auth.player;
-      await GameRoom.updateMany(
-        { status: { $in: ["waiting", "active"] }, "players.playerId": guestPlayerId },
-        { $set: { "players.$[p].playerId": newIdentity.playerId, "players.$[p].displayName": newIdentity.displayName, "players.$[p].kind": newIdentity.kind } },
-        { arrayFilters: [{ "p.playerId": guestPlayerId }] },
-      );
-      await GameRoom.updateMany(
-        { status: { $in: ["waiting", "active"] }, "seats.white.playerId": guestPlayerId },
-        { $set: { "seats.white.playerId": newIdentity.playerId, "seats.white.displayName": newIdentity.displayName, "seats.white.kind": newIdentity.kind } },
-      );
-      await GameRoom.updateMany(
-        { status: { $in: ["waiting", "active"] }, "seats.black.playerId": guestPlayerId },
-        { $set: { "seats.black.playerId": newIdentity.playerId, "seats.black.displayName": newIdentity.displayName, "seats.black.kind": newIdentity.kind } },
-      );
-    }
-
-    await commitPlayerSession(req, res, auth.player);
-    return res.status(201).json(auth);
-  } catch (error) {
-    return handleRouteError(error, req, res, "Unable to create that account right now.");
-  }
-});
-
-/**
- * @openapi
- * /api/player/login:
- *   post:
- *     summary: Log in to an existing account
- *     tags:
- *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - identifier
- *               - password
- *             properties:
- *               identifier:
- *                 type: string
- *                 description: Username or email address
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         description: Missing identifier or password
- *       401:
- *         description: Account not found or incorrect password
- *       503:
- *         description: Account login unavailable
- */
 router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
   try {
     if (!isDatabaseReady()) {
@@ -475,83 +132,80 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const trimmedIdentifier = identifier.trim();
-    const lowercaseIdentifier = trimmedIdentifier.toLowerCase();
+    const trimmed = identifier.trim().toLowerCase();
 
-    const account = await GameAccount.findOne({
-      $or: [
-        { email: lowercaseIdentifier },
-        { displayName: trimmedIdentifier },
-      ],
+    // Determine if identifier is an email or username
+    let email = trimmed;
+    if (!trimmed.includes("@")) {
+      // It's a username — look up the email via better-auth user collection
+      const account = await GameAccount.findOne({ displayName: trimmed });
+      if (!account) {
+        return res.status(401).json({
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid credentials.",
+        });
+      }
+      // Look up the email from better-auth's user collection
+      const db = mongoose.connection.getClient().db();
+      const baUser = await db.collection("user").findOne({ _id: account._id as any });
+      if (!baUser?.email) {
+        return res.status(401).json({
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid credentials.",
+        });
+      }
+      email = baUser.email;
+    }
+
+    // Delegate to better-auth's sign-in endpoint and get the raw response
+    // (which includes Set-Cookie headers)
+    const baResponse = await auth.api.signInEmail({
+      body: { email, password },
+      asResponse: true,
     });
 
-    if (!account) {
+    if (!baResponse.ok) {
       return res.status(401).json({
         code: "INVALID_CREDENTIALS",
         message: "Invalid credentials.",
       });
     }
 
-    const passwordMatches = bcrypt.compareSync(password, account.passwordHash);
-    if (!passwordMatches) {
+    // Forward better-auth's Set-Cookie header to the client
+    const setCookie = baResponse.headers.get("set-cookie");
+    if (setCookie) {
+      res.setHeader("set-cookie", setCookie);
+    }
+
+    const result = await baResponse.json();
+
+    // Return a PlayerIdentity-shaped response for backwards compatibility
+    const account = await GameAccount.findById(result.user.id);
+    const player = account
+      ? buildPlayerIdentityFromAccount(account, result.user.email)
+      : {
+          playerId: result.user.id,
+          displayName: result.user.name,
+          kind: "account" as const,
+          email: result.user.email,
+        };
+
+    return res.status(200).json({ player });
+  } catch (error: any) {
+    if (error?.status === 401 || error?.statusCode === 401) {
       return res.status(401).json({
         code: "INVALID_CREDENTIALS",
         message: "Invalid credentials.",
       });
     }
-
-    const auth = buildAccountAuth(account);
-    await commitPlayerSession(req, res, auth.player);
-    return res.status(200).json(auth);
-  } catch (error) {
     return handleRouteError(error, req, res, "Unable to log in right now.");
   }
 });
 
-/**
- * @openapi
- * /api/player/logout:
- *   post:
- *     summary: Destroy the current session
- *     tags:
- *       - Authentication
- *     security:
- *       - sessionCookie: []
- *     responses:
- *       204:
- *         description: Session destroyed
- */
-router.post("/logout", async (req: Request, res: Response) => {
-  try {
-    await clearPlayerSession(req, res);
-    return res.status(204).send();
-  } catch (error) {
-    handleRouteError(error, req, res, "Unable to log out right now.");
-  }
-});
+// ---------------------------------------------------------------------------
+// GET /me — returns enriched PlayerIdentity (used by client after session init)
+// ---------------------------------------------------------------------------
 
-/**
- * @openapi
- * /api/player/me:
- *   get:
- *     summary: Get the current authenticated player
- *     tags:
- *       - Authentication
- *     security:
- *       - sessionCookie: []
- *     responses:
- *       200:
- *         description: Current player identity
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 player:
- *                   $ref: '#/components/schemas/PlayerIdentity'
- *       401:
- *         description: Not authenticated or session no longer valid
- */
 router.get("/me", async (req: Request, res: Response) => {
   try {
     const player = await getPlayerFromRequest(req);
@@ -562,126 +216,54 @@ router.get("/me", async (req: Request, res: Response) => {
       });
     }
 
-    if (player.kind === "account" && isDatabaseReady()) {
-      const account = await GameAccount.findById(player.playerId);
-      if (account) {
-        const auth = buildAccountAuth(account);
-        await refreshPlayerSession(req, res, auth.player);
-        return res.status(200).json({
-          player: auth.player,
-        });
-      }
-
-      await clearPlayerSession(req, res);
-      return res.status(401).json({
-        code: "SESSION_EXPIRED",
-        message: "That account session is no longer valid.",
-      });
-    }
-
-    await refreshPlayerSession(req, res, player);
     return res.status(200).json({ player });
   } catch (error) {
-    handleRouteError(error, req, res, "Unable to load player session right now.");
+    handleRouteError(
+      error,
+      req,
+      res,
+      "Unable to load player session right now.",
+    );
   }
 });
 
-/**
- * @openapi
- * /api/player/tutorial-complete:
- *   post:
- *     summary: Mark the tutorial as completed for the current account
- *     tags:
- *       - Authentication
- *     security:
- *       - sessionCookie: []
- *     responses:
- *       200:
- *         description: Tutorial marked as completed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 auth:
- *                   $ref: '#/components/schemas/AuthResponse'
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Only account players can mark tutorial complete
- *       404:
- *         description: Account not found
- *       503:
- *         description: Account features unavailable
- */
+// ---------------------------------------------------------------------------
+// Tutorial
+// ---------------------------------------------------------------------------
+
 router.post("/tutorial-complete", async (req: Request, res: Response) => {
   try {
     const account = await requireAccount(req, res);
-    if (!account) {
-      return;
-    }
+    if (!account) return;
 
     account.hasSeenTutorial = true;
     await account.save();
 
-    const auth = buildAccountAuth(account);
-    await refreshPlayerSession(req, res, auth.player);
-    return res.status(200).json({ auth });
+    const email = await getEmailForAccount(account.id);
+    const player = buildPlayerIdentityFromAccount(account, email);
+    return res.status(200).json({ auth: { player } });
   } catch (error) {
-    handleRouteError(error, req, res, "Unable to update tutorial status right now.");
+    handleRouteError(
+      error,
+      req,
+      res,
+      "Unable to update tutorial status right now.",
+    );
   }
 });
 
-/**
- * @openapi
- * /api/player/profile:
- *   get:
- *     summary: Get the current account profile
- *     tags:
- *       - Profile
- *     security:
- *       - sessionCookie: []
- *     responses:
- *       200:
- *         description: Account profile
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 profile:
- *                   type: object
- *                   properties:
- *                     displayName:
- *                       type: string
- *                     email:
- *                       type: string
- *                     profilePicture:
- *                       type: string
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Only account players can access profiles
- *       404:
- *         description: Account not found
- *       503:
- *         description: Account features unavailable
- */
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
 router.get("/profile", async (req: Request, res: Response) => {
   try {
     const account = await requireAccount(req, res);
-    if (!account) {
-      return;
-    }
+    if (!account) return;
 
+    const email = await getEmailForAccount(account.id);
     return res.status(200).json({
-      profile: serializeAccountProfile(account),
+      profile: serializeAccountProfile(account, email),
     });
   } catch (error) {
     handleRouteError(error, req, res, "Unable to load profile right now.");
@@ -692,12 +274,23 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
   try {
     const username = req.params.username?.trim().toLowerCase();
     if (!username) {
-      return res.status(400).json({ code: "INVALID_USERNAME", message: "Username is required." });
+      return res
+        .status(400)
+        .json({ code: "INVALID_USERNAME", message: "Username is required." });
     }
 
-    const account = await GameAccount.findOne({ displayName: { $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } });
+    const account = await GameAccount.findOne({
+      displayName: {
+        $regex: new RegExp(
+          `^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          "i",
+        ),
+      },
+    });
     if (!account) {
-      return res.status(404).json({ code: "NOT_FOUND", message: "Player not found." });
+      return res
+        .status(404)
+        .json({ code: "NOT_FOUND", message: "Player not found." });
     }
 
     return res.status(200).json({
@@ -712,97 +305,37 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * @openapi
- * /api/player/profile:
- *   put:
- *     summary: Update the current account profile
- *     tags:
- *       - Profile
- *     security:
- *       - sessionCookie: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               displayName:
- *                 type: string
- *                 minLength: 3
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 minLength: 8
- *     responses:
- *       200:
- *         description: Profile updated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 auth:
- *                   $ref: '#/components/schemas/AuthResponse'
- *                 profile:
- *                   type: object
- *                   properties:
- *                     displayName:
- *                       type: string
- *                     email:
- *                       type: string
- *                     profilePicture:
- *                       type: string
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: Validation error (no fields provided, short display name, short password, invalid email)
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Only account players can edit profiles
- *       404:
- *         description: Account not found
- *       409:
- *         description: Username or email already taken
- *       503:
- *         description: Account features unavailable
- */
 router.put("/profile", async (req: Request, res: Response) => {
   try {
     const account = await requireAccount(req, res);
-    if (!account) {
-      return;
-    }
+    if (!account) return;
 
-    const { displayName, email, password, currentPassword } = req.body as {
+    const { displayName, password, currentPassword } = req.body as {
       displayName?: string;
-      email?: string;
       password?: string;
       currentPassword?: string;
     };
 
-    const normalizedEmail = email?.trim().toLowerCase();
     const sanitizedDisplayName = displayName?.trim().toLowerCase();
 
-    if (!normalizedEmail && !sanitizedDisplayName && !password) {
+    if (!sanitizedDisplayName && !password) {
       return res.status(400).json({
         code: "VALIDATION_ERROR",
-        message: "Provide a display name, email address, or password to update.",
+        message: "Provide a display name or password to update.",
       });
     }
 
     if (sanitizedDisplayName !== undefined) {
-      if (!sanitizedDisplayName || sanitizedDisplayName.length < 3 || sanitizedDisplayName.length > 32) {
+      if (
+        !sanitizedDisplayName ||
+        sanitizedDisplayName.length < 3 ||
+        sanitizedDisplayName.length > 32
+      ) {
         return res.status(400).json({
-          code: !sanitizedDisplayName || sanitizedDisplayName.length < 3 ? "DISPLAY_NAME_TOO_SHORT" : "DISPLAY_NAME_TOO_LONG",
+          code:
+            !sanitizedDisplayName || sanitizedDisplayName.length < 3
+              ? "DISPLAY_NAME_TOO_SHORT"
+              : "DISPLAY_NAME_TOO_LONG",
           message: "Usernames must be between 3 and 32 characters.",
         });
       }
@@ -828,34 +361,13 @@ router.put("/profile", async (req: Request, res: Response) => {
       }
 
       account.displayName = sanitizeDisplayName(sanitizedDisplayName);
-    }
 
-    if (normalizedEmail !== undefined) {
-      if (normalizedEmail) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        if (!emailRegex.test(normalizedEmail)) {
-          return res.status(400).json({
-            code: "INVALID_EMAIL",
-            message: "Provide a valid email address.",
-          });
-        }
-
-        const existingAccount = await GameAccount.findOne({
-          email: normalizedEmail,
-          _id: { $ne: account._id },
-        });
-
-        if (existingAccount) {
-          return res.status(409).json({
-            code: "DUPLICATE_EMAIL",
-            message: "An account with that email already exists.",
-          });
-        }
-
-        account.email = normalizedEmail;
-      } else {
-        account.email = undefined;
-      }
+      // Also update display name in better-auth's user collection
+      const db = mongoose.connection.getClient().db();
+      await db.collection("user").updateOne(
+        { _id: account._id },
+        { $set: { name: account.displayName, displayName: account.displayName } },
+      );
     }
 
     if (password !== undefined) {
@@ -866,14 +378,6 @@ router.put("/profile", async (req: Request, res: Response) => {
         });
       }
 
-      const passwordMatches = bcrypt.compareSync(currentPassword, account.passwordHash);
-      if (!passwordMatches) {
-        return res.status(401).json({
-          code: "INVALID_CREDENTIALS",
-          message: "Current password is incorrect.",
-        });
-      }
-
       if (password.length < 8) {
         return res.status(400).json({
           code: "INVALID_PASSWORD",
@@ -881,89 +385,50 @@ router.put("/profile", async (req: Request, res: Response) => {
         });
       }
 
-      account.passwordHash = bcrypt.hashSync(password, saltRounds);
+      // Use better-auth's change password API
+      await auth.api.changePassword({
+        body: {
+          currentPassword,
+          newPassword: password,
+        },
+        headers: req.headers as any,
+      });
     }
 
     await account.save();
 
-    const auth = buildAccountAuth(account);
-    await refreshPlayerSession(req, res, auth.player);
+    const email = await getEmailForAccount(account.id);
+    const player = buildPlayerIdentityFromAccount(account, email);
     return res.status(200).json({
-      auth,
-      profile: serializeAccountProfile(account),
+      auth: { player },
+      profile: serializeAccountProfile(account, email),
     });
-  } catch (error) {
-    return handleRouteError(error, req, res, "Unable to update profile right now.");
+  } catch (error: any) {
+    if (error?.status === 401 || error?.statusCode === 401) {
+      return res.status(401).json({
+        code: "INVALID_CREDENTIALS",
+        message: "Current password is incorrect.",
+      });
+    }
+    return handleRouteError(
+      error,
+      req,
+      res,
+      "Unable to update profile right now.",
+    );
   }
 });
 
-/**
- * @openapi
- * /api/player/profile-picture:
- *   post:
- *     summary: Upload a profile picture
- *     tags:
- *       - Profile
- *     security:
- *       - sessionCookie: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - profilePicture
- *             properties:
- *               profilePicture:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Profile picture uploaded
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 auth:
- *                   $ref: '#/components/schemas/AuthResponse'
- *                 profile:
- *                   type: object
- *                   properties:
- *                     displayName:
- *                       type: string
- *                     email:
- *                       type: string
- *                     profilePicture:
- *                       type: string
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: No image file provided
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Only account players can upload profile pictures
- *       404:
- *         description: Account not found
- *       500:
- *         description: Upload failed
- *       503:
- *         description: Account features unavailable
- */
+// ---------------------------------------------------------------------------
+// Profile picture
+// ---------------------------------------------------------------------------
+
 router.post(
   "/profile-picture",
   profilePictureUpload("profilePicture"),
   async (req: Request, res: Response) => {
     const account = await requireAccount(req, res);
-    if (!account) {
-      return;
-    }
+    if (!account) return;
 
     if (!req.file) {
       return res.status(400).json({
@@ -996,22 +461,25 @@ router.post(
               new DeleteObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: previousKey,
-              })
+              }),
             );
           }
         } catch (error) {
-          console.error("Error deleting previous game account profile picture:", error);
+          console.error(
+            "Error deleting previous game account profile picture:",
+            error,
+          );
         }
       }
 
       account.profilePicture = `${CLOUDFRONT_URL}/${fileName}`;
       await account.save();
 
-      const auth = buildAccountAuth(account);
-      await refreshPlayerSession(req, res, auth.player);
+      const email = await getEmailForAccount(account.id);
+      const player = buildPlayerIdentityFromAccount(account, email);
       return res.status(200).json({
-        auth,
-        profile: serializeAccountProfile(account),
+        auth: { player },
+        profile: serializeAccountProfile(account, email),
       });
     } catch (error) {
       console.error("Error uploading game account profile picture:", error);
@@ -1020,19 +488,17 @@ router.post(
         message: "Unable to upload that profile picture right now.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
-// Badge endpoints
+// Badges
 // ---------------------------------------------------------------------------
 
 router.put("/badges/active", async (req: Request, res: Response) => {
   try {
     const account = await requireAccount(req, res);
-    if (!account) {
-      return;
-    }
+    if (!account) return;
 
     const { activeBadges } = req.body as { activeBadges?: string[] };
 
@@ -1050,11 +516,16 @@ router.put("/badges/active", async (req: Request, res: Response) => {
     account.activeBadges = validActive;
     await account.save();
 
-    const auth = buildAccountAuth(account);
-    await refreshPlayerSession(req, res, auth.player);
-    return res.status(200).json({ auth, activeBadges: validActive });
+    const email = await getEmailForAccount(account.id);
+    const player = buildPlayerIdentityFromAccount(account, email);
+    return res.status(200).json({ auth: { player }, activeBadges: validActive });
   } catch (error) {
-    return handleRouteError(error, req, res, "Unable to update active badges right now.");
+    return handleRouteError(
+      error,
+      req,
+      res,
+      "Unable to update active badges right now.",
+    );
   }
 });
 

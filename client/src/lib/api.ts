@@ -136,19 +136,12 @@ async function upload<T>(path: string, formData: FormData): Promise<T> {
   return data;
 }
 
-export function createGuest(displayName?: string) {
-  return request<AuthResponse>("/api/player/guest", {
-    method: "POST",
-    body: displayName ? { displayName } : undefined,
-  });
-}
-
-export function getCurrentPlayer() {
-  return request<{ player: PlayerIdentity }>("/api/player/me");
-}
-
+/**
+ * Custom login endpoint that supports username OR email as identifier.
+ * better-auth only accepts email, so our server wrapper resolves usernames.
+ */
 export function login(identifier: string, password: string) {
-  return request<AuthResponse>("/api/player/login", {
+  return request<{ player: PlayerIdentity }>("/api/player/login", {
     method: "POST",
     body: {
       identifier,
@@ -157,25 +150,12 @@ export function login(identifier: string, password: string) {
   });
 }
 
-export function signUpWithEmail(
-  email?: string,
-  password?: string,
-  displayName?: string
-) {
-  return request<AuthResponse>("/api/player/signup", {
-    method: "POST",
-    body: {
-      email,
-      password,
-      displayName,
-    },
-  });
-}
-
-export function logoutPlayer() {
-  return request<void>("/api/player/logout", {
-    method: "POST",
-  });
+/**
+ * Fetch enriched PlayerIdentity (with game-specific data like badges, rating).
+ * Called after better-auth session is established to get the full profile.
+ */
+export function getPlayerIdentity() {
+  return request<{ player: PlayerIdentity }>("/api/player/me");
 }
 
 export function createMultiplayerGame(

@@ -9,7 +9,7 @@ import {
 } from "../../shared/src";
 import { classifyMongoError } from "../error-handling";
 import { GameServiceError, gameService } from "../game/gameService";
-import { getPlayerFromRequest } from "../game/playerTokens";
+import { getPlayerFromRequest } from "../auth/sessionHelper";
 import GameAccount, { IGameAccount } from "../models/GameAccount";
 import GameInvitation from "../models/GameInvitation";
 import { userSearchRateLimiter } from "../middleware/rateLimiter";
@@ -42,15 +42,11 @@ function toSocialPlayerSummary(
     profilePicture?: string;
     email?: string;
   },
-  options: {
-    includeEmail?: boolean;
-  } = {}
 ): SocialPlayerSummary {
   return {
     playerId: account.id ?? (account._id ? String(account._id) : ""),
     displayName: account.displayName,
     profilePicture: account.profilePicture,
-    ...(options.includeEmail ? { email: account.email } : {}),
   };
 }
 
@@ -439,7 +435,7 @@ router.get("/player/social/search", userSearchRateLimiter, async (req: Request, 
       .exec();
 
     const results: SocialSearchResult[] = accounts.map((result) => ({
-      player: toSocialPlayerSummary(result, { includeEmail: true }),
+      player: toSocialPlayerSummary(result),
       relationship: getSearchRelationship(account, String(result._id)),
     }));
 

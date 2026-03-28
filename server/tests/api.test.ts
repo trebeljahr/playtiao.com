@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
+import {
+  createTestGuest,
+  resetTestSessions,
+  installTestSessionMock,
+} from "./testAuthHelper";
 import type {
   AuthResponse,
   MatchmakingState,
@@ -186,40 +191,28 @@ function getSessionCookie<T>(response: RouteResult<T>): string {
   return rawHeader.split(";")[0]!;
 }
 
-async function createGuest(displayName: string): Promise<SessionAuth> {
-  const response = await invokeRoute<AuthResponse>(gameAuthRoutes, {
-    method: "post",
-    path: "/guest",
-    body: {
-      displayName,
-    },
-  });
-
-  assert.equal(response.status, 201);
-  return {
-    ...response.body,
-    cookie: getSessionCookie(response),
-  };
+function createGuest(displayName: string): SessionAuth {
+  const { player, cookie } = createTestGuest(displayName);
+  return { player, cookie };
 }
 
 beforeEach(async () => {
+  resetTestSessions();
+  await installTestSessionMock();
+
   const [
     { GameService, gameService },
     { InMemoryGameRoomStore },
-    { resetPlayerSessionStoreForTests },
     indexRoutesModule,
     gameAuthRoutesModule,
     gameRoutesModule,
   ] = await Promise.all([
     import("../game/gameService"),
     import("../game/gameStore"),
-    import("../auth/playerSessionStore"),
     import("../routes/index.routes"),
     import("../routes/game-auth.routes"),
     import("../routes/game.routes"),
   ]);
-
-  resetPlayerSessionStoreForTests();
 
   const service = new GameService(new InMemoryGameRoomStore(), () => 0);
   singletonGameService = gameService as unknown as PatchedGameService &

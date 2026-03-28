@@ -6,8 +6,6 @@ export interface IRatingEntry {
 }
 
 export interface IGameAccount extends Document {
-  email: string;
-  passwordHash: string;
   displayName: string;
   profilePicture?: string;
   friends: Schema.Types.ObjectId[];
@@ -27,17 +25,6 @@ export interface IGameAccount extends Document {
 
 const GameAccountSchema = new Schema<IGameAccount>(
   {
-    email: {
-      type: String,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      sparse: true,
-    },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
     displayName: {
       type: String,
       required: true,

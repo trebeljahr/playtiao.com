@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express, { Router } from "express";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./auth/auth";
 import { configureApp } from "./config";
 import addErrorHandlingToApp from "./error-handling";
 import gameAuthRoutes from "./routes/game-auth.routes";
@@ -8,6 +10,9 @@ import indexRoutes from "./routes/index.routes";
 import socialRoutes from "./routes/social.routes";
 import tournamentRoutes from "./routes/tournament.routes";
 const app = express();
+
+// Mount better-auth BEFORE express.json() to avoid body consumption conflicts
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 configureApp(app);
 

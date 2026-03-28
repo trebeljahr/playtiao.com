@@ -4,7 +4,7 @@ import app from "./app";
 import { FRONTEND_URL, PORT } from "./config/envVars";
 import { connectToDB, disconnectFromDB } from "./db";
 import { gameService, GameServiceError } from "./game/gameService";
-import { getPlayerFromUpgradeRequest } from "./game/playerTokens";
+import { getPlayerFromUpgradeRequest } from "./auth/sessionHelper";
 import { ClientToServerMessage } from "../shared/src";
 
 const server = createServer(app);

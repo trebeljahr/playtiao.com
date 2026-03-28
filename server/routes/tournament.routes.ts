@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { GameServiceError } from "../game/gameService";
 import { tournamentService } from "../game/tournamentService";
-import { getPlayerFromRequest } from "../game/playerTokens";
+import { getPlayerFromRequest } from "../auth/sessionHelper";
 import { classifyMongoError } from "../error-handling";
 import type { TournamentSettings, TournamentStatus } from "../../shared/src";
 

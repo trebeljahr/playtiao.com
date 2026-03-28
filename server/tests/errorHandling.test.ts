@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { AuthResponse } from "../../shared/src";
 import { classifyMongoError } from "../error-handling";
+import {
+  createTestGuest,
+  resetTestSessions,
+  installTestSessionMock,
+} from "./testAuthHelper";
 
 process.env.TOKEN_SECRET ??= "test-token-secret";
 process.env.MONGODB_URI ??= "mongodb://127.0.0.1:27017/tiao-test";
@@ -178,38 +183,26 @@ function getSessionCookie<T>(response: RouteResult<T>): string {
   return rawHeader.split(";")[0]!;
 }
 
-async function createGuest(displayName: string) {
-  const response = await invokeRoute<AuthResponse>(gameAuthRoutes, {
-    method: "post",
-    path: "/guest",
-    body: {
-      displayName,
-    },
-  });
-
-  assert.equal(response.status, 201);
-  return {
-    ...response.body,
-    cookie: getSessionCookie(response),
-  };
+function createGuest(displayName: string) {
+  const { player, cookie } = createTestGuest(displayName);
+  return { player, cookie };
 }
 
 beforeEach(async () => {
+  resetTestSessions();
+  await installTestSessionMock();
+
   const [
     { GameService, gameService },
     { InMemoryGameRoomStore },
-    { resetPlayerSessionStoreForTests },
     gameAuthRoutesModule,
     gameRoutesModule,
   ] = await Promise.all([
     import("../game/gameService"),
     import("../game/gameStore"),
-    import("../auth/playerSessionStore"),
     import("../routes/game-auth.routes"),
     import("../routes/game.routes"),
   ]);
-
-  resetPlayerSessionStoreForTests();
 
   const service = new GameService(new InMemoryGameRoomStore(), () => 0);
   singletonGameService = gameService as unknown as PatchedGameService &
@@ -309,70 +302,10 @@ describe("classifyMongoError", () => {
 
 // ── Integration tests: routes recover from thrown errors ───────────────
 
-describe("auth route error handling", () => {
-  const originalConsoleError = console.error;
-  const originalConsoleWarn = console.warn;
-  beforeEach(() => {
-    console.error = () => {};
-    console.warn = () => {};
-  });
-  afterEach(() => {
-    console.error = originalConsoleError;
-    console.warn = originalConsoleWarn;
-  });
-
-  test("POST /guest recovers from session store failure", async () => {
-    // Temporarily break commitPlayerSession by patching it to throw
-    const playerTokens = await import("../game/playerTokens");
-    const original = playerTokens.commitPlayerSession;
-    (playerTokens as Record<string, unknown>).commitPlayerSession = () => {
-      throw new Error("session store unavailable");
-    };
-
-    try {
-      const response = await invokeRoute<{ code: string; message: string }>(
-        gameAuthRoutes,
-        {
-          method: "post",
-          path: "/guest",
-          body: { displayName: "ErrorGuest" },
-        }
-      );
-
-      assert.equal(response.status, 500);
-      assert.equal(response.body.code, "INTERNAL_ERROR");
-      assert.ok(response.body.message);
-    } finally {
-      (playerTokens as Record<string, unknown>).commitPlayerSession = original;
-    }
-  });
-
-  test("GET /me recovers from unexpected errors", async () => {
-    const guest = await createGuest("MeErrorGuest");
-
-    const playerTokens = await import("../game/playerTokens");
-    const original = playerTokens.refreshPlayerSession;
-    (playerTokens as Record<string, unknown>).refreshPlayerSession = () => {
-      throw new Error("unexpected failure");
-    };
-
-    try {
-      const response = await invokeRoute<{ code: string; message: string }>(
-        gameAuthRoutes,
-        {
-          method: "get",
-          path: "/me",
-          cookie: guest.cookie,
-        }
-      );
-
-      assert.equal(response.status, 500);
-      assert.equal(response.body.code, "INTERNAL_ERROR");
-    } finally {
-      (playerTokens as Record<string, unknown>).refreshPlayerSession = original;
-    }
-  });
-});
+// Auth route error handling tests removed — session management is now handled
+// by better-auth. The old POST /guest route and commitPlayerSession/refreshPlayerSession
+// functions no longer exist. Error handling for better-auth's session layer is
+// tested by better-auth itself.
 
 describe("game route error handling", () => {
   const originalConsoleError = console.error;
@@ -450,55 +383,7 @@ describe("MongoDB duplicate key error surfaces as 409", () => {
     console.warn = originalConsoleWarn;
   });
 
-  test("signup handles duplicate key error from GameAccount.create gracefully", async () => {
-    // Simulate a race condition: the findOne check passes, but create() throws
-    // E11000 because another request inserted the same record between check and create.
-    const GameAccount = (await import("../models/GameAccount")).default;
-    const originalCreate = GameAccount.create.bind(GameAccount);
-
-    GameAccount.create = (() => {
-      const mongoError = Object.assign(
-        new Error(
-          "E11000 duplicate key error collection: tiao.gameaccounts index: email_1 dup key: { email: null }"
-        ),
-        {
-          name: "MongoServerError",
-          code: 11000,
-          keyPattern: { email: 1 },
-          keyValue: { email: null },
-        }
-      );
-      return Promise.reject(mongoError);
-    }) as typeof GameAccount.create;
-
-    try {
-      const response = await invokeRoute<{ code: string; message: string }>(
-        gameAuthRoutes,
-        {
-          method: "post",
-          path: "/signup",
-          body: {
-            password: "securepassword123",
-            displayName: "DupKeyUser",
-          },
-        }
-      );
-
-      // DB is not connected in tests so we'll get 503 first. But if we
-      // reach the create() call, the error should be caught and classified.
-      // With DB disconnected, the route returns 503 before reaching create.
-      // This test validates the error path when the create call itself fails.
-      assert.ok(
-        [409, 503].includes(response.status),
-        `Expected 409 or 503 but got ${response.status}`
-      );
-
-      if (response.status === 409) {
-        assert.equal(response.body.code, "DUPLICATE_KEY");
-        assert.match(response.body.message, /email/);
-      }
-    } finally {
-      GameAccount.create = originalCreate;
-    }
-  });
+  // Signup duplicate key test removed — signup is now handled by better-auth.
+  // Duplicate key errors during account creation are caught by better-auth's
+  // databaseHooks and the MongoDB adapter.
 });
