@@ -12,7 +12,7 @@ type CreatorPageProps = {
   username: string;
   image: string;
   role: string;
-  bio: string;
+  bio: React.ReactNode;
   links: CreatorLink[];
 };
 
@@ -62,11 +62,11 @@ export function CreatorPage({ name, username, image, role, bio, links }: Creator
               <p className="mt-1 text-sm font-medium text-[#8d7760]">{role}</p>
             </div>
 
-            <p className="max-w-lg text-center leading-relaxed text-[#4e3d2c]">
+            <p className="max-w-lg leading-relaxed text-[#4e3d2c]">
               {bio}
             </p>
 
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap gap-3">
               {links.map((link) => (
                 <a
                   key={link.href}
@@ -83,7 +83,7 @@ export function CreatorPage({ name, username, image, role, bio, links }: Creator
 
             <div className="w-full border-t border-[#dbc6a2] pt-4">
               <p className="text-center text-sm text-[#8d7760]">
-                See {name.split(" ")[0]}&apos;s profile on Tiao:{" "}
+                See his player profile:{" "}
                 <button
                   type="button"
                   className="font-semibold text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]"
