@@ -68,7 +68,7 @@ function ToggleButton({
       className={cn(
         "border-[#dcc7a2]",
         active
-          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
+          ? "pointer-events-none !border-[#6b5030] !bg-[#6b5030] !text-white"
           : "hover:bg-[#ede3d2]",
         className,
       )}
