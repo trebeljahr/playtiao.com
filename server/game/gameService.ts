@@ -304,6 +304,10 @@ export class GameService {
         this.spectatorIdentities.set(room.id, roomSpectators);
       }
       roomSpectators.set(player.playerId, player);
+    } else {
+      // Refresh the player's identity (profile picture, display name, etc.)
+      // so snapshots reflect the latest data from their session.
+      this.refreshPlayerIdentity(room, player);
     }
 
     // For timed tournament games: start the first-move timer when both players connect
@@ -808,6 +812,22 @@ export class GameService {
 
   private isPlayerInRoom(room: StoredMultiplayerRoom, playerId: string): boolean {
     return room.players.some((player) => player.playerId === playerId);
+  }
+
+  /** Update a player's mutable identity fields (display name, profile picture)
+   *  in the room's players array and seat assignments so snapshots stay fresh. */
+  private refreshPlayerIdentity(room: StoredMultiplayerRoom, fresh: PlayerIdentity): void {
+    for (let i = 0; i < room.players.length; i++) {
+      if (room.players[i].playerId === fresh.playerId) {
+        room.players[i] = { ...room.players[i], displayName: fresh.displayName, profilePicture: fresh.profilePicture };
+      }
+    }
+    for (const color of ["white", "black"] as const) {
+      const seat = room.seats[color];
+      if (seat?.playerId === fresh.playerId) {
+        room.seats[color] = { ...seat, displayName: fresh.displayName, profilePicture: fresh.profilePicture };
+      }
+    }
   }
 
   private async getRoom(gameId: string): Promise<StoredMultiplayerRoom> {
