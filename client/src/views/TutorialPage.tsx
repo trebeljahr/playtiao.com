@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,13 @@ function ProgressDots({
   current,
   completedSteps,
   onDotClick,
+  goToStepLabel,
 }: {
   total: number;
   current: number;
   completedSteps: Set<number>;
   onDotClick: (index: number) => void;
+  goToStepLabel: (n: number) => string;
 }) {
   return (
     <div className="flex items-center justify-center gap-2">
@@ -58,7 +61,7 @@ function ProgressDots({
                 ? "w-2.5 bg-[#8db87a] hover:bg-[#6e9a5f]"
                 : "w-2.5 bg-[#e8dcc8] hover:bg-[#d7c39e]",
           )}
-          aria-label={`Go to step ${i + 1}`}
+          aria-label={goToStepLabel(i + 1)}
         />
       ))}
     </div>
@@ -68,6 +71,7 @@ function ProgressDots({
 // --- Main tutorial component ---
 
 export function TutorialPage() {
+  const t = useTranslations("tutorial");
   const { auth, applyAuth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -259,6 +263,7 @@ export function TutorialPage() {
           current={currentStep}
           completedSteps={completedSteps}
           onDotClick={goTo}
+          goToStepLabel={(n) => t("goToStep", { n })}
         />
 
         {/* Navigation */}
@@ -269,7 +274,7 @@ export function TutorialPage() {
             onClick={goPrev}
             disabled={currentStep === 0}
           >
-            ← Back
+            {t("back")}
           </Button>
 
           <div className="flex items-center gap-2">
@@ -280,7 +285,7 @@ export function TutorialPage() {
                 className="text-xs text-[#a08d78] hover:text-[#6e5b48]"
                 onClick={handleSkip}
               >
-                Skip
+                {t("skip")}
               </Button>
             )}
 
@@ -291,7 +296,7 @@ export function TutorialPage() {
                 onClick={handleFinish}
                 disabled={completing}
               >
-                {completing ? "Let's go!" : "Return to lobby →"}
+                {completing ? t("letsGo") : t("returnToLobby")}
               </Button>
             ) : canAdvance ? (
               <Button
@@ -299,11 +304,11 @@ export function TutorialPage() {
                 className="min-w-[120px] h-12 shadow-md bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-lg transition-all"
                 onClick={goNext}
               >
-                Next →
+                {t("next")}
               </Button>
             ) : (
               <span className="text-xs text-[#a08d78] italic">
-                Complete the challenge ↑
+                {t("completeChallenge")}
               </span>
             )}
           </div>

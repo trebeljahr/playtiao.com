@@ -1,4 +1,5 @@
 import type { TournamentGroupStanding } from "@shared";
+import { useTranslations } from "next-intl";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 
 export function StandingsTable({
@@ -8,18 +9,19 @@ export function StandingsTable({
   standings: TournamentGroupStanding[];
   highlightPlayerId?: string;
 }) {
+  const t = useTranslations("tournament");
   return (
     <div className="overflow-x-auto rounded-lg border border-white/50 bg-white/60">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="px-3 py-2 w-8">#</th>
-            <th className="px-3 py-2">Player</th>
-            <th className="px-3 py-2 text-center w-10">W</th>
-            <th className="px-3 py-2 text-center w-10">L</th>
-            <th className="px-3 py-2 text-center w-10">D</th>
-            <th className="px-3 py-2 text-center w-12">Pts</th>
-            <th className="px-3 py-2 text-center w-12">+/-</th>
+            <th className="px-3 py-2 w-8">{t("standingsRank")}</th>
+            <th className="px-3 py-2">{t("standingsPlayer")}</th>
+            <th className="px-3 py-2 text-center w-10">{t("standingsWins")}</th>
+            <th className="px-3 py-2 text-center w-10">{t("standingsLosses")}</th>
+            <th className="px-3 py-2 text-center w-10">{t("standingsDraws")}</th>
+            <th className="px-3 py-2 text-center w-12">{t("standingsPoints")}</th>
+            <th className="px-3 py-2 text-center w-12">{t("standingsDiff")}</th>
           </tr>
         </thead>
         <tbody>

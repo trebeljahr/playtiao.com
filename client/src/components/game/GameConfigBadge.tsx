@@ -1,4 +1,5 @@
 import type { TimeControl, MultiplayerRoomType } from "@shared";
+import { useTranslations } from "next-intl";
 
 type GameConfigBadgeProps = {
   boardSize?: number;
@@ -8,24 +9,6 @@ type GameConfigBadgeProps = {
   compact?: boolean;
 };
 
-function formatTimeControl(tc: TimeControl): string | null {
-  if (!tc) return null;
-  const mins = Math.floor(tc.initialMs / 60_000);
-  const incSec = Math.round(tc.incrementMs / 1_000);
-  return incSec > 0 ? `${mins}+${incSec}` : `${mins} min`;
-}
-
-function formatRoomType(roomType: MultiplayerRoomType): string | null {
-  switch (roomType) {
-    case "tournament":
-      return "Tournament";
-    case "matchmaking":
-      return "Matchmaking";
-    default:
-      return null;
-  }
-}
-
 export function GameConfigBadge({
   boardSize,
   scoreToWin,
@@ -33,11 +16,21 @@ export function GameConfigBadge({
   roomType,
   compact,
 }: GameConfigBadgeProps) {
+  const tGame = useTranslations("game");
+  const tTournament = useTranslations("tournament");
+  const tLobby = useTranslations("lobby");
+
   const parts: string[] = [];
 
   if (roomType) {
-    const label = formatRoomType(roomType);
-    if (label) parts.push(label);
+    switch (roomType) {
+      case "tournament":
+        parts.push(tTournament("title"));
+        break;
+      case "matchmaking":
+        parts.push(tLobby("matchmaking"));
+        break;
+    }
   }
 
   if (boardSize && boardSize !== 19) {
@@ -45,11 +38,15 @@ export function GameConfigBadge({
   }
 
   if (scoreToWin && scoreToWin !== 10) {
-    parts.push(compact ? `${scoreToWin}pts` : `${scoreToWin} to win`);
+    parts.push(compact ? tGame("nPts", { n: scoreToWin }) : tGame("nToWin", { n: scoreToWin }));
   }
 
-  const tcLabel = formatTimeControl(timeControl ?? null);
-  if (tcLabel) parts.push(tcLabel);
+  if (timeControl) {
+    const mins = Math.floor(timeControl.initialMs / 60_000);
+    const incSec = Math.round(timeControl.incrementMs / 1_000);
+    const tcLabel = incSec > 0 ? `${mins}+${incSec}` : tGame("nMin", { n: mins });
+    parts.push(tcLabel);
+  }
 
   if (parts.length === 0) return null;
 

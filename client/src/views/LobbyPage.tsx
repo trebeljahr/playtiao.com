@@ -37,6 +37,7 @@ export function LobbyPage() {
   const t = useTranslations("lobby");
   const tc = useTranslations("common");
   const tConfig = useTranslations("config");
+  const tGame = useTranslations("game");
   const { multiplayerGames, refreshMultiplayerGames } = useGamesIndex(auth);
 
   const { socialOverview, refreshSocialOverview, handleDeclineGameInvitation } =
@@ -473,7 +474,7 @@ export function LobbyPage() {
                               </p>
                             </div>
                             <p className="text-sm text-[#6e5b48]">
-                              vs {getOpponentLabel(game, auth.player.playerId)}
+                              vs {getOpponentLabel(game, auth.player.playerId, tGame)}
                               {opponentOnline && (
                                 <span
                                   className="ml-1.5 inline-block h-2 w-2 rounded-full bg-[#6ba34a]"

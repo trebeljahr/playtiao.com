@@ -1,4 +1,5 @@
 import type { MultiplayerGameSummary, PlayerColor } from "@shared";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ function PlayerRow({
   isWinner,
   clockMs,
   ratingChange,
+  youLabel,
 }: {
   player: { displayName?: string; profilePicture?: string } | null;
   color: PlayerColor;
@@ -52,6 +54,7 @@ function PlayerRow({
   isWinner: boolean;
   clockMs?: number | null;
   ratingChange?: number | null;
+  youLabel: string;
 }) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl px-3 py-2">
@@ -63,7 +66,7 @@ function PlayerRow({
       )}
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#2b1e14]">
         {player?.displayName ?? "Unknown"}
-        {isYou && <span className="ml-1 text-[#8d7760]">(you)</span>}
+        {isYou && <span className="ml-1 text-[#8d7760]">{youLabel}</span>}
       </span>
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
@@ -100,6 +103,8 @@ export function MatchHistoryCard({
   onCopy,
   onReview,
 }: MatchHistoryCardProps) {
+  const t = useTranslations("game");
+  const tCommon = useTranslations("common");
   const result = getPlayerResult(game);
   const whitePlayer = game.seats.white?.player ?? null;
   const blackPlayer = game.seats.black?.player ?? null;
@@ -131,7 +136,7 @@ export function MatchHistoryCard({
         game.score.white < scoreToWin && game.score.black < scoreToWin) {
       return null;
     }
-    return describeResult(result, game.finishReason) || null;
+    return describeResult(result, game.finishReason, t) || null;
   })();
 
   return (
@@ -146,12 +151,12 @@ export function MatchHistoryCard({
                 ? "bg-[#c2e4a4] text-[#1a4008]"
                 : "bg-[#edb4ac] text-[#5c1a14]",
             )}>
-              {result === "won" ? "Won" : "Lost"}
+              {result === "won" ? t("won") : t("lost")}
             </Badge>
           )}
           {!result && game.winner && (
             <Badge className="bg-[#e8dcc6] text-[#5a4a32] text-xs font-semibold">
-              {formatPlayerColor(game.winner)} won
+              {t("colorWon", { color: formatPlayerColor(game.winner) ?? "" })}
             </Badge>
           )}
           {reasonText && (
@@ -170,7 +175,7 @@ export function MatchHistoryCard({
             {copiedId === game.gameId ? "Copied" : game.gameId}
           </button>
           <Button size="sm" className="text-xs" onClick={onReview}>
-            Review
+            {tCommon("review")}
           </Button>
         </div>
       </div>
@@ -186,6 +191,7 @@ export function MatchHistoryCard({
           isWinner={whiteWon}
           clockMs={game.clockMs?.white}
           ratingChange={whiteRatingChange}
+          youLabel={tCommon("you")}
         />
         <PlayerRow
           player={blackPlayer}
@@ -196,6 +202,7 @@ export function MatchHistoryCard({
           isWinner={blackWon}
           clockMs={game.clockMs?.black}
           ratingChange={blackRatingChange}
+          youLabel={tCommon("you")}
         />
       </div>
 
@@ -208,7 +215,7 @@ export function MatchHistoryCard({
           roomType={game.roomType}
         />
         <span className="text-xs text-[#9a8770]">
-          {formatGameTimestamp(game.updatedAt)} · {game.historyLength} moves
+          {formatGameTimestamp(game.updatedAt)} · {tCommon("moves", { count: game.historyLength })}
         </span>
       </div>
     </div>

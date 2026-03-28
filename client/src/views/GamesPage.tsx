@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 export function GamesPage() {
   const t = useTranslations("games");
   const tCommon = useTranslations("common");
+  const tGame = useTranslations("game");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -116,7 +117,7 @@ export function GamesPage() {
                           <EmptySeatAvatar className="h-6 w-6 shrink-0" />
                         )}
                         <p className="truncate text-sm font-semibold text-[#2b1e14]">
-                          {getOpponentLabel(game, auth.player.playerId)}
+                          {getOpponentLabel(game, auth.player.playerId, tGame)}
                         </p>
                       </div>
                       <div className="mt-1.5 flex items-center gap-2">
@@ -125,7 +126,7 @@ export function GamesPage() {
                             ? "bg-[#e8f2d8] text-[#4b6537] animate-pulse"
                             : "bg-[#f3e7d5] text-[#6b563e]",
                         )}>
-                          {getSummaryStatusLabel(game)}
+                          {getSummaryStatusLabel(game, tGame)}
                         </Badge>
                         <span className="text-xs text-[#8d7760]">
                           {game.score.white}-{game.score.black} · {game.historyLength} moves

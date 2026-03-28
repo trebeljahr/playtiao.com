@@ -126,52 +126,66 @@ export function isSummaryYourTurn(summary: MultiplayerGameSummary) {
 export function getOpponentLabel(
   summary: MultiplayerGameSummary,
   playerId: string | undefined,
+  t?: (key: string) => string,
 ) {
   if (!summary.yourSeat) {
     return (
       getOpponentFromSlots(summary.players, playerId)?.displayName ||
-      "Waiting for opponent"
+      (t ? t("waitingForOpponent") : "Waiting for opponent")
     );
   }
 
   const opponentColor = summary.yourSeat === "white" ? "black" : "white";
-  return summary.seats[opponentColor]?.player.displayName || "Open seat";
+  return summary.seats[opponentColor]?.player.displayName || (t ? t("openSeat") : "Open seat");
 }
 
-export function getSummaryStatusLabel(summary: MultiplayerGameSummary) {
+export function getSummaryStatusLabel(
+  summary: MultiplayerGameSummary,
+  t?: (key: string, values?: any) => string,
+) {
   if (summary.status === "finished") {
-    return `${formatPlayerColor(summary.winner)} won`;
+    const color = formatPlayerColor(summary.winner);
+    return t ? t("colorWon", { color: color ?? "" }) : `${color} won`;
   }
 
   if (summary.status === "waiting") {
-    return "Waiting";
+    return t ? t("waiting") : "Waiting";
   }
 
-  return isSummaryYourTurn(summary) ? "Your move" : "Waiting for opponent";
+  if (isSummaryYourTurn(summary)) {
+    return t ? t("yourMove") : "Your move";
+  }
+  return t ? t("waitingForOpponent") : "Waiting for opponent";
 }
 
-export function formatRelativeExpiry(value: string) {
+export function formatRelativeExpiry(
+  value: string,
+  t?: (key: string, values?: any) => string,
+) {
   const remainingMs = new Date(value).getTime() - Date.now();
   const remainingMinutes = Math.max(0, Math.round(remainingMs / 60000));
 
   if (remainingMinutes < 60) {
-    return `${remainingMinutes}m left`;
+    return t ? t("mLeft", { n: remainingMinutes }) : `${remainingMinutes}m left`;
   }
 
   const remainingHours = remainingMinutes / 60;
   if (remainingHours < 24) {
-    return `${Math.round(remainingHours)}h left`;
+    const h = Math.round(remainingHours);
+    return t ? t("hLeft", { n: h }) : `${h}h left`;
   }
 
-  return `${Math.round(remainingHours / 24)}d left`;
+  const d = Math.round(remainingHours / 24);
+  return t ? t("dLeft", { n: d }) : `${d}d left`;
 }
 
 export function formatPlayerName(
   player: SocialPlayerSummary | { playerId: string; displayName: string },
   currentPlayerId: string | undefined,
+  youLabel?: string,
 ) {
   return player.playerId === currentPlayerId
-    ? `${player.displayName} (you)`
+    ? `${player.displayName} ${youLabel ?? "(you)"}`
     : player.displayName;
 }
 
@@ -204,16 +218,22 @@ export function createOptimisticSnapshot(
   };
 }
 
-export function formatFinishReason(reason: FinishReason | null, scoreToWin?: number): string {
+export function formatFinishReason(
+  reason: FinishReason | null,
+  scoreToWin?: number,
+  t?: (key: string, values?: any) => string,
+): string {
   switch (reason) {
     case "captured":
-      return `Score reached${scoreToWin ? ` (${scoreToWin})` : ""}`;
+      return t
+        ? t("scoreReached", { score: scoreToWin ?? "" })
+        : `Score reached${scoreToWin ? ` (${scoreToWin})` : ""}`;
     case "forfeit":
-      return "Forfeit";
+      return t ? t("forfeit") : "Forfeit";
     case "timeout":
-      return "Time ran out";
+      return t ? t("timeRanOut") : "Time ran out";
     case "board_full":
-      return "Board full";
+      return t ? t("boardFull") : "Board full";
     default:
       return "";
   }
@@ -223,22 +243,23 @@ export function formatFinishReason(reason: FinishReason | null, scoreToWin?: num
 export function describeResult(
   result: "won" | "lost" | null,
   finishReason: FinishReason | null,
+  t?: (key: string) => string,
 ): string {
   if (!result) return "";
   if (result === "won") {
     switch (finishReason) {
-      case "captured": return "Score target reached";
-      case "forfeit": return "Opponent forfeited";
-      case "timeout": return "Opponent ran out of time";
-      case "board_full": return "Board full — you had more points";
+      case "captured": return t ? t("scoreTargetReached") : "Score target reached";
+      case "forfeit": return t ? t("opponentForfeited") : "Opponent forfeited";
+      case "timeout": return t ? t("opponentTimedOut") : "Opponent ran out of time";
+      case "board_full": return t ? t("boardFullYouWon") : "Board full — you had more points";
       default: return "";
     }
   }
   switch (finishReason) {
-    case "captured": return "Opponent reached score target";
-    case "forfeit": return "You forfeited";
-    case "timeout": return "You ran out of time";
-    case "board_full": return "Board full — opponent had more points";
+    case "captured": return t ? t("opponentReachedTarget") : "Opponent reached score target";
+    case "forfeit": return t ? t("youForfeited") : "You forfeited";
+    case "timeout": return t ? t("youTimedOut") : "You ran out of time";
+    case "board_full": return t ? t("boardFullOpponentWon") : "Board full — opponent had more points";
     default: return "";
   }
 }

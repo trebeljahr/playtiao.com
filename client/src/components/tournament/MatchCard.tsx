@@ -1,24 +1,10 @@
 import type { TournamentMatch } from "@shared";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { formatFinishReason } from "@/components/game/GameShared";
 import { useRouter } from "next/navigation";
-
-function statusLabel(status: TournamentMatch["status"]): string {
-  switch (status) {
-    case "pending":
-      return "Upcoming";
-    case "active":
-      return "Live";
-    case "finished":
-      return "Finished";
-    case "forfeit":
-      return "Forfeit";
-    case "bye":
-      return "Bye";
-  }
-}
 
 function statusColor(status: TournamentMatch["status"]): string {
   switch (status) {
@@ -44,11 +30,30 @@ export function MatchCard({
   featured?: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
+  const tGame = useTranslations("game");
+
+  function statusLabel(status: TournamentMatch["status"]): string {
+    switch (status) {
+      case "pending":
+        return t("upcoming");
+      case "active":
+        return t("live");
+      case "finished":
+        return t("finished");
+      case "forfeit":
+        return tGame("forfeit");
+      case "bye":
+        return t("bye");
+    }
+  }
+
   const isMyMatch =
     currentPlayerId &&
     match.players.some((p) => p?.playerId === currentPlayerId);
   const isDone = match.status === "finished" || match.status === "forfeit";
-  const reason = isDone ? formatFinishReason(match.finishReason ?? null) : "";
+  const reason = isDone ? formatFinishReason(match.finishReason ?? null, undefined, tGame) : "";
 
   return (
     <div
@@ -81,7 +86,7 @@ export function MatchCard({
                       ? "border-slate-300 bg-white"
                       : "border-slate-400 bg-slate-800"
                   }`}
-                  title={match.playerColors[i] === "white" ? "White" : "Black"}
+                  title={match.playerColors[i] === "white" ? tGame("white") : tGame("black")}
                 />
               )}
               {player ? (
@@ -93,11 +98,11 @@ export function MatchCard({
                   className="min-w-0 flex-1"
                 />
               ) : (
-                <span className="truncate text-muted-foreground">TBD</span>
+                <span className="truncate text-muted-foreground">{t("tbd")}</span>
               )}
               {isDone && player?.playerId === match.winner && (
                 <span className="inline-flex items-center rounded-full border border-green-400 bg-green-50 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider text-green-700">
-                  Won
+                  {tGame("won")}
                 </span>
               )}
               {match.status !== "pending" && match.status !== "bye" && (
@@ -122,7 +127,7 @@ export function MatchCard({
               )}
               {match.historyLength != null && (
                 <span className="text-[11px] text-muted-foreground">
-                  {match.historyLength} moves
+                  {tCommon("moves", { count: match.historyLength })}
                 </span>
               )}
             </div>
@@ -133,7 +138,7 @@ export function MatchCard({
               variant={isMyMatch ? "default" : "outline"}
               onClick={() => router.push(`/game/${match.roomId}`)}
             >
-              {isMyMatch ? "Play" : "Watch"}
+              {isMyMatch ? tCommon("play") : tCommon("watch")}
             </Button>
           )}
           {match.roomId && isDone && (
@@ -142,7 +147,7 @@ export function MatchCard({
               variant="outline"
               onClick={() => router.push(`/game/${match.roomId}`)}
             >
-              Review
+              {tCommon("review")}
             </Button>
           )}
         </div>

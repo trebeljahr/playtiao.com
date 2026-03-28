@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { PlayerColor, Position } from "@shared";
@@ -59,6 +60,8 @@ function AnimatedEllipsis() {
 }
 
 export function MultiplayerGamePage() {
+  const t = useTranslations("game");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,7 +118,7 @@ export function MultiplayerGamePage() {
     setInviteBusy(friendId);
     try {
       await social.handleSendGameInvitation(gameId, friendId, 60);
-      toast.success("Invitation sent!");
+      toast.success(tCommon("invitationSent"));
     } catch {
       // handleSendGameInvitation already toasts errors
     } finally {
@@ -136,7 +139,7 @@ export function MultiplayerGamePage() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error("Failed to load game");
+          toast.error(tCommon("failedToLoadGame"));
           router.push("/");
         }
       } finally {
@@ -370,13 +373,13 @@ export function MultiplayerGamePage() {
       lastTakebackToastRef.current !== takebackRequester
     ) {
       lastTakebackToastRef.current = takebackRequester;
-      toast("Opponent requested a takeback", {
+      toast(t("opponentRequestedTakeback"), {
         action: {
-          label: "Accept",
+          label: tCommon("accept"),
           onClick: () => sendMultiplayerMessage({ type: "accept-takeback" }),
         },
         cancel: {
-          label: "Decline",
+          label: tCommon("decline"),
           onClick: () => sendMultiplayerMessage({ type: "decline-takeback" }),
         },
         duration: Infinity,
@@ -396,13 +399,13 @@ export function MultiplayerGamePage() {
 
     if (opponentRequested && !weAlreadyRequested && !lastRematchToastRef.current) {
       lastRematchToastRef.current = true;
-      toast("Opponent wants a rematch!", {
+      toast(t("opponentWantsRematch"), {
         action: {
-          label: "Accept",
+          label: tCommon("accept"),
           onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
         },
         cancel: {
-          label: "Decline",
+          label: tCommon("decline"),
           onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
         },
         duration: Infinity,
@@ -500,13 +503,13 @@ export function MultiplayerGamePage() {
       await copyToClipboard(multiplayerSnapshot.gameId);
       setCopyFeedback("Copied!");
       setCopyFeedbackKey("game-id");
-      toast.success(`Copied Game ID ${multiplayerSnapshot.gameId}`);
+      toast.success(tCommon("copiedGameId", { gameId: multiplayerSnapshot.gameId }));
       setTimeout(() => {
         setCopyFeedback(null);
         setCopyFeedbackKey(null);
       }, 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(tCommon("failedToCopy"));
     }
   }
 
@@ -517,13 +520,13 @@ export function MultiplayerGamePage() {
       await copyToClipboard(url);
       setCopyFeedback("Link copied!");
       setCopyFeedbackKey("share-link");
-      toast.success("Copied Share Link");
+      toast.success(tCommon("copiedShareLink"));
       setTimeout(() => {
         setCopyFeedback(null);
         setCopyFeedbackKey(null);
       }, 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(tCommon("failedToCopy"));
     }
   }
 
@@ -867,6 +870,7 @@ export function MultiplayerGamePage() {
                                           ? formatPlayerName(
                                               slot.player,
                                               auth?.player.playerId,
+                                              tCommon("you"),
                                             )
                                           : "Waiting to join"}
                                       </p>
@@ -884,7 +888,7 @@ export function MultiplayerGamePage() {
                                             setInviteDialogOpen(true)
                                           }
                                         >
-                                          Invite a Friend
+                                          {t("inviteFriend")}
                                         </Button>
                                       )}
                                     <Badge
@@ -1032,7 +1036,7 @@ export function MultiplayerGamePage() {
                             multiplayerSnapshot.takeback.requestedBy !== playerSeat ? (
                               <div className="rounded-2xl border border-[#d8c29c] bg-[#fff8ee] p-3 space-y-2">
                                 <p className="text-sm font-semibold text-[#2b1e14]">
-                                  Opponent requested a takeback
+                                  {t("opponentRequestedTakeback")}
                                 </p>
                                 <div className="grid grid-cols-2 gap-2">
                                   <Button
@@ -1044,7 +1048,7 @@ export function MultiplayerGamePage() {
                                       })
                                     }
                                   >
-                                    Accept
+                                    {tCommon("accept")}
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1055,7 +1059,7 @@ export function MultiplayerGamePage() {
                                       })
                                     }
                                   >
-                                    Decline
+                                    {tCommon("decline")}
                                   </Button>
                                 </div>
                               </div>
@@ -1098,14 +1102,13 @@ export function MultiplayerGamePage() {
                             ) ? (
                               <div className="space-y-2">
                                 <p className="text-center text-sm font-medium text-[#56703f]">
-                                  Rematch requested. Waiting for opponent...
+                                  {t("rematchRequestedWaiting")}
                                 </p>
                                 {(
                                   multiplayerSnapshot.rematch?.requestedBy ?? []
                                 ).some((color) => color !== playerSeat) && (
                                   <p className="text-center text-xs text-[#6e5b48]">
-                                    Your opponent also wants a rematch! It
-                                    should start any second.
+                                    {t("rematchBothWant")}
                                   </p>
                                 )}
                               </div>
@@ -1118,14 +1121,14 @@ export function MultiplayerGamePage() {
                                       type: "request-rematch",
                                     });
                                     if (!multiplayerSnapshot.rematch?.requestedBy.length) {
-                                      toast.success("Rematch request sent!");
+                                      toast.success(t("rematchSent"));
                                     }
                                   }}
                                 >
                                   {multiplayerSnapshot.rematch?.requestedBy
                                     .length
-                                    ? "Accept Rematch"
-                                    : "Rematch"}
+                                    ? t("acceptRematch")
+                                    : t("rematch")}
                                 </Button>
                                 {(
                                   multiplayerSnapshot.rematch?.requestedBy ?? []
@@ -1138,14 +1141,14 @@ export function MultiplayerGamePage() {
                                       })
                                     }
                                   >
-                                    Decline
+                                    {tCommon("decline")}
                                   </Button>
                                 ) : (
                                   <Button
                                     variant="outline"
                                     onClick={() => router.push("/")}
                                   >
-                                    Lobby
+                                    {tCommon("lobby")}
                                   </Button>
                                 )}
                               </div>
@@ -1163,7 +1166,7 @@ export function MultiplayerGamePage() {
                               variant="ghost"
                               onClick={() => router.push("/")}
                             >
-                              Back to lobby
+                              {tCommon("backToLobby")}
                             </Button>
                           </div>
                         )}
@@ -1171,7 +1174,7 @@ export function MultiplayerGamePage() {
                       {multiplayerSnapshot.state.history.length > 0 && (
                         <div className="border-t border-[#dbc6a2] pt-4">
                           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
-                            Move History
+                            {t("moveHistory")}
                           </p>
                           <MoveList
                             history={multiplayerSnapshot.state.history}
@@ -1202,11 +1205,11 @@ export function MultiplayerGamePage() {
                                 },
                               );
                               void navigator.clipboard.writeText(notation).then(() => {
-                                toast.success("Game notation copied to clipboard");
+                                toast.success(t("gameNotationCopied"));
                               });
                             }}
                           >
-                            Copy game notation
+                            {t("copyGameNotation")}
                           </Button>
                         </div>
                       )}
@@ -1217,7 +1220,7 @@ export function MultiplayerGamePage() {
                             variant="ghost"
                             onClick={() => router.push("/")}
                           >
-                            Back to lobby
+                            {tCommon("backToLobby")}
                           </Button>
                         </div>
                       )}
@@ -1225,7 +1228,7 @@ export function MultiplayerGamePage() {
                   ) : multiplayerBusy ? (
                     <div className="flex flex-col items-center py-12 gap-3">
                       <HourglassSpinner className="h-8 w-8 text-[#a6824d]" />
-                      <p className="text-sm text-[#6e5b48]">Loading match...</p>
+                      <p className="text-sm text-[#6e5b48]">{t("loadingMatch")}</p>
                     </div>
                   ) : null}
                 </CardContent>
@@ -1238,13 +1241,13 @@ export function MultiplayerGamePage() {
       <Dialog
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
-        title="Invite a Friend"
-        description="Choose a friend to invite to this game."
+        title={t("inviteFriend")}
+        description={t("inviteFriendDesc")}
       >
         <div className="space-y-2 max-h-[20rem] overflow-y-auto">
           {liveSocialOverview.friends.length === 0 ? (
             <p className="text-center text-sm text-[#6e5b48] py-6">
-              No friends yet. Add friends from the Friends page.
+              {t("noFriendsYet")}
             </p>
           ) : (
             liveSocialOverview.friends.map((friend) => {
@@ -1338,27 +1341,27 @@ export function MultiplayerGamePage() {
             <>
               {multiplayerSnapshot?.rematch?.requestedBy.includes(playerSeat as PlayerColor) ? (
                 <p className="text-center text-sm font-medium text-[#56703f] py-2">
-                  Rematch requested. Waiting for opponent...
+                  {t("rematchRequestedWaiting")}
                 </p>
               ) : (
                 <Button
                   onClick={() => {
                     sendMultiplayerMessage({ type: "request-rematch" });
                     if (!multiplayerSnapshot?.rematch?.requestedBy.length) {
-                      toast.success("Rematch request sent!");
+                      toast.success(t("rematchSent"));
                     }
                     setGameOverDialogOpen(false);
                   }}
                 >
                   {multiplayerSnapshot?.rematch?.requestedBy.length
-                    ? "Accept Rematch"
-                    : "Rematch"}
+                    ? t("acceptRematch")
+                    : t("rematch")}
                 </Button>
               )}
             </>
           ) : null}
           <Button variant="ghost" onClick={() => { setGameOverDialogOpen(false); router.push("/"); }}>
-            Back to lobby
+            {tCommon("backToLobby")}
           </Button>
         </div>
       </Dialog>

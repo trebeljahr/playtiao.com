@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { TournamentSnapshot } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Navbar } from "@/components/Navbar";
@@ -23,20 +24,9 @@ import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { toastError } from "@/lib/errors";
 import { toast } from "sonner";
 
-function formatLabel(format: string): string {
-  switch (format) {
-    case "round-robin":
-      return "Round Robin";
-    case "single-elimination":
-      return "Single Elimination";
-    case "groups-knockout":
-      return "Groups + Knockout";
-    default:
-      return format;
-  }
-}
-
 export function TournamentPage() {
+  const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const params = useParams<{ tournamentId: string }>();
   const tournamentId = params?.tournamentId;
@@ -49,16 +39,29 @@ export function TournamentPage() {
   const [inviteCodeDialogOpen, setInviteCodeDialogOpen] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState("");
 
+  function formatLabel(format: string): string {
+    switch (format) {
+      case "round-robin":
+        return t("roundRobin");
+      case "single-elimination":
+        return t("eliminationFull");
+      case "groups-knockout":
+        return t("groupsKnockout");
+      default:
+        return format;
+    }
+  }
+
   const onMatchReady = useCallback(
     (_matchId: string, roomId: string) => {
-      toast("Your tournament match is ready!", {
+      toast(t("matchReady"), {
         action: {
-          label: "Play",
+          label: tCommon("play"),
           onClick: () => router.push(`/game/${roomId}`),
         },
       });
     },
-    [router]
+    [router, t, tCommon]
   );
 
   const { tournament, loading, error, refresh } = useTournament(
@@ -72,7 +75,7 @@ export function TournamentPage() {
       <>
         <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
         <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
-          <p className="text-muted-foreground">Loading tournament...</p>
+          <p className="text-muted-foreground">{t("loadingTournament")}</p>
         </div>
       </>
     );
@@ -83,7 +86,7 @@ export function TournamentPage() {
       <>
         <Navbar mode="lobby" auth={auth} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} onCloseNav={() => setNavOpen(false)} onOpenAuth={onOpenAuth} onLogout={onLogout} />
         <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
-          <p className="text-red-600">{error ?? "Tournament not found."}</p>
+          <p className="text-red-600">{error ?? t("tournamentNotFound")}</p>
         </div>
       </>
     );
@@ -136,7 +139,7 @@ export function TournamentPage() {
             </p>
           )}
           <p className="text-xs text-muted-foreground mt-1">
-            {tournament.participants.length}/{tournament.settings.maxPlayers} players
+            {t("players", { count: tournament.participants.length, max: tournament.settings.maxPlayers })}
           </p>
         </div>
 
@@ -156,7 +159,7 @@ export function TournamentPage() {
                 }
               }}
             >
-              Join Tournament
+              {t("joinTournament")}
             </Button>
           )}
           {isRegistered && tournament.status === "registration" && (
@@ -169,7 +172,7 @@ export function TournamentPage() {
                 )
               }
             >
-              Leave
+              {t("leaveTournament")}
             </Button>
           )}
           {canStart && (
@@ -181,7 +184,7 @@ export function TournamentPage() {
                 )
               }
             >
-              Start Tournament
+              {t("startTournament")}
             </Button>
           )}
           {isAdmin && tournament.status === "registration" && (
@@ -194,7 +197,7 @@ export function TournamentPage() {
                 )
               }
             >
-              Randomize Seeds
+              {t("randomizeSeeds")}
             </Button>
           )}
           {isAdmin &&
@@ -205,7 +208,7 @@ export function TournamentPage() {
                 disabled={busy}
                 onClick={() => setCancelDialogOpen(true)}
               >
-                Cancel Tournament
+                {t("cancelTournament")}
               </Button>
             )}
         </div>
@@ -214,7 +217,7 @@ export function TournamentPage() {
         {activeMatches.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Current Matches</CardTitle>
+              <CardTitle>{t("currentMatches")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -235,12 +238,12 @@ export function TournamentPage() {
         {tournament.status === "registration" && (
           <Card>
             <CardHeader>
-              <CardTitle>Participants</CardTitle>
+              <CardTitle>{t("participants")}</CardTitle>
             </CardHeader>
             <CardContent>
               {tournament.participants.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No participants yet. Be the first to join!
+                  {t("noParticipants")}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -302,7 +305,7 @@ export function TournamentPage() {
               tournament.rounds.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Bracket</CardTitle>
+                    <CardTitle>{t("bracket")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <BracketVisualization
@@ -351,7 +354,7 @@ export function TournamentPage() {
                 {tournament.knockoutRounds.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Knockout Stage</CardTitle>
+                      <CardTitle>{t("knockoutStage")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <BracketVisualization
@@ -374,7 +377,7 @@ export function TournamentPage() {
             <Card className="border-amber-400/60 bg-amber-50/50">
               <CardContent className="flex flex-col items-center gap-2 py-6">
                 <p className="text-sm font-semibold uppercase tracking-wider text-amber-600">
-                  Winner
+                  {t("winner")}
                 </p>
                 {winner ? (
                   <PlayerIdentityRow
@@ -384,7 +387,7 @@ export function TournamentPage() {
                     className="gap-3"
                   />
                 ) : (
-                  <p className="text-xl font-bold">Unknown</p>
+                  <p className="text-xl font-bold">{t("unknown")}</p>
                 )}
               </CardContent>
             </Card>
@@ -396,12 +399,12 @@ export function TournamentPage() {
       <Dialog
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}
-        title="Cancel Tournament"
-        description="Are you sure you want to cancel this tournament? This cannot be undone."
+        title={t("cancelTournamentTitle")}
+        description={t("cancelTournamentDesc")}
       >
         <div className="flex gap-3 justify-end">
           <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-            Keep Tournament
+            {t("keepTournament")}
           </Button>
           <Button
             className="bg-[#9b4030] text-white hover:bg-[#7a2e22]"
@@ -411,16 +414,16 @@ export function TournamentPage() {
               setBusy(true);
               try {
                 await apiCancelTournament(tournament.tournamentId);
-                toast.success("Tournament cancelled.");
+                toast.success(t("tournamentCancelled"));
                 router.push("/tournaments");
               } catch (err: any) {
-                toastError(err.message ?? "Failed to cancel tournament.");
+                toastError(err.message ?? t("failedToCancel"));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            Cancel Tournament
+            {t("cancelTournament")}
           </Button>
         </div>
       </Dialog>
@@ -429,14 +432,14 @@ export function TournamentPage() {
       <Dialog
         open={inviteCodeDialogOpen}
         onOpenChange={setInviteCodeDialogOpen}
-        title="Enter Invite Code"
-        description="This is a private tournament. Enter the invite code to join."
+        title={t("enterInviteCode")}
+        description={t("enterInviteCodeDesc")}
       >
         <div className="space-y-4">
           <Input
             value={inviteCodeInput}
             onChange={(e) => setInviteCodeInput(e.target.value)}
-            placeholder="Invite code"
+            placeholder={t("inviteCode")}
             autoFocus
           />
           <div className="flex gap-3 justify-end">
@@ -444,7 +447,7 @@ export function TournamentPage() {
               variant="outline"
               onClick={() => setInviteCodeDialogOpen(false)}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button
               disabled={!inviteCodeInput.trim() || busy}
@@ -458,7 +461,7 @@ export function TournamentPage() {
                 );
               }}
             >
-              Join
+              {tCommon("join")}
             </Button>
           </div>
         </div>

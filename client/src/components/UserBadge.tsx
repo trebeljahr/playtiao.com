@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -182,7 +183,24 @@ type UserBadgeProps = {
   compact?: boolean;
 };
 
+const BADGE_TRANSLATION_KEY: Record<BadgeId, string> = {
+  supporter: "supporter",
+  contributor: "contributor",
+  "super-supporter": "superSupporter",
+  "official-champion": "champion",
+  creator: "creator",
+  "badge-1": "supporter",
+  "badge-2": "supporter",
+  "badge-3": "supporter",
+  "badge-4": "supporter",
+  "badge-5": "supporter",
+  "badge-6": "supporter",
+  "badge-7": "supporter",
+  "badge-8": "supporter",
+};
+
 export function UserBadge({ badge, className, compact = false }: UserBadgeProps) {
+  const t = useTranslations("badges");
   const def = BADGE_DEFINITIONS[badge];
   if (!def) return null;
 
@@ -213,7 +231,7 @@ export function UserBadge({ badge, className, compact = false }: UserBadgeProps)
         textShadow: "0 1px 2px rgba(0,0,0,0.2)",
       }}
     >
-      {def.label}
+      {t(BADGE_TRANSLATION_KEY[badge])}
     </span>
   );
 }

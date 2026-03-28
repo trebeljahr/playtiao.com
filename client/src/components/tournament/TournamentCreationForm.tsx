@@ -1,31 +1,14 @@
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { TournamentFormat, TournamentSettings } from "@shared";
 import { TIME_CONTROL_PRESETS } from "@shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 
-const TOURNAMENT_TC_PRESETS = [
+const TOURNAMENT_TC_PRESETS_BASE = [
   ...TIME_CONTROL_PRESETS.filter((p) => p.initialMs >= 180_000), // 3 min+
-  { label: "No limit", category: "Untimed", initialMs: 0, incrementMs: 0 },
-];
-
-const FORMAT_OPTIONS: { value: TournamentFormat; label: string; description: string }[] = [
-  {
-    value: "round-robin",
-    label: "Round Robin",
-    description: "Everyone plays everyone. Best for small groups (4-12 players).",
-  },
-  {
-    value: "single-elimination",
-    label: "Single Elimination",
-    description: "Lose once and you're out. Quick and dramatic.",
-  },
-  {
-    value: "groups-knockout",
-    label: "Groups + Knockout",
-    description: "Group stage then elimination bracket. Best of both worlds.",
-  },
+  { label: "No limit", labelKey: "noLimit" as const, category: "Untimed", initialMs: 0, incrementMs: 0 },
 ];
 
 export function TournamentCreationForm({
@@ -39,6 +22,33 @@ export function TournamentCreationForm({
   onSubmit: (data: { name: string; description?: string; settings: TournamentSettings }) => void;
   busy?: boolean;
 }) {
+  const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
+  const tConfig = useTranslations("config");
+
+  const TOURNAMENT_TC_PRESETS = TOURNAMENT_TC_PRESETS_BASE.map((p) => ({
+    ...p,
+    label: "labelKey" in p ? t(p.labelKey) : p.label,
+  }));
+
+  const FORMAT_OPTIONS: { value: TournamentFormat; label: string; description: string }[] = [
+    {
+      value: "round-robin",
+      label: t("roundRobin"),
+      description: t("roundRobinDesc"),
+    },
+    {
+      value: "single-elimination",
+      label: t("eliminationFull"),
+      description: t("eliminationDesc"),
+    },
+    {
+      value: "groups-knockout",
+      label: t("groupsKnockout"),
+      description: t("groupsKnockoutDesc"),
+    },
+  ];
+
   const [step, setStep] = useState(0);
   const [format, setFormat] = useState<TournamentFormat>("single-elimination");
   const [timeControlIdx, setTimeControlIdx] = useState(2); // Default: 5 min
@@ -77,13 +87,13 @@ export function TournamentCreationForm({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Create Tournament"
-      description="Set up a new tournament for your friends or the community."
+      title={t("setupTitle")}
+      description={t("setupDesc")}
     >
       <div className="space-y-4">
         {step === 0 && (
           <div className="space-y-3">
-            <p className="text-sm font-medium">Format</p>
+            <p className="text-sm font-medium">{t("format")}</p>
             {FORMAT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -100,14 +110,14 @@ export function TournamentCreationForm({
               </button>
             ))}
             <Button className="w-full" onClick={() => setStep(1)}>
-              Next
+              {tCommon("next")}
             </Button>
           </div>
         )}
 
         {step === 1 && (
           <div className="space-y-3">
-            <p className="text-sm font-medium">Time Control</p>
+            <p className="text-sm font-medium">{tConfig("timeControl")}</p>
             <div className="flex flex-wrap gap-2">
               {TOURNAMENT_TC_PRESETS.map((tc, i) => (
                 <Button
@@ -122,7 +132,7 @@ export function TournamentCreationForm({
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground">Max players</label>
+              <label className="text-xs text-muted-foreground">{t("maxPlayers")}</label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {[4, 8, 16, 32, 64].map((n) => (
                   <Button
@@ -139,7 +149,7 @@ export function TournamentCreationForm({
 
             {format === "groups-knockout" && (
               <div>
-                <label className="text-xs text-muted-foreground">Group size</label>
+                <label className="text-xs text-muted-foreground">{t("groupSize")}</label>
                 <div className="flex gap-2 mt-1">
                   {[3, 4].map((size) => (
                     <Button
@@ -148,7 +158,7 @@ export function TournamentCreationForm({
                       size="sm"
                       onClick={() => setGroupSize(size)}
                     >
-                      {size} players
+                      {t("nPlayers", { n: size })}
                     </Button>
                   ))}
                 </div>
@@ -157,10 +167,10 @@ export function TournamentCreationForm({
 
             <div className="flex gap-2 mt-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>
-                Back
+                {tCommon("back")}
               </Button>
               <Button className="flex-1" onClick={() => setStep(2)}>
-                Next
+                {tCommon("next")}
               </Button>
             </div>
           </div>
@@ -169,25 +179,25 @@ export function TournamentCreationForm({
         {step === 2 && (
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-muted-foreground">Tournament name</label>
+              <label className="text-xs text-muted-foreground">{t("tournamentName")}</label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Tournament"
+                placeholder={t("tournamentNamePlaceholder")}
                 maxLength={60}
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Description (optional)</label>
+              <label className="text-xs text-muted-foreground">{t("descriptionOptional")}</label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A friendly competition..."
+                placeholder={t("descriptionPlaceholder")}
                 maxLength={200}
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Visibility</label>
+              <label className="text-xs text-muted-foreground">{t("visibility")}</label>
               <div className="flex gap-2 mt-1">
                 {(["public", "private"] as const).map((v) => (
                   <Button
@@ -196,32 +206,32 @@ export function TournamentCreationForm({
                     size="sm"
                     onClick={() => setVisibility(v)}
                   >
-                    {v === "public" ? "Public" : "Private"}
+                    {v === "public" ? t("public") : t("private")}
                   </Button>
                 ))}
               </div>
             </div>
             {visibility === "private" && (
               <div>
-                <label className="text-xs text-muted-foreground">Invite code</label>
+                <label className="text-xs text-muted-foreground">{t("inviteCode")}</label>
                 <Input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="secret123"
+                  placeholder={t("inviteCodePlaceholder")}
                   maxLength={20}
                 />
               </div>
             )}
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                Back
+                {tCommon("back")}
               </Button>
               <Button
                 className="flex-1"
                 disabled={!name.trim() || busy}
                 onClick={handleSubmit}
               >
-                {busy ? "Creating..." : "Create Tournament"}
+                {busy ? tCommon("creating") : t("createTournament")}
               </Button>
             </div>
           </div>
