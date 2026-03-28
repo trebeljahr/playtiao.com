@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { TimeControl } from "@shared";
 import {
   BOARD_SIZE_OPTIONS,
@@ -8,6 +9,7 @@ import type { AIDifficulty } from "@/lib/computer-ai";
 import { AI_DIFFICULTY_LABELS } from "@/lib/engine/tiao-engine";
 import type { PlayerColor } from "@shared";
 import { Button } from "@/components/ui/button";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import { cn } from "@/lib/utils";
 
 export type GameConfigMode = "computer" | "local" | "multiplayer" | "matchmaking" | "tournament";
@@ -183,33 +185,11 @@ export function GameConfigPanel({
       </OptionGroup>
 
       {showTimeControl && (
-        <OptionGroup label="Time Control">
-          <div className="grid grid-cols-3 gap-2">
-            <ToggleButton
-              active={timeControl === null}
-              onClick={() => onTimeControlChange(null)}
-            >
-              No limit
-            </ToggleButton>
-            {TIME_CONTROL_PRESETS.map((preset) => (
-              <ToggleButton
-                key={preset.label}
-                active={tcMatch(timeControl, preset)}
-                onClick={() =>
-                  onTimeControlChange({
-                    initialMs: preset.initialMs,
-                    incrementMs: preset.incrementMs,
-                  })
-                }
-              >
-                <span className="flex flex-col items-center leading-tight">
-                  <span className="font-bold">{preset.label}</span>
-                  <span className="text-[0.6rem] uppercase opacity-60">{preset.category}</span>
-                </span>
-              </ToggleButton>
-            ))}
-          </div>
-        </OptionGroup>
+        <TimeControlSection
+          timeControl={timeControl}
+          onTimeControlChange={onTimeControlChange}
+          tcMatch={tcMatch}
+        />
       )}
 
       <div className="border-t border-[#dbc6a2] pt-4">
@@ -218,5 +198,116 @@ export function GameConfigPanel({
         </Button>
       </div>
     </div>
+  );
+}
+
+function TimeControlSection({
+  timeControl,
+  onTimeControlChange,
+  tcMatch,
+}: {
+  timeControl: TimeControl;
+  onTimeControlChange: (tc: TimeControl) => void;
+  tcMatch: (tc: TimeControl, preset: { initialMs: number; incrementMs: number }) => boolean;
+}) {
+  const hasClock = timeControl !== null;
+  const isCustom =
+    hasClock &&
+    !TIME_CONTROL_PRESETS.some((p) => tcMatch(timeControl, p));
+  const [showCustom, setShowCustom] = useState(isCustom);
+
+  return (
+    <OptionGroup label="Time Control">
+      <div className="space-y-3">
+        {/* Toggle: Unlimited vs With Clocks */}
+        <div className="grid grid-cols-2 gap-2">
+          <ToggleButton
+            active={!hasClock}
+            onClick={() => {
+              onTimeControlChange(null);
+              setShowCustom(false);
+            }}
+          >
+            Unlimited
+          </ToggleButton>
+          <ToggleButton
+            active={hasClock}
+            onClick={() => {
+              if (!hasClock) {
+                onTimeControlChange({ initialMs: 300_000, incrementMs: 0 });
+              }
+            }}
+          >
+            With Clocks
+          </ToggleButton>
+        </div>
+
+        {/* Preset grid + Custom (only when With Clocks) */}
+        {hasClock && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              {TIME_CONTROL_PRESETS.map((preset) => (
+                <ToggleButton
+                  key={preset.label}
+                  active={!showCustom && tcMatch(timeControl, preset)}
+                  onClick={() => {
+                    setShowCustom(false);
+                    onTimeControlChange({
+                      initialMs: preset.initialMs,
+                      incrementMs: preset.incrementMs,
+                    });
+                  }}
+                >
+                  <span className="flex flex-col items-center leading-tight">
+                    <span className="font-bold">{preset.label}</span>
+                    <span className="text-[0.6rem] uppercase opacity-60">
+                      {preset.category}
+                    </span>
+                  </span>
+                </ToggleButton>
+              ))}
+              <ToggleButton
+                active={showCustom}
+                onClick={() => setShowCustom(true)}
+              >
+                Custom
+              </ToggleButton>
+            </div>
+
+            {/* Custom inputs */}
+            {showCustom && (
+              <div className="flex flex-wrap gap-4 rounded-2xl border border-[#d8c29c] bg-[#fffaf1] p-4">
+                <NumberStepper
+                  label="Time per player"
+                  unit="minutes"
+                  value={Math.floor((timeControl?.initialMs ?? 300_000) / 60_000)}
+                  onChange={(mins) =>
+                    onTimeControlChange({
+                      initialMs: mins * 60_000,
+                      incrementMs: timeControl?.incrementMs ?? 0,
+                    })
+                  }
+                  min={1}
+                  max={180}
+                />
+                <NumberStepper
+                  label="Increment per move"
+                  unit="seconds"
+                  value={Math.round((timeControl?.incrementMs ?? 0) / 1_000)}
+                  onChange={(secs) =>
+                    onTimeControlChange({
+                      initialMs: timeControl?.initialMs ?? 300_000,
+                      incrementMs: secs * 1_000,
+                    })
+                  }
+                  min={0}
+                  max={60}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </OptionGroup>
   );
 }

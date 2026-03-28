@@ -53,7 +53,6 @@ export const TIME_CONTROL_PRESETS: TimeControlPreset[] = [
   { label: "5+0", category: "Blitz", initialMs: 300_000, incrementMs: 0 },
   { label: "5+3", category: "Blitz", initialMs: 300_000, incrementMs: 3_000 },
   { label: "10+0", category: "Rapid", initialMs: 600_000, incrementMs: 0 },
-  { label: "10+5", category: "Rapid", initialMs: 600_000, incrementMs: 5_000 },
   { label: "15+10", category: "Rapid", initialMs: 900_000, incrementMs: 10_000 },
   { label: "30+0", category: "Classical", initialMs: 1_800_000, incrementMs: 0 },
 ];
