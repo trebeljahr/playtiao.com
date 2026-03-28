@@ -455,7 +455,7 @@ export function Navbar({
         </div>
       )}
 
-      <p className="mt-4 text-center text-[10px] tracking-wide text-[#9b8a78]">
+      <p className="mt-4 text-center text-xs tracking-wide text-[#7a6a58]">
         v{process.env.APP_VERSION}
       </p>
     </motion.aside>
