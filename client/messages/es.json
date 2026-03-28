@@ -322,6 +322,9 @@
     "noPendingRequests": "No hay solicitudes pendientes.",
     "friends": "Amigos",
     "invite": "Invitar",
+    "inviteToGame": "Invitar a partida",
+    "inviteDialogDesc": "Crea una partida e invita a {name}.",
+    "createAndInvite": "Crear y enviar invitación",
     "unfriend": "Eliminar amigo",
     "emptyFriendList": "Tu lista de amigos está vacía."
   },
@@ -416,7 +419,11 @@
     "goToStep": "Ir al paso {n}"
   },
   "creator": {
-    "seeProfile": "Mira su perfil de jugador:"
+    "seeProfile": "Mira su perfil de jugador:",
+    "ricoRole": "Desarrollador de playtiao.com",
+    "ricoBio": "Rico es un ingeniero de software full-stack en Berlín que construyó esta versión digital de Tiao. Le apasiona crear experiencias web pulidas con un amor por los sistemas multijugador en tiempo real. Además de programar, Rico escribe un blog y newsletter llamado <liveAndLearn>Live and Learn</liveAndLearn>, crea arte matemático como <fractalGarden>Fractal Garden</fractalGarden> y siempre está explorando nuevas ideas en la intersección de tecnología y creatividad.",
+    "andreasRole": "Diseñador de juegos y creador de Tiao",
+    "andreasBio": "Andreas es un desarrollador de juegos de Alemania y la mente brillante detrás de Tiao. Con una pasión por los juegos de mesa y el diseño de juegos, creó el concepto original que se convirtió en esta adaptación digital. Cuando no está creando mecánicas de juego elegantes, Andreas trabaja como programador de aplicaciones C++ en Ubisoft, donde ha contribuido a títulos como <nexus>Assassin's Creed Nexus</nexus> y <avatar>Avatar: Frontiers of Pandora</avatar>. También es un entusiasta de la astronomía y los vuelos espaciales que toca la batería y la guitarra."
   },
   "nav": {
     "openNavigation": "Abrir navegación",
@@ -434,7 +441,8 @@
     "profile": "Perfil",
     "signIn": "Iniciar sesión",
     "signUp": "Registrarse",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "changeLanguage": "Cambiar idioma"
   },
   "badges": {
     "supporter": "Colaborador",

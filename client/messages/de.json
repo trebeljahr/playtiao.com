@@ -322,6 +322,9 @@
     "noPendingRequests": "Keine ausstehenden Anfragen.",
     "friends": "Freunde",
     "invite": "Einladen",
+    "inviteToGame": "Zum Spiel einladen",
+    "inviteDialogDesc": "Erstelle ein Spiel und lade {name} ein.",
+    "createAndInvite": "Erstellen & Einladung senden",
     "unfriend": "Entfreunden",
     "emptyFriendList": "Deine Freundesliste ist leer."
   },
@@ -416,7 +419,11 @@
     "goToStep": "Zu Schritt {n}"
   },
   "creator": {
-    "seeProfile": "Sein Spielerprofil ansehen:"
+    "seeProfile": "Sein Spielerprofil ansehen:",
+    "ricoRole": "Entwickler von playtiao.com",
+    "ricoBio": "Rico ist ein Full-Stack-Softwareentwickler aus Berlin, der diese digitale Version von Tiao gebaut hat. Er liebt es, polierte Web-Erlebnisse zu schaffen, besonders mit Echtzeit-Multiplayer-Systemen. Neben dem Programmieren schreibt Rico einen Blog und Newsletter namens <liveAndLearn>Live and Learn</liveAndLearn>, erstellt mathematische Kunst wie <fractalGarden>Fractal Garden</fractalGarden> und erkundet stets neue Ideen an der Schnittstelle von Technologie und Kreativität.",
+    "andreasRole": "Spieledesigner & Erfinder von Tiao",
+    "andreasBio": "Andreas ist ein Spieleentwickler aus Deutschland und der brillante Kopf hinter Tiao. Mit seiner Leidenschaft für Brettspiele und Game Design schuf er das Originalkonzept, das zu dieser digitalen Adaption wurde. Wenn er nicht gerade elegante Spielmechaniken entwickelt, arbeitet Andreas als C++-Anwendungsprogrammierer bei Ubisoft, wo er an Titeln wie <nexus>Assassin's Creed Nexus</nexus> und <avatar>Avatar: Frontiers of Pandora</avatar> mitgewirkt hat. Außerdem ist er ein Astronomie- und Raumfahrt-Nerd, der Schlagzeug und Gitarre spielt."
   },
   "nav": {
     "openNavigation": "Navigation öffnen",
@@ -434,7 +441,8 @@
     "profile": "Profil",
     "signIn": "Anmelden",
     "signUp": "Registrieren",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "changeLanguage": "Sprache ändern"
   },
   "badges": {
     "supporter": "Unterstützer",

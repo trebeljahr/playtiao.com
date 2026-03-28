@@ -484,7 +484,7 @@ export function LobbyPage() {
                                 />
                               )}
                               <span className="ml-2 text-xs text-[#8d7760]">
-                                {game.score.white}-{game.score.black} · {game.historyLength} moves
+                                {game.score.white}-{game.score.black} · {tc("moves", { count: game.historyLength })}
                               </span>
                               <GameConfigBadge
                                 boardSize={game.boardSize}

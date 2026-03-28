@@ -419,7 +419,11 @@
     "goToStep": "Go to step {n}"
   },
   "creator": {
-    "seeProfile": "See his player profile:"
+    "seeProfile": "See his player profile:",
+    "ricoRole": "Developer of playtiao.com",
+    "ricoBio": "Rico is a full-stack software engineer based in Berlin who built this digital version of Tiao. He's passionate about crafting polished web experiences with a love for real-time multiplayer systems. Outside of coding, Rico writes a blog and newsletter called <liveAndLearn>Live and Learn</liveAndLearn>, creates mathematical art like <fractalGarden>Fractal Garden</fractalGarden>, and is always exploring new ideas at the intersection of technology and creativity.",
+    "andreasRole": "Game Designer & Creator of Tiao",
+    "andreasBio": "Andreas is a game developer from Germany and the brilliant mind behind Tiao. With a passion for board games and game design, he created the original concept that became this digital adaptation. When he's not crafting elegant game mechanics, Andreas works as a C++ application programmer at Ubisoft, where he's contributed to titles like <nexus>Assassin's Creed Nexus</nexus> and <avatar>Avatar: Frontiers of Pandora</avatar>. He's also an astronomy and space flight nerd who plays drums and guitar."
   },
   "nav": {
     "openNavigation": "Open navigation",
@@ -437,7 +441,8 @@
     "profile": "Profile",
     "signIn": "Sign in",
     "signUp": "Sign up",
-    "logout": "Logout"
+    "logout": "Logout",
+    "changeLanguage": "Change language"
   },
   "badges": {
     "supporter": "Supporter",

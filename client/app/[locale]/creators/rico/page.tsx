@@ -1,6 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { CreatorPage } from "@/views/CreatorPage";
+
+const linkClass =
+  "font-medium text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]";
 
 export default function Page() {
   return (
@@ -8,8 +12,16 @@ export default function Page() {
       name="Rico Trebeljahr"
       username="ricotrebeljahr"
       image="/creators/rico.jpeg"
-      role="Developer of playtiao.com"
-      bio={<>Rico is a full-stack software engineer based in Berlin who built this digital version of Tiao. He&apos;s passionate about crafting polished web experiences with a love for real-time multiplayer systems. Outside of coding, Rico writes a blog and newsletter called <a href="https://newsletter.trebeljahr.com" target="_blank" rel="noopener noreferrer" className="font-medium text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]">Live and Learn</a>, creates mathematical art like <a href="https://fractal-garden.trebeljahr.com" target="_blank" rel="noopener noreferrer" className="font-medium text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]">Fractal Garden</a>, and is always exploring new ideas at the intersection of technology and creativity.</>}
+      roleKey="ricoRole"
+      bioKey="ricoBio"
+      bioTags={{
+        liveAndLearn: (chunks: ReactNode) => (
+          <a href="https://newsletter.trebeljahr.com" target="_blank" rel="noopener noreferrer" className={linkClass}>{chunks}</a>
+        ),
+        fractalGarden: (chunks: ReactNode) => (
+          <a href="https://fractal-garden.trebeljahr.com" target="_blank" rel="noopener noreferrer" className={linkClass}>{chunks}</a>
+        ),
+      }}
       links={[
         { label: "Website", href: "https://ricos.site" },
         { label: "LinkedIn", href: "https://www.linkedin.com/in/trebeljahr/" },

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,8 @@ import { ThemePicker } from "@/components/game/ThemePicker";
 import { hasPreviewAccess } from "@/lib/featureGate";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
+import { useRouter as useIntlRouter, usePathname as useIntlPathname } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
 
 export type AuthDialogMode = "login" | "signup";
 export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "tutorial";
@@ -146,6 +149,85 @@ function SoundToggle() {
   );
 }
 
+const localeLabels: Record<string, string> = {
+  en: "English",
+  de: "Deutsch",
+  es: "Español",
+};
+
+function LanguagePicker() {
+  const t = useTranslations("nav");
+  const locale = useLocale();
+  const intlRouter = useIntlRouter();
+  const intlPathname = useIntlPathname();
+  const [open, setOpen] = useState(false);
+  const closeTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSelect = useCallback(
+    (newLocale: string) => {
+      setOpen(false);
+      if (newLocale !== locale) {
+        intlRouter.replace(intlPathname, { locale: newLocale });
+      }
+    },
+    [locale, intlRouter, intlPathname],
+  );
+
+  const handleBlur = useCallback(() => {
+    closeTimeout.current = setTimeout(() => setOpen(false), 150);
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    clearTimeout(closeTimeout.current);
+  }, []);
+
+  return (
+    <div className="relative" onBlur={handleBlur} onFocus={handleFocus}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="relative flex h-8 w-8 items-center justify-center rounded-full text-[#6e5b48] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#28170e]"
+        aria-label={t("changeLanguage")}
+        aria-expanded={open}
+      >
+        <svg viewBox="0 0 20 20" fill="none" className="h-[18px] w-[18px]">
+          <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" />
+          <ellipse cx="10" cy="10" rx="3.5" ry="7.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M3 7.5h14M3 12.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute right-0 bottom-full z-50 mb-1.5 min-w-[8.5rem] overflow-hidden rounded-xl border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.97)] py-1 shadow-[0_12px_28px_-10px_rgba(99,67,28,0.35)] backdrop-blur"
+          >
+            {routing.locales.map((loc) => (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => handleSelect(loc)}
+                className={cn(
+                  "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                  loc === locale
+                    ? "bg-[rgba(175,142,93,0.14)] font-semibold text-[#28170e]"
+                    : "text-[#6e5b48] hover:bg-[rgba(0,0,0,0.04)] hover:text-[#28170e]",
+                )}
+              >
+                <span className="text-xs uppercase tracking-wider opacity-60">{loc}</span>
+                <span>{localeLabels[loc] ?? loc}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
   const t = useTranslations("common");
   const player = auth?.player;
@@ -153,6 +235,7 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
 
   return (
     <div className="flex items-center gap-1.5">
+      <LanguagePicker />
       <SoundToggle />
       <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
         <PlayerOverviewAvatar
@@ -414,6 +497,7 @@ export function Navbar({
             nameClassName="text-base font-semibold"
             className="min-w-0 flex-1 gap-3"
           />
+          <LanguagePicker />
           <SoundToggle />
         </div>
 

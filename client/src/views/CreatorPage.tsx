@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
@@ -12,12 +13,13 @@ type CreatorPageProps = {
   name: string;
   username: string;
   image: string;
-  role: string;
-  bio: React.ReactNode;
+  roleKey: string;
+  bioKey: string;
+  bioTags: Record<string, (chunks: ReactNode) => ReactNode>;
   links: CreatorLink[];
 };
 
-export function CreatorPage({ name, username, image, role, bio, links }: CreatorPageProps) {
+export function CreatorPage({ name, username, image, roleKey, bioKey, bioTags, links }: CreatorPageProps) {
   const t = useTranslations("creator");
   const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
@@ -62,11 +64,11 @@ export function CreatorPage({ name, username, image, role, bio, links }: Creator
               <h1 className="font-display text-3xl font-bold text-[#2b1e14]">
                 {name}
               </h1>
-              <p className="mt-1 text-sm font-medium text-[#8d7760]">{role}</p>
+              <p className="mt-1 text-sm font-medium text-[#8d7760]">{t(roleKey)}</p>
             </div>
 
             <p className="max-w-lg leading-relaxed text-[#4e3d2c]">
-              {bio}
+              {t.rich(bioKey, bioTags)}
             </p>
 
             <div className="flex flex-wrap gap-3">
