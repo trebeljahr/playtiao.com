@@ -43,17 +43,23 @@ export function useLocalClock(
     lastTickRef.current = Date.now();
   }, [timeControl?.initialMs, timeControl?.incrementMs]);
 
-  // Detect turn change (a move was made) → apply increment to the player who just moved
+  // Detect turn change (a move was made) → apply increment to the player who just moved.
+  // On undo (historyLength decreases), just reset the tick reference without applying increment.
   useEffect(() => {
     if (!timeControl || gameOver || clock.timedOut) return;
 
     if (historyLength > lastHistoryLenRef.current && currentTurn !== lastTurnRef.current) {
+      // Forward move: apply increment to the player who just moved
       const movedColor = lastTurnRef.current;
       setClock((prev) => ({
         ...prev,
         running: true,
         [movedColor]: prev[movedColor] + (timeControl.incrementMs ?? 0),
       }));
+      lastTickRef.current = Date.now();
+    } else if (historyLength < lastHistoryLenRef.current) {
+      // Undo: just reset the tick so the new current player's clock
+      // starts counting from now, not from before the undo
       lastTickRef.current = Date.now();
     }
 
