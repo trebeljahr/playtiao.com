@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -9,7 +9,7 @@ import { Navbar } from "@/components/Navbar";
 import { markTutorialComplete } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { InteractiveMiniBoard } from "@/components/tutorial/InteractiveMiniBoard";
-import { TUTORIAL_STEPS } from "@/components/tutorial/tutorialSteps";
+import { getTutorialSteps } from "@/components/tutorial/tutorialSteps";
 
 
 function fireBigConfetti() {
@@ -74,6 +74,9 @@ export function TutorialPage() {
   const t = useTranslations("tutorial");
   const { auth, applyAuth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+
+  const steps = useMemo(() => getTutorialSteps(t), [t]);
+
   const [navOpen, setNavOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -82,11 +85,11 @@ export function TutorialPage() {
     new Set(),
   );
   const [resetKeys, setResetKeys] = useState<number[]>(
-    () => TUTORIAL_STEPS.map(() => 0),
+    () => steps.map(() => 0),
   );
 
-  const step = TUTORIAL_STEPS[currentStep];
-  const isLastStep = currentStep === TUTORIAL_STEPS.length - 1;
+  const step = steps[currentStep];
+  const isLastStep = currentStep === steps.length - 1;
   const isInteractive = !!step.board;
   const isStepDone = completedSteps.has(currentStep);
 
@@ -96,7 +99,7 @@ export function TutorialPage() {
       setDirection(index > currentStep ? 1 : -1);
       setCurrentStep(index);
       // Reset the board when navigating to an interactive step (for visual replay)
-      if (TUTORIAL_STEPS[index].board) {
+      if (steps[index].board) {
         setResetKeys((prev) => {
           const next = [...prev];
           next[index] = prev[index] + 1;
@@ -108,7 +111,7 @@ export function TutorialPage() {
   );
 
   const goNext = useCallback(() => {
-    if (currentStep < TUTORIAL_STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       // Mark current step as completed when advancing
       setCompletedSteps((prev) => new Set(prev).add(currentStep));
       goTo(currentStep + 1);
@@ -125,7 +128,7 @@ export function TutorialPage() {
     setCompletedSteps((prev) => new Set(prev).add(currentStep));
     // Auto-advance after a short delay
     setTimeout(() => {
-      if (currentStep < TUTORIAL_STEPS.length - 1) {
+      if (currentStep < steps.length - 1) {
         goTo(currentStep + 1);
       }
     }, 900);
@@ -211,7 +214,7 @@ export function TutorialPage() {
           className="flex items-center gap-3"
         >
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8d7760]">
-            {currentStep + 1} / {TUTORIAL_STEPS.length}
+            {currentStep + 1} / {steps.length}
           </span>
         </motion.div>
 
@@ -243,6 +246,7 @@ export function TutorialPage() {
                       onComplete={handleStepComplete}
                       active={true}
                       resetKey={resetKeys[currentStep]}
+                      t={t}
                     />
                   </div>
                 )}
@@ -253,7 +257,7 @@ export function TutorialPage() {
 
         {/* Progress dots */}
         <ProgressDots
-          total={TUTORIAL_STEPS.length}
+          total={steps.length}
           current={currentStep}
           completedSteps={completedSteps}
           onDotClick={goTo}

@@ -39,6 +39,7 @@ type Props = {
   onComplete: () => void;
   active: boolean;
   resetKey: number;
+  t: (key: string) => string;
 };
 
 // --- Grid math (matches TiaoBoard's coordinate system) ---
@@ -89,6 +90,7 @@ export function InteractiveMiniBoard({
   onComplete,
   active,
   resetKey,
+  t,
 }: Props) {
   const theme = useBoardTheme();
   const { size, initialBoard, interaction, turnColor = "W", thickBorder, suggestedPos, hintArrows } = config;
@@ -178,7 +180,7 @@ export function InteractiveMiniBoard({
     ) {
       if (posEq(pos, interaction.illegal)) {
         setShakePos(pos);
-        setErrorMsg(interaction.errorMessage ?? "Illegal move!");
+        setErrorMsg(interaction.errorMessage ?? t("_illegalMove"));
         setTimeout(() => {
           setShakePos(null);
           setErrorMsg(null);
@@ -265,13 +267,13 @@ export function InteractiveMiniBoard({
             if (interaction.completionZone === "border" && !isBorder) {
               // Placed validly but not on border — show hint, don't complete
               setShakePos(pos);
-              setErrorMsg("Place on the border to defend!");
+              setErrorMsg(t("_placeOnBorder"));
               setBoard(cloneBoard(board));
               setTimeout(() => { setShakePos(null); setErrorMsg(null); }, 1200);
             } else if (interaction.requiredPos && !posEq(pos, interaction.requiredPos)) {
               // Placed validly but not at required position — show hint, revert
               setShakePos(pos);
-              setErrorMsg("Try the highlighted spot!");
+              setErrorMsg(t("_tryHighlighted"));
               setBoard(cloneBoard(board));
               setTimeout(() => { setShakePos(null); setErrorMsg(null); }, 1200);
             } else {
@@ -360,8 +362,8 @@ export function InteractiveMiniBoard({
 
     if (interaction.type === "guided-jump") {
       if (hasPending) return null; // Jump executed, waiting for auto-confirm
-      if (!selected) return { pos: interaction.selectPiece, label: "Select this piece" };
-      return { pos: interaction.jumpTo, label: "Jump here!" };
+      if (!selected) return { pos: interaction.selectPiece, label: t("_selectPiece") };
+      return { pos: interaction.jumpTo, label: t("_jumpHere") };
     }
     if (interaction.type === "free-place") {
       if (suggestedPos) return { pos: suggestedPos, label: "Place here" };
@@ -369,33 +371,33 @@ export function InteractiveMiniBoard({
     }
     if (interaction.type === "confirm-undo") {
       if (!hasPending && !selected) {
-        return { pos: interaction.selectPiece!, label: "Select this piece" };
+        return { pos: interaction.selectPiece!, label: t("_selectPiece") };
       }
       if (selected && !hasPending) {
-        return { pos: interaction.jumpTo!, label: "Jump here!" };
+        return { pos: interaction.jumpTo!, label: t("_jumpHere") };
       }
       if (hasPending) {
         const confirmLabel = IS_TOUCH_DEVICE
-          ? "Tap again to confirm"
-          : "Click to confirm (or undo)";
+          ? t("_tapToConfirm")
+          : t("_clickToConfirm");
         return { pos: forcedOrigin!, label: confirmLabel };
       }
     }
     if (interaction.type === "chain-jump" || interaction.type === "chain-jump-early") {
       if (!selected && !hasPending) {
-        return { pos: interaction.firstSelect, label: "Select this piece" };
+        return { pos: interaction.firstSelect, label: t("_selectPiece") };
       }
       if (hasPending && forcedOrigin && showConfirmNudge) {
-        return { pos: forcedOrigin, label: "Click the piece to confirm" };
+        return { pos: forcedOrigin, label: t("_clickPieceToConfirm") };
       }
     }
     if (interaction.type === "chain-undo") {
       if (!selected && !hasPending) {
-        return { pos: interaction.firstSelect, label: "Select this piece" };
+        return { pos: interaction.firstSelect, label: t("_selectPiece") };
       }
       if (hasPending && pendingJumps.length >= interaction.undoAfterJumps && !hasUndone) {
         // After enough jumps, nudge the undo button
-        return lastJump ? { pos: lastJump.from, label: "Undo this jump ↩" } : null;
+        return lastJump ? { pos: lastJump.from, label: t("_undoJump") } : null;
       }
       if (hasUndone && hasPending && forcedOrigin) {
         return { pos: forcedOrigin, label: "Confirm ✓" };
