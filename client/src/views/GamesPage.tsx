@@ -22,6 +22,7 @@ import {
 } from "@/components/game/GameShared";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
+import { cancelMultiplayerGame } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
@@ -45,6 +46,20 @@ export function GamesPage() {
       void refreshMultiplayerGames({ silent: true });
     }
   });
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeleteGame = useCallback(async (gameId: string) => {
+    setDeletingId(gameId);
+    try {
+      await cancelMultiplayerGame(gameId);
+      void refreshMultiplayerGames({ silent: true });
+    } catch {
+      // best-effort
+    } finally {
+      setDeletingId(null);
+    }
+  }, [refreshMultiplayerGames]);
 
   const handleCopy = useCallback((gameId: string) => {
     void navigator.clipboard.writeText(gameId);
@@ -140,7 +155,20 @@ export function GamesPage() {
                         />
                       </div>
                     </div>
-                    <Button onClick={() => router.push(`/game/${game.gameId}`)}>{tCommon("resume")}</Button>
+                    <div className="flex items-center gap-2">
+                      {game.status === "waiting" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-[#a0887a] hover:text-[#8b3a2a] hover:bg-red-50"
+                          onClick={() => handleDeleteGame(game.gameId)}
+                          disabled={deletingId === game.gameId}
+                        >
+                          {deletingId === game.gameId ? "…" : tCommon("cancel")}
+                        </Button>
+                      )}
+                      <Button onClick={() => router.push(`/game/${game.gameId}`)}>{tCommon("resume")}</Button>
+                    </div>
                   </div>
                 );
               })}

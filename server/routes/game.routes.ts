@@ -386,6 +386,29 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
  *       500:
  *         description: Server error
  */
+router.delete("/games/:gameId", async (req: Request, res: Response) => {
+  const player = await getAuthenticatedPlayer(req, res);
+  if (!player) {
+    return;
+  }
+
+  if (!isValidGameId(req.params.gameId)) {
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
+  }
+
+  try {
+    await gameService.cancelWaitingRoom(req.params.gameId, player);
+    void revokeAllPendingInvitationsForGame(req.params.gameId);
+    return res.status(204).send();
+  } catch (error) {
+    return respondWithGameServiceError(
+      res,
+      error,
+      "Unable to cancel that game right now."
+    );
+  }
+});
+
 router.get("/games/:gameId", async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
