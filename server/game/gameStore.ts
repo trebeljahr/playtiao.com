@@ -12,6 +12,9 @@ import {
   SparsePositions,
   positionsToSparse,
   sparseToPositions,
+  CompactHistory,
+  historyToCompact,
+  compactToHistory,
 } from "../../shared/src";
 import GameRoom from "../models/GameRoom";
 
@@ -109,26 +112,35 @@ function cloneTakeback(
 
 // --- Sparse board persistence helpers ---
 
-type DehydratedGameState = Omit<GameState, "positions"> & {
+type DehydratedGameState = Omit<GameState, "positions" | "history"> & {
   stones: SparsePositions;
+  h: CompactHistory;
 };
 
 function dehydrateGameState(state: GameState): DehydratedGameState {
-  const { positions, ...rest } = state;
-  return { ...rest, stones: positionsToSparse(positions) };
+  const { positions, history, ...rest } = state;
+  return {
+    ...rest,
+    stones: positionsToSparse(positions),
+    h: historyToCompact(history),
+  };
 }
 
 function hydrateGameState(raw: Record<string, unknown>): GameState {
-  // New sparse format: has stones, no positions
-  if ("stones" in raw && !("positions" in raw)) {
-    const { stones, ...rest } = raw as DehydratedGameState;
-    return {
-      ...rest,
-      positions: sparseToPositions(stones, rest.boardSize),
-    } as GameState;
-  }
-  // Old format: positions array already present
-  return raw as GameState;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+
+  // Hydrate positions
+  const positions = ("stones" in r && !("positions" in r))
+    ? sparseToPositions(r.stones, r.boardSize)
+    : r.positions;
+
+  // Hydrate history
+  const history = ("h" in r && !("history" in r))
+    ? compactToHistory(r.h)
+    : r.history;
+
+  return { ...r, positions, history } as GameState;
 }
 
 export function cloneStoredRoom(room: StoredMultiplayerRoom): StoredMultiplayerRoom {

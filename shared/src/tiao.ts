@@ -1029,3 +1029,107 @@ export function sparseToPositions(sparse: SparsePositions, boardSize: number): T
   for (const [x, y] of sparse.black) positions[y][x] = "black";
   return positions;
 }
+
+// --- Compact history storage for MongoDB ---
+
+export type CompactMove = number[] | string;
+export type CompactHistory = {
+  m: CompactMove[];
+  t?: (number | null)[];
+};
+
+export function historyToCompact(history: TurnRecord[]): CompactHistory {
+  const m: CompactMove[] = [];
+  const t: (number | null)[] = [];
+  let hasTimestamps = false;
+
+  for (const record of history) {
+    switch (record.type) {
+      case "put":
+        m.push([record.position.x, record.position.y]);
+        t.push(record.timestamp ?? null);
+        if (record.timestamp) hasTimestamps = true;
+        break;
+      case "jump": {
+        const coords: number[] = [record.jumps[0].from.x, record.jumps[0].from.y];
+        for (const step of record.jumps) {
+          coords.push(step.to.x, step.to.y);
+        }
+        m.push(coords);
+        t.push(record.timestamp ?? null);
+        if (record.timestamp) hasTimestamps = true;
+        break;
+      }
+      case "win":
+        m.push(`w:${record.color}`);
+        t.push(null);
+        break;
+      case "draw":
+        m.push("d");
+        t.push(null);
+        break;
+      case "forfeit":
+        m.push(record.reason === "timeout" ? `t:${record.color}` : `f:${record.color}`);
+        t.push(null);
+        break;
+    }
+  }
+
+  const result: CompactHistory = { m };
+  if (hasTimestamps) result.t = t;
+  return result;
+}
+
+export function compactToHistory(compact: CompactHistory): TurnRecord[] {
+  const history: TurnRecord[] = [];
+  let currentColor: PlayerColor = "white";
+
+  for (let i = 0; i < compact.m.length; i++) {
+    const entry = compact.m[i];
+    const ts = compact.t?.[i] ?? undefined;
+
+    if (typeof entry === "string") {
+      // Meta event
+      if (entry === "d") {
+        history.push({ type: "draw" });
+      } else if (entry.startsWith("w:")) {
+        history.push({ type: "win", color: entry.slice(2) as PlayerColor });
+      } else if (entry.startsWith("f:")) {
+        history.push({ type: "forfeit", color: entry.slice(2) as PlayerColor, reason: "forfeit" });
+      } else if (entry.startsWith("t:")) {
+        history.push({ type: "forfeit", color: entry.slice(2) as PlayerColor, reason: "timeout" });
+      }
+      // Meta events don't flip turn
+    } else if (entry.length === 2) {
+      // Put
+      const record: PutTurn = {
+        type: "put",
+        color: currentColor,
+        position: { x: entry[0], y: entry[1] },
+      };
+      if (ts !== undefined) record.timestamp = ts;
+      history.push(record);
+      currentColor = currentColor === "white" ? "black" : "white";
+    } else {
+      // Jump: [fromX, fromY, to1X, to1Y, to2X, to2Y, ...]
+      const jumps: JumpStep[] = [];
+      for (let j = 2; j < entry.length; j += 2) {
+        const from = j === 2
+          ? { x: entry[0], y: entry[1] }
+          : { x: entry[j - 2], y: entry[j - 1] };
+        const to = { x: entry[j], y: entry[j + 1] };
+        const over = {
+          x: (from.x + to.x) / 2,
+          y: (from.y + to.y) / 2,
+        };
+        jumps.push({ from, over, to, color: currentColor });
+      }
+      const record: JumpTurn = { type: "jump", color: currentColor, jumps };
+      if (ts !== undefined) record.timestamp = ts;
+      history.push(record);
+      currentColor = currentColor === "white" ? "black" : "white";
+    }
+  }
+
+  return history;
+}
