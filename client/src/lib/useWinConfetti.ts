@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import type { PlayerColor } from "@shared";
+import { useBoardTheme } from "./useBoardTheme";
+import type { BoardTheme } from "@/components/game/boardThemes";
 
 type WinConfettiOptions = {
   /** The player viewing the result. When null (local mode), confetti always plays. */
@@ -13,6 +15,7 @@ export function useWinConfetti(
 ) {
   const { viewerColor = null } = options;
   const lastWinnerRef = useRef<PlayerColor | null>(null);
+  const theme = useBoardTheme();
 
   useEffect(() => {
     if (!winner) {
@@ -29,22 +32,20 @@ export function useWinConfetti(
     const isLoser = viewerColor !== null && winner !== viewerColor;
 
     if (isLoser) {
-      playDefeatParticles();
+      playDefeatParticles(theme);
     } else {
-      playVictoryConfetti();
+      playVictoryConfetti(theme);
     }
-  }, [winner, viewerColor]);
+  }, [winner, viewerColor, theme]);
 }
 
-function playVictoryConfetti() {
-  const colors = ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff", "#5f27cd", "#01a3a4", "#f368e0", "#ff9f43", "#00d2d3"];
-
+function playVictoryConfetti(theme: BoardTheme) {
   confetti({
     particleCount: 120,
     startVelocity: 45,
     spread: 360,
     origin: { x: 0.5, y: 0.4 },
-    colors,
+    colors: theme.victoryColors,
     scalar: 1.2,
     gravity: 0.6,
     ticks: 200,
@@ -52,10 +53,10 @@ function playVictoryConfetti() {
   });
 }
 
-function playDefeatParticles() {
+function playDefeatParticles(theme: BoardTheme) {
   const duration = 1800;
   const endTime = Date.now() + duration;
-  const colors = ["#8b7355", "#a69278", "#c4b49a", "#d6cbb8"];
+  const colors = theme.defeatColors;
 
   const frame = () => {
     confetti({

@@ -12,25 +12,7 @@ import {
   canPlacePiece,
 } from "./tutorialEngine";
 import type { StepBoardConfig } from "./tutorialSteps";
-import {
-  BLACK_PIECE_BORDER,
-  BLACK_PIECE_BG,
-  WHITE_PIECE_BORDER,
-  WHITE_PIECE_BG,
-  PIECE_SHADOW,
-  SELECTABLE_GLOW,
-  GRID_LINE_COLOR,
-  BOARD_GROOVE_START,
-  BOARD_GROOVE_END,
-  JUMP_TRAIL_DARK_GREEN,
-  JUMP_TRAIL_BRIGHT_GREEN,
-  JUMP_ARROW_GREEN_FILL,
-  JUMP_ARROW_RED_FILL,
-  JUMP_TRAIL_DARK_RED,
-  JUMP_TRAIL_BRIGHT_RED,
-  BOARD_BG,
-  BOARD_BORDER,
-} from "@/components/game/boardStyles";
+import { useBoardTheme } from "@/lib/useBoardTheme";
 import { cn } from "@/lib/utils";
 import { playMoveSoundIfEnabled } from "@/lib/useStonePlacementSound";
 
@@ -38,13 +20,13 @@ const IS_TOUCH_DEVICE =
   typeof window !== "undefined" &&
   ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
-function fireLightConfetti() {
+function fireLightConfetti(colors: string[]) {
   confetti({
     particleCount: 60,
     startVelocity: 35,
     spread: 360,
     origin: { x: 0.5, y: 0.45 },
-    colors: ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff", "#5f27cd", "#01a3a4", "#f368e0"],
+    colors,
     scalar: 0.9,
     gravity: 0.8,
     ticks: 70,
@@ -108,6 +90,7 @@ export function InteractiveMiniBoard({
   active,
   resetKey,
 }: Props) {
+  const theme = useBoardTheme();
   const { size, initialBoard, interaction, turnColor = "W", thickBorder, suggestedPos, hintArrows } = config;
   const [board, setBoard] = useState<Cell[][]>(() => cloneBoard(initialBoard));
   const [selected, setSelected] = useState<Pos | null>(null);
@@ -163,7 +146,7 @@ export function InteractiveMiniBoard({
     if (completedRef.current) return;
     completedRef.current = true;
     setCompleted(true);
-    fireLightConfetti();
+    fireLightConfetti(theme.victoryColors);
     setTimeout(() => onComplete(), 800);
   }, [onComplete]);
 
@@ -337,7 +320,7 @@ export function InteractiveMiniBoard({
     });
     setPendingJumps([]);
     setSelected(null);
-    fireLightConfetti();
+    fireLightConfetti(theme.victoryColors);
     setTimeout(() => onComplete(), 800);
   }
 
@@ -468,8 +451,8 @@ export function InteractiveMiniBoard({
             size <= 5 ? "w-[280px]" : "w-[340px]",
           )}
           style={{
-            background: BOARD_BG,
-            borderColor: BOARD_BORDER,
+            background: theme.boardBg,
+            borderColor: theme.boardBorder,
           }}
         >
           <div className="relative aspect-square w-full rounded-[0.9rem]">
@@ -482,8 +465,8 @@ export function InteractiveMiniBoard({
             >
               <defs>
                 <linearGradient id="tutBoardGroove" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor={BOARD_GROOVE_START} />
-                  <stop offset="100%" stopColor={BOARD_GROOVE_END} />
+                  <stop offset="0%" stopColor={theme.grooveStart} />
+                  <stop offset="100%" stopColor={theme.grooveEnd} />
                 </linearGradient>
               </defs>
 
@@ -509,7 +492,7 @@ export function InteractiveMiniBoard({
                       y1={coord}
                       x2={ge}
                       y2={coord}
-                      stroke={GRID_LINE_COLOR}
+                      stroke={theme.gridLineColor}
                       strokeWidth="0.46"
                       strokeLinecap="square"
                       vectorEffect="non-scaling-stroke"
@@ -519,7 +502,7 @@ export function InteractiveMiniBoard({
                       y1={gs}
                       x2={coord}
                       y2={ge}
-                      stroke={GRID_LINE_COLOR}
+                      stroke={theme.gridLineColor}
                       strokeWidth="0.46"
                       strokeLinecap="square"
                       vectorEffect="non-scaling-stroke"
@@ -589,12 +572,12 @@ export function InteractiveMiniBoard({
                       className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border transition-opacity duration-200"
                       style={{
                         borderColor:
-                          cell === "B" ? BLACK_PIECE_BORDER : WHITE_PIECE_BORDER,
-                        background: cell === "B" ? BLACK_PIECE_BG : WHITE_PIECE_BG,
+                          cell === "B" ? theme.blackPieceBorder : theme.whitePieceBorder,
+                        background: cell === "B" ? theme.blackPieceBg : theme.whitePieceBg,
                         boxShadow:
                           isSelectable && active && !completed
-                            ? SELECTABLE_GLOW
-                            : PIECE_SHADOW,
+                            ? theme.selectableGlow
+                            : theme.pieceShadow,
                         opacity: isCapture ? 0.55 : 1,
                       }}
                     />
@@ -603,8 +586,8 @@ export function InteractiveMiniBoard({
                       className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm"
                       style={{
                         borderColor:
-                          color === "B" ? BLACK_PIECE_BORDER : WHITE_PIECE_BORDER,
-                        background: color === "B" ? BLACK_PIECE_BG : WHITE_PIECE_BG,
+                          color === "B" ? theme.blackPieceBorder : theme.whitePieceBorder,
+                        background: color === "B" ? theme.blackPieceBg : theme.whitePieceBg,
                       }}
                     />
                   ) : null}
@@ -630,7 +613,7 @@ export function InteractiveMiniBoard({
                   orient="auto"
                   markerUnits="strokeWidth"
                 >
-                  <path d="M0 0L8 4L0 8L2.15 4Z" fill={JUMP_ARROW_GREEN_FILL} />
+                  <path d="M0 0L8 4L0 8L2.15 4Z" fill={theme.jumpArrowGreenFill} />
                 </marker>
                 <marker
                   id={`${markerId}-red`}
@@ -642,7 +625,7 @@ export function InteractiveMiniBoard({
                   orient="auto"
                   markerUnits="strokeWidth"
                 >
-                  <path d="M0 0L8 4L0 8L2.15 4Z" fill={JUMP_ARROW_RED_FILL} />
+                  <path d="M0 0L8 4L0 8L2.15 4Z" fill={theme.jumpArrowRedFill} />
                 </marker>
                 <marker
                   id={`${markerId}-hint`}
@@ -670,7 +653,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY, opacity: 0 }}
                       animate={{ x2: seg.endX, y2: seg.endY, opacity: 1 }}
                       transition={{ duration: 0.3, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
-                      stroke={JUMP_TRAIL_DARK_GREEN}
+                      stroke={theme.jumpTrailDarkGreen}
                       strokeOpacity="0.7"
                       strokeWidth="3"
                       strokeLinecap="round"
@@ -682,7 +665,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY, opacity: 0 }}
                       animate={{ x2: seg.endX, y2: seg.endY, opacity: 1 }}
                       transition={{ duration: 0.35, delay: i * 0.15 + 0.04, ease: [0.22, 1, 0.36, 1] }}
-                      stroke={JUMP_TRAIL_BRIGHT_GREEN}
+                      stroke={theme.jumpTrailBrightGreen}
                       strokeOpacity="0.85"
                       strokeWidth="2.2"
                       strokeLinecap="round"
@@ -704,7 +687,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY, opacity: 0 }}
                       animate={{ x2: seg.endX, y2: seg.endY, opacity: 1 }}
                       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                      stroke={JUMP_TRAIL_DARK_GREEN}
+                      stroke={theme.jumpTrailDarkGreen}
                       strokeWidth="3.15"
                       strokeLinecap="round"
                       vectorEffect="non-scaling-stroke"
@@ -714,7 +697,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY, opacity: 0 }}
                       animate={{ x2: seg.endX, y2: seg.endY, opacity: 1 }}
                       transition={{ duration: 0.3, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
-                      stroke={JUMP_TRAIL_BRIGHT_GREEN}
+                      stroke={theme.jumpTrailBrightGreen}
                       strokeWidth="2.45"
                       strokeLinecap="round"
                       markerEnd={`url(#${markerId}-green)`}
@@ -734,7 +717,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY }}
                       animate={{ x2: seg.endX, y2: seg.endY }}
                       transition={{ duration: 0.28, ease: [0.2, 0.96, 0.3, 1] }}
-                      stroke={JUMP_TRAIL_DARK_GREEN}
+                      stroke={theme.jumpTrailDarkGreen}
                       strokeWidth="3.4"
                       strokeLinecap="round"
                       vectorEffect="non-scaling-stroke"
@@ -764,7 +747,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY }}
                       animate={{ x2: seg.endX, y2: seg.endY }}
                       transition={{ duration: 0.26, ease: [0.2, 0.96, 0.3, 1] }}
-                      stroke={JUMP_TRAIL_DARK_RED}
+                      stroke={theme.jumpTrailDarkRed}
                       strokeWidth="3.25"
                       strokeLinecap="round"
                       vectorEffect="non-scaling-stroke"
@@ -774,7 +757,7 @@ export function InteractiveMiniBoard({
                       initial={{ x2: seg.startX, y2: seg.startY }}
                       animate={{ x2: seg.endX, y2: seg.endY }}
                       transition={{ duration: 0.31, delay: 0.03, ease: [0.2, 0.96, 0.3, 1] }}
-                      stroke={JUMP_TRAIL_BRIGHT_RED}
+                      stroke={theme.jumpTrailBrightRed}
                       strokeWidth="2.55"
                       strokeLinecap="round"
                       markerEnd={`url(#${markerId}-red)`}

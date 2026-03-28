@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useToggleSound } from "@/lib/useSoundPreference";
+import { ThemePicker } from "@/components/game/ThemePicker";
+import { hasPreviewAccess } from "@/lib/featureGate";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 
@@ -440,6 +442,12 @@ export function Navbar({
           )}
         </div>
       </div>
+
+      {hasPreviewAccess(auth) && (
+        <div className="mt-5 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4">
+          <ThemePicker />
+        </div>
+      )}
 
       <p className="mt-4 text-center text-[10px] tracking-wide text-[#9b8a78]">
         v{process.env.APP_VERSION}

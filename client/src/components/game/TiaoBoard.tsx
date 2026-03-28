@@ -12,7 +12,7 @@ import {
 } from "@shared";
 import { cn } from "@/lib/utils";
 import { usePinchZoom } from "@/hooks/usePinchZoom";
-import { GRID_LINE_COLOR } from "./boardStyles";
+import { useBoardTheme } from "@/lib/useBoardTheme";
 
 export type LastMoveHighlight = TurnRecord | null;
 
@@ -148,12 +148,13 @@ export function TiaoBoard({
   onUndoLastJump,
   onConfirmJump,
 }: TiaoBoardProps) {
+  const theme = useBoardTheme();
   const bs = state.boardSize ?? BOARD_SIZE;
   const m = useMemo(() => gridMetrics(bs), [bs]);
   const pp = useCallback((index: number) => pointPercent(index, m.gridStart, m.gridStep), [m]);
   const cellPercent = 100 / bs;
 
-  const jumpTrailMarkerId = "tiao-jump-trail-arrow";
+  const jumpTrailMarkerId = `tiao-jump-trail-arrow-${theme.id}`;
 
   // Compute last-move highlight positions
   const lastMovePositions = new Set<string>();
@@ -477,17 +478,23 @@ export function TiaoBoard({
     : false;
 
   return (
-    <div className="relative z-0 overflow-hidden rounded-[2rem] border border-[#cdb07f] bg-[linear-gradient(180deg,rgba(234,199,131,0.98),rgba(217,177,104,0.98))] p-3 shadow-[0_52px_120px_-42px_rgba(66,39,11,0.92)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,248,234,0.28),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_42%)]" />
+    <div
+      className="relative z-0 overflow-hidden rounded-[2rem] border p-3"
+      style={{ borderColor: theme.boardBorder, background: theme.boardBg, boxShadow: theme.boardShadow }}
+    >
+      <div className="pointer-events-none absolute inset-0" style={{ background: theme.boardSheen }} />
       <div
         ref={boardRef}
         data-testid="tiao-board"
         className={cn(
-          "relative aspect-square w-full rounded-[1.55rem] bg-[linear-gradient(180deg,rgba(255,250,240,0.16),rgba(255,255,255,0.04))]",
+          "relative aspect-square w-full rounded-[1.55rem]",
           IS_TOUCH_DEVICE && "touch-none",
           zoom.isAnimating && "transition-transform duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
         )}
-        style={zoom.transformStyle ? { transform: zoom.transformStyle, transformOrigin: "center center" } : undefined}
+        style={{
+          background: theme.boardInnerBg,
+          ...(zoom.transformStyle ? { transform: zoom.transformStyle, transformOrigin: "center center" } : {}),
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -499,9 +506,9 @@ export function TiaoBoard({
           aria-hidden="true"
         >
           <defs>
-            <linearGradient id="boardGroove" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#7a542d" />
-              <stop offset="100%" stopColor="#65421f" />
+            <linearGradient id={`boardGroove-${theme.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={theme.grooveStart} />
+              <stop offset="100%" stopColor={theme.grooveEnd} />
             </linearGradient>
           </defs>
 
@@ -511,7 +518,7 @@ export function TiaoBoard({
             width={m.gridSpan}
             height={m.gridSpan}
             fill="none"
-            stroke="url(#boardGroove)"
+            stroke={`url(#boardGroove-${theme.id})`}
             strokeWidth="0.72"
             vectorEffect="non-scaling-stroke"
           />
@@ -526,7 +533,7 @@ export function TiaoBoard({
                   y1={coordinate}
                   x2={m.gridEnd}
                   y2={coordinate}
-                  stroke="#6c4926"
+                  stroke={theme.gridLineColor}
                   strokeWidth="0.46"
                   strokeLinecap="square"
                   vectorEffect="non-scaling-stroke"
@@ -536,7 +543,7 @@ export function TiaoBoard({
                   y1={m.gridStart}
                   x2={coordinate}
                   y2={m.gridEnd}
-                  stroke="#6c4926"
+                  stroke={theme.gridLineColor}
                   strokeWidth="0.46"
                   strokeLinecap="square"
                   vectorEffect="non-scaling-stroke"
@@ -560,8 +567,9 @@ export function TiaoBoard({
           return (
             <span
               key={`star-${position.x}-${position.y}`}
-              className="pointer-events-none absolute h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#573615]"
+              className="pointer-events-none absolute h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full"
               style={{
+                background: theme.starPointColor,
                 left: `${pp(position.x)}%`,
                 top: `${pp(position.y)}%`,
               }}
@@ -662,19 +670,31 @@ export function TiaoBoard({
               }}
             >
               {isJumpTarget ? (
-                <span className="pointer-events-none absolute inset-[13.5%] rounded-full border-[3px] border-dashed border-[#73935f] bg-[rgba(243,250,238,0.78)] shadow-[0_0_0_2.5px_rgba(225,240,214,0.84)]" />
+                <span
+                  className="pointer-events-none absolute inset-[13.5%] rounded-full border-[3px] border-dashed"
+                  style={{ borderColor: theme.jumpTargetBorder, background: theme.jumpTargetBg, boxShadow: `0 0 0 2.5px ${theme.jumpTargetBg}` }}
+                />
               ) : null}
 
               {isForcedOrigin ? (
-                <span className="pointer-events-none absolute inset-[4.5%] rounded-full border-[3px] border-[#8c6326] shadow-[0_0_0_2.5px_rgba(214,176,112,0.84)]" />
+                <span
+                  className="pointer-events-none absolute inset-[4.5%] rounded-full border-[3px]"
+                  style={{ borderColor: theme.forcedOriginBorder, boxShadow: `0 0 0 2.5px ${theme.forcedOriginBorder}44` }}
+                />
               ) : isSelected ? (
-                <span className="pointer-events-none absolute inset-[6.5%] rounded-full border-[2.5px] border-[#72572e]/95 shadow-[0_0_0_4px_rgba(114,87,46,0.2)]" />
+                <span
+                  className="pointer-events-none absolute inset-[6.5%] rounded-full border-[2.5px]"
+                  style={{ borderColor: theme.selectedBorder, boxShadow: `0 0 0 4px ${theme.selectedBorder}33` }}
+                />
               ) : isLastMove && piece ? (
-                <span className="pointer-events-none absolute inset-[3%] rounded-full border-[2.5px] border-[#4a8ac4]/70 shadow-[0_0_0_3px_rgba(74,138,196,0.18)]" />
+                <span
+                  className="pointer-events-none absolute inset-[3%] rounded-full border-[2.5px]"
+                  style={{ borderColor: `${theme.lastMoveBorder}b3`, boxShadow: `0 0 0 3px ${theme.lastMoveBorder}2e` }}
+                />
               ) : null}
 
               {isLastMove && !piece ? (
-                <span className="pointer-events-none absolute inset-[35%] rounded-full bg-[#4a8ac4]/30" />
+                <span className="pointer-events-none absolute inset-[35%] rounded-full" style={{ background: `${theme.lastMoveDotBg}4d` }} />
               ) : null}
 
               {piece ? (
@@ -703,24 +723,20 @@ export function TiaoBoard({
                         }
                       : { duration: 0.18, ease: "easeOut" }
                   }
-                  className={cn(
-                    "pointer-events-none absolute inset-[5.5%] z-10 rounded-full border shadow-[inset_0_2px_10px_rgba(255,255,255,0.18),0_10px_18px_rgba(0,0,0,0.18)]",
-                    piece === "black"
-                      ? "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]"
-                      : "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]",
-                    isSelectableOrigin &&
-                      !disabled &&
-                      "shadow-[0_0_0_4px_rgba(242,208,144,0.22),inset_0_2px_10px_rgba(255,255,255,0.18),0_10px_18px_rgba(0,0,0,0.18)]"
-                  )}
+                  className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border"
+                  style={{
+                    borderColor: piece === "black" ? theme.blackPieceBorder : theme.whitePieceBorder,
+                    background: piece === "black" ? theme.blackPieceBg : theme.whitePieceBg,
+                    boxShadow: isSelectableOrigin && !disabled ? theme.selectableGlow : theme.pieceShadow,
+                  }}
                 />
               ) : isHoveredEmpty ? (
                 <span
-                  className={cn(
-                    "pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm",
-                    state.currentTurn === "black"
-                      ? "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]"
-                      : "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
-                  )}
+                  className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm"
+                  style={{
+                    borderColor: state.currentTurn === "black" ? theme.blackPieceBorder : theme.whitePieceBorder,
+                    background: state.currentTurn === "black" ? theme.blackPieceBg : theme.whitePieceBg,
+                  }}
                 />
               ) : null}
             </button>
@@ -744,7 +760,7 @@ export function TiaoBoard({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <path d="M0 0L8 4L0 8L2.15 4Z" fill="#8dbc62" fillOpacity="1" />
+              <path d="M0 0L8 4L0 8L2.15 4Z" fill={theme.jumpArrowGreenFill} fillOpacity="1" />
             </marker>
             <marker
               id={`${jumpTrailMarkerId}-overlay-red`}
@@ -756,7 +772,7 @@ export function TiaoBoard({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <path d="M0 0L8 4L0 8L2.15 4Z" fill="#c9837b" fillOpacity="1" />
+              <path d="M0 0L8 4L0 8L2.15 4Z" fill={theme.jumpArrowRedFill} fillOpacity="1" />
             </marker>
             <marker
               id={`${jumpTrailMarkerId}-overlay-gold`}
@@ -768,7 +784,7 @@ export function TiaoBoard({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <path d="M0 0L8 4L0 8L2.15 4Z" fill="#4a8ac4" fillOpacity="0.85" />
+              <path d="M0 0L8 4L0 8L2.15 4Z" fill={theme.lastMoveArrowFill} fillOpacity="0.85" />
             </marker>
           </defs>
 
@@ -797,7 +813,7 @@ export function TiaoBoard({
                     duration: 0.24,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  stroke="#5f813d"
+                  stroke={theme.jumpTrailDarkGreen}
                   strokeOpacity="1"
                   strokeWidth="3.15"
                   strokeLinecap="round"
@@ -823,7 +839,7 @@ export function TiaoBoard({
                     delay: 0.04,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  stroke="#8dbc62"
+                  stroke={theme.jumpTrailBrightGreen}
                   strokeOpacity="1"
                   strokeWidth="2.45"
                   strokeLinecap="round"
@@ -846,7 +862,7 @@ export function TiaoBoard({
                   y1={segment.startY}
                   x2={segment.endX}
                   y2={segment.endY}
-                  stroke="#365f8a"
+                  stroke={theme.lastMoveDark}
                   strokeOpacity="0.5"
                   strokeWidth="3.15"
                   strokeLinecap="round"
@@ -857,7 +873,7 @@ export function TiaoBoard({
                   y1={segment.startY}
                   x2={segment.endX}
                   y2={segment.endY}
-                  stroke="#4a8ac4"
+                  stroke={theme.lastMoveBright}
                   strokeOpacity="0.7"
                   strokeWidth="2.45"
                   strokeLinecap="round"
@@ -892,7 +908,7 @@ export function TiaoBoard({
                       duration: 0.28,
                       ease: [0.2, 0.96, 0.3, 1],
                     }}
-                    stroke="#5f813d"
+                    stroke={theme.jumpTrailDarkGreen}
                     strokeWidth="3.4"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
@@ -915,7 +931,7 @@ export function TiaoBoard({
                       delay: 0.03,
                       ease: [0.2, 0.96, 0.3, 1],
                     }}
-                    stroke="#a6d476"
+                    stroke={theme.jumpTrailPreviewGreen}
                     strokeWidth="2.7"
                     strokeLinecap="round"
                     markerEnd={`url(#${jumpTrailMarkerId}-overlay-green)`}
@@ -950,7 +966,7 @@ export function TiaoBoard({
                       duration: 0.26,
                       ease: [0.2, 0.96, 0.3, 1],
                     }}
-                    stroke="#9f5d57"
+                    stroke={theme.jumpTrailDarkRed}
                     strokeWidth="3.25"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
@@ -973,7 +989,7 @@ export function TiaoBoard({
                       delay: 0.03,
                       ease: [0.2, 0.96, 0.3, 1],
                     }}
-                    stroke="#d8928a"
+                    stroke={theme.jumpTrailBrightRed}
                     strokeWidth="2.55"
                     strokeLinecap="round"
                     markerEnd={`url(#${jumpTrailMarkerId}-overlay-red)`}
@@ -987,8 +1003,12 @@ export function TiaoBoard({
 
         {showConfirmOverlay && forcedJumpOrigin ? (
           <span
-            className="pointer-events-none absolute z-[95] flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
+            className="pointer-events-none absolute z-[95] flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
             style={{
+              borderColor: theme.confirmBorder,
+              background: theme.confirmBg,
+              color: theme.confirmText,
+              boxShadow: theme.confirmShadow,
               left: `${pp(forcedJumpOrigin.x)}%`,
               top: `${pp(forcedJumpOrigin.y)}%`,
             }}
@@ -1036,8 +1056,12 @@ export function TiaoBoard({
 
         {undoHovered && lastPendingJump ? (
           <span
-            className="pointer-events-none absolute z-[95] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#deaaaa] bg-[rgba(255,247,246,0.98)] text-[#ba6561] shadow-[0_12px_20px_-14px_rgba(134,70,67,0.55)]"
+            className="pointer-events-none absolute z-[95] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
             style={{
+              borderColor: theme.undoBorder,
+              background: theme.undoBg,
+              color: theme.undoText,
+              boxShadow: theme.undoShadow,
               left: `${pp(lastPendingJump.from.x)}%`,
               top: `${pp(lastPendingJump.from.y)}%`,
             }}
@@ -1071,7 +1095,7 @@ export function TiaoBoard({
               y1={pp(mobilePreview.y)}
               x2={m.gridEnd}
               y2={pp(mobilePreview.y)}
-              stroke={GRID_LINE_COLOR}
+              stroke={theme.crosshairColor}
               strokeOpacity="0.35"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
@@ -1083,7 +1107,7 @@ export function TiaoBoard({
               y1={m.gridStart}
               x2={pp(mobilePreview.x)}
               y2={m.gridEnd}
-              stroke={GRID_LINE_COLOR}
+              stroke={theme.crosshairColor}
               strokeOpacity="0.35"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
@@ -1123,13 +1147,15 @@ export function TiaoBoard({
             <span
               className={cn(
                 "relative block h-full w-full rounded-full",
-                !mobilePreviewValid
-                  ? "border border-[#c44a3a]/60 bg-[radial-gradient(circle_at_30%_28%,#d4847a,#b85a4e_58%,#8a3028)]"
-                  : state.currentTurn === "black"
-                    ? "border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]"
-                    : "border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]",
+                "border",
               )}
               style={{
+                borderColor: !mobilePreviewValid
+                  ? "rgba(196,74,58,0.6)"
+                  : state.currentTurn === "black" ? theme.blackPieceBorder : theme.whitePieceBorder,
+                background: !mobilePreviewValid
+                  ? "radial-gradient(circle at 30% 28%,#d4847a,#b85a4e 58%,#8a3028)"
+                  : state.currentTurn === "black" ? theme.blackPieceBg : theme.whitePieceBg,
                 opacity: !mobilePreviewValid ? 0.45 : mobilePreviewDragging ? 0.6 : 0.8,
                 transform: mobilePreviewDragging ? "translateY(-3px)" : "translateY(-1px)",
                 boxShadow: mobilePreviewDragging
