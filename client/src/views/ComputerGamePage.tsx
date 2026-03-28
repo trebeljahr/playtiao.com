@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   formatPlayerColor,
   HourglassSpinner,
 } from "@/components/game/GameShared";
+import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { useComputerGame } from "@/lib/hooks/useComputerGame";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
@@ -22,25 +23,16 @@ import { cn } from "@/lib/utils";
 import { AI_DIFFICULTY_LABELS } from "@/lib/engine/tiao-engine";
 import type { AIDifficulty } from "@/lib/computer-ai";
 
-const DIFFICULTY_LEVELS: AIDifficulty[] = [1, 2, 3];
-
 export function ComputerGamePage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const gameSettings = useMemo(() => {
-    const bs = searchParams?.get("boardSize") ?? null;
-    const stw = searchParams?.get("scoreToWin") ?? null;
-    if (!bs && !stw) return undefined;
-    return {
-      boardSize: bs ? Number(bs) : undefined,
-      scoreToWin: stw ? Number(stw) : undefined,
-    };
-  }, [searchParams]);
   const [navOpen, setNavOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<AIDifficulty | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>(2);
   const [selectedColor, setSelectedColor] = useState<PlayerColor | "random">("random");
+  const [boardSize, setBoardSize] = useState(19);
+  const [scoreToWin, setScoreToWin] = useState(10);
+  const gameSettings = difficulty !== null ? { boardSize, scoreToWin } : undefined;
   const computer = useComputerGame(difficulty ?? 3, gameSettings);
 
   const handleStartGame = useCallback(() => {
@@ -125,92 +117,25 @@ export function ComputerGamePage() {
               <CardHeader>
                 <GamePanelBrand />
                 <CardTitle className="text-[#2b1e14]">
-                  Choose Difficulty
+                  Game Setup
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7760]">
-                    Difficulty
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {DIFFICULTY_LEVELS.map((level) => (
-                      <Button
-                        key={level}
-                        variant="secondary"
-                        className={cn(
-                          "border-[#dcc7a2]",
-                          selectedDifficulty === level
-                            ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
-                            : "hover:bg-[#ede3d2]",
-                        )}
-                        onClick={() => setSelectedDifficulty(level)}
-                      >
-                        {AI_DIFFICULTY_LABELS[level]}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-[#dbc6a2] pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7760]">
-                    Play as
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      variant="secondary"
-                      className={cn(
-                        "flex items-center gap-2 border-[#dcc7a2]",
-                        selectedColor === "random"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
-                          : "hover:bg-[#ede3d2]",
-                      )}
-                      onClick={() => setSelectedColor("random")}
-                    >
-                      <span
-                        className="h-4 w-4 rounded-full border border-[#999]"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #f4eee3 50%, #2d2622 50%)",
-                        }}
-                      />
-                      Random
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      className={cn(
-                        "flex items-center gap-2 border-[#dcc7a2]",
-                        selectedColor === "white"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
-                          : "hover:bg-[#ede3d2]",
-                      )}
-                      onClick={() => setSelectedColor("white")}
-                    >
-                      <span className="h-4 w-4 rounded-full border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]" />
-                      White
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      className={cn(
-                        "flex items-center gap-2 border-[#dcc7a2]",
-                        selectedColor === "black"
-                          ? "pointer-events-none border-[#6b5030] bg-[#6b5030] text-white hover:bg-[#6b5030] hover:text-white"
-                          : "hover:bg-[#ede3d2]",
-                      )}
-                      onClick={() => setSelectedColor("black")}
-                    >
-                      <span className="h-4 w-4 rounded-full border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]" />
-                      Black
-                    </Button>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full"
-                  onClick={handleStartGame}
-                >
-                  Start Game
-                </Button>
+              <CardContent>
+                <GameConfigPanel
+                  mode="computer"
+                  boardSize={boardSize}
+                  onBoardSizeChange={setBoardSize}
+                  scoreToWin={scoreToWin}
+                  onScoreToWinChange={setScoreToWin}
+                  timeControl={null}
+                  onTimeControlChange={() => {}}
+                  difficulty={selectedDifficulty}
+                  onDifficultyChange={setSelectedDifficulty}
+                  selectedColor={selectedColor}
+                  onColorChange={setSelectedColor}
+                  submitLabel="Start Game"
+                  onSubmit={handleStartGame}
+                />
               </CardContent>
             </Card>
           </section>
