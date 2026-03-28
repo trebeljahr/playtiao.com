@@ -209,10 +209,9 @@ describe("TiaoBoard – last move highlighting", () => {
       />
     );
 
-    // The cell at (9,9) should contain a highlight span with the gold border
+    // The cell at (9,9) should be marked as last move
     const cell = screen.getByTestId("cell-9-9");
-    const highlightSpan = cell.querySelector("span[class*='border-[#4a8ac4]']");
-    expect(highlightSpan).toBeTruthy();
+    expect(cell.dataset.lastMove).toBeTruthy();
   });
 
   it("renders jump trail arrows for last jump move", async () => {

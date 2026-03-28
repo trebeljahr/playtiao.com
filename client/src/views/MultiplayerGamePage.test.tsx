@@ -13,6 +13,11 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/game/ABC123",
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({ gameId: "ABC123" }),
+  redirect: vi.fn(),
+  permanentRedirect: vi.fn(),
+  notFound: vi.fn(),
+  useSelectedLayoutSegment: () => null,
+  useSelectedLayoutSegments: () => [],
 }));
 
 // --- Mocks ---

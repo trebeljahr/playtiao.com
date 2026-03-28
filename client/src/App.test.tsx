@@ -1,15 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import "@/test/navigation-mock";
-import { Providers } from "../app/providers";
+import { Providers } from "../app/[locale]/providers";
 
-vi.mock("@/lib/api", () => ({
-  createGuest: vi.fn().mockResolvedValue({
-    player: { playerId: "guest-123", displayName: "brave-pink-fox", kind: "guest" },
-  }),
-  getCurrentPlayer: vi.fn().mockRejectedValue(new Error("Not logged in")),
-  buildWebSocketUrl: vi.fn().mockReturnValue("ws://localhost:5005/api/ws"),
-}));
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...actual,
+    createGuest: vi.fn().mockResolvedValue({
+      player: { playerId: "guest-123", displayName: "brave-pink-fox", kind: "guest" },
+    }),
+    getCurrentPlayer: vi.fn().mockRejectedValue(new Error("Not logged in")),
+    buildWebSocketUrl: vi.fn().mockReturnValue("ws://localhost:5005/api/ws"),
+  };
+});
 
 vi.mock("@/lib/SocialNotificationsContext", () => ({
   SocialNotificationsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -26,12 +30,10 @@ vi.mock("@/lib/LobbySocketContext", () => ({
 }));
 
 describe("Providers", () => {
-  it("renders loading screen while auth is bootstrapping", async () => {
+  it("renders children after auth bootstrap", async () => {
     render(<Providers><div>child content</div></Providers>);
-    expect(screen.getByText(/Opening Tiao/i)).toBeInTheDocument();
-    // Wait for the async guest auth to settle so React doesn't warn about act()
     await waitFor(() => {
-      expect(screen.queryByText(/Opening Tiao/i)).not.toBeInTheDocument();
+      expect(screen.getByText("child content")).toBeInTheDocument();
     });
   });
 });
