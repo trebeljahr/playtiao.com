@@ -7,6 +7,7 @@ import type { AuthDialogMode } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
 
@@ -108,10 +109,9 @@ function AuthDialog() {
               >
                 Password
               </label>
-              <Input
+              <PasswordInput
                 id="login-password"
                 name="password"
-                type="password"
                 value={loginPassword}
                 onChange={(event) => setLoginPassword(event.target.value)}
                 placeholder="••••••••"
@@ -178,10 +178,9 @@ function AuthDialog() {
               >
                 Password
               </label>
-              <Input
+              <PasswordInput
                 id="signup-password"
                 name="password"
-                type="password"
                 value={signupPassword}
                 onChange={(event) => setSignupPassword(event.target.value)}
                 placeholder="••••••••"
@@ -196,10 +195,9 @@ function AuthDialog() {
               >
                 Confirm Password
               </label>
-              <Input
+              <PasswordInput
                 id="signup-confirm-password"
                 name="confirm-password"
-                type="password"
                 value={signupConfirmPassword}
                 onChange={(event) => setSignupConfirmPassword(event.target.value)}
                 placeholder="••••••••"

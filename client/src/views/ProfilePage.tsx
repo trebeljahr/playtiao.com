@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   getAccountProfile,
   type AccountProfile,
@@ -547,9 +548,8 @@ export function ProfilePage() {
             <label htmlFor="current-password" className="text-sm font-medium text-[#4e3d2c]">
               Current password
             </label>
-            <Input
+            <PasswordInput
               id="current-password"
-              type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="••••••••"
@@ -562,9 +562,8 @@ export function ProfilePage() {
             <label htmlFor="new-password" className="text-sm font-medium text-[#4e3d2c]">
               New password
             </label>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••••"
@@ -577,9 +576,8 @@ export function ProfilePage() {
             <label htmlFor="confirm-password" className="text-sm font-medium text-[#4e3d2c]">
               Confirm new password
             </label>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
