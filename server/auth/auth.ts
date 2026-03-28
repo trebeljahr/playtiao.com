@@ -80,15 +80,18 @@ export const auth = betterAuth({
     cookiePrefix: "tiao",
   },
 
-  trustedOrigins: FRONTEND_URL
-    ? [FRONTEND_URL]
-    : (origin) => {
-        // In dev, allow localhost and LAN IPs
-        if (!origin) return true;
-        if (origin.includes("localhost")) return true;
-        if (/^https?:\/\/(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) return true;
-        return false;
-      },
+  trustedOrigins: (origin) => {
+    // Always allow no-origin requests (server-side, same-origin)
+    if (!origin) return true;
+    // Allow the configured frontend URL
+    if (FRONTEND_URL && origin === FRONTEND_URL) return true;
+    // In dev, allow localhost and LAN IPs
+    if (process.env.NODE_ENV !== "production") {
+      if (origin.includes("localhost")) return true;
+      if (/^https?:\/\/(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) return true;
+    }
+    return false;
+  },
 
   databaseHooks: {
     user: {

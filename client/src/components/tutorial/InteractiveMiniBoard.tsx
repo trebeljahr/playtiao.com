@@ -366,7 +366,7 @@ export function InteractiveMiniBoard({
       return { pos: interaction.jumpTo, label: t("_jumpHere") };
     }
     if (interaction.type === "free-place") {
-      if (suggestedPos) return { pos: suggestedPos, label: "Place here" };
+      if (suggestedPos) return { pos: suggestedPos, label: t("_placeHere") };
       return null;
     }
     if (interaction.type === "confirm-undo") {
@@ -400,15 +400,15 @@ export function InteractiveMiniBoard({
         return lastJump ? { pos: lastJump.from, label: t("_undoJump") } : null;
       }
       if (hasUndone && hasPending && forcedOrigin) {
-        return { pos: forcedOrigin, label: "Confirm ✓" };
+        return { pos: forcedOrigin, label: t("_confirmJump") };
       }
     }
     if (
       interaction.type === "try-and-fail" ||
       interaction.type === "try-and-fail-border"
     ) {
-      if (!triedIllegal) return { pos: interaction.illegal, label: "Try placing here" };
-      return { pos: interaction.then, label: "Place here instead" };
+      if (!triedIllegal) return { pos: interaction.illegal, label: t("_tryPlacingHere") };
+      return { pos: interaction.then, label: t("_placeHereInstead") };
     }
     return null;
   }
