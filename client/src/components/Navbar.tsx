@@ -229,7 +229,6 @@ function LanguagePicker() {
 }
 
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
-  const t = useTranslations("common");
   const player = auth?.player;
   const isAnonymous = player?.kind !== "account";
 
@@ -239,13 +238,13 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
       <SoundToggle />
       <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
         <PlayerOverviewAvatar
-          player={{ displayName: player.displayName, profilePicture: player?.profilePicture }}
+          player={{ displayName: player?.displayName ?? "Guest", profilePicture: player?.profilePicture }}
           anonymous={isAnonymous}
           className="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
         />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
-            {player.displayName}
+            {player?.displayName ?? "Guest"}
           </p>
         </div>
       </div>
@@ -304,7 +303,6 @@ export function Navbar({
   onLogout,
 }: NavbarProps) {
   const t = useTranslations("nav");
-  const tCommon = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const { pendingFriendRequestCount, incomingInvitationCount } = useSocialNotifications();
