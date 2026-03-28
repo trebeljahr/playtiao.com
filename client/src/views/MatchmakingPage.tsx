@@ -18,7 +18,6 @@ import { useTranslations } from "next-intl";
 
 export function MatchmakingPage() {
   const t = useTranslations("matchmaking");
-  const tCommon = useTranslations("common");
   const { auth, authLoading, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
