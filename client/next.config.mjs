@@ -1,7 +1,10 @@
+import createNextIntlPlugin from "next-intl/plugin";
 import path from "path";
 import { fileURLToPath } from "url";
 import { readFileSync } from "fs";
 import { execSync } from "child_process";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sharedDir = path.resolve(__dirname, "../shared/src");
@@ -53,4 +56,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
