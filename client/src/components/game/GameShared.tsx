@@ -554,7 +554,7 @@ export function AnimatedScoreTile({
           className={valueClassName}
         >
           {value}
-          {scoreToWin != null && scoreToWin !== 10 && (
+          {scoreToWin != null && (
             <span className="text-base font-normal opacity-50">
               {" "}/ {scoreToWin}
             </span>
