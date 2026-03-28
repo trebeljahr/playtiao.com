@@ -1,7 +1,7 @@
 import createNextIntlPlugin from "next-intl/plugin";
 import path from "path";
 import { fileURLToPath } from "url";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -10,14 +10,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sharedDir = path.resolve(__dirname, "../shared/src");
 
 // Replicate the __APP_VERSION__ define from vite.config.mts
-const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
-function getGitVersion(baseVersion) {
+// At runtime in Docker the root package.json doesn't exist — fall back gracefully
+function getAppVersion() {
+  const pkgPath = path.resolve(__dirname, "../package.json");
+  if (!existsSync(pkgPath)) return "0.0.0";
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
   try {
     const commitCount = execSync("git rev-list --count HEAD", { encoding: "utf-8" }).trim();
     const shortHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
-    return `${baseVersion}-build.${commitCount}+${shortHash}`;
+    return `${pkg.version}-build.${commitCount}+${shortHash}`;
   } catch {
-    return baseVersion;
+    return pkg.version;
   }
 }
 
@@ -26,7 +29,7 @@ const nextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: ["192.168.1.0/24", "localhost"],
   env: {
-    APP_VERSION: getGitVersion(pkg.version),
+    APP_VERSION: getAppVersion(),
   },
   webpack: (config) => {
     config.resolve.alias["@shared"] = sharedDir;
