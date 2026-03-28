@@ -52,6 +52,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            API_URL=${{ secrets.API_URL }}
 
       - name: Trigger client deployment via API
         if: ${{ env.COOLIFY_BASE_URL != '' && env.COOLIFY_API_TOKEN != '' && env.COOLIFY_RESOURCE_UUID != '' }}
