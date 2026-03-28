@@ -334,6 +334,8 @@
     "skip": "Skip",
     "skipTutorial": "Skip Tutorial",
     "letsGo": "Let's go!",
+    "playAI": "Play against the AI →",
+    "orGoToLobby": "Or go back to the lobby",
     "returnToLobby": "Return to lobby →",
     "next": "Next →",
     "completeChallenge": "Complete the challenge ↑",

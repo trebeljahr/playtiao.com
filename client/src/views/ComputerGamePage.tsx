@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
@@ -28,6 +28,7 @@ export function ComputerGamePage() {
   const t = useTranslations("game");
   const tCommon = useTranslations("common");
   const tConfig = useTranslations("config");
+  const searchParams = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<AIDifficulty | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>(2);
@@ -45,6 +46,23 @@ export function ComputerGamePage() {
       : undefined;
     computer.resetLocalGame(computerCol);
   }, [selectedDifficulty, selectedColor, computer.resetLocalGame]);
+
+  // Auto-start from query params (e.g. from tutorial)
+  const autoStartRef = React.useRef(false);
+  useEffect(() => {
+    if (autoStartRef.current) return;
+    if (searchParams.has("autostart")) {
+      autoStartRef.current = true;
+      const d = Number(searchParams.get("difficulty") || 1) as AIDifficulty;
+      const c = (searchParams.get("color") || "white") as PlayerColor;
+      setSelectedDifficulty(d);
+      setSelectedColor(c);
+      setBoardSize(19);
+      setScoreToWin(10);
+      setDifficulty(d);
+      computer.resetLocalGame(c === "white" ? "black" : "white");
+    }
+  }, [searchParams, computer.resetLocalGame]);
 
   const handleChangeDifficulty = useCallback(() => {
     setDifficulty(null);

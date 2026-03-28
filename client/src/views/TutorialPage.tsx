@@ -133,37 +133,31 @@ export function TutorialPage() {
 
   const isReplay = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
 
-  async function handleFinish() {
-    setCompleting(true);
-    fireBigConfetti();
-
+  function completeTutorial() {
     localStorage.setItem("tiao:tutorialComplete", "1");
 
     if (auth?.player.kind === "account" && !isReplay) {
-      try {
-        const result = await markTutorialComplete();
-        applyAuth(result.auth);
-      } catch {
-        // Non-critical
-      }
+      markTutorialComplete()
+        .then((result) => applyAuth(result.auth))
+        .catch(() => {/* Non-critical */});
     }
+  }
 
+  async function handlePlayAI() {
+    setCompleting(true);
+    fireBigConfetti();
+    completeTutorial();
     await new Promise((r) => setTimeout(r, 1200));
+    router.push("/computer?autostart&difficulty=1&color=white");
+  }
+
+  function handleGoToLobby() {
+    completeTutorial();
     router.push("/");
   }
 
-  async function handleSkip() {
-    localStorage.setItem("tiao:tutorialComplete", "1");
-
-    if (auth?.player.kind === "account" && !isReplay) {
-      try {
-        const result = await markTutorialComplete();
-        applyAuth(result.auth);
-      } catch {
-        // Non-critical
-      }
-    }
-
+  function handleSkip() {
+    completeTutorial();
     router.push("/");
   }
 
@@ -290,14 +284,23 @@ export function TutorialPage() {
             )}
 
             {isLastStep ? (
-              <Button
-                size="lg"
-                className="min-w-[180px] h-14 text-lg shadow-lg bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-xl transition-all"
-                onClick={handleFinish}
-                disabled={completing}
-              >
-                {completing ? t("letsGo") : t("returnToLobby")}
-              </Button>
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  size="lg"
+                  className="min-w-[180px] h-14 text-lg shadow-lg bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-xl transition-all"
+                  onClick={handlePlayAI}
+                  disabled={completing}
+                >
+                  {completing ? t("letsGo") : t("playAI")}
+                </Button>
+                <button
+                  className="text-sm text-[#8d7760] underline hover:text-[#5d4732] transition-colors"
+                  onClick={handleGoToLobby}
+                  disabled={completing}
+                >
+                  {t("orGoToLobby")}
+                </button>
+              </div>
             ) : canAdvance ? (
               <Button
                 size="lg"

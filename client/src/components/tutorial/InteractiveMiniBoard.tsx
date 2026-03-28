@@ -105,6 +105,7 @@ export function InteractiveMiniBoard({
   const [triedIllegal, setTriedIllegal] = useState(false);
   const [hasUndone, setHasUndone] = useState(false);
   const [hasSeenConfirmHint, setHasSeenConfirmHint] = useState(false);
+  const [showConfirmNudge, setShowConfirmNudge] = useState(false);
   const completedRef = useRef(false);
 
   const color = turnColor;
@@ -139,8 +140,23 @@ export function InteractiveMiniBoard({
     setTriedIllegal(false);
     setHasUndone(false);
     setHasSeenConfirmHint(false);
+    setShowConfirmNudge(false);
     completedRef.current = false;
   }, [resetKey, initialBoard]);
+
+  // After a pending jump in chain-jump steps, nudge the user to confirm after 3s
+  useEffect(() => {
+    if (
+      hasPending &&
+      !completed &&
+      (interaction.type === "chain-jump" || interaction.type === "chain-jump-early")
+    ) {
+      setShowConfirmNudge(false);
+      const timer = setTimeout(() => setShowConfirmNudge(true), 3000);
+      return () => clearTimeout(timer);
+    }
+    setShowConfirmNudge(false);
+  }, [hasPending, completed, interaction.type, pendingJumps.length]);
 
   const complete = useCallback(() => {
     if (completedRef.current) return;
@@ -237,13 +253,7 @@ export function InteractiveMiniBoard({
     // Try placement
     const cell = board[pos.y][pos.x];
     if (!cell) {
-      if (
-        interaction.type === "free-place" ||
-        interaction.type === "confirm-undo" ||
-        interaction.type === "chain-jump" ||
-        interaction.type === "chain-jump-early" ||
-        interaction.type === "chain-undo"
-      ) {
+      if (interaction.type === "free-place") {
         const result = canPlacePiece(board, pos, color, size);
         if (result.ok) {
           const next = cloneBoard(board);
