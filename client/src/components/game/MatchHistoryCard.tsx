@@ -3,13 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   formatPlayerColor,
-  formatFinishReason,
   formatGameTimestamp,
   describeResult,
   getPlayerResult,
   PlayerOverviewAvatar,
   EmptySeatAvatar,
-  RoomCodeCopyPill,
 } from "./GameShared";
 import { GameConfigBadge } from "./GameConfigBadge";
 import { formatClockTime } from "./GameClock";
@@ -40,6 +38,7 @@ function PlayerRow({
   player,
   color,
   score,
+  scoreToWin,
   isYou,
   isWinner,
   clockMs,
@@ -48,16 +47,14 @@ function PlayerRow({
   player: { displayName?: string; profilePicture?: string } | null;
   color: PlayerColor;
   score: number;
+  scoreToWin: number;
   isYou: boolean;
   isWinner: boolean;
   clockMs?: number | null;
   ratingChange?: number | null;
 }) {
   return (
-    <div className={cn(
-      "flex items-center gap-2.5 rounded-xl px-3 py-2",
-      isWinner ? "bg-black/[0.04]" : "",
-    )}>
+    <div className="flex items-center gap-2.5 rounded-xl px-3 py-2">
       <ColorDot color={color} />
       {player ? (
         <PlayerOverviewAvatar player={player} className="h-6 w-6" />
@@ -68,6 +65,11 @@ function PlayerRow({
         {player?.displayName ?? "Unknown"}
         {isYou && <span className="ml-1 text-[#8d7760]">(you)</span>}
       </span>
+      {isWinner && (
+        <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
+          Winner
+        </span>
+      )}
       {ratingChange != null && (
         <span className={cn(
           "text-xs font-semibold tabular-nums",
@@ -77,10 +79,10 @@ function PlayerRow({
         </span>
       )}
       <span className={cn(
-        "font-mono text-lg font-bold tabular-nums",
-        isWinner ? "text-[#2b1e14]" : "text-[#9a8770]",
+        "font-mono text-sm tabular-nums",
+        isWinner ? "font-bold text-[#2b1e14]" : "text-[#9a8770]",
       )}>
-        {score}
+        {score}<span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
       </span>
       {clockMs != null && (
         <span className="font-mono text-xs tabular-nums text-[#9a8770]">
@@ -105,6 +107,7 @@ export function MatchHistoryCard({
   const isBlackYou = blackPlayer?.playerId === playerId;
   const whiteWon = game.winner === "white";
   const blackWon = game.winner === "black";
+  const scoreToWin = game.scoreToWin ?? 10;
 
   const whiteRatingChange = game.ratingBefore && game.ratingAfter
     ? game.ratingAfter.white - game.ratingBefore.white
@@ -120,33 +123,50 @@ export function MatchHistoryCard({
       ? "border-[#dba8a0]/60 bg-[#fdf3f1]"
       : "border-[#d7c39e] bg-white/40";
 
+  // Only show reason if we actually have one
+  const reasonText = game.finishReason
+    ? describeResult(result, game.finishReason)
+    : null;
+
   return (
     <div className={cn("rounded-2xl border p-4 space-y-3", resultBg)}>
-      {/* Header: result badge + reason + timestamp + review */}
+      {/* Header: result badge + reason + actions */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {result && (
             <Badge className={cn(
               "text-xs font-semibold",
               result === "won"
-                ? "bg-[#3d7a1e] text-white"
-                : "bg-[#b5443a] text-white",
+                ? "bg-[#d0eabc] text-[#2d5a14]"
+                : "bg-[#f0c4be] text-[#7a2e24]",
             )}>
               {result === "won" ? "Won" : "Lost"}
             </Badge>
           )}
           {!result && game.winner && (
-            <Badge className="bg-[#f3e7d5] text-[#6b563e] text-xs font-semibold">
+            <Badge className="bg-[#e8dcc6] text-[#5a4a32] text-xs font-semibold">
               {formatPlayerColor(game.winner)} won
             </Badge>
           )}
-          <span className="text-xs text-[#9a8770]">
-            {describeResult(result, game.finishReason) || formatFinishReason(game.finishReason, game.scoreToWin)}
-          </span>
+          {reasonText && (
+            <span className="text-xs text-[#9a8770]">
+              {reasonText}
+            </span>
+          )}
         </div>
-        <Button variant="outline" size="sm" className="shrink-0 text-xs" onClick={onReview}>
-          Review
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            className="rounded-md px-1.5 py-0.5 font-mono text-[10px] text-[#b5a48e] transition-colors hover:bg-black/5 hover:text-[#6e5b48]"
+            onClick={onCopy}
+            title={`Copy game ID: ${game.gameId}`}
+          >
+            {copiedId === game.gameId ? "Copied" : game.gameId}
+          </button>
+          <Button size="sm" className="text-xs" onClick={onReview}>
+            Review
+          </Button>
+        </div>
       </div>
 
       {/* Player rows with scores */}
@@ -155,6 +175,7 @@ export function MatchHistoryCard({
           player={whitePlayer}
           color="white"
           score={game.score.white}
+          scoreToWin={scoreToWin}
           isYou={isWhiteYou}
           isWinner={whiteWon}
           clockMs={game.clockMs?.white}
@@ -164,6 +185,7 @@ export function MatchHistoryCard({
           player={blackPlayer}
           color="black"
           score={game.score.black}
+          scoreToWin={scoreToWin}
           isYou={isBlackYou}
           isWinner={blackWon}
           clockMs={game.clockMs?.black}
@@ -171,13 +193,8 @@ export function MatchHistoryCard({
         />
       </div>
 
-      {/* Footer: game info pills */}
+      {/* Footer: game info */}
       <div className="flex flex-wrap items-center gap-2">
-        <RoomCodeCopyPill
-          gameId={game.gameId}
-          copied={copiedId === game.gameId}
-          onCopy={onCopy}
-        />
         <GameConfigBadge
           boardSize={game.boardSize}
           scoreToWin={game.scoreToWin}
