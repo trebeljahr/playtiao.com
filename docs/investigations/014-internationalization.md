@@ -1,6 +1,6 @@
 # Investigation: Internationalization (i18n)
 
-**Status:** Decided — next-intl, deferred until demand materializes
+**Status:** Decided — next-intl, infrastructure in place, translations deferred until demand
 **Date:** 2026-03-28
 
 ## Context

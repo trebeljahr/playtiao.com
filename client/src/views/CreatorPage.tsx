@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 type CreatorLink = { label: string; href: string };
 
@@ -17,6 +18,8 @@ type CreatorPageProps = {
 };
 
 export function CreatorPage({ name, username, image, role, bio, links }: CreatorPageProps) {
+  const t = useTranslations("creator");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -44,7 +47,7 @@ export function CreatorPage({ name, username, image, role, bio, links }: Creator
           className="self-start text-[#8b7356]"
           onClick={() => router.push("/")}
         >
-          &larr; Back to lobby
+          &larr; {tCommon("backToLobby")}
         </Button>
 
         <Card className={paperCard + " w-full"}>
@@ -83,7 +86,7 @@ export function CreatorPage({ name, username, image, role, bio, links }: Creator
 
             <div className="w-full border-t border-[#dbc6a2] pt-4">
               <p className="text-center text-sm text-[#8d7760]">
-                See his player profile:{" "}
+                {t("seeProfile")}{" "}
                 <button
                   type="button"
                   className="font-semibold text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]"

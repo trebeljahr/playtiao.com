@@ -6,8 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getPublicProfile, type PublicProfile } from "@/lib/api";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
+import { useTranslations } from "next-intl";
 
 export function PublicProfilePage() {
+  const t = useTranslations("publicProfile");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const params = useParams<{ username: string }>();
@@ -22,7 +25,7 @@ export function PublicProfilePage() {
     setError(null);
     getPublicProfile(params.username)
       .then((res) => setProfile(res.profile))
-      .catch(() => setError("Player not found."))
+      .catch(() => setError("not-found"))
       .finally(() => setLoading(false));
   }, [params?.username]);
 
@@ -49,13 +52,13 @@ export function PublicProfilePage() {
           className="self-start text-[#8b7356]"
           onClick={() => router.push("/")}
         >
-          &larr; Back to lobby
+          &larr; {tCommon("backToLobby")}
         </Button>
 
         {loading && (
           <Card className={paperCard + " w-full"}>
             <CardContent className="flex items-center justify-center py-16">
-              <p className="text-sm text-[#8d7760]">Loading profile...</p>
+              <p className="text-sm text-[#8d7760]">{t("loadingProfile")}</p>
             </CardContent>
           </Card>
         )}
@@ -63,9 +66,9 @@ export function PublicProfilePage() {
         {error && (
           <Card className={paperCard + " w-full"}>
             <CardContent className="flex flex-col items-center gap-4 py-16">
-              <p className="text-sm text-[#8d7760]">{error}</p>
+              <p className="text-sm text-[#8d7760]">{t("playerNotFound")}</p>
               <Button variant="secondary" onClick={() => router.push("/")}>
-                Back to lobby
+                {tCommon("backToLobby")}
               </Button>
             </CardContent>
           </Card>
@@ -85,10 +88,11 @@ export function PublicProfilePage() {
                 </h1>
                 {profile.createdAt && (
                   <p className="mt-1 text-sm text-[#8d7760]">
-                    Playing since{" "}
-                    {new Date(profile.createdAt).toLocaleDateString(undefined, {
-                      month: "long",
-                      year: "numeric",
+                    {t("playingSince", {
+                      date: new Date(profile.createdAt).toLocaleDateString(undefined, {
+                        month: "long",
+                        year: "numeric",
+                      }),
                     })}
                   </p>
                 )}

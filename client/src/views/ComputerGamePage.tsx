@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,14 @@ import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { useWinConfetti } from "@/lib/useWinConfetti";
 import { isGameOver, getWinner } from "@shared";
 import { cn } from "@/lib/utils";
-import { AI_DIFFICULTY_LABELS } from "@/lib/engine/tiao-engine";
 import type { AIDifficulty } from "@/lib/computer-ai";
 
 export function ComputerGamePage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+  const t = useTranslations("game");
+  const tCommon = useTranslations("common");
+  const tConfig = useTranslations("config");
   const [navOpen, setNavOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<AIDifficulty | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>(2);
@@ -72,20 +75,20 @@ export function ComputerGamePage() {
   }, [gameOver]);
 
   const playerWon = winner !== null && winner !== computer.computerColor;
-  const gameOverTitle = isDraw ? "Draw!" : playerWon ? "You won!" : "You lost!";
+  const gameOverTitle = isDraw ? t("draw") : playerWon ? t("youWon") : t("youLost");
   const gameOverDescription = isDraw
-    ? "No moves remaining. Ready for another round?"
+    ? t("drawNoMoves")
     : playerWon
-      ? "Great game! Ready for another round?"
-      : "Better luck next time. Want to try again?";
+      ? t("wonDesc")
+      : t("lostDesc");
 
   const localStatusTitle = isDraw
-    ? "Draw!"
+    ? t("draw")
     : winner
-      ? `${formatPlayerColor(winner)} wins!`
+      ? t("wins", { color: formatPlayerColor(winner) })
       : computer.computerThinking
-        ? "Computer thinking..."
-        : `${formatPlayerColor(computer.localGame.currentTurn)} to move`;
+        ? t("computerThinking")
+        : t("toMove", { color: formatPlayerColor(computer.localGame.currentTurn) });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -116,7 +119,7 @@ export function ComputerGamePage() {
               <CardHeader>
                 <GamePanelBrand />
                 <CardTitle className="text-[#2b1e14]">
-                  Game Setup
+                  {t("gameSetup")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -132,7 +135,7 @@ export function ComputerGamePage() {
                   onDifficultyChange={setSelectedDifficulty}
                   selectedColor={selectedColor}
                   onColorChange={setSelectedColor}
-                  submitLabel="Start Game"
+                  submitLabel={t("startGame")}
                   onSubmit={handleStartGame}
                 />
               </CardContent>
@@ -161,7 +164,7 @@ export function ComputerGamePage() {
                     <div className="flex flex-col items-center gap-2">
                       <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/95 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
                         <HourglassSpinner className="text-[#7b5f3f]" />
-                        AI is thinking...
+                        {t("aiThinking")}
                       </div>
                       {computer.thinkProgress > 0 && (
                         <div className="h-1.5 w-32 overflow-hidden rounded-full bg-[#e8d9c0]">
@@ -183,24 +186,24 @@ export function ComputerGamePage() {
               gameState={computer.localGame}
               scorePulse={computer.localScorePulse}
               timeControl={null}
-              badge={`Vs AI — ${AI_DIFFICULTY_LABELS[difficulty]}`}
+              badge={t("vsAi", { difficulty: tConfig(difficulty === 1 ? "easy" : difficulty === 2 ? "intermediate" : "hard") })}
               badgeClassName="bg-[#edf5e4] text-[#486334]"
               statusTitle={localStatusTitle}
-              blackLabel={computer.computerColor === "black" ? "Black (AI)" : "Black (You)"}
-              whiteLabel={computer.computerColor === "white" ? "White (AI)" : "White (You)"}
+              blackLabel={computer.computerColor === "black" ? t("blackAi") : t("blackYou")}
+              whiteLabel={computer.computerColor === "white" ? t("whiteAi") : t("whiteYou")}
               onUndo={computer.handleLocalUndoTurn}
               undoDisabled={!computer.canUndo}
               gameOver={gameOver}
               gameOverActions={
                 <>
                   <Button variant="secondary" onClick={() => computer.resetLocalGame()}>
-                    Restart board
+                    {t("restartBoard")}
                   </Button>
                   <Button variant="secondary" onClick={handleChangeDifficulty}>
-                    Change difficulty
+                    {t("changeDifficulty")}
                   </Button>
                   <Button variant="ghost" onClick={() => router.push("/")}>
-                    Back to lobby
+                    {tCommon("backToLobby")}
                   </Button>
                 </>
               }
@@ -217,13 +220,13 @@ export function ComputerGamePage() {
       >
         <div className="grid gap-2">
           <Button onClick={() => { setGameOverDialogOpen(false); computer.resetLocalGame(); }}>
-            {playerWon ? "Play again" : "Try again"}
+            {playerWon ? t("playAgain") : t("tryAgain")}
           </Button>
           <Button variant="secondary" onClick={() => { setGameOverDialogOpen(false); handleChangeDifficulty(); }}>
-            Change difficulty
+            {t("changeDifficulty")}
           </Button>
           <Button variant="ghost" onClick={() => router.push("/")}>
-            Back to lobby
+            {tCommon("backToLobby")}
           </Button>
         </div>
       </Dialog>

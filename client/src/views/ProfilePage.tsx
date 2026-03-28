@@ -25,6 +25,7 @@ import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { getBadgesForPlayer, hasPreviewAccess, isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
 import { useSetActiveBadge } from "@/lib/useActiveBadge";
+import { useTranslations } from "next-intl";
 
 const PROFILE_PIC_SIZE = 512;
 const PROFILE_PIC_QUALITY = 0.85;
@@ -71,6 +72,7 @@ function resizeImage(file: File): Promise<File> {
 }
 
 function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
+  const t = useTranslations("profile");
   const badges = getBadgesForPlayer(auth);
   const [activeBadgeId, setActiveBadge] = useSetActiveBadge();
 
@@ -79,9 +81,9 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
   return (
     <Card className="border-[#dcc7a3]/60 bg-[linear-gradient(180deg,rgba(255,250,235,0.98),rgba(248,238,215,0.98))] shadow-[0_32px_72px_-28px_rgba(80,52,18,0.26)]">
       <CardHeader>
-        <CardTitle>Badge</CardTitle>
+        <CardTitle>{t("badge")}</CardTitle>
         <CardDescription>
-          Choose which badge to show next to your name.
+          {t("badgeDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -97,7 +99,7 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
                 : "border-[#dcc7a3] text-[#9a8670] hover:border-[#b69a6e]",
             )}
           >
-            Hidden
+            {t("badgeHidden")}
           </button>
 
           {badges.map((badgeId) => {
@@ -125,8 +127,7 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
 
         {activeBadgeId && (
           <p className="mt-3 text-xs text-[#9a8670]">
-            Your <strong>{BADGE_DEFINITIONS[activeBadgeId as BadgeId]?.label}</strong> badge will
-            appear next to your name in games, friend lists, and tournaments.
+            {t("badgeActive", { badge: BADGE_DEFINITIONS[activeBadgeId as BadgeId]?.label })}
           </p>
         )}
 
@@ -134,7 +135,7 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
         {isAdmin(auth) && (
           <div className="mt-5 rounded-xl border border-dashed border-[#c4a978]/50 p-3">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#b09a78]">
-              Dev preview — all badges
+              {t("devPreviewBadges")}
             </p>
             <div className="flex flex-col gap-3">
               {ALL_BADGE_IDS.map((id) => (
@@ -142,7 +143,7 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
                   <UserBadge badge={id} />
                   <UserBadge badge={id} compact />
                   <span className="text-[11px] text-[#9a8670]">
-                    Tier {BADGE_DEFINITIONS[id].tier} — {id}
+                    {t("badgeTier", { tier: BADGE_DEFINITIONS[id].tier, id })}
                   </span>
                 </div>
               ))}
@@ -166,6 +167,9 @@ function formatTimestamp(value?: string) {
 }
 
 export function ProfilePage() {
+  const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
+  const tError = useTranslations("error");
   const { auth, applyAuth: onAuthChange, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -276,7 +280,7 @@ export function ProfilePage() {
       setProfile(response.profile);
       setDisplayName(response.profile.displayName);
       setEmail(response.profile.email || "");
-      setSuccessMessage("Profile saved.");
+      setSuccessMessage(t("profileSaved"));
     } catch (error) {
       if (isNetworkError(error)) {
         toastError(error);
@@ -292,12 +296,12 @@ export function ProfilePage() {
     setPasswordError(null);
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match.");
+      setPasswordError(t("passwordMismatch"));
       return;
     }
 
     if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
+      setPasswordError(t("passwordTooShort"));
       return;
     }
 
@@ -314,7 +318,7 @@ export function ProfilePage() {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordModalOpen(false);
-      setSuccessMessage("Password changed.");
+      setSuccessMessage(t("passwordChanged"));
     } catch (error) {
       if (isNetworkError(error)) {
         toastError(error);
@@ -329,7 +333,7 @@ export function ProfilePage() {
   const handleImageFile = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) {
-        toastError("Please select an image file.");
+        toastError(tError("selectImage"));
         return;
       }
       if (!auth || auth.player.kind !== "account") return;
@@ -347,7 +351,7 @@ export function ProfilePage() {
         onAuthChange(response.auth);
         setProfile(response.profile);
         setSelectedFile(null);
-        setSuccessMessage("Profile picture updated.");
+        setSuccessMessage(t("profilePictureUpdated"));
       } catch (error) {
         if (isNetworkError(error)) {
           toastError(error);
@@ -358,7 +362,7 @@ export function ProfilePage() {
         setUploading(false);
       }
     },
-    [auth, onAuthChange],
+    [auth, onAuthChange, t, tError],
   );
 
   useEffect(() => {
@@ -398,23 +402,22 @@ export function ProfilePage() {
         {auth?.player.kind !== "account" ? (
           <Card className={paperCard}>
             <CardHeader>
-              <CardTitle>Account profile</CardTitle>
+              <CardTitle>{t("title")}</CardTitle>
               <CardDescription>
-                Save a display name, email, and profile picture on the server.
+                {t("description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                Guest sessions are great for quick matches, but server-backed
-                profiles need a full account.
+                {t("guestNotice")}
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button onClick={() => onOpenAuth("signup")}>Create account</Button>
+                <Button onClick={() => onOpenAuth("signup")}>{t("createAccount")}</Button>
                 <Button variant="outline" onClick={() => onOpenAuth("login")}>
-                  Sign in
+                  {tCommon("signIn")}
                 </Button>
                 <Button variant="ghost" onClick={() => router.push("/")}>
-                  Back to lobby
+                  {tCommon("backToLobby")}
                 </Button>
               </div>
             </CardContent>
@@ -425,9 +428,9 @@ export function ProfilePage() {
           <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
             <Card className={paperCard}>
               <CardHeader>
-                <CardTitle>Picture</CardTitle>
+                <CardTitle>{t("picture")}</CardTitle>
                 <CardDescription>
-                  Upload a profile image that follows you around the app.
+                  {t("pictureDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -485,7 +488,7 @@ export function ProfilePage() {
                         className="h-full w-full object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.4)] opacity-0 transition-opacity group-hover:opacity-100">
-                        <span className="text-sm font-medium text-white">Change photo</span>
+                        <span className="text-sm font-medium text-white">{t("changePhoto")}</span>
                       </div>
                     </>
                   ) : (
@@ -494,7 +497,7 @@ export function ProfilePage() {
                         {(displayName || auth.player.displayName).slice(0, 1).toUpperCase()}
                       </span>
                       <span className="text-xs text-[#8b7659]">
-                        {dragging ? "Drop image here" : "Click, drag, or paste"}
+                        {dragging ? t("dropImage") : t("clickDragPaste")}
                       </span>
                     </div>
                   )}
@@ -512,22 +515,22 @@ export function ProfilePage() {
                 </div>
 
                 <p className="text-center text-xs text-[#8b7659]">
-                  Drop an image, paste from clipboard, or click to browse
+                  {t("pictureHint")}
                 </p>
               </CardContent>
             </Card>
 
             <Card className={paperCard}>
               <CardHeader>
-                <CardTitle>Basic info</CardTitle>
+                <CardTitle>{t("basicInfo")}</CardTitle>
                 <CardDescription>
-                  Keep your game identity polished without leaving the app.
+                  {t("basicInfoDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {loading ? (
                   <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                    Loading your saved profile...
+                    {t("loadingProfile")}
                   </div>
                 ) : (
                   <form
@@ -542,14 +545,14 @@ export function ProfilePage() {
                         htmlFor="profile-display-name"
                         className="text-sm font-medium text-[#4e3d2c]"
                       >
-                        Username
+                        {t("username")}
                       </label>
                       <Input
                         id="profile-display-name"
                         name="name"
                         value={displayName}
                         onChange={(event) => setDisplayName(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                        placeholder="username"
+                        placeholder={t("usernamePlaceholder")}
                         autoComplete="username"
                         pattern="^[a-z0-9][a-z0-9_-]*$"
                         minLength={3}
@@ -558,7 +561,7 @@ export function ProfilePage() {
                         required
                       />
                       <p className="text-xs text-[#8d7760]">
-                        3-32 characters. Lowercase letters, numbers, hyphens, and underscores only.
+                        {t("usernameHint")}
                       </p>
                     </div>
 
@@ -567,7 +570,7 @@ export function ProfilePage() {
                         htmlFor="profile-email"
                         className="text-sm font-medium text-[#4e3d2c]"
                       >
-                        Email (Optional)
+                        {t("emailOptional")}
                       </label>
                       <Input
                         id="profile-email"
@@ -592,25 +595,25 @@ export function ProfilePage() {
                           setPasswordModalOpen(true);
                         }}
                       >
-                        Change password
+                        {t("changePassword")}
                       </Button>
                     </div>
 
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                      <p>Created: {formatTimestamp(profile?.createdAt)}</p>
-                      <p>Updated: {formatTimestamp(profile?.updatedAt)}</p>
+                      <p>{t("created", { date: formatTimestamp(profile?.createdAt) })}</p>
+                      <p>{t("updated", { date: formatTimestamp(profile?.updatedAt) })}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
                       <Button type="submit" disabled={saving}>
-                        {saving ? "Saving..." : "Save changes"}
+                        {saving ? tCommon("saving") : tCommon("save")}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => router.push("/")}
                       >
-                        Back to lobby
+                        {tCommon("backToLobby")}
                       </Button>
                     </div>
                   </form>
@@ -632,8 +635,8 @@ export function ProfilePage() {
       <Dialog
         open={passwordModalOpen}
         onOpenChange={setPasswordModalOpen}
-        title="Change password"
-        description="Enter your current password and choose a new one."
+        title={t("changePasswordTitle")}
+        description={t("changePasswordDesc")}
       >
         <form
           onSubmit={(e) => {
@@ -644,7 +647,7 @@ export function ProfilePage() {
         >
           <div className="grid gap-2">
             <label htmlFor="current-password" className="text-sm font-medium text-[#4e3d2c]">
-              Current password
+              {t("currentPassword")}
             </label>
             <PasswordInput
               id="current-password"
@@ -658,7 +661,7 @@ export function ProfilePage() {
 
           <div className="grid gap-2">
             <label htmlFor="new-password" className="text-sm font-medium text-[#4e3d2c]">
-              New password
+              {t("newPassword")}
             </label>
             <PasswordInput
               id="new-password"
@@ -672,7 +675,7 @@ export function ProfilePage() {
 
           <div className="grid gap-2">
             <label htmlFor="confirm-password" className="text-sm font-medium text-[#4e3d2c]">
-              Confirm new password
+              {t("confirmNewPassword")}
             </label>
             <PasswordInput
               id="confirm-password"
@@ -692,14 +695,14 @@ export function ProfilePage() {
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={savingPassword}>
-              {savingPassword ? "Saving..." : "Update password"}
+              {savingPassword ? tCommon("saving") : t("updatePassword")}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setPasswordModalOpen(false)}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </form>

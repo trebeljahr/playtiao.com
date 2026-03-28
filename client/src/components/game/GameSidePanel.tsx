@@ -1,4 +1,5 @@
 import type { GameState, PlayerColor, TimeControl } from "@shared";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,7 @@ export function GameSidePanel({
   children,
   headerExtra,
 }: GameSidePanelProps) {
+  const t = useTranslations("game");
   const hasClock = timeControl !== null && clock !== undefined;
 
   return (
@@ -126,7 +128,7 @@ export function GameSidePanel({
                   onClick={onUndo}
                   disabled={undoDisabled}
                 >
-                  Undo move
+                  {t("undoMove")}
                 </Button>
               </div>
             )}

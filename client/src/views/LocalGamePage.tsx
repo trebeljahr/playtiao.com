@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { TimeControl } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,9 @@ import { cn } from "@/lib/utils";
 export function LocalGamePage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+  const t = useTranslations("game");
+  const tCommon = useTranslations("common");
+  const tLobby = useTranslations("lobby");
   const [navOpen, setNavOpen] = useState(false);
 
   // Config state
@@ -67,12 +71,12 @@ export function LocalGamePage() {
   }, [effectiveGameOver]);
 
   const localStatusTitle = isDraw
-    ? "Draw!"
+    ? t("draw")
     : timeoutWinner
-      ? `${formatPlayerColor(timeoutWinner)} wins on time!`
+      ? t("winsOnTime", { color: formatPlayerColor(timeoutWinner) })
       : winner
-        ? `${formatPlayerColor(winner)} wins!`
-        : `${formatPlayerColor(local.localGame.currentTurn)} to move`;
+        ? t("wins", { color: formatPlayerColor(winner) })
+        : t("toMove", { color: formatPlayerColor(local.localGame.currentTurn) });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -115,7 +119,7 @@ export function LocalGamePage() {
               <CardHeader>
                 <GamePanelBrand />
                 <CardTitle className="text-[#2b1e14]">
-                  Game Setup
+                  {t("gameSetup")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -127,7 +131,7 @@ export function LocalGamePage() {
                   onScoreToWinChange={setScoreToWin}
                   timeControl={timeControl}
                   onTimeControlChange={setTimeControl}
-                  submitLabel="Start Game"
+                  submitLabel={t("startGame")}
                   onSubmit={handleStartGame}
                 />
               </CardContent>
@@ -156,7 +160,7 @@ export function LocalGamePage() {
               scorePulse={local.localScorePulse}
               clock={timeControl ? clock : undefined}
               timeControl={timeControl}
-              badge="Over the Board"
+              badge={tLobby("overTheBoard")}
               statusTitle={localStatusTitle}
               onUndo={local.handleLocalUndoTurn}
               undoDisabled={local.localGame.history.length === 0}
@@ -164,10 +168,10 @@ export function LocalGamePage() {
               gameOverActions={
                 <>
                   <Button variant="secondary" onClick={handleNewGame}>
-                    New game
+                    {t("newGame")}
                   </Button>
                   <Button variant="ghost" onClick={() => router.push("/")}>
-                    Back to lobby
+                    {tCommon("backToLobby")}
                   </Button>
                 </>
               }
@@ -181,22 +185,22 @@ export function LocalGamePage() {
         onOpenChange={setGameOverDialogOpen}
         title={
           isDraw
-            ? "Draw!"
+            ? t("draw")
             : timeoutWinner
-              ? `${formatPlayerColor(timeoutWinner)} wins on time!`
-              : `${formatPlayerColor(effectiveWinner!)} wins!`
+              ? t("winsOnTime", { color: formatPlayerColor(timeoutWinner) })
+              : t("wins", { color: formatPlayerColor(effectiveWinner!) })
         }
-        description={isDraw ? "No moves remaining. Ready for another round?" : "Great game! Ready for another round?"}
+        description={isDraw ? t("drawNoMoves") : t("wonDesc")}
       >
         <div className="grid gap-2">
           <Button onClick={() => { setGameOverDialogOpen(false); handleNewGame(); }}>
-            New game
+            {t("newGame")}
           </Button>
           <Button variant="secondary" onClick={() => { setGameOverDialogOpen(false); handleStartGame(); }}>
-            Rematch (same settings)
+            {t("rematchSameSettings")}
           </Button>
           <Button variant="ghost" onClick={() => router.push("/")}>
-            Back to lobby
+            {tCommon("backToLobby")}
           </Button>
         </div>
       </Dialog>

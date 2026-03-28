@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { TimeControl } from "@shared";
 import { TIME_CONTROL_PRESETS } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
@@ -33,6 +34,9 @@ import { toastError } from "@/lib/errors";
 export function LobbyPage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+  const t = useTranslations("lobby");
+  const tc = useTranslations("common");
+  const tConfig = useTranslations("config");
   const { multiplayerGames, refreshMultiplayerGames } = useGamesIndex(auth);
 
   const { socialOverview, refreshSocialOverview, handleDeclineGameInvitation } =
@@ -63,11 +67,11 @@ export function LobbyPage() {
         const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
         const opponentName =
           summary.seats[opponentSeat]?.player.displayName || "your opponent";
-        toast.info(`Your move in ${summary.gameId}`, {
+        toast.info(t("yourMoveToast", { gameId: summary.gameId }), {
           id: `your-turn-${summary.gameId}`,
-          description: `It's your turn against ${opponentName}.`,
+          description: t("yourTurnDesc", { opponent: opponentName }),
           action: {
-            label: "Join Game",
+            label: t("joinGame"),
             onClick: () => window.location.assign(`/game/${summary.gameId}`),
           },
         });
@@ -84,11 +88,11 @@ export function LobbyPage() {
         const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
         const opponentName =
           summary.seats[opponentSeat]?.player.displayName || "your opponent";
-        toast(`${opponentName} wants a rematch!`, {
+        toast(t("rematchToast", { opponent: opponentName }), {
           id: `rematch-${summary.gameId}`,
-          description: `Game ${summary.gameId}`,
+          description: t("game", { gameId: summary.gameId }),
           action: {
-            label: "View Game",
+            label: t("viewGame"),
             onClick: () => window.location.assign(`/game/${summary.gameId}`),
           },
         });
@@ -218,15 +222,14 @@ export function LobbyPage() {
                 Tiao
               </h1>
               <p className="max-w-md text-sm font-medium text-[#6e5b48]/80 sm:text-lg">
-                A beautiful abstract strategy game. Play online, with friends,
-                or against an AI.
+                {t("tagline")}
               </p>
               <Button
                 variant="ghost"
                 className="text-[#b98d49] hover:text-[#8d6a2f] hover:bg-[#f4e8d2] font-semibold"
                 onClick={() => router.push("/tutorial")}
               >
-                New here? Learn to play →
+                {t("learnToPlay")}
               </Button>
             </motion.div>
           </section>
@@ -243,14 +246,13 @@ export function LobbyPage() {
               <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
               <CardHeader className="pb-6">
                 <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c] mb-2">
-                  Local
+                  {t("local")}
                 </Badge>
                 <CardTitle className="text-3xl text-[#2b1e14]">
-                  Over the Board
+                  {t("overTheBoard")}
                 </CardTitle>
                 <CardDescription className="text-sm text-[#6e5b48] mt-1 md:hidden xl:block">
-                  Share a screen with a friend or sharpen your skills against an
-                  AI.
+                  {t("overTheBoardDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-6 pb-6">
@@ -259,12 +261,12 @@ export function LobbyPage() {
                   className="w-full h-12 text-base"
                   onClick={() => router.push("/local")}
                 >
-                  Play with a Friend
+                  {t("playWithFriend")}
                 </Button>
 
                 <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#8d7760]">
                   <span className="h-px flex-1 bg-[#dcc7a2]" />
-                  or
+                  {tc("or")}
                   <span className="h-px flex-1 bg-[#dcc7a2]" />
                 </div>
 
@@ -274,7 +276,7 @@ export function LobbyPage() {
                   className="w-full h-12 text-base border-[#dcc7a2]"
                   onClick={() => router.push("/computer")}
                 >
-                  Play with a Bot
+                  {t("playWithBot")}
                 </Button>
               </CardContent>
             </Card>
@@ -291,14 +293,13 @@ export function LobbyPage() {
               <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
               <CardHeader className="pb-6">
                 <Badge className="w-fit bg-[#f5ead8] text-[#6e5437] mb-2">
-                  Online
+                  {t("online")}
                 </Badge>
                 <CardTitle className="text-3xl text-[#2b1e14]">
-                  Play Someone Specific
+                  {t("playSomeoneSpecific")}
                 </CardTitle>
                 <CardDescription className="text-sm text-[#6e5b48] mt-1 md:hidden xl:block">
-                  Create a private game and share the code, or join a friend's
-                  game with theirs.
+                  {t("playSomeoneSpecificDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pb-6">
@@ -309,13 +310,13 @@ export function LobbyPage() {
                     onClick={() => setShowCreateDialog(true)}
                     disabled={multiplayerBusy}
                   >
-                    Create a game
+                    {t("createGame")}
                   </Button>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#8d7760]">
                   <span className="h-px flex-1 bg-[#dcc7a2]" />
-                  or join one
+                  {t("orJoinOne")}
                   <span className="h-px flex-1 bg-[#dcc7a2]" />
                 </div>
 
@@ -327,7 +328,7 @@ export function LobbyPage() {
                         e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
                       )
                     }
-                    placeholder="Game ID"
+                    placeholder={tc("gameId")}
                     maxLength={6}
                     className="h-12 font-mono bg-white/60 border-[#dcc7a2] focus:ring-[#b98d49]"
                   />
@@ -337,7 +338,7 @@ export function LobbyPage() {
                     onClick={handleJoinRoom}
                     disabled={multiplayerBusy || !joinGameId}
                   >
-                    Join
+                    {tc("join")}
                   </Button>
                 </div>
               </CardContent>
@@ -355,14 +356,13 @@ export function LobbyPage() {
               <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
               <CardHeader className="pb-6">
                 <Badge className="w-fit bg-[#f5ead8] text-[#6e5437] mb-2">
-                  Online
+                  {t("online")}
                 </Badge>
                 <CardTitle className="text-3xl text-[#2b1e14]">
-                  Matchmaking
+                  {t("matchmaking")}
                 </CardTitle>
                 <CardDescription className="text-sm text-[#6e5b48] mt-1 xl:hidden">
-                  Jump into a game against a random opponent. Pick a time
-                  control or play without one.
+                  {t("matchmakingDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pb-6">
@@ -371,12 +371,12 @@ export function LobbyPage() {
                   className="w-full h-12 text-base"
                   onClick={() => router.push("/matchmaking")}
                 >
-                  Unlimited time game
+                  {t("unlimitedTimeGame")}
                 </Button>
 
                 <div className="space-y-2">
                   <p className="text-[0.68rem] text-[#8d7760]">
-                    Format: <span className="font-semibold">minutes + seconds increment per move</span>
+                    {t("timeFormat", { format: "" })}<span className="font-semibold">{t("timeFormatBold")}</span>
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {TIME_CONTROL_PRESETS.map((preset) => {
@@ -398,7 +398,7 @@ export function LobbyPage() {
                             {preset.label}
                           </span>
                           <span className="text-[0.6rem] uppercase tracking-wider text-[#8d7760]">
-                            {preset.category}
+                            {tConfig(preset.category.toLowerCase() as "bullet" | "blitz" | "rapid" | "classical")}
                           </span>
                         </Button>
                       );
@@ -420,7 +420,7 @@ export function LobbyPage() {
               <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
                   <CardTitle className="text-2xl text-[#2b1e14]">
-                    Active Games
+                    {t("activeGames")}
                   </CardTitle>
                   <Button
                     variant="secondary"
@@ -428,7 +428,7 @@ export function LobbyPage() {
                     className="bg-[#f4e8d2] hover:bg-[#ecd4a6] border-[#dcc7a2] text-[#6c543c]"
                     onClick={() => router.push("/games")}
                   >
-                    View all
+                    {t("viewAll")}
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-6">
@@ -503,10 +503,10 @@ export function LobbyPage() {
                             )}
                           >
                             {hasRematchRequest
-                              ? "Rematch requested"
+                              ? t("rematchRequested")
                               : isYourTurn
-                                ? "Your move"
-                                : "Their move"}
+                                ? t("yourMove")
+                                : t("theirMove")}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
@@ -519,14 +519,14 @@ export function LobbyPage() {
                                 e.stopPropagation();
                                 try {
                                   await cancelMultiplayerGame(game.gameId);
-                                  toast.success("Game cancelled.");
+                                  toast.success(t("gameCancelled"));
                                   void refreshMultiplayerGames({ silent: true });
                                 } catch (err) {
                                   toastError(err);
                                 }
                               }}
                             >
-                              Cancel
+                              {tc("cancel")}
                             </Button>
                           )}
                           <Button
@@ -534,7 +534,7 @@ export function LobbyPage() {
                             className="shadow-sm group-hover:scale-105 transition-transform"
                             onClick={() => router.push(`/game/${game.gameId}`)}
                           >
-                            {hasRematchRequest ? "View" : "Resume"}
+                            {hasRematchRequest ? tc("view") : tc("resume")}
                           </Button>
                         </div>
                       </div>
@@ -542,7 +542,7 @@ export function LobbyPage() {
                   })}
                   {sortedActiveGames.length === 0 && (
                     <p className="text-center text-sm text-[#6e5b48] py-8 bg-white/20 rounded-2xl border border-dashed border-[#dcc7a2]">
-                      No active games yet. Try Quick Match!
+                      {t("noActiveGames")}
                     </p>
                   )}
                 </CardContent>
@@ -558,7 +558,7 @@ export function LobbyPage() {
               <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
                   <CardTitle className="text-2xl text-[#2b1e14]">
-                    Invitations
+                    {t("invitations")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-6">
@@ -584,21 +584,21 @@ export function LobbyPage() {
                           className="border-[#dcc7a2] hover:bg-[#faefd8]"
                           onClick={() => handleDeclineGameInvitation(inv.id)}
                         >
-                          Decline
+                          {tc("decline")}
                         </Button>
                         <Button
                           size="sm"
                           className="shadow-sm group-hover:scale-105 transition-transform"
                           onClick={() => router.push(`/game/${inv.gameId}`)}
                         >
-                          Accept
+                          {tc("accept")}
                         </Button>
                       </div>
                     </div>
                   ))}
                   {socialOverview.incomingInvitations.length === 0 && (
                     <p className="text-center text-sm text-[#6e5b48] py-8 bg-white/20 rounded-2xl border border-dashed border-[#dcc7a2]">
-                      No invitations right now.
+                      {t("noInvitations")}
                     </p>
                   )}
                 </CardContent>
@@ -618,13 +618,13 @@ export function LobbyPage() {
             <Card className={cn("overflow-hidden shadow-lg", paperCard)}>
               <CardHeader className="pb-3">
                 <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">
-                  Spectate
+                  {t("spectate")}
                 </Badge>
                 <CardTitle className="text-2xl text-[#2b1e14]">
-                  Watch a Game
+                  {t("watchGame")}
                 </CardTitle>
                 <CardDescription className="text-sm text-[#6e5b48] mt-1">
-                  Paste a Game ID to spectate a match in progress.
+                  {t("watchGameDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-6">
@@ -641,9 +641,7 @@ export function LobbyPage() {
                       ...multiplayerGames.finished,
                     ];
                     if (allGames.some((g) => g.gameId === id)) {
-                      toast.error(
-                        "That's your own game! Use the game list above to rejoin it.",
-                      );
+                      toast.error(t("ownGameError"));
                       return;
                     }
                     router.push(`/game/${id}`);
@@ -652,7 +650,7 @@ export function LobbyPage() {
                 >
                   <Input
                     name="spectate-id"
-                    placeholder="Game ID"
+                    placeholder={tc("gameId")}
                     maxLength={6}
                     className="h-12 font-mono bg-white/60 border-[#dcc7a2] focus:ring-[#b98d49]"
                     onChange={(e) => {
@@ -667,7 +665,7 @@ export function LobbyPage() {
                     className="h-12 px-6 border-[#dcc7a2] hover:bg-[#f5f0fc]"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                    Watch
+                    {t("watch")}
                   </Button>
                 </form>
               </CardContent>
@@ -678,7 +676,7 @@ export function LobbyPage() {
 
       <footer className="mx-auto max-w-5xl px-4 pb-8 pt-4 text-center text-xs text-[#a8957e] sm:px-6">
         <p>
-          Tiao is a game created by{" "}
+          {t("footer")}{" "}
           <button
             type="button"
             className="font-medium text-[#8b7356] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#5d4732]"
@@ -686,7 +684,7 @@ export function LobbyPage() {
           >
             Andreas Edmeier
           </button>
-          . This digital version is built with{" "}
+          . {t("footerBuiltWith")}{" "}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -696,7 +694,7 @@ export function LobbyPage() {
           >
             <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
           </svg>
-          {" "}by{" "}
+          {" "}{t("footerBy")}{" "}
           <button
             type="button"
             className="font-medium text-[#8b7356] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#5d4732]"
@@ -711,8 +709,8 @@ export function LobbyPage() {
       <Dialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        title="Create a Game"
-        description="Configure your game settings, then share the code with a friend."
+        title={t("createGameTitle")}
+        description={t("createGameDesc")}
       >
         <GameConfigPanel
           mode="multiplayer"
@@ -722,7 +720,7 @@ export function LobbyPage() {
           onScoreToWinChange={setCreateScoreToWin}
           timeControl={createTimeControl}
           onTimeControlChange={setCreateTimeControl}
-          submitLabel="Create Game"
+          submitLabel={t("createGameButton")}
           onSubmit={handleCreateRoom}
           busy={multiplayerBusy}
         />

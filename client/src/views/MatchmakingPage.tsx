@@ -14,8 +14,11 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { HourglassSpinner } from "@/components/game/GameShared";
 import { useMatchmakingData } from "@/lib/hooks/useMatchmakingData";
+import { useTranslations } from "next-intl";
 
 export function MatchmakingPage() {
+  const t = useTranslations("matchmaking");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,23 +74,23 @@ export function MatchmakingPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <Card className={paperCard}>
             <CardHeader className="text-center">
-              <CardTitle className="text-4xl text-[#2b1e14]">Matchmaking</CardTitle>
+              <CardTitle className="text-4xl text-[#2b1e14]">{t("title")}</CardTitle>
               <CardDescription className="text-[#6e5b48]">
-                Find an opponent online and start building your game history.
+                {t("description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 flex flex-col items-center py-8">
               {!auth ? (
                 <div className="w-full space-y-4 text-center">
                   <p className="text-[#6e5b48]">
-                    Please sign in to enter the global matchmaking queue.
+                    {t("signInRequired")}
                   </p>
                   <Button
                     size="lg"
                     className="w-full h-16 text-xl"
                     onClick={() => onOpenAuth("login")}
                   >
-                    Sign In
+                    {tCommon("signIn")}
                   </Button>
                 </div>
               ) : matchmaking.status === "searching" || matchmakingBusy ? (
@@ -100,7 +103,7 @@ export function MatchmakingPage() {
                       transition={{ duration: 2, repeat: Infinity }}
                     />
                   </div>
-                  <p className="text-lg font-semibold text-[#5d4732]">Searching for opponent...</p>
+                  <p className="text-lg font-semibold text-[#5d4732]">{t("searching")}</p>
                   <p
                     className="text-sm text-[#7a6656]"
                     title={
@@ -111,20 +114,20 @@ export function MatchmakingPage() {
                   >
                     {locationTimeControl
                       ? `${Math.floor(locationTimeControl.initialMs / 60000)}+${Math.floor(locationTimeControl.incrementMs / 1000)}`
-                      : "Unlimited"}
+                      : t("unlimited")}
                   </p>
                   <Button
                     variant="outline"
                     onClick={async () => { cancelledRef.current = true; await handleCancelMatchmaking(); router.push("/"); }}
                     disabled={matchmakingBusy}
                   >
-                    Cancel Search
+                    {t("cancelSearch")}
                   </Button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4">
                   <HourglassSpinner className="h-16 w-16 text-[#a6824d] opacity-50" />
-                  <p className="text-[#6e5b48]">Initializing matchmaking...</p>
+                  <p className="text-[#6e5b48]">{t("initializing")}</p>
                 </div>
               )}
             </CardContent>

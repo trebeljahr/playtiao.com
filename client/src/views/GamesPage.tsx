@@ -23,8 +23,11 @@ import {
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function GamesPage() {
+  const t = useTranslations("games");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -77,14 +80,14 @@ export function GamesPage() {
 
       <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-display font-bold text-[#2b1e14]">My Games</h1>
+          <h1 className="text-3xl font-display font-bold text-[#2b1e14]">{t("title")}</h1>
         </div>
 
         <section className="space-y-6">
           <Card className={paperCard}>
             <CardHeader>
-              <CardTitle>Active Games</CardTitle>
-              <CardDescription>Ongoing matches waiting for a move.</CardDescription>
+              <CardTitle>{t("activeGames")}</CardTitle>
+              <CardDescription>{t("activeGamesDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               {multiplayerGames.active.map(game => {
@@ -136,18 +139,18 @@ export function GamesPage() {
                         />
                       </div>
                     </div>
-                    <Button onClick={() => router.push(`/game/${game.gameId}`)}>Resume</Button>
+                    <Button onClick={() => router.push(`/game/${game.gameId}`)}>{tCommon("resume")}</Button>
                   </div>
                 );
               })}
-              {multiplayerGames.active.length === 0 && <p className="col-span-full py-8 text-center text-sm text-[#6e5b48]">No active games.</p>}
+              {multiplayerGames.active.length === 0 && <p className="col-span-full py-8 text-center text-sm text-[#6e5b48]">{t("noActiveGames")}</p>}
             </CardContent>
           </Card>
 
           <Card className={paperCard}>
             <CardHeader>
-              <CardTitle>Match History</CardTitle>
-              <CardDescription>Your recently completed matches.</CardDescription>
+              <CardTitle>{t("matchHistory")}</CardTitle>
+              <CardDescription>{t("matchHistoryDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
               {multiplayerGames.finished.map(game => (
@@ -160,7 +163,7 @@ export function GamesPage() {
                   onReview={() => router.push(`/game/${game.gameId}`)}
                 />
               ))}
-              {multiplayerGames.finished.length === 0 && <p className="col-span-full py-8 text-center text-sm text-[#6e5b48]">No completed matches yet.</p>}
+              {multiplayerGames.finished.length === 0 && <p className="col-span-full py-8 text-center text-sm text-[#6e5b48]">{t("noMatchHistory")}</p>}
             </CardContent>
           </Card>
         </section>

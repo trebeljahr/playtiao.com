@@ -18,8 +18,12 @@ import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { createMultiplayerGame } from "@/lib/api";
 import { toastError } from "@/lib/errors";
+import { useTranslations } from "next-intl";
 
 export function FriendsPage() {
+  const t = useTranslations("friends");
+  const tCommon = useTranslations("common");
+  const tLobby = useTranslations("lobby");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -33,7 +37,7 @@ export function FriendsPage() {
       const response = await createMultiplayerGame();
       const gameId = response.snapshot.gameId;
       await social.handleSendGameInvitation(gameId, friendId, 60);
-      toast.success("Game created & invitation sent!");
+      toast.success(tLobby("inviteSent"));
       router.push(`/game/${gameId}`);
     } catch (error) {
       toastError(error);
@@ -80,31 +84,31 @@ export function FriendsPage() {
         <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr]">
           <Card className={paperCard}>
             <CardHeader>
-              <CardTitle>Find players</CardTitle>
-              <CardDescription>Search by name to send friend requests.</CardDescription>
+              <CardTitle>{t("findPlayers")}</CardTitle>
+              <CardDescription>{t("findPlayersDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Player name..."
+                  placeholder={t("playerNamePlaceholder")}
                   value={social.friendSearchQuery}
                   onChange={(e) => social.setFriendSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && social.runFriendSearch()}
                 />
-                <Button onClick={social.runFriendSearch} disabled={social.friendSearchBusy}>Search</Button>
+                <Button onClick={social.runFriendSearch} disabled={social.friendSearchBusy}>{tCommon("search")}</Button>
               </div>
               <div className="space-y-2">
                 {social.friendSearchResults.map((result) => (
                   <div key={result.player.playerId} className="flex items-center justify-between p-2 rounded-xl bg-white/40">
                     <PlayerIdentityRow player={result.player} />
                     {result.relationship === "friend" ? (
-                      <Badge variant="outline">Friend</Badge>
+                      <Badge variant="outline">{t("friend")}</Badge>
                     ) : result.relationship === "outgoing-request" ? (
-                      <Badge variant="outline" className="text-[#8d7760]">Pending</Badge>
+                      <Badge variant="outline" className="text-[#8d7760]">{t("pending")}</Badge>
                     ) : result.relationship === "incoming-request" ? (
-                      <Button size="sm" onClick={() => social.handleAcceptFriendRequest(result.player.playerId)}>Accept</Button>
+                      <Button size="sm" onClick={() => social.handleAcceptFriendRequest(result.player.playerId)}>{tCommon("accept")}</Button>
                     ) : (
-                      <Button size="sm" onClick={() => social.handleSendFriendRequest(result.player.playerId)}>Add</Button>
+                      <Button size="sm" onClick={() => social.handleSendFriendRequest(result.player.playerId)}>{tCommon("add")}</Button>
                     )}
                   </div>
                 ))}
@@ -114,23 +118,23 @@ export function FriendsPage() {
 
           <div className="space-y-5">
             <Card className={paperCard}>
-              <CardHeader><CardTitle>Pending</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t("pending")}</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {social.socialOverview.incomingFriendRequests.map(req => (
                   <div key={req.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
                     <PlayerIdentityRow player={req} nameClassName="font-medium" />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => social.handleAcceptFriendRequest(req.playerId)}>Accept</Button>
-                      <Button size="sm" variant="ghost" onClick={() => social.handleDeclineFriendRequest(req.playerId)}>Decline</Button>
+                      <Button size="sm" onClick={() => social.handleAcceptFriendRequest(req.playerId)}>{tCommon("accept")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => social.handleDeclineFriendRequest(req.playerId)}>{tCommon("decline")}</Button>
                     </div>
                   </div>
                 ))}
-                {social.socialOverview.incomingFriendRequests.length === 0 && <p className="text-sm text-[#6e5b48]">No pending requests.</p>}
+                {social.socialOverview.incomingFriendRequests.length === 0 && <p className="text-sm text-[#6e5b48]">{t("noPendingRequests")}</p>}
               </CardContent>
             </Card>
 
             <Card className={paperCard}>
-              <CardHeader><CardTitle>Friends</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t("friends")}</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {social.socialOverview.friends.map(friend => (
                   <div key={friend.playerId} className="flex items-center justify-between p-3 rounded-xl bg-white/40">
@@ -143,7 +147,7 @@ export function FriendsPage() {
                         onClick={() => handleInviteToGame(friend.playerId)}
                         disabled={inviteBusy === friend.playerId}
                       >
-                        {inviteBusy === friend.playerId ? "Creating..." : "Invite"}
+                        {inviteBusy === friend.playerId ? tCommon("creating") : t("invite")}
                       </Button>
                       <Button
                         size="sm"
@@ -152,12 +156,12 @@ export function FriendsPage() {
                         onClick={() => social.handleRemoveFriend(friend.playerId)}
                         disabled={social.socialActionBusyKey === `friend-remove:${friend.playerId}`}
                       >
-                        Unfriend
+                        {t("unfriend")}
                       </Button>
                     </div>
                   </div>
                 ))}
-                {social.socialOverview.friends.length === 0 && <p className="text-sm text-[#6e5b48]">Your friend list is empty.</p>}
+                {social.socialOverview.friends.length === 0 && <p className="text-sm text-[#6e5b48]">{t("emptyFriendList")}</p>}
               </CardContent>
             </Card>
           </div>

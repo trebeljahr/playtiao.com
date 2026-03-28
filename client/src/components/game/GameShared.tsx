@@ -11,6 +11,7 @@ import type {
   SocialPlayerSummary,
   FinishReason,
 } from "@shared";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { formatClockTime } from "./GameClock";

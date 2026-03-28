@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 }
 
 function SoundToggle() {
+  const t = useTranslations("nav");
   const [enabled, toggle] = useToggleSound();
 
   return (
@@ -70,7 +72,7 @@ function SoundToggle() {
       type="button"
       onClick={toggle}
       className="relative flex h-8 w-8 items-center justify-center rounded-full text-[#6e5b48] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#28170e]"
-      aria-label={enabled ? "Mute sounds" : "Unmute sounds"}
+      aria-label={enabled ? t("muteSounds") : t("unmuteSounds")}
     >
       <motion.svg
         key={enabled ? "on" : "off"}
@@ -145,6 +147,7 @@ function SoundToggle() {
 }
 
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
+  const t = useTranslations("common");
   const player = auth?.player;
   const isAnonymous = player?.kind !== "account";
 
@@ -153,13 +156,13 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
       <SoundToggle />
       <div className="flex max-w-[11.5rem] items-center gap-3 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
         <PlayerOverviewAvatar
-          player={{ displayName: isAnonymous ? "Anonymous" : player.displayName, profilePicture: player?.profilePicture }}
+          player={{ displayName: isAnonymous ? t("anonymous") : player.displayName, profilePicture: player?.profilePicture }}
           anonymous={isAnonymous}
           className="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
         />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
-            {isAnonymous ? "Anonymous" : player.displayName}
+            {isAnonymous ? t("anonymous") : player.displayName}
           </p>
         </div>
       </div>
@@ -176,6 +179,7 @@ function Brand({
   compact?: boolean;
   className?: string;
 }) {
+  const tNav = useTranslations("nav");
   return (
     <button
       type="button"
@@ -185,7 +189,7 @@ function Brand({
         compact ? "gap-2.5" : "gap-3",
         className
       )}
-      aria-label="Go to lobby"
+      aria-label={tNav("goToLobby")}
     >
       <span
         className={cn(
@@ -216,6 +220,8 @@ export function Navbar({
   onOpenAuth,
   onLogout,
 }: NavbarProps) {
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const { pendingFriendRequestCount, incomingInvitationCount } = useSocialNotifications();
@@ -237,13 +243,13 @@ export function Navbar({
 
   const navItems = [
     {
-      label: "Lobby",
+      label: t("lobby"),
       active: pathname === "/",
       onClick: () => handleNav("/"),
       badge: incomingInvitationCount,
     },
     {
-      label: "Over the Board",
+      label: t("overTheBoard"),
       active: pathname === "/local",
       onClick: () => handleNav("/local"),
       badge: 0,
@@ -251,7 +257,7 @@ export function Navbar({
     ...(pathname?.startsWith("/game/")
       ? [
           {
-            label: "Multiplayer",
+            label: t("multiplayer"),
             active: true,
             onClick: () => {},
             badge: 0,
@@ -259,7 +265,7 @@ export function Navbar({
         ]
       : []),
     {
-      label: "Against computer",
+      label: t("againstComputer"),
       active: pathname === "/computer",
       onClick: () => handleNav("/computer"),
       badge: 0,
@@ -267,19 +273,19 @@ export function Navbar({
     ...(isAccount
       ? [
           {
-            label: "Friends",
+            label: t("friends"),
             active: pathname === "/friends",
             onClick: () => handleNav("/friends"),
             badge: pendingFriendRequestCount,
           },
           {
-            label: "My Games",
+            label: t("myGames"),
             active: pathname === "/games",
             onClick: () => handleNav("/games"),
             badge: 0,
           },
           {
-            label: "Tournaments",
+            label: t("tournaments"),
             active: pathname?.startsWith("/tournament"),
             onClick: () => handleNav("/tournaments"),
             badge: 0,
@@ -287,7 +293,7 @@ export function Navbar({
         ]
       : []),
     {
-      label: "Tutorial",
+      label: t("tutorial"),
       active: pathname === "/tutorial",
       onClick: () => handleNav("/tutorial"),
       badge: 0,
@@ -325,19 +331,19 @@ export function Navbar({
     player?.kind === "account" ? (
       <>
         <Button variant="secondary" size="sm" onClick={() => handleNav("/profile")}>
-          Profile
+          {t("profile")}
         </Button>
         <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={onLogout}>
-          Logout
+          {t("logout")}
         </Button>
       </>
     ) : (
       <>
         <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={() => onOpenAuth("login")}>
-          Sign in
+          {t("signIn")}
         </Button>
         <Button size="sm" onClick={() => onOpenAuth("signup")}>
-          Sign up
+          {t("signUp")}
         </Button>
       </>
     );
@@ -402,7 +408,7 @@ export function Navbar({
       <div className="mt-6 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4 text-left">
         <div className="flex items-center gap-3 text-left">
           <PlayerIdentityRow
-            player={{ displayName: isAnonymous ? "Anonymous" : player?.displayName, profilePicture: player?.profilePicture }}
+            player={{ displayName: isAnonymous ? tCommon("anonymous") : player?.displayName, profilePicture: player?.profilePicture }}
             anonymous={isAnonymous}
             avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
             nameClassName="text-base font-semibold"
@@ -415,13 +421,13 @@ export function Navbar({
           {player?.kind === "account" ? (
             <>
               <Button variant="secondary" className="w-full justify-start" onClick={() => handleNav("/profile")}>
-                Profile
+                {t("profile")}
               </Button>
               <Button variant="ghost" className="w-full justify-start text-[#28170e]" onClick={() => {
                 onCloseNav();
                 onLogout();
               }}>
-                Logout
+                {t("logout")}
               </Button>
             </>
           ) : (
@@ -430,13 +436,13 @@ export function Navbar({
                 onCloseNav();
                 onOpenAuth("login");
               }}>
-                Sign in
+                {t("signIn")}
               </Button>
               <Button className="w-full justify-start" onClick={() => {
                 onCloseNav();
                 onOpenAuth("signup");
               }}>
-                Sign up
+                {t("signUp")}
               </Button>
             </>
           )}
@@ -461,7 +467,7 @@ export function Navbar({
         <button
           type="button"
           className="fixed left-3 top-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur transition-colors hover:bg-[rgba(255,252,245,0.96)]"
-          aria-label="Open navigation"
+          aria-label={t("openNavigation")}
           aria-expanded={navOpen}
           onClick={onToggleNav}
         >
@@ -485,7 +491,7 @@ export function Navbar({
               <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.75)] text-[#28170e] transition-colors hover:bg-[rgba(255,252,245,0.9)] lg:hidden"
-                aria-label="Open navigation"
+                aria-label={t("openNavigation")}
                 aria-expanded={navOpen}
                 onClick={onToggleNav}
               >

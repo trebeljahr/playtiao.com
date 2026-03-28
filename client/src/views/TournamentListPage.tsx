@@ -10,15 +10,16 @@ import { TournamentCreationForm } from "@/components/tournament/TournamentCreati
 import { createTournament } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
+import { useTranslations } from "next-intl";
 
-function formatLabel(format: string): string {
+function formatLabel(format: string, t: (key: string) => string): string {
   switch (format) {
     case "round-robin":
-      return "Round Robin";
+      return t("roundRobin");
     case "single-elimination":
-      return "Elimination";
+      return t("elimination");
     case "groups-knockout":
-      return "Groups + KO";
+      return t("groupsKo");
     default:
       return format;
   }
@@ -40,6 +41,8 @@ function statusColor(status: string): string {
 }
 
 export function TournamentListPage() {
+  const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const isAccount = auth?.player?.kind === "account";
@@ -82,65 +85,65 @@ export function TournamentListPage() {
 
       <div className="mx-auto max-w-3xl px-4 pb-5 pt-20">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-3xl font-bold">Tournaments</h1>
+          <h1 className="font-display text-3xl font-bold">{t("title")}</h1>
           {isAccount && (
             <Button onClick={() => setCreateOpen(true)}>
-              Create Tournament
+              {t("createTournament")}
             </Button>
           )}
         </div>
 
         {isAccount && (
           <div className="flex gap-2 mb-4">
-            {(["browse", "my"] as const).map((t) => (
+            {(["browse", "my"] as const).map((tabKey) => (
               <Button
-                key={t}
-                variant={tab === t ? "default" : "outline"}
+                key={tabKey}
+                variant={tab === tabKey ? "default" : "outline"}
                 size="sm"
-                onClick={() => setTab(t)}
+                onClick={() => setTab(tabKey)}
               >
-                {t === "browse" ? "Browse" : "My Tournaments"}
+                {tabKey === "browse" ? t("browse") : t("myTournaments")}
               </Button>
             ))}
           </div>
         )}
 
         {loading && displayList.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Loading tournaments...</p>
+          <p className="text-sm text-muted-foreground">{t("loadingTournaments")}</p>
         ) : displayList.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               {tab === "my"
-                ? "You haven't joined or created any tournaments yet."
-                : "No public tournaments available right now."}
+                ? t("noMyTournaments")
+                : t("noPublicTournaments")}
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {displayList.map((t) => (
+            {displayList.map((item) => (
               <Card
-                key={t.tournamentId}
+                key={item.tournamentId}
                 className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => router.push(`/tournament/${t.tournamentId}`)}
+                onClick={() => router.push(`/tournament/${item.tournamentId}`)}
               >
                 <CardContent className="flex items-center justify-between gap-4 py-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{t.name}</span>
-                      <Badge className={statusColor(t.status)}>
-                        {t.status}
+                      <span className="font-medium truncate">{item.name}</span>
+                      <Badge className={statusColor(item.status)}>
+                        {item.status}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                      <span>{formatLabel(t.format)}</span>
+                      <span>{formatLabel(item.format, t)}</span>
                       <span>
-                        {t.playerCount}/{t.maxPlayers} players
+                        {t("players", { count: item.playerCount, max: item.maxPlayers })}
                       </span>
-                      <span>by {t.creatorDisplayName}</span>
+                      <span>{t("by", { name: item.creatorDisplayName })}</span>
                     </div>
                   </div>
                   <Button variant="outline" size="sm">
-                    View
+                    {tCommon("view")}
                   </Button>
                 </CardContent>
               </Card>

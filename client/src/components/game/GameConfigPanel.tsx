@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { TimeControl } from "@shared";
 import {
   BOARD_SIZE_OPTIONS,
@@ -6,7 +7,6 @@ import {
   TIME_CONTROL_PRESETS,
 } from "@shared";
 import type { AIDifficulty } from "@/lib/computer-ai";
-import { AI_DIFFICULTY_LABELS } from "@/lib/engine/tiao-engine";
 import type { PlayerColor } from "@shared";
 import { Button } from "@/components/ui/button";
 import { NumberStepper } from "@/components/ui/number-stepper";
@@ -97,6 +97,9 @@ export function GameConfigPanel({
   onSubmit,
   busy,
 }: GameConfigPanelProps) {
+  const t = useTranslations("config");
+  const tCommon = useTranslations("common");
+  const tGame = useTranslations("game");
   const showTimeControl = mode !== "computer";
   const showAI = mode === "computer";
   const tcMatch = (tc: TimeControl, preset: { initialMs: number; incrementMs: number }) =>
@@ -105,7 +108,7 @@ export function GameConfigPanel({
   return (
     <div className="space-y-5">
       {showAI && onDifficultyChange && (
-        <OptionGroup label="Difficulty">
+        <OptionGroup label={t("difficulty")}>
           <div className="grid grid-cols-3 gap-2">
             {DIFFICULTIES.map((level) => (
               <ToggleButton
@@ -113,7 +116,7 @@ export function GameConfigPanel({
                 active={difficulty === level}
                 onClick={() => onDifficultyChange(level)}
               >
-                {AI_DIFFICULTY_LABELS[level]}
+                {t(level === 1 ? "easy" : level === 2 ? "intermediate" : "hard")}
               </ToggleButton>
             ))}
           </div>
@@ -121,7 +124,7 @@ export function GameConfigPanel({
       )}
 
       {showAI && onColorChange && (
-        <OptionGroup label="Play as">
+        <OptionGroup label={t("playAs")}>
           <div className="grid grid-cols-3 gap-2">
             <ToggleButton
               active={selectedColor === "random"}
@@ -134,7 +137,7 @@ export function GameConfigPanel({
                   background: "linear-gradient(135deg, #f4eee3 50%, #2d2622 50%)",
                 }}
               />
-              Random
+              {t("random")}
             </ToggleButton>
             <ToggleButton
               active={selectedColor === "white"}
@@ -142,7 +145,7 @@ export function GameConfigPanel({
               className="flex items-center gap-2"
             >
               <span className="h-4 w-4 rounded-full border border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]" />
-              White
+              {tGame("white")}
             </ToggleButton>
             <ToggleButton
               active={selectedColor === "black"}
@@ -150,13 +153,13 @@ export function GameConfigPanel({
               className="flex items-center gap-2"
             >
               <span className="h-4 w-4 rounded-full border border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]" />
-              Black
+              {tGame("black")}
             </ToggleButton>
           </div>
         </OptionGroup>
       )}
 
-      <OptionGroup label="Board Size">
+      <OptionGroup label={t("boardSize")}>
         <div className="grid grid-cols-3 gap-2">
           {BOARD_SIZE_OPTIONS.map((size) => (
             <ToggleButton
@@ -170,7 +173,7 @@ export function GameConfigPanel({
         </div>
       </OptionGroup>
 
-      <OptionGroup label="Score to Win">
+      <OptionGroup label={t("scoreToWin")}>
         <div className="grid grid-cols-4 gap-2">
           {SCORE_TO_WIN_OPTIONS.map((score) => (
             <ToggleButton
@@ -194,7 +197,7 @@ export function GameConfigPanel({
 
       <div className="border-t border-[#dbc6a2] pt-4">
         <Button className="w-full" onClick={onSubmit} disabled={busy}>
-          {busy ? "Creating..." : submitLabel}
+          {busy ? tCommon("creating") : submitLabel}
         </Button>
       </div>
     </div>
@@ -210,6 +213,7 @@ function TimeControlSection({
   onTimeControlChange: (tc: TimeControl) => void;
   tcMatch: (tc: TimeControl, preset: { initialMs: number; incrementMs: number }) => boolean;
 }) {
+  const t = useTranslations("config");
   const hasClock = timeControl !== null;
   const isCustom =
     hasClock &&
@@ -217,7 +221,7 @@ function TimeControlSection({
   const [showCustom, setShowCustom] = useState(isCustom);
 
   return (
-    <OptionGroup label="Time Control">
+    <OptionGroup label={t("timeControl")}>
       <div className="space-y-3">
         {/* Toggle: Unlimited vs With Clocks */}
         <div className="grid grid-cols-2 gap-2">
@@ -228,7 +232,7 @@ function TimeControlSection({
               setShowCustom(false);
             }}
           >
-            Unlimited
+            {t("unlimited")}
           </ToggleButton>
           <ToggleButton
             active={hasClock}
@@ -238,7 +242,7 @@ function TimeControlSection({
               }
             }}
           >
-            With Clocks
+            {t("withClocks")}
           </ToggleButton>
         </div>
 
@@ -262,7 +266,7 @@ function TimeControlSection({
                   <span className="flex flex-col items-center leading-tight">
                     <span className="font-bold">{preset.label}</span>
                     <span className="text-[0.6rem] uppercase opacity-60">
-                      {preset.category}
+                      {t(preset.category.toLowerCase() as "bullet" | "blitz" | "rapid" | "classical")}
                     </span>
                   </span>
                 </ToggleButton>
@@ -273,15 +277,15 @@ function TimeControlSection({
               onClick={() => setShowCustom(true)}
               className="w-full"
             >
-              Custom
+              {t("custom")}
             </ToggleButton>
 
             {/* Custom inputs */}
             {showCustom && (
               <div className="flex flex-wrap gap-4 rounded-2xl border border-[#d8c29c] bg-[#fffaf1] p-4">
                 <NumberStepper
-                  label="Time per player"
-                  unit="minutes"
+                  label={t("timePerPlayer")}
+                  unit={t("minutes")}
                   value={Math.floor((timeControl?.initialMs ?? 300_000) / 60_000)}
                   onChange={(mins) =>
                     onTimeControlChange({
@@ -293,8 +297,8 @@ function TimeControlSection({
                   max={180}
                 />
                 <NumberStepper
-                  label="Increment per move"
-                  unit="seconds"
+                  label={t("incrementPerMove")}
+                  unit={t("seconds")}
                   value={Math.round((timeControl?.incrementMs ?? 0) / 1_000)}
                   onChange={(secs) =>
                     onTimeControlChange({
