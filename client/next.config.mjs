@@ -51,13 +51,6 @@ const nextConfig = {
 
     return config;
   },
-  async rewrites() {
-    const apiTarget = process.env.API_URL || `http://127.0.0.1:${process.env.API_PORT || "5005"}`;
-    return [
-      { source: "/api/:path*", destination: `${apiTarget}/api/:path*` },
-      { source: "/ws/:path*", destination: `${apiTarget}/ws/:path*` },
-    ];
-  },
 };
 
 export default withNextIntl(nextConfig);
