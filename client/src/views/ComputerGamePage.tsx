@@ -3,10 +3,12 @@ import { useRouter } from "next/navigation";
 import type { PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
 import {
+  GamePanelBrand,
   formatPlayerColor,
   HourglassSpinner,
 } from "@/components/game/GameShared";

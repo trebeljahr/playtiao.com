@@ -257,6 +257,7 @@ function TimeControlSection({
                       incrementMs: preset.incrementMs,
                     });
                   }}
+                  className="h-14"
                 >
                   <span className="flex flex-col items-center leading-tight">
                     <span className="font-bold">{preset.label}</span>
@@ -266,13 +267,14 @@ function TimeControlSection({
                   </span>
                 </ToggleButton>
               ))}
-              <ToggleButton
-                active={showCustom}
-                onClick={() => setShowCustom(true)}
-              >
-                Custom
-              </ToggleButton>
             </div>
+            <ToggleButton
+              active={showCustom}
+              onClick={() => setShowCustom(true)}
+              className="w-full"
+            >
+              Custom
+            </ToggleButton>
 
             {/* Custom inputs */}
             {showCustom && (
