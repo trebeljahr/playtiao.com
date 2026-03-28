@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useSocialData } from "@/lib/hooks/useSocialData";
@@ -30,14 +31,33 @@ export function FriendsPage() {
 
   const social = useSocialData(auth, false);
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
+  const [inviteDialogFriendId, setInviteDialogFriendId] = useState<string | null>(null);
+  const [inviteBoardSize, setInviteBoardSize] = useState(19);
+  const [inviteScoreToWin, setInviteScoreToWin] = useState(10);
 
-  async function handleInviteToGame(friendId: string) {
-    setInviteBusy(friendId);
+  const inviteDialogFriend = inviteDialogFriendId
+    ? social.socialOverview.friends.find((f) => f.playerId === inviteDialogFriendId)
+    : null;
+
+  function openInviteDialog(friendId: string) {
+    setInviteDialogFriendId(friendId);
+    setInviteBoardSize(19);
+    setInviteScoreToWin(10);
+  }
+
+  async function handleInviteToGame() {
+    if (!inviteDialogFriendId) return;
+    setInviteBusy(inviteDialogFriendId);
     try {
-      const response = await createMultiplayerGame();
+      const settings =
+        inviteBoardSize !== 19 || inviteScoreToWin !== 10
+          ? { boardSize: inviteBoardSize, scoreToWin: inviteScoreToWin }
+          : undefined;
+      const response = await createMultiplayerGame(settings);
       const gameId = response.snapshot.gameId;
-      await social.handleSendGameInvitation(gameId, friendId, 60);
+      await social.handleSendGameInvitation(gameId, inviteDialogFriendId, 60);
       toast.success(tLobby("inviteSent"));
+      setInviteDialogFriendId(null);
       router.push(`/game/${gameId}`);
     } catch (error) {
       toastError(error);
@@ -144,10 +164,9 @@ export function FriendsPage() {
                         size="sm"
                         variant="secondary"
                         className="text-xs"
-                        onClick={() => handleInviteToGame(friend.playerId)}
-                        disabled={inviteBusy === friend.playerId}
+                        onClick={() => openInviteDialog(friend.playerId)}
                       >
-                        {inviteBusy === friend.playerId ? tCommon("creating") : t("invite")}
+                        {t("inviteToGame")}
                       </Button>
                       <Button
                         size="sm"
@@ -167,6 +186,59 @@ export function FriendsPage() {
           </div>
         </div>
       </main>
+
+      <Dialog
+        open={!!inviteDialogFriendId}
+        onOpenChange={(open) => { if (!open) setInviteDialogFriendId(null); }}
+        title={t("inviteToGame")}
+        description={inviteDialogFriend ? t("inviteDialogDesc", { name: inviteDialogFriend.displayName }) : undefined}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[#6e5437]">
+              {tLobby("boardSize")}
+            </label>
+            <div className="flex gap-2">
+              {[9, 13, 19].map((size) => (
+                <Button
+                  key={size}
+                  variant={inviteBoardSize === size ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setInviteBoardSize(size)}
+                >
+                  {size}x{size}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[#6e5437]">
+              {tLobby("scoreToWin")}
+            </label>
+            <div className="flex gap-2">
+              {[5, 10, 15, 20].map((score) => (
+                <Button
+                  key={score}
+                  variant={inviteScoreToWin === score ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setInviteScoreToWin(score)}
+                >
+                  {score}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={handleInviteToGame}
+            disabled={inviteBusy === inviteDialogFriendId}
+          >
+            {inviteBusy === inviteDialogFriendId ? tCommon("creating") : t("createAndInvite")}
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

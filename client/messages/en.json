@@ -306,6 +306,9 @@
     "noPendingRequests": "No pending requests.",
     "friends": "Friends",
     "invite": "Invite",
+    "inviteToGame": "Invite to game",
+    "inviteDialogDesc": "Create a game and invite {name}.",
+    "createAndInvite": "Create & send invite",
     "unfriend": "Unfriend",
     "emptyFriendList": "Your friend list is empty."
   },
