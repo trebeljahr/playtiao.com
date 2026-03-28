@@ -20,6 +20,8 @@ This document records the key architectural decisions made in Tiao, the reasonin
 
 ## 2. Redis for Stateful Services
 
+> Investigation: [005-stateful-services-storage.md](investigations/005-stateful-services-storage.md)
+
 **Context:** Matchmaking queue, distributed locks, and rate limit counters were all stored in Node.js process memory. This made the server a single point of failure — a restart loses all queued players and active locks. Horizontal scaling is impossible since each instance has its own state.
 
 **Decision:** Extract matchmaking and locking into pluggable abstractions (`MatchmakingStore`, `LockProvider`) with both in-memory and Redis implementations. Rate limiting uses `rate-limit-redis` when available. Redis is **optional** — when `REDIS_URL` is not set, the server falls back to in-memory stores for local development and testing.
@@ -62,6 +64,8 @@ This document records the key architectural decisions made in Tiao, the reasonin
 
 ## 4. Session Strategy: HMAC Cookie Digests
 
+> Investigation: [002-auth-strategy.md](investigations/002-auth-strategy.md)
+
 **Context:** The server needs to authenticate players across HTTP requests and WebSocket connections. Options considered: JWT tokens, opaque session tokens, HMAC-digested cookies.
 
 **Decision:** Sessions use HttpOnly cookies containing a random 48-byte base64url token. The server stores only the HMAC-SHA256 digest (keyed with `TOKEN_SECRET`) in MongoDB's `GameSession` collection with a TTL index for automatic expiration.
@@ -83,6 +87,8 @@ This document records the key architectural decisions made in Tiao, the reasonin
 
 ## 5. Game State in Single MongoDB Document
 
+> Investigation: [006-database-choice.md](investigations/006-database-choice.md)
+
 **Context:** Each multiplayer game needs persistent state including the board, move history, scores, clock times, and metadata. Options considered: single document, event sourcing, separate collections for state vs. history.
 
 **Decision:** Store the entire game state as a single MongoDB document (`GameRoom`). The `state` field is `Schema.Types.Mixed` containing the full `GameState` object (board positions, history, scores, pending jumps).
@@ -103,6 +109,8 @@ This document records the key architectural decisions made in Tiao, the reasonin
 ---
 
 ## 6. WebSocket Architecture
+
+> Investigations: [009-websocket-library.md](investigations/009-websocket-library.md), [001-websocket-server-framework.md](investigations/001-websocket-server-framework.md)
 
 **Context:** The game requires real-time bidirectional communication for move updates, clock synchronization, rematch/takeback negotiation, and lobby notifications.
 
@@ -145,6 +153,8 @@ Messages are JSON-serialized and dispatched through `GameService.applyAction()`.
 
 ## 8. Dual Authentication: Guest + Account
 
+> Investigation: [002-auth-strategy.md](investigations/002-auth-strategy.md)
+
 **Context:** The game should be accessible immediately (no signup wall) but also support persistent profiles, friends, and match history.
 
 **Decision:** Two player types share a common `PlayerIdentity` shape:
@@ -179,3 +189,52 @@ Messages are JSON-serialized and dispatched through `GameService.applyAction()`.
 - Consistent storage format (server normalizes everything to 320px JPEG)
 - Upload limit: 512KB (after client resize, typical images are ~30KB)
 - MIME type whitelist: JPEG, PNG, WebP, GIF (SVG rejected to prevent script injection)
+
+---
+
+## 10. Vite to Next.js 14 App Router Migration
+
+> Investigation: [007-client-framework.md](investigations/007-client-framework.md)
+
+**Context:** The client was a Vite-powered React SPA with react-router-dom. As the project matured, the SPA model became limiting: no server-side rendering for SEO, no social sharing meta tags (Open Graph), and no control over initial HTML for performance. A framework with SSR capabilities was needed.
+
+**Decision:** Migrate to Next.js 14 App Router. This required:
+- Replacing react-router-dom with Next.js file-system routing (`app/` directory)
+- Creating a custom `server.mjs` wrapping Next.js with `http-proxy` for WebSocket proxying — same-origin session cookies don't work with cross-origin WebSocket connections
+- Extracting auth state from `App.tsx` into an `AuthContext` provider
+- Renaming `src/pages/` to `src/views/` to avoid Next.js Pages Router conflict
+- Converting `VITE_*` environment variables to `NEXT_PUBLIC_*`
+- Changing production Dockerfile from Nginx static serving to `node server.mjs`
+- Changing SameSite cookie from `Strict` to `Lax` for Next.js navigation behavior
+
+**Consequences:**
+- SSR enables SEO and social sharing meta tags
+- Custom `server.mjs` adds a proxy layer but enables same-origin cookies for WebSocket auth
+- Production deployment requires a Node.js runtime (no longer static files)
+- Vitest decoupled from build tool via standalone `vitest.config.mts`
+- Larger deployment footprint but better user experience on first load
+
+---
+
+## 11. Tournament System Architecture
+
+**Context:** The game needed a competitive structure beyond individual matches. Players requested organized tournaments with brackets, standings, and progression. The tournament system needed to integrate with the existing GameService and WebSocket infrastructure without disrupting normal game flow.
+
+**Decision:** A dedicated tournament layer with its own service (`tournamentService.ts`), MongoDB model, REST API (12 endpoints), and WebSocket notifications. Three tournament formats supported:
+- **Single Elimination:** Standard bracket, losers are eliminated
+- **Round Robin:** Every player plays every other player, standings by points
+- **Groups + Knockout:** Group stage (round-robin) followed by single-elimination bracket
+
+Key design choices:
+- Tournament games are regular games with special lifecycle rules (deferred timers, no rematch, auto-drop on disconnect)
+- Bracket generation uses circle method (round-robin) and snake-seeding (elimination)
+- GameService completion callbacks trigger automatic round advancement
+- Shared tournament types in `shared/src/tournament.ts` for client-server consistency
+- Player data assembled dynamically from `GameAccount` (no denormalized copies)
+
+**Consequences:**
+- Tournament games reuse the existing game engine and WebSocket infrastructure
+- Round advancement is automatic — no manual intervention after tournament starts
+- Tournament-specific UI (brackets, standings, match cards) is a significant client-side addition
+- The `tournamentService.ts` is the largest single service file (~1100 lines) — potential candidate for decomposition
+- Forfeit and auto-drop mechanics add complexity to the game lifecycle
