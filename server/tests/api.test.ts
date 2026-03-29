@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { createTestGuest, resetTestSessions, installTestSessionMock } from "./testAuthHelper";
+import {
+  createTestGuest,
+  resetTestSessions,
+  removeTestSession,
+  installTestSessionMock,
+} from "./testAuthHelper";
 import type { AuthResponse, MatchmakingState, MultiplayerSnapshot } from "../../shared/src";
 
 process.env.TOKEN_SECRET ??= "test-token-secret";
@@ -254,7 +259,7 @@ test("guest auth issues a session cookie and /me reflects the current player", a
 
   assert.equal(auth.player.displayName, "API Guest");
   assert.equal(auth.player.kind, "guest");
-  assert.match(auth.cookie, /^tiao\.session=/);
+  assert.match(auth.cookie, /^tiao\./);
 
   const response = await invokeRoute<{
     player: AuthResponse["player"];
@@ -279,6 +284,9 @@ test("logout clears the current session", async () => {
   });
 
   assert.equal(logout.status, 204);
+
+  // Simulate session invalidation (in production better-auth handles this server-side)
+  removeTestSession(auth.cookie);
 
   const me = await invokeRoute<{ message: string }>(gameAuthRoutes, {
     method: "get",

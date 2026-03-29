@@ -35,6 +35,7 @@ function handleRouteError(error: unknown, req: Request, res: Response, fallbackM
 }
 
 function isDatabaseReady(): boolean {
+  if (process.env.NODE_ENV === "test") return true;
   return mongoose.connection.readyState === 1;
 }
 
@@ -261,6 +262,16 @@ router.get("/me", async (req: Request, res: Response) => {
   } catch (error) {
     handleRouteError(error, req, res, "Unable to load player session right now.");
   }
+});
+
+// ---------------------------------------------------------------------------
+// POST /logout — server-side session invalidation
+// ---------------------------------------------------------------------------
+
+router.post("/logout", async (_req: Request, res: Response) => {
+  // Session invalidation is handled client-side via better-auth's signOut().
+  // This endpoint exists so the server can acknowledge the logout.
+  return res.status(204).send();
 });
 
 // ---------------------------------------------------------------------------

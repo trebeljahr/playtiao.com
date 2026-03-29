@@ -286,11 +286,11 @@ test("POST /signup route no longer exists (handled by better-auth)", async () =>
   assert.equal(layer, undefined, "POST /signup should not exist");
 });
 
-test("POST /logout route no longer exists (handled by better-auth)", async () => {
+test("POST /logout route exists", async () => {
   const layer = gameAuthRoutes.stack.find(
     (entry) => entry.route?.path === "/logout" && entry.route.methods["post"],
   );
-  assert.equal(layer, undefined, "POST /logout should not exist");
+  assert.ok(layer?.route, "POST /logout should exist");
 });
 
 // ─── Admin badge endpoints ──────────────────────────────────────────

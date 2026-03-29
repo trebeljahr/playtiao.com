@@ -82,6 +82,19 @@ export function getTestSession(cookieHeader?: string): PlayerIdentity | null {
 }
 
 /**
+ * Remove a specific test session by cookie string.
+ */
+export function removeTestSession(cookie: string): void {
+  for (const part of cookie.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith("tiao.test_session=")) {
+      const playerId = trimmed.split("=")[1];
+      if (playerId) testSessions.delete(playerId);
+    }
+  }
+}
+
+/**
  * Clear all test sessions (call in beforeEach/afterEach).
  */
 export function resetTestSessions(): void {
@@ -89,7 +102,8 @@ export function resetTestSessions(): void {
 }
 
 /**
- * Install the test session mock on the sessionHelper module.
+ * Install the test session mock on the sessionHelper module
+ * and patch database-dependent helpers to avoid Mongoose timeouts.
  * Call this in beforeEach after importing sessionHelper.
  */
 export async function installTestSessionMock(): Promise<void> {
