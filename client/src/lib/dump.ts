@@ -1,15 +1,13 @@
-export {};
-
-type LogEntry = {
+export type LogEntry = {
   timestamp: string;
   level: "log" | "warn" | "error" | "info" | "debug";
   message: string;
 };
 
-const LOG_BUFFER_SIZE = 500;
-const logBuffer: LogEntry[] = [];
+export const LOG_BUFFER_SIZE = 500;
+export const logBuffer: LogEntry[] = [];
 
-function captureLog(level: LogEntry["level"], args: unknown[]) {
+export function captureLog(level: LogEntry["level"], args: unknown[]) {
   const message = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
 
   logBuffer.push({
@@ -23,7 +21,8 @@ function captureLog(level: LogEntry["level"], args: unknown[]) {
   }
 }
 
-const originalConsole = {
+/** Saved references to the real console methods before interception. */
+export const originalConsole = {
   log: console.log.bind(console),
   warn: console.warn.bind(console),
   error: console.error.bind(console),
@@ -31,40 +30,9 @@ const originalConsole = {
   debug: console.debug.bind(console),
 };
 
-console.log = (...args: unknown[]) => {
-  captureLog("log", args);
-  originalConsole.log(...args);
-};
-console.warn = (...args: unknown[]) => {
-  captureLog("warn", args);
-  originalConsole.warn(...args);
-};
-console.error = (...args: unknown[]) => {
-  captureLog("error", args);
-  originalConsole.error(...args);
-};
-console.info = (...args: unknown[]) => {
-  captureLog("info", args);
-  originalConsole.info(...args);
-};
-console.debug = (...args: unknown[]) => {
-  captureLog("debug", args);
-  originalConsole.debug(...args);
-};
-
-window.addEventListener("error", (event) => {
-  captureLog("error", [
-    `Uncaught: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`,
-  ]);
-});
-
-window.addEventListener("unhandledrejection", (event) => {
-  captureLog("error", [`Unhandled rejection: ${event.reason}`]);
-});
-
-function dump() {
+export function dump() {
   const data = {
-    version: process.env.APP_VERSION,
+    version: process.env.APP_VERSION ?? "unknown",
     userAgent: navigator.userAgent,
     url: window.location.href,
     timestamp: new Date().toISOString(),
@@ -87,4 +55,34 @@ declare global {
   }
 }
 
-window.Dump = dump;
+/**
+ * Install console interception and attach window.Dump().
+ * Safe to call only in the browser (guarded by the caller).
+ */
+export function installDump() {
+  const LEVELS = ["log", "warn", "error", "info", "debug"] as const;
+  for (const level of LEVELS) {
+    const original = originalConsole[level];
+    console[level] = (...args: unknown[]) => {
+      captureLog(level, args);
+      original(...args);
+    };
+  }
+
+  window.addEventListener("error", (event) => {
+    captureLog("error", [
+      `Uncaught: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`,
+    ]);
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    captureLog("error", [`Unhandled rejection: ${event.reason}`]);
+  });
+
+  window.Dump = dump;
+}
+
+// Auto-install when loaded in the browser (side-effect import).
+if (typeof window !== "undefined") {
+  installDump();
+}

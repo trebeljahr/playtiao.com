@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/dump";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
