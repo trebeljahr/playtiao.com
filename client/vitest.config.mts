@@ -7,6 +7,7 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify("test"),
+    "process.env.APP_VERSION": JSON.stringify("0.1.0-build.42+abc1234"),
   },
   resolve: {
     alias: {

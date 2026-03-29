@@ -24,6 +24,16 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compute app version
+        id: version
+        run: |
+          BASE=$(node -p "require('./package.json').version")
+          COUNT=$(git rev-list --count HEAD)
+          SHORT=$(git rev-parse --short HEAD)
+          echo "app_version=${BASE}-build.${COUNT}+${SHORT}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -52,6 +62,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.app_version }}
 
       - name: Trigger client deployment via API
         if: ${{ env.COOLIFY_BASE_URL != '' && env.COOLIFY_API_TOKEN != '' && env.COOLIFY_RESOURCE_UUID != '' }}

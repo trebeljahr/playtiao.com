@@ -9,9 +9,10 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sharedDir = path.resolve(__dirname, "../shared/src");
 
-// Replicate the __APP_VERSION__ define from vite.config.mts
-// At runtime in Docker the root package.json doesn't exist — fall back gracefully
+// Build version: prefer APP_VERSION env var (set by CI/Docker), then try git,
+// then fall back to the bare package version.
 function getAppVersion() {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION;
   const pkgPath = path.resolve(__dirname, "../package.json");
   if (!existsSync(pkgPath)) return "0.0.0";
   const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));

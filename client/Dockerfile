@@ -1,6 +1,9 @@
 FROM node:22.20.0-bookworm-slim AS build
 WORKDIR /app
 
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
+
 COPY client/package*.json client/
 
 RUN npm --prefix client ci
