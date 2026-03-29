@@ -583,58 +583,56 @@ export function LobbyPage() {
               </Card>
             </motion.div>
 
-            {auth?.player?.kind === "account" && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col"
-              >
-                <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
-                    <CardTitle className="text-2xl text-[#2b1e14]">{t("invitations")}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-6">
-                    {socialOverview.incomingInvitations.slice(0, 3).map((inv) => (
-                      <div
-                        key={inv.id}
-                        className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col">
-                            <p className="font-semibold text-lg text-[#2b1e14]">
-                              {inv.sender.displayName}
-                            </p>
-                            <p className="text-sm text-[#7a6656]">Game {inv.gameId}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-[#dcc7a2] hover:bg-[#faefd8]"
-                            onClick={() => handleDeclineGameInvitation(inv.id)}
-                          >
-                            {tc("decline")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="shadow-sm group-hover:scale-105 transition-transform"
-                            onClick={() => router.push(`/game/${inv.gameId}`)}
-                          >
-                            {tc("accept")}
-                          </Button>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col"
+            >
+              <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
+                  <CardTitle className="text-2xl text-[#2b1e14]">{t("invitations")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-6">
+                  {socialOverview.incomingInvitations.slice(0, 3).map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                          <p className="font-semibold text-lg text-[#2b1e14]">
+                            {inv.sender.displayName}
+                          </p>
+                          <p className="text-sm text-[#7a6656]">Game {inv.gameId}</p>
                         </div>
                       </div>
-                    ))}
-                    {socialOverview.incomingInvitations.length === 0 && (
-                      <p className="text-center text-sm text-[#6e5b48] py-8 bg-white/20 rounded-2xl border border-dashed border-[#dcc7a2]">
-                        {t("noInvitations")}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#dcc7a2] hover:bg-[#faefd8]"
+                          onClick={() => handleDeclineGameInvitation(inv.id)}
+                        >
+                          {tc("decline")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="shadow-sm group-hover:scale-105 transition-transform"
+                          onClick={() => router.push(`/game/${inv.gameId}`)}
+                        >
+                          {tc("accept")}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {socialOverview.incomingInvitations.length === 0 && (
+                    <p className="text-center text-sm text-[#6e5b48] py-8 bg-white/20 rounded-2xl border border-dashed border-[#dcc7a2]">
+                      {t("noInvitations")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </section>
         )}
 
