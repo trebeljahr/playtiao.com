@@ -45,10 +45,7 @@ export class GameServiceError extends Error {
 }
 
 import { InMemoryLockProvider, LockProvider } from "./lockProvider";
-import {
-  InMemoryMatchmakingStore,
-  MatchmakingStore,
-} from "./matchmakingStore";
+import { InMemoryMatchmakingStore, MatchmakingStore } from "./matchmakingStore";
 import { computeNewRatings, DEFAULT_RATING } from "./elo";
 import GameAccount from "../models/GameAccount";
 
@@ -203,6 +200,10 @@ export class GameService {
         socket.send(message);
       }
     }
+  }
+
+  async unlinkTournamentGames(tournamentId: string): Promise<number> {
+    return this.store.unlinkTournamentGames(tournamentId);
   }
 
   async createGame(

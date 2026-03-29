@@ -477,6 +477,7 @@ export class TournamentService implements TournamentGameCallback {
       }
 
       tournament.status = "cancelled";
+      await this.gameService.unlinkTournamentGames(tournamentId);
       const saved = await this.store.saveTournament(tournament);
       this.broadcastTournamentUpdate(saved);
       return saved;

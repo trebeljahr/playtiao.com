@@ -70,6 +70,7 @@ export interface GameRoomStore {
     matchId: string,
   ): Promise<StoredMultiplayerRoom | null>;
   migratePlayerIdentity(oldPlayerId: string, newIdentity: PlayerIdentity): Promise<number>;
+  unlinkTournamentGames(tournamentId: string): Promise<number>;
 }
 
 function normalizeRoomId(roomId: string): string {
@@ -131,14 +132,11 @@ function hydrateGameState(raw: Record<string, unknown>): GameState {
   const r = raw as any;
 
   // Hydrate positions
-  const positions = ("stones" in r && !("positions" in r))
-    ? sparseToPositions(r.stones, r.boardSize)
-    : r.positions;
+  const positions =
+    "stones" in r && !("positions" in r) ? sparseToPositions(r.stones, r.boardSize) : r.positions;
 
   // Hydrate history
-  const history = ("h" in r && !("history" in r))
-    ? compactToHistory(r.h)
-    : r.history;
+  const history = "h" in r && !("history" in r) ? compactToHistory(r.h) : r.history;
 
   return { ...r, positions, history } as GameState;
 }
@@ -404,6 +402,20 @@ export class MongoGameRoomStore implements GameRoomStore {
 
     return result.modifiedCount;
   }
+
+  async unlinkTournamentGames(tournamentId: string): Promise<number> {
+    const result = await GameRoom.updateMany(
+      { tournamentId, status: { $in: ["waiting", "active"] } },
+      {
+        $set: {
+          tournamentId: null,
+          tournamentMatchId: null,
+          roomType: "direct",
+        },
+      },
+    );
+    return result.modifiedCount;
+  }
 }
 
 export class InMemoryGameRoomStore implements GameRoomStore {
@@ -535,6 +547,19 @@ export class InMemoryGameRoomStore implements GameRoomStore {
         }
       }
       if (modified) count++;
+    }
+    return count;
+  }
+
+  async unlinkTournamentGames(tournamentId: string): Promise<number> {
+    let count = 0;
+    for (const [, room] of this.rooms) {
+      if (room.tournamentId === tournamentId && room.status !== "finished") {
+        room.tournamentId = null;
+        room.tournamentMatchId = null;
+        room.roomType = "direct";
+        count++;
+      }
     }
     return count;
   }
