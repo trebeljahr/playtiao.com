@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
-import { GamePanelBrand, formatPlayerColor, HourglassSpinner } from "@/components/game/GameShared";
+import { GamePanelBrand, translatePlayerColor, HourglassSpinner } from "@/components/game/GameShared";
 import { GameSidePanel } from "@/components/game/GameSidePanel";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { useComputerGame } from "@/lib/hooks/useComputerGame";
@@ -31,7 +31,7 @@ export function ComputerGamePage() {
   const [selectedColor, setSelectedColor] = useState<PlayerColor | "random">("random");
   const [boardSize, setBoardSize] = useState(19);
   const [scoreToWin, setScoreToWin] = useState(10);
-  const gameSettings = difficulty !== null ? { boardSize, scoreToWin } : undefined;
+  const gameSettings = { boardSize, scoreToWin };
   const computer = useComputerGame(difficulty ?? 3, gameSettings);
 
   const handleStartGame = useCallback(() => {
@@ -97,10 +97,10 @@ export function ComputerGamePage() {
   const localStatusTitle = isDraw
     ? t("draw")
     : winner
-      ? t("wins", { color: formatPlayerColor(winner!) as string })
+      ? t("wins", { color: translatePlayerColor(winner!, t) as string })
       : computer.computerThinking
         ? t("computerThinking")
-        : t("toMove", { color: formatPlayerColor(computer.localGame.currentTurn) as string });
+        : t("toMove", { color: translatePlayerColor(computer.localGame.currentTurn, t) as string });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";

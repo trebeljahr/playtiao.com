@@ -412,6 +412,58 @@ describe("useComputerGame – undo only goes back one round, not to the beginnin
   });
 });
 
+describe("useComputerGame – custom scoreToWin settings", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resolveAI = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("uses custom scoreToWin when settings are provided", () => {
+    const { result } = renderHook(() => useComputerGame(3, { scoreToWin: 5 }));
+    expect(result.current.localGame.scoreToWin).toBe(5);
+  });
+
+  it("uses default scoreToWin (10) when no settings are provided", () => {
+    const { result } = renderHook(() => useComputerGame());
+    expect(result.current.localGame.scoreToWin).toBe(10);
+  });
+
+  it("preserves custom scoreToWin after resetLocalGame", () => {
+    const { result } = renderHook(() => useComputerGame(3, { scoreToWin: 5 }));
+    expect(result.current.localGame.scoreToWin).toBe(5);
+
+    act(() => result.current.resetLocalGame());
+
+    expect(result.current.localGame.scoreToWin).toBe(5);
+  });
+
+  it("preserves custom scoreToWin after resetLocalGame with color preference", () => {
+    const { result } = renderHook(() => useComputerGame(3, { scoreToWin: 5 }));
+    expect(result.current.localGame.scoreToWin).toBe(5);
+
+    act(() => result.current.resetLocalGame("white"));
+
+    expect(result.current.localGame.scoreToWin).toBe(5);
+  });
+
+  it("uses custom boardSize when settings are provided", () => {
+    const { result } = renderHook(() => useComputerGame(3, { boardSize: 13 }));
+    expect(result.current.localGame.boardSize).toBe(13);
+  });
+
+  it("preserves custom boardSize after resetLocalGame", () => {
+    const { result } = renderHook(() => useComputerGame(3, { boardSize: 13 }));
+
+    act(() => result.current.resetLocalGame());
+
+    expect(result.current.localGame.boardSize).toBe(13);
+  });
+});
+
 describe("useComputerGame – AI moves after board reset", () => {
   beforeEach(() => {
     vi.useFakeTimers();

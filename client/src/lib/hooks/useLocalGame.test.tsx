@@ -276,6 +276,38 @@ describe("useLocalGame – placement blocked when piece with jump is selected", 
   });
 });
 
+describe("useLocalGame – custom settings", () => {
+  it("creates game with custom scoreToWin", () => {
+    const { result } = renderHook(() => useLocalGame({ scoreToWin: 5 }));
+    expect(result.current.localGame.scoreToWin).toBe(5);
+  });
+
+  it("creates game with default scoreToWin when no settings", () => {
+    const { result } = renderHook(() => useLocalGame());
+    expect(result.current.localGame.scoreToWin).toBe(10);
+  });
+
+  it("preserves custom scoreToWin after reset", () => {
+    const { result } = renderHook(() => useLocalGame({ scoreToWin: 5 }));
+    expect(result.current.localGame.scoreToWin).toBe(5);
+
+    act(() => result.current.resetLocalGame());
+    expect(result.current.localGame.scoreToWin).toBe(5);
+  });
+
+  it("creates game with custom boardSize", () => {
+    const { result } = renderHook(() => useLocalGame({ boardSize: 13 }));
+    expect(result.current.localGame.boardSize).toBe(13);
+  });
+
+  it("preserves custom boardSize after reset", () => {
+    const { result } = renderHook(() => useLocalGame({ boardSize: 13 }));
+
+    act(() => result.current.resetLocalGame());
+    expect(result.current.localGame.boardSize).toBe(13);
+  });
+});
+
 describe("getJumpTargets – color parameter", () => {
   it("defaults to the piece color at the position", () => {
     const state = stateWithJumpOpportunity();
