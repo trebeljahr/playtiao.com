@@ -43,6 +43,15 @@ vi.mock("@/lib/LobbySocketContext", () => ({
   useLobbyMessage: vi.fn(),
 }));
 
+vi.mock("@/lib/hooks/useTournamentList", () => ({
+  useTournamentList: () => ({
+    publicTournaments: [],
+    myTournaments: [],
+    loading: false,
+    refresh: vi.fn(),
+  }),
+}));
+
 const accountAuth: AuthResponse = {
   player: {
     kind: "account",

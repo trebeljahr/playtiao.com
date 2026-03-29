@@ -101,7 +101,10 @@
     "opponentOnline": "Tu rival está en línea",
     "guestLimitTitle": "Límite de partidas alcanzado",
     "guestLimitDesc": "Los invitados pueden jugar hasta {limit} partidas. ¡Crea una cuenta gratis para jugar sin límite y guardar tu historial!",
-    "guestGamesRemaining": "{remaining} {remaining, plural, one {partida} other {partidas}} de invitado restantes"
+    "guestGamesRemaining": "{remaining} {remaining, plural, one {partida} other {partidas}} de invitado restantes",
+    "tournaments": "Torneos",
+    "noTournaments": "No hay torneos por ahora.",
+    "showAll": "Ver todos"
   },
   "game": {
     "white": "Blancas",

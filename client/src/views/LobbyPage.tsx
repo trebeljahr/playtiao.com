@@ -16,6 +16,7 @@ import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useSocialData } from "@/lib/hooks/useSocialData";
+import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,22 @@ export function LobbyPage() {
     auth,
     true,
   );
+
+  const tTournament = useTranslations("tournament");
+  const { publicTournaments, myTournaments } = useTournamentList(auth);
+  const lobbyTournaments = useMemo(() => {
+    // Merge and deduplicate, preferring "my" entries
+    const myIds = new Set(myTournaments.map((t) => t.tournamentId));
+    const merged = [
+      ...myTournaments,
+      ...publicTournaments.filter((t) => !myIds.has(t.tournamentId)),
+    ];
+    // Show active/registration first, then by date
+    return merged
+      .filter((t) => t.status === "registration" || t.status === "active")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+  }, [publicTournaments, myTournaments]);
 
   // Track the last seen history length per game to avoid spurious "your move" toasts
   // (e.g. when leaving a game, the departure triggers a game-update but no new move).
@@ -616,14 +633,14 @@ export function LobbyPage() {
           </section>
         )}
 
-        <section className="mt-8">
+        <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 md:mx-auto md:max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mx-auto md:max-w-md"
+            className="flex flex-col"
           >
-            <Card className={cn("overflow-hidden shadow-lg", paperCard)}>
+            <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
               <CardHeader className="pb-3">
                 <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">{t("spectate")}</Badge>
                 <CardTitle className="text-2xl text-[#2b1e14]">{t("watchGame")}</CardTitle>
@@ -684,6 +701,79 @@ export function LobbyPage() {
               </CardContent>
             </Card>
           </motion.div>
+
+          {auth && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="flex flex-col"
+            >
+              <Card className={cn("overflow-hidden shadow-lg flex-1", paperCard)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
+                  <CardTitle className="text-2xl text-[#2b1e14]">{t("tournaments")}</CardTitle>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-[#f4e8d2] hover:bg-[#ecd4a6] border-[#dcc7a2] text-[#6c543c]"
+                    onClick={() => router.push("/tournaments")}
+                  >
+                    {t("showAll")}
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-6">
+                  {lobbyTournaments.length === 0 && (
+                    <p className="text-center text-sm text-[#6e5b48] py-8 bg-white/20 rounded-2xl border border-dashed border-[#dcc7a2]">
+                      {t("noTournaments")}
+                    </p>
+                  )}
+                  {lobbyTournaments.map((item) => (
+                    <div
+                      key={item.tournamentId}
+                      className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group cursor-pointer"
+                      onClick={() => router.push(`/tournament/${item.tournamentId}`)}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-lg text-[#2b1e14] truncate">
+                            {item.name}
+                          </p>
+                          <Badge
+                            className={cn(
+                              "shrink-0",
+                              item.status === "registration"
+                                ? "border-green-400 bg-green-50 text-green-700"
+                                : "border-blue-400 bg-blue-50 text-blue-700",
+                            )}
+                          >
+                            {tTournament(item.status)}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-[#7a6656]">
+                          {tTournament("players", {
+                            count: item.playerCount,
+                            max: item.maxPlayers,
+                          })}
+                          {" · "}
+                          {tTournament("by", { name: item.creatorDisplayName })}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="shrink-0 shadow-sm group-hover:scale-105 transition-transform"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/tournament/${item.tournamentId}`);
+                        }}
+                      >
+                        {tc("view")}
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </section>
       </main>
 

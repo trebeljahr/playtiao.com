@@ -101,7 +101,10 @@
     "opponentOnline": "Opponent is online",
     "guestLimitTitle": "Game limit reached",
     "guestLimitDesc": "Guest players can play up to {limit} games. Create a free account to play unlimited games and keep your game history!",
-    "guestGamesRemaining": "{remaining} guest {remaining, plural, one {game} other {games}} remaining"
+    "guestGamesRemaining": "{remaining} guest {remaining, plural, one {game} other {games}} remaining",
+    "tournaments": "Tournaments",
+    "noTournaments": "No tournaments right now.",
+    "showAll": "Show all"
   },
   "game": {
     "white": "White",

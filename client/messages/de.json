@@ -101,7 +101,10 @@
     "opponentOnline": "Gegner ist online",
     "guestLimitTitle": "Spielelimit erreicht",
     "guestLimitDesc": "Gäste können bis zu {limit} Spiele spielen. Erstelle ein kostenloses Konto, um unbegrenzt zu spielen und deinen Spielverlauf zu behalten!",
-    "guestGamesRemaining": "Noch {remaining} {remaining, plural, one {Gastspiel} other {Gastspiele}} übrig"
+    "guestGamesRemaining": "Noch {remaining} {remaining, plural, one {Gastspiel} other {Gastspiele}} übrig",
+    "tournaments": "Turniere",
+    "noTournaments": "Gerade keine Turniere.",
+    "showAll": "Alle anzeigen"
   },
   "game": {
     "white": "Weiß",
