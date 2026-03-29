@@ -319,6 +319,11 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     if (interaction.type === "chain-undo" && !hasUndone) {
       return; // Don't allow confirming before undoing
     }
+    // For chain-jump, require completing the full chain (multiple jumps)
+    // before allowing confirmation — a single jump shouldn't count.
+    if (interaction.type === "chain-jump" && pendingJumps.length < 2) {
+      return;
+    }
     // Set completed FIRST to prevent nudge flash, then clear state
     setCompleted(true);
     completedRef.current = true;
