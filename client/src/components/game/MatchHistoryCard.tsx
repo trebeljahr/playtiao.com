@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  formatPlayerColor,
+  translatePlayerColor,
   formatGameTimestamp,
   describeResult,
   getPlayerResult,
@@ -167,7 +167,7 @@ export function MatchHistoryCard({
           )}
           {!result && game.winner && (
             <Badge className="bg-[#e8dcc6] text-[#5a4a32] text-xs font-semibold">
-              {t("colorWon", { color: formatPlayerColor(game.winner) ?? "" })}
+              {t("colorWon", { color: translatePlayerColor(game.winner, t) ?? "" })}
             </Badge>
           )}
           {reasonText && <span className="text-xs text-[#6e5b48]">{reasonText}</span>}

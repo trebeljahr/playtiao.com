@@ -14,7 +14,7 @@ import { TiaoBoard } from "@/components/game/TiaoBoard";
 import {
   GamePanelBrand,
   AnimatedScoreTile,
-  formatPlayerColor,
+  translatePlayerColor,
   HourglassSpinner,
   RoomCodeCopyPill,
   ShareLinkCopyPill,
@@ -344,7 +344,7 @@ export function MultiplayerGamePage() {
       : playerLost
         ? t("youLost")
         : winner
-          ? t("wins", { color: formatPlayerColor(winner)! })
+          ? t("wins", { color: translatePlayerColor(winner, t)! })
           : "";
 
   function describeFinishReason(): string {
@@ -373,14 +373,14 @@ export function MultiplayerGamePage() {
     // Spectator
     switch (finishReason) {
       case "captured":
-        return t("spectatorCaptured", { color: formatPlayerColor(winner!)! });
+        return t("spectatorCaptured", { color: translatePlayerColor(winner!, t)! });
       case "forfeit":
         return t("spectatorForfeit", {
-          color: formatPlayerColor(winner === "white" ? "black" : "white")!,
+          color: translatePlayerColor(winner === "white" ? "black" : "white", t)!,
         });
       case "timeout":
         return t("spectatorTimeout", {
-          color: formatPlayerColor(winner === "white" ? "black" : "white")!,
+          color: translatePlayerColor(winner === "white" ? "black" : "white", t)!,
         });
     }
   }
@@ -554,7 +554,7 @@ export function MultiplayerGamePage() {
     : isDraw
       ? t("drawTitle")
       : winner
-        ? t("colorWins", { color: formatPlayerColor(winner)! })
+        ? t("colorWins", { color: translatePlayerColor(winner, t)! })
         : multiplayerSnapshot.status === "waiting"
           ? t("waiting")
           : isTournamentUnstarted
@@ -1449,7 +1449,7 @@ export function MultiplayerGamePage() {
                   {multiplayerSnapshot.seats[winner]!.player.displayName}
                 </p>
                 <p className="text-[#6e5b48]">
-                  {t("spectatorPlayingAsWon", { color: formatPlayerColor(winner)! })}
+                  {t("spectatorPlayingAsWon", { color: translatePlayerColor(winner, t)! })}
                 </p>
               </div>
             </div>

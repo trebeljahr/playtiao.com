@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
-import { formatPlayerColor, GamePanelBrand } from "@/components/game/GameShared";
+import { translatePlayerColor, GamePanelBrand } from "@/components/game/GameShared";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { GameSidePanel } from "@/components/game/GameSidePanel";
 import { useLocalGame } from "@/lib/hooks/useLocalGame";
@@ -73,10 +73,10 @@ export function LocalGamePage() {
   const localStatusTitle = isDraw
     ? t("draw")
     : timeoutWinner
-      ? t("winsOnTime", { color: formatPlayerColor(timeoutWinner) as string })
+      ? t("winsOnTime", { color: translatePlayerColor(timeoutWinner, t) as string })
       : winner
-        ? t("wins", { color: formatPlayerColor(winner!) as string })
-        : t("toMove", { color: formatPlayerColor(local.localGame.currentTurn) as string });
+        ? t("wins", { color: translatePlayerColor(winner!, t) as string })
+        : t("toMove", { color: translatePlayerColor(local.localGame.currentTurn, t) as string });
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -185,8 +185,8 @@ export function LocalGamePage() {
           isDraw
             ? t("draw")
             : timeoutWinner
-              ? t("winsOnTime", { color: formatPlayerColor(timeoutWinner) as string })
-              : t("wins", { color: formatPlayerColor(effectiveWinner!) as string })
+              ? t("winsOnTime", { color: translatePlayerColor(timeoutWinner, t) as string })
+              : t("wins", { color: translatePlayerColor(effectiveWinner!, t) as string })
         }
         description={isDraw ? t("drawNoMoves") : t("wonDesc")}
       >

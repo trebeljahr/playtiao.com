@@ -85,6 +85,24 @@ export function formatPlayerColor(color: PlayerColor | null) {
   return color.slice(0, 1).toUpperCase() + color.slice(1);
 }
 
+/**
+ * Return a translated color name (e.g. "Weiß" in German, "Blancas" in Spanish).
+ * Use this instead of `formatPlayerColor` whenever the result is interpolated into
+ * a translated string so that color names are properly localised.
+ *
+ * `t` must be scoped to the "game" namespace (i.e. `useTranslations("game")`).
+ */
+export function translatePlayerColor(
+  color: PlayerColor | null,
+  t: (key: string) => string,
+): string | null {
+  if (!color) {
+    return null;
+  }
+
+  return t(color); // resolves "game.white" / "game.black"
+}
+
 export function formatGameTimestamp(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -121,8 +139,10 @@ export function getSummaryStatusLabel(
   t?: (key: string, values?: any) => string,
 ) {
   if (summary.status === "finished") {
-    const color = formatPlayerColor(summary.winner);
-    return t ? t("colorWon", { color: color ?? "" }) : `${color} won`;
+    const color = t
+      ? translatePlayerColor(summary.winner, t) ?? ""
+      : formatPlayerColor(summary.winner);
+    return t ? t("colorWon", { color }) : `${color} won`;
   }
 
   if (summary.status === "waiting") {

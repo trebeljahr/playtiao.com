@@ -11,6 +11,7 @@ import {
   getOpponentLabel,
   getSummaryStatusLabel,
   isSummaryYourTurn,
+  translatePlayerColor,
   PlayerOverviewAvatar,
   EmptySeatAvatar,
 } from "@/components/game/GameShared";
@@ -119,7 +120,7 @@ export function GamesPage() {
                                 ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
                                 : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
                             )}
-                            title={tCommon("playingAs", { color: game.yourSeat })}
+                            title={tCommon("playingAs", { color: translatePlayerColor(game.yourSeat ?? null, tGame) ?? game.yourSeat })}
                           />
                         )}
                         {opponent ? (
