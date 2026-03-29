@@ -672,4 +672,29 @@ describe("MultiplayerGamePage", () => {
     // confetti.create should NOT be called for spectators
     expect(mockCreate).not.toHaveBeenCalled();
   });
+
+  it("shows 'Back to tournament' instead of 'Back to lobby' for tournament games", async () => {
+    const state = createInitialGameState();
+    state.history = [{ type: "forfeit", color: "black" }];
+    state.score = { black: 0, white: 10 };
+
+    const snapshot = makeMatchmakingSnapshot({
+      roomType: "tournament",
+      tournamentId: "tourney-123",
+      status: "finished",
+      state,
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    // Should show "Back to tournament" instead of "Back to lobby"
+    const backBtns = screen.getAllByRole("button", { name: "Back to tournament" });
+    expect(backBtns.length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Back to lobby" })).not.toBeInTheDocument();
+
+    // Clicking the first one should navigate to the tournament page
+    fireEvent.click(backBtns[0]);
+    expect(mockPush).toHaveBeenCalledWith("/tournament/tourney-123");
+  });
 });

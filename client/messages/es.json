@@ -1,6 +1,7 @@
 {
   "common": {
     "backToLobby": "Volver a la sala",
+    "backToTournament": "Volver al torneo",
     "cancel": "Cancelar",
     "save": "Guardar cambios",
     "saving": "Guardando...",

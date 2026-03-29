@@ -1,6 +1,7 @@
 {
   "common": {
     "backToLobby": "Back to lobby",
+    "backToTournament": "Back to tournament",
     "cancel": "Cancel",
     "save": "Save changes",
     "saving": "Saving...",

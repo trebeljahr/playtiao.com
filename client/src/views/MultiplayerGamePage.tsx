@@ -402,6 +402,12 @@ export function MultiplayerGamePage() {
   const isMultiplayerParticipant = !!playerSeat;
   const isSpectator = multiplayerSnapshot && !isMultiplayerParticipant;
   const spectatorCount = multiplayerSnapshot?.spectators.length ?? 0;
+  const isTournamentGame = multiplayerSnapshot?.roomType === "tournament";
+  const tournamentBackPath =
+    isTournamentGame && multiplayerSnapshot?.tournamentId
+      ? `/tournament/${multiplayerSnapshot.tournamentId}`
+      : "/";
+  const backLabel = isTournamentGame ? tCommon("backToTournament") : tCommon("backToLobby");
 
   // Toast for incoming takeback requests
   const lastTakebackToastRef = useRef<string | null>(null);
@@ -1172,8 +1178,13 @@ export function MultiplayerGamePage() {
                                     {tCommon("decline")}
                                   </Button>
                                 ) : (
-                                  <Button variant="outline" onClick={() => router.push("/")}>
-                                    {tCommon("lobby")}
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => router.push(tournamentBackPath)}
+                                  >
+                                    {isTournamentGame
+                                      ? tCommon("backToTournament")
+                                      : tCommon("lobby")}
                                   </Button>
                                 )}
                               </div>
@@ -1184,8 +1195,8 @@ export function MultiplayerGamePage() {
                       {isReviewMode &&
                         !(isMultiplayerParticipant && connectionState === "connected") && (
                           <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                            <Button variant="ghost" onClick={() => router.push("/")}>
-                              {tCommon("backToLobby")}
+                            <Button variant="ghost" onClick={() => router.push(tournamentBackPath)}>
+                              {backLabel}
                             </Button>
                           </div>
                         )}
@@ -1233,8 +1244,8 @@ export function MultiplayerGamePage() {
 
                       {isSpectator && (
                         <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
-                          <Button variant="ghost" onClick={() => router.push("/")}>
-                            {tCommon("backToLobby")}
+                          <Button variant="ghost" onClick={() => router.push(tournamentBackPath)}>
+                            {backLabel}
                           </Button>
                         </div>
                       )}
@@ -1416,10 +1427,10 @@ export function MultiplayerGamePage() {
             variant="ghost"
             onClick={() => {
               setGameOverDialogOpen(false);
-              router.push("/");
+              router.push(tournamentBackPath);
             }}
           >
-            {tCommon("backToLobby")}
+            {backLabel}
           </Button>
         </div>
       </Dialog>
