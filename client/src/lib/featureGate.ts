@@ -66,8 +66,10 @@ export function resolvePlayerBadges(
 ): string[] {
   if (!player) return [];
 
-  // If the server already sent activeBadges, use them
-  if (player.activeBadges && player.activeBadges.length > 0) {
+  // If the server sent activeBadges (even empty = user chose "hidden"), use them.
+  // Only fall back to hardcoded defaults when activeBadges is undefined/null
+  // (i.e. the server hasn't sent badge data at all).
+  if (player.activeBadges != null) {
     return player.activeBadges.filter((id) => BADGE_DEFINITIONS[id as BadgeId]);
   }
 

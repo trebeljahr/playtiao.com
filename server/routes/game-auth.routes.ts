@@ -329,11 +329,7 @@ router.get("/profile", async (req: Request, res: Response) => {
     // Use GameAccount.profilePicture as primary, fall back to SSO image
     const profilePicture = account.profilePicture || ssoImage || undefined;
     return res.status(200).json({
-      profile: serializeAccountProfile(
-        { ...account.toObject(), profilePicture },
-        email,
-        providers,
-      ),
+      profile: serializeAccountProfile({ ...account.toObject(), profilePicture }, email, providers),
     });
   } catch (error) {
     handleRouteError(error, req, res, "Unable to load profile right now.");
@@ -361,9 +357,7 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
     if (!profilePicture) {
       try {
         const db = mongoose.connection.getClient().db();
-        const baUser = await db
-          .collection("user")
-          .findOne({ _id: account.id as any });
+        const baUser = await db.collection("user").findOne({ _id: account.id as any });
         profilePicture = (baUser?.image as string) || undefined;
       } catch {
         // Non-critical
@@ -580,9 +574,27 @@ router.put("/badges/active", async (req: Request, res: Response) => {
       });
     }
 
-    // Only allow activating badges the player has unlocked
-    const unlocked = new Set(account.badges ?? []);
-    const validActive = activeBadges.filter((id) => unlocked.has(id));
+    // Validate badge IDs and enforce single-badge selection.
+    // NOTE: We validate against KNOWN_BADGE_IDS rather than account.badges
+    // because badge entitlements are still hardcoded on the client during
+    // preview. Once Stripe entitlements are wired up, this should go back
+    // to checking account.badges.
+    const KNOWN_BADGE_IDS = new Set([
+      "supporter",
+      "contributor",
+      "super-supporter",
+      "official-champion",
+      "creator",
+      "badge-1",
+      "badge-2",
+      "badge-3",
+      "badge-4",
+      "badge-5",
+      "badge-6",
+      "badge-7",
+      "badge-8",
+    ]);
+    const validActive = activeBadges.filter((id) => KNOWN_BADGE_IDS.has(id)).slice(0, 1);
 
     account.activeBadges = validActive;
     await account.save();

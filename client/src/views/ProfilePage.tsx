@@ -76,10 +76,9 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
 
   if (!hasPreviewAccess(auth) || badges.length === 0) return null;
 
-  const toggleBadge = (badgeId: BadgeId) => {
-    const next = activeBadges.includes(badgeId)
-      ? activeBadges.filter((id) => id !== badgeId)
-      : [...activeBadges, badgeId];
+  const selectBadge = (badgeId: BadgeId) => {
+    // Single-select: clicking the already-active badge deselects it
+    const next = activeBadges.includes(badgeId) ? [] : [badgeId];
     setActiveBadges(next as BadgeId[]);
     // Fire-and-forget server sync
     void updateActiveBadges(next);
@@ -121,7 +120,7 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
               <button
                 key={badgeId}
                 type="button"
-                onClick={() => toggleBadge(badgeId)}
+                onClick={() => selectBadge(badgeId)}
                 className={cn(
                   "rounded-xl border p-2 transition-all",
                   isActive

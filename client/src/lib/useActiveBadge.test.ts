@@ -38,13 +38,27 @@ describe("useActiveBadges", () => {
 });
 
 describe("useSetActiveBadges", () => {
-  it("persists badges to localStorage", () => {
+  it("persists a single badge to localStorage", () => {
+    const { result } = renderHook(() => useSetActiveBadges());
+    act(() => {
+      result.current[1](["supporter"]);
+    });
+    expect(result.current[0]).toEqual(["supporter"]);
+    expect(localStorage.getItem("tiao:activeBadges")).toBe(JSON.stringify(["supporter"]));
+  });
+
+  it("replaces previous badge when setting a new one (single-select)", () => {
     const { result } = renderHook(() => useSetActiveBadges());
     act(() => {
       result.current[1](["creator"]);
     });
     expect(result.current[0]).toEqual(["creator"]);
-    expect(localStorage.getItem("tiao:activeBadges")).toBe(JSON.stringify(["creator"]));
+
+    act(() => {
+      result.current[1](["supporter"]);
+    });
+    expect(result.current[0]).toEqual(["supporter"]);
+    expect(localStorage.getItem("tiao:activeBadges")).toBe(JSON.stringify(["supporter"]));
   });
 
   it("removes the key when setting an empty array", () => {
