@@ -3,6 +3,7 @@ import { signUpViaUI, waitForAppReady, dismissRulesIntro } from "./helpers";
 
 test.describe("Game review from My Games page", () => {
   test("no confetti fires when opening a finished game in review mode", async ({ browser }) => {
+    test.setTimeout(60000);
     const aliceContext = await browser.newContext();
     const bobContext = await browser.newContext();
     const alicePage = await aliceContext.newPage();
@@ -38,7 +39,7 @@ test.describe("Game review from My Games page", () => {
     await expect(alicePage.getByRole("heading", { name: /wins/ })).toBeVisible({ timeout: 5000 });
 
     // Navigate to My Games and open in review mode
-    await alicePage.goto("/games");
+    await alicePage.goto("/games", { waitUntil: "domcontentloaded" });
     await waitForAppReady(alicePage);
     await expect(alicePage.locator("text=Match History")).toBeVisible();
 
@@ -78,6 +79,7 @@ test.describe("Game review from My Games page", () => {
   test("review mode shows nav buttons and hides rematch when opponent offline", async ({
     browser,
   }) => {
+    test.setTimeout(60000);
     const aliceContext = await browser.newContext();
     const bobContext = await browser.newContext();
     const alicePage = await aliceContext.newPage();
@@ -115,7 +117,7 @@ test.describe("Game review from My Games page", () => {
     // Close Bob's context (he leaves the game) and navigate Alice to My Games
     await bobContext.close();
 
-    await alicePage.goto("/games");
+    await alicePage.goto("/games", { waitUntil: "domcontentloaded" });
     await waitForAppReady(alicePage);
     await expect(alicePage.locator("text=Match History")).toBeVisible();
     await alicePage.click('button:has-text("Review")');

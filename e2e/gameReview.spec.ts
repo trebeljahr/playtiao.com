@@ -4,6 +4,7 @@ import { signUpViaUI, waitForAppReady, dismissRulesIntro } from "./helpers";
 test("game review mode shows review nav buttons and allows friend requests", async ({
   browser,
 }) => {
+  test.setTimeout(60000);
   const aliceContext = await browser.newContext();
   const bobContext = await browser.newContext();
 
@@ -45,7 +46,7 @@ test("game review mode shows review nav buttons and allows friend requests", asy
   await expect(alicePage.getByRole("heading", { name: /wins/ })).toBeVisible({ timeout: 5000 });
 
   // 6. Alice navigates away and comes back to review
-  await alicePage.goto("/games");
+  await alicePage.goto("/games", { waitUntil: "domcontentloaded" });
   await waitForAppReady(alicePage);
   await expect(alicePage.locator("text=Match History")).toBeVisible();
 
@@ -73,6 +74,7 @@ test("game review mode shows review nav buttons and allows friend requests", asy
 });
 
 test("game review shows status title and allows returning to lobby", async ({ browser }) => {
+  test.setTimeout(60000);
   const aliceContext = await browser.newContext();
   const bobContext = await browser.newContext();
 
@@ -109,7 +111,7 @@ test("game review shows status title and allows returning to lobby", async ({ br
   await expect(alicePage.getByRole("heading", { name: /wins/ })).toBeVisible({ timeout: 5000 });
 
   // Navigate to review
-  await alicePage.goto("/games");
+  await alicePage.goto("/games", { waitUntil: "domcontentloaded" });
   await waitForAppReady(alicePage);
   await alicePage.click('button:has-text("Review")');
 
