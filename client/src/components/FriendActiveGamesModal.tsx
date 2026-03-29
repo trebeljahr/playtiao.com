@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { FriendActiveGameSummary, SocialPlayerSummary } from "@shared";
+import type { FriendActiveGameSummary, SocialPlayerSummary, PlayerColor } from "@shared";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { getFriendActiveGames } from "@/lib/api";
 import { toastError } from "@/lib/errors";
+import { useAuth } from "@/lib/AuthContext";
+import { PlayerOverviewAvatar, EmptySeatAvatar } from "@/components/game/GameShared";
+import { GameConfigBadge } from "@/components/game/GameConfigBadge";
+import { cn } from "@/lib/utils";
 
 type FriendActiveGamesModalProps = {
   friend: SocialPlayerSummary | null;
@@ -14,14 +17,60 @@ type FriendActiveGamesModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-function formatTimeControl(
-  tc: { initialMs: number; incrementMs: number } | null,
-  tFriends: ReturnType<typeof useTranslations>,
-): string {
-  if (!tc) return tFriends("unlimited");
-  const mins = Math.round(tc.initialMs / 60_000);
-  const secs = Math.round(tc.incrementMs / 1_000);
-  return `${mins}+${secs}`;
+function ColorDot({ color }: { color: PlayerColor }) {
+  return (
+    <span
+      className={cn(
+        "inline-block h-4 w-4 shrink-0 rounded-full border",
+        color === "white"
+          ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
+          : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
+      )}
+    />
+  );
+}
+
+function ActiveGamePlayerRow({
+  player,
+  color,
+  score,
+  scoreToWin,
+  isYou,
+  online,
+  youLabel,
+}: {
+  player: { displayName?: string; profilePicture?: string } | null;
+  color: PlayerColor;
+  score: number;
+  scoreToWin: number;
+  isYou: boolean;
+  online: boolean;
+  youLabel: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl px-3 py-2">
+      <ColorDot color={color} />
+      {player ? (
+        <PlayerOverviewAvatar player={player} className="h-6 w-6" />
+      ) : (
+        <EmptySeatAvatar className="h-6 w-6" />
+      )}
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#2b1e14]">
+        {player?.displayName ?? "Unknown"}
+        {isYou && <span className="ml-1 text-[#8d7760]">{youLabel}</span>}
+      </span>
+      <span
+        className={cn(
+          "inline-block h-2 w-2 shrink-0 rounded-full",
+          online ? "bg-emerald-500" : "bg-stone-300",
+        )}
+      />
+      <span className="font-mono text-sm tabular-nums text-[#9a8770]">
+        {score}
+        <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
+      </span>
+    </div>
+  );
 }
 
 export function FriendActiveGamesModal({
@@ -30,9 +79,10 @@ export function FriendActiveGamesModal({
   onOpenChange,
 }: FriendActiveGamesModalProps) {
   const t = useTranslations("friends");
-  const tGame = useTranslations("game");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { auth } = useAuth();
+  const currentPlayerId = auth?.player.playerId;
   const [games, setGames] = useState<FriendActiveGameSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -76,14 +126,20 @@ export function FriendActiveGamesModal({
     router.push(`/game/${gameId}?spectate=true`);
   }
 
+  function handleJoin(gameId: string) {
+    onOpenChange(false);
+    router.push(`/game/${gameId}`);
+  }
+
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
       title={t("activeGamesTitle")}
       description={friend ? t("activeGamesDesc", { name: friend.displayName }) : undefined}
+      className="sm:max-w-2xl"
     >
-      <div className="space-y-3">
+      <div className="space-y-4">
         {loading && games.length === 0 && (
           <p className="text-sm text-[#6e5b48]">{tCommon("loading")}</p>
         )}
@@ -95,71 +151,89 @@ export function FriendActiveGamesModal({
         {games.map((game) => {
           const white = game.seats.white;
           const black = game.seats.black;
+          const whitePlayer = white?.player ?? null;
+          const blackPlayer = black?.player ?? null;
+          const isYouWhite = whitePlayer?.playerId === currentPlayerId;
+          const isYouBlack = blackPlayer?.playerId === currentPlayerId;
+          const isYouPlaying = isYouWhite || isYouBlack;
+
+          const statusBorder =
+            game.status === "active"
+              ? "border-[#a3c98a]/40"
+              : "border-[#d7c39e]";
 
           return (
-            <div key={game.gameId} className="space-y-2 rounded-xl bg-white/40 p-3">
-              {/* Players row */}
-              <div className="flex items-center gap-2 text-sm">
-                {white ? (
-                  <PlayerIdentityRow
-                    player={white.player}
-                    online={white.online}
-                    nameClassName="font-medium"
-                  />
-                ) : (
-                  <span className="text-[#8d7760] italic">{tGame("openSeat")}</span>
-                )}
-
-                <span className="shrink-0 text-xs text-[#8d7760]">vs</span>
-
-                {black ? (
-                  <PlayerIdentityRow
-                    player={black.player}
-                    online={black.online}
-                    nameClassName="font-medium"
-                  />
-                ) : (
-                  <span className="text-[#8d7760] italic">{tGame("openSeat")}</span>
-                )}
-              </div>
-
-              {/* Game info row */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6e5b48]">
-                <span>
-                  {tCommon("gameId")}: {game.gameId}
-                </span>
-                <span>
-                  {game.boardSize}x{game.boardSize}
-                </span>
-                <span>
-                  {game.score.white}/{game.scoreToWin} - {game.score.black}/{game.scoreToWin}
-                </span>
-                <span>{formatTimeControl(game.timeControl, t)}</span>
-                {game.ratingBefore && (
-                  <span>
-                    Elo: {game.ratingBefore.white} / {game.ratingBefore.black}
-                  </span>
-                )}
+            <div
+              key={game.gameId}
+              className={cn("rounded-2xl border p-4 space-y-3 bg-white/40", statusBorder)}
+            >
+              {/* Header: status + game ID */}
+              <div className="flex items-center justify-between gap-2">
                 <span
-                  className={
+                  className={cn(
+                    "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
                     game.status === "active"
-                      ? "font-medium text-green-700"
-                      : "font-medium text-amber-700"
-                  }
+                      ? "bg-[#c2e4a4] text-[#1a4008]"
+                      : "bg-[#e8dcc6] text-[#5a4a32]",
+                  )}
                 >
                   {game.status === "active" ? t("statusActive") : t("statusWaiting")}
                 </span>
+                <span className="font-mono text-[10px] text-[#b5a48e]">
+                  {game.gameId}
+                </span>
               </div>
 
-              {/* Spectate button */}
-              <Button
-                size="sm"
-                variant="secondary"
-                className="w-full text-xs"
-                onClick={() => handleSpectate(game.gameId)}
-              >
-                {t("spectate")}
-              </Button>
+              {/* Player rows */}
+              <div className="space-y-1 rounded-xl border border-black/5 bg-white/50 p-1">
+                <ActiveGamePlayerRow
+                  player={whitePlayer}
+                  color="white"
+                  score={game.score.white}
+                  scoreToWin={game.scoreToWin}
+                  isYou={isYouWhite}
+                  online={white?.online ?? false}
+                  youLabel={tCommon("you")}
+                />
+                <ActiveGamePlayerRow
+                  player={blackPlayer}
+                  color="black"
+                  score={game.score.black}
+                  scoreToWin={game.scoreToWin}
+                  isYou={isYouBlack}
+                  online={black?.online ?? false}
+                  youLabel={tCommon("you")}
+                />
+              </div>
+
+              {/* Footer: config + actions */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <GameConfigBadge
+                  boardSize={game.boardSize}
+                  scoreToWin={game.scoreToWin}
+                  timeControl={game.timeControl}
+                  roomType={game.roomType}
+                />
+                <div className="flex items-center gap-2">
+                  {isYouPlaying && (
+                    <Button
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => handleJoin(game.gameId)}
+                    >
+                      {t("joinGame")}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => handleSpectate(game.gameId)}
+                  >
+                    {t("spectate")}
+                  </Button>
+                </div>
+              </div>
             </div>
           );
         })}

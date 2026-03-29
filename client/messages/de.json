@@ -357,6 +357,7 @@
     "statusActive": "Laufend",
     "statusWaiting": "Wartet auf Gegner",
     "spectate": "Zuschauen",
+    "joinGame": "Spiel beitreten",
     "unlimited": "Unbegrenzt"
   },
   "tournament": {

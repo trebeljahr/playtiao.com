@@ -357,6 +357,7 @@
     "statusActive": "En progreso",
     "statusWaiting": "Esperando oponente",
     "spectate": "Observar",
+    "joinGame": "Unirse a la partida",
     "unlimited": "Sin límite"
   },
   "tournament": {
