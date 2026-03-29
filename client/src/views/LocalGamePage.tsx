@@ -103,7 +103,7 @@ export function LocalGamePage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar
-        mode="local"
+        mode="lobby"
         auth={auth}
         navOpen={navOpen}
         onToggleNav={() => setNavOpen((v) => !v)}

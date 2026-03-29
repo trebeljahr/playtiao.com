@@ -14,7 +14,7 @@ import { useRouter as useIntlRouter, usePathname as useIntlPathname } from "@/i1
 import { routing } from "@/i18n/routing";
 
 export type AuthDialogMode = "login" | "signup";
-export type NavbarMode = "lobby" | "local" | "computer" | "multiplayer" | "tutorial";
+export type NavbarMode = "lobby" | "multiplayer" | "tutorial";
 
 type NavbarProps = {
   mode: NavbarMode;
@@ -333,8 +333,7 @@ export function Navbar({
   const player = auth?.player;
   const isAccount = player?.kind === "account";
   const isAnonymous = player?.kind !== "account";
-  const gameMode =
-    mode === "local" || mode === "computer" || mode === "multiplayer" || mode === "tutorial";
+  const gameMode = mode === "multiplayer" || mode === "tutorial";
   const minimalMode = gameMode || mode === "lobby";
   const navItemClasses =
     "w-full justify-start px-3 text-left text-[#28170e] hover:bg-[rgba(255,251,241,0.94)] hover:text-[#1f120b]";
@@ -352,28 +351,6 @@ export function Navbar({
       active: pathname === "/",
       onClick: () => handleNav("/"),
       badge: incomingInvitationCount,
-    },
-    {
-      label: t("overTheBoard"),
-      active: pathname === "/local",
-      onClick: () => handleNav("/local"),
-      badge: 0,
-    },
-    ...(pathname?.startsWith("/game/")
-      ? [
-          {
-            label: t("multiplayer"),
-            active: true,
-            onClick: () => {},
-            badge: 0,
-          },
-        ]
-      : []),
-    {
-      label: t("againstComputer"),
-      active: pathname === "/computer",
-      onClick: () => handleNav("/computer"),
-      badge: 0,
     },
     ...(isAccount
       ? [

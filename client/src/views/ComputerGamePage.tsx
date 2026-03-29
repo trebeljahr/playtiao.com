@@ -8,7 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
-import { GamePanelBrand, translatePlayerColor, HourglassSpinner } from "@/components/game/GameShared";
+import {
+  GamePanelBrand,
+  translatePlayerColor,
+  HourglassSpinner,
+} from "@/components/game/GameShared";
 import { GameSidePanel } from "@/components/game/GameSidePanel";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { useComputerGame } from "@/lib/hooks/useComputerGame";
@@ -115,7 +119,7 @@ export function ComputerGamePage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
       <Navbar
-        mode="computer"
+        mode="lobby"
         auth={auth}
         navOpen={navOpen}
         onToggleNav={() => setNavOpen((v) => !v)}
