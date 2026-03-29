@@ -154,11 +154,10 @@ beforeEach(async () => {
   resetTestSessions();
   await installTestSessionMock();
 
-  // Create an admin account and set env var
-  const admin = createTestAccount("admin-user", "admin@example.com");
+  // Create an admin account with isAdmin flag
+  const admin = createTestAccount("admin-user", "admin@example.com", { isAdmin: true });
   adminPlayerId = admin.player.playerId;
   adminCookie = admin.cookie;
-  process.env.ADMIN_PLAYER_IDS = adminPlayerId;
 
   const adminRoutesModule = await import("../routes/admin.routes");
   adminRoutes = adminRoutesModule.default as TestRouter;
@@ -166,7 +165,6 @@ beforeEach(async () => {
 
 afterEach(() => {
   resetTestSessions();
-  delete process.env.ADMIN_PLAYER_IDS;
 });
 
 // ─── User search tests ──────────────────────────────────────────────

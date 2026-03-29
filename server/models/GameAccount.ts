@@ -16,6 +16,8 @@ export interface IGameAccount extends Document {
   badges: string[];
   /** Which badge(s) the player chose to display (empty = hidden). */
   activeBadges: string[];
+  /** Whether this account has admin privileges. */
+  isAdmin: boolean;
   rating: {
     overall: IRatingEntry;
   };
@@ -67,6 +69,10 @@ const GameAccountSchema = new Schema<IGameAccount>(
     activeBadges: {
       type: [String],
       default: [],
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
     rating: {
       overall: {

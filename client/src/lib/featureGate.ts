@@ -16,7 +16,7 @@ export function hasPreviewAccess(auth: AuthResponse | null): boolean {
  * Returns true if the user is an admin.
  *
  * Admin status is indicated by the `isAdmin` flag in the auth response,
- * which is set server-side based on the ADMIN_PLAYER_IDS env var.
+ * which is set server-side based on the isAdmin field in the database.
  */
 export function isAdmin(auth: AuthResponse | null): boolean {
   if (!auth || auth.player.kind !== "account") return false;

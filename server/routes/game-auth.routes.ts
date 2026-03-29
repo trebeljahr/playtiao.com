@@ -8,7 +8,7 @@ import { auth } from "../auth/auth";
 import { getPlayerFromRequest, requireAccount, requireAdmin } from "../auth/sessionHelper";
 import { sanitizeDisplayName } from "../game/playerTokens";
 import { isValidUsername } from "../../shared/src";
-import { ADMIN_PLAYER_IDS, BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
+import { BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
 import { s3Client } from "../config/s3Client";
 import { classifyMongoError } from "../error-handling";
 import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
@@ -78,7 +78,7 @@ function buildPlayerIdentityFromAccount(
     hasSeenTutorial: false,
     badges: account.badges ?? [],
     activeBadges: account.activeBadges ?? [],
-    ...(ADMIN_PLAYER_IDS.has(account.id) ? { isAdmin: true } : {}),
+    ...(account.isAdmin ? { isAdmin: true } : {}),
     rating: account.rating?.overall?.elo,
     ...(needsUsername ? { needsUsername: true } : {}),
   };
