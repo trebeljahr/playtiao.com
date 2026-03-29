@@ -80,11 +80,21 @@ export function SocialNotificationsProvider({
 
     // Show toast for new friend requests
     if (hydratedRef.current) {
+      const nextRequestIds = new Set(nextOverview.incomingFriendRequests.map((r) => r.playerId));
+
+      // Dismiss toasts for friend requests that are no longer pending
+      for (const prevId of prevRequestIdsRef.current) {
+        if (!nextRequestIds.has(prevId)) {
+          toast.dismiss(`friend-request:${prevId}`);
+        }
+      }
+
       for (const req of nextOverview.incomingFriendRequests) {
         if (!prevRequestIdsRef.current.has(req.playerId)) {
           const reqPlayerId = req.playerId;
           const reqName = req.displayName;
           toast(`${reqName} sent you a friend request`, {
+            id: `friend-request:${reqPlayerId}`,
             duration: 15000,
             action: {
               label: "Accept",
@@ -118,12 +128,22 @@ export function SocialNotificationsProvider({
 
     // Show toast for new game invitations
     if (hydratedRef.current) {
+      const nextInvitationIds = new Set(nextOverview.incomingInvitations.map((inv) => inv.id));
+
+      // Dismiss toasts for game invitations that are no longer pending
+      for (const prevId of prevInvitationIdsRef.current) {
+        if (!nextInvitationIds.has(prevId)) {
+          toast.dismiss(`game-invitation:${prevId}`);
+        }
+      }
+
       for (const inv of nextOverview.incomingInvitations) {
         if (!prevInvitationIdsRef.current.has(inv.id)) {
           const invGameId = inv.gameId;
           const invId = inv.id;
           const senderName = inv.sender.displayName;
           toast(`${senderName} invited you to a game`, {
+            id: `game-invitation:${invId}`,
             duration: 15000,
             action: {
               label: "Join",
