@@ -1,3 +1,4 @@
+"use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -74,13 +75,7 @@ export function TournamentPage() {
 
   // Auto-access private tournament when invite code is in URL
   useEffect(() => {
-    if (
-      !inviteCodeFromUrl ||
-      !tournamentId ||
-      !isAccount ||
-      !playerId ||
-      accessAttempted.current
-    ) {
+    if (!inviteCodeFromUrl || !tournamentId || !isAccount || !playerId || accessAttempted.current) {
       return;
     }
     accessAttempted.current = true;

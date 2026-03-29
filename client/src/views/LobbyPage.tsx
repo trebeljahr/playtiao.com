@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -479,7 +480,11 @@ export function LobbyPage() {
                                         ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
                                         : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
                                     )}
-                                    title={tc("playingAs", { color: translatePlayerColor(game.yourSeat ?? null, tGame) ?? game.yourSeat })}
+                                    title={tc("playingAs", {
+                                      color:
+                                        translatePlayerColor(game.yourSeat ?? null, tGame) ??
+                                        game.yourSeat,
+                                    })}
                                   />
                                 )}
                                 <p className="font-mono text-lg font-bold text-[#2b1e14]">
