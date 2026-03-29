@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,11 @@ export function Dialog({
   children,
   className,
 }: DialogProps) {
+  // Track whether the mousedown started on the backdrop (not inside the dialog content).
+  // Only close when both mousedown AND mouseup (click) happen on the backdrop, so that
+  // dragging text from inside the dialog to outside doesn't accidentally close it.
+  const mouseDownOnBackdrop = useRef(false);
+
   useEffect(() => {
     if (!open) {
       return undefined;
@@ -42,6 +47,24 @@ export function Dialog({
     };
   }, [open, onOpenChange]);
 
+  const handleBackdropMouseDown = useCallback((event: React.MouseEvent) => {
+    // Only flag when the mousedown target is the backdrop itself
+    if (event.target === event.currentTarget) {
+      mouseDownOnBackdrop.current = true;
+    }
+  }, []);
+
+  const handleBackdropClick = useCallback(
+    (event: React.MouseEvent) => {
+      // Close only if the click target is the backdrop AND mousedown started on the backdrop
+      if (event.target === event.currentTarget && mouseDownOnBackdrop.current) {
+        onOpenChange(false);
+      }
+      mouseDownOnBackdrop.current = false;
+    },
+    [onOpenChange],
+  );
+
   if (!open) {
     return null;
   }
@@ -51,7 +74,8 @@ export function Dialog({
       className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      onClick={() => onOpenChange(false)}
+      onMouseDown={handleBackdropMouseDown}
+      onClick={handleBackdropClick}
     >
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
