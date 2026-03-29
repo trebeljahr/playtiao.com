@@ -45,6 +45,8 @@ function PlayerRow({
   clockMs,
   ratingChange,
   youLabel,
+  winnerLabel,
+  unknownLabel,
 }: {
   player: { displayName?: string; profilePicture?: string } | null;
   color: PlayerColor;
@@ -55,6 +57,8 @@ function PlayerRow({
   clockMs?: number | null;
   ratingChange?: number | null;
   youLabel: string;
+  winnerLabel: string;
+  unknownLabel: string;
 }) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl px-3 py-2">
@@ -65,12 +69,12 @@ function PlayerRow({
         <EmptySeatAvatar className="h-6 w-6" />
       )}
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#2b1e14]">
-        {player?.displayName ?? "Unknown"}
+        {player?.displayName || unknownLabel}
         {isYou && <span className="ml-1 text-[#8d7760]">{youLabel}</span>}
       </span>
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
-          Winner
+          {winnerLabel}
         </span>
       )}
       {ratingChange != null && (
@@ -116,13 +120,15 @@ export function MatchHistoryCard({
   const t = useTranslations("game");
   const tCommon = useTranslations("common");
   const result = getPlayerResult(game);
-  const whitePlayer = game.seats.white?.player ?? null;
-  const blackPlayer = game.seats.black?.player ?? null;
-  const isWhiteYou = whitePlayer?.playerId === playerId;
-  const isBlackYou = blackPlayer?.playerId === playerId;
+  const whitePlayer = game.seats?.white?.player ?? null;
+  const blackPlayer = game.seats?.black?.player ?? null;
+  const isWhiteYou = !!whitePlayer?.playerId && whitePlayer.playerId === playerId;
+  const isBlackYou = !!blackPlayer?.playerId && blackPlayer.playerId === playerId;
   const whiteWon = game.winner === "white";
   const blackWon = game.winner === "black";
   const scoreToWin = game.scoreToWin ?? 10;
+  const whiteScore = game.score?.white ?? 0;
+  const blackScore = game.score?.black ?? 0;
 
   const whiteRatingChange =
     game.ratingBefore && game.ratingAfter ? game.ratingAfter.white - game.ratingBefore.white : null;
@@ -140,11 +146,7 @@ export function MatchHistoryCard({
   const reasonText = (() => {
     if (!game.finishReason) return null;
     // Don't say "score target reached" if neither player actually reached it
-    if (
-      game.finishReason === "captured" &&
-      game.score.white < scoreToWin &&
-      game.score.black < scoreToWin
-    ) {
+    if (game.finishReason === "captured" && whiteScore < scoreToWin && blackScore < scoreToWin) {
       return null;
     }
     return describeResult(result, game.finishReason, t) || null;
@@ -159,7 +161,7 @@ export function MatchHistoryCard({
             <Badge
               className={cn(
                 "text-xs font-bold border-0",
-                result === "won" ? "bg-[#c2e4a4] text-[#1a4008]" : "bg-[#edb4ac] text-[#5c1a14]",
+                result === "won" ? "bg-[#2d6a1e] text-white" : "bg-[#9b2c2c] text-white",
               )}
             >
               {result === "won" ? t("won") : t("lost")}
@@ -179,7 +181,7 @@ export function MatchHistoryCard({
             onClick={onCopy}
             title={`Copy game ID: ${game.gameId}`}
           >
-            {copiedId === game.gameId ? "Copied" : game.gameId}
+            {copiedId === game.gameId ? tCommon("copied") : game.gameId}
           </button>
           <Button size="sm" className="text-xs" onClick={onReview}>
             {tCommon("review")}
@@ -192,24 +194,28 @@ export function MatchHistoryCard({
         <PlayerRow
           player={whitePlayer}
           color="white"
-          score={game.score.white}
+          score={whiteScore}
           scoreToWin={scoreToWin}
           isYou={isWhiteYou}
           isWinner={whiteWon}
           clockMs={game.clockMs?.white}
           ratingChange={whiteRatingChange}
           youLabel={tCommon("you")}
+          winnerLabel={t("winner")}
+          unknownLabel={t("unknownPlayer")}
         />
         <PlayerRow
           player={blackPlayer}
           color="black"
-          score={game.score.black}
+          score={blackScore}
           scoreToWin={scoreToWin}
           isYou={isBlackYou}
           isWinner={blackWon}
           clockMs={game.clockMs?.black}
           ratingChange={blackRatingChange}
           youLabel={tCommon("you")}
+          winnerLabel={t("winner")}
+          unknownLabel={t("unknownPlayer")}
         />
       </div>
 
@@ -222,7 +228,8 @@ export function MatchHistoryCard({
           roomType={game.roomType}
         />
         <span className="text-xs text-[#9a8770]">
-          {formatGameTimestamp(game.updatedAt)} · {tCommon("moves", { count: game.historyLength })}
+          {formatGameTimestamp(game.updatedAt)} ·{" "}
+          {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
       </div>
     </div>

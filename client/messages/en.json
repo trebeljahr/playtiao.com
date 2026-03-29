@@ -242,7 +242,9 @@
     "unrated": "Unrated",
     "addAsFriend": "Add {name} as a friend",
     "goToNextMatch": "Go to your next match",
-    "redirectingIn": "Redirecting in {seconds}s..."
+    "redirectingIn": "Redirecting in {seconds}s...",
+    "winner": "Winner",
+    "unknownPlayer": "Unknown"
   },
   "config": {
     "difficulty": "Difficulty",

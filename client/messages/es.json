@@ -242,7 +242,9 @@
     "unrated": "Sin puntuación",
     "addAsFriend": "Añadir a {name} como amigo",
     "goToNextMatch": "Ir a tu siguiente partida",
-    "redirectingIn": "Redirigiendo en {seconds}s..."
+    "redirectingIn": "Redirigiendo en {seconds}s...",
+    "winner": "Ganador",
+    "unknownPlayer": "Desconocido"
   },
   "config": {
     "difficulty": "Dificultad",
