@@ -337,7 +337,15 @@
     "justNow": "Just now",
     "rating": "Rating",
     "ratingPercentile": "Top {percentile}%",
-    "ratingProvisional": "Provisional — play ranked games to calibrate"
+    "ratingProvisional": "Provisional — play ranked games to calibrate",
+    "linkedAccounts": "Linked accounts",
+    "linkedAccountsDesc": "Connect additional login methods to your account.",
+    "linkNewAccount": "Link a new account",
+    "unlink": "Unlink",
+    "unlinking": "Unlinking...",
+    "linking": "Linking...",
+    "passwordLogin": "Password login",
+    "emailManagedByProvider": "Email is managed by your {provider} account."
   },
   "friends": {
     "findPlayers": "Find players",

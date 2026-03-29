@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthResponse } from "@shared";
+import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -161,6 +163,131 @@ function BadgeSelector({ auth }: { auth: AuthResponse | null }) {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const SOCIAL_PROVIDERS = [
+  { id: "github" as const, label: "GitHub", icon: FaGithub },
+  { id: "google" as const, label: "Google", icon: FaGoogle },
+  { id: "discord" as const, label: "Discord", icon: FaDiscord },
+];
+
+function LinkedAccounts({
+  providers,
+  onProvidersChange,
+}: {
+  providers: string[];
+  onProvidersChange: () => void;
+}) {
+  const t = useTranslations("profile");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const linkedProviders = providers.filter((p) => p !== "credential");
+  const unlinkableProviders = providers.length > 1;
+
+  async function handleLink(provider: "github" | "google" | "discord") {
+    setBusy(provider);
+    try {
+      await authClient.linkSocial({
+        provider,
+        callbackURL: window.location.href,
+      });
+    } catch (error) {
+      toastError(readableError(error));
+      setBusy(null);
+    }
+  }
+
+  async function handleUnlink(providerId: string) {
+    setBusy(providerId);
+    try {
+      const { error } = await authClient.unlinkAccount({ providerId });
+      if (error) {
+        toastError(readableError(error));
+      } else {
+        onProvidersChange();
+      }
+    } catch (error) {
+      toastError(readableError(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card className="border-[#dcc7a3]/60 bg-[linear-gradient(180deg,rgba(255,250,235,0.98),rgba(248,238,215,0.98))] shadow-[0_32px_72px_-28px_rgba(80,52,18,0.26)]">
+      <CardHeader>
+        <CardTitle>{t("linkedAccounts")}</CardTitle>
+        <CardDescription>{t("linkedAccountsDesc")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Currently linked providers */}
+        {linkedProviders.length > 0 && (
+          <div className="space-y-2">
+            {linkedProviders.map((providerId) => {
+              const meta = SOCIAL_PROVIDERS.find((p) => p.id === providerId);
+              const Icon = meta?.icon;
+              return (
+                <div
+                  key={providerId}
+                  className="flex items-center justify-between rounded-xl border border-[#dcc7a3] bg-white px-4 py-2.5"
+                >
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
+                    {Icon && <Icon className="h-4 w-4" />}
+                    {meta?.label ?? providerId}
+                  </span>
+                  {unlinkableProviders && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy === providerId}
+                      onClick={() => void handleUnlink(providerId)}
+                      className="text-xs text-[#9a8670] hover:text-red-600"
+                    >
+                      {busy === providerId ? t("unlinking") : t("unlink")}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {providers.includes("credential") && (
+          <div className="flex items-center gap-2 rounded-xl border border-[#dcc7a3] bg-white px-4 py-2.5">
+            <span className="text-sm font-medium text-[#4e3d2c]">{t("passwordLogin")}</span>
+          </div>
+        )}
+
+        {/* Link new providers */}
+        {SOCIAL_PROVIDERS.filter((p) => !providers.includes(p.id)).length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
+              {t("linkNewAccount")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SOCIAL_PROVIDERS.filter((p) => !providers.includes(p.id)).map(
+                ({ id, label, icon: Icon }) => (
+                  <Button
+                    key={id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={busy === id}
+                    onClick={() => void handleLink(id)}
+                    className="gap-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {busy === id ? t("linking") : label}
+                  </Button>
+                ),
+              )}
             </div>
           </div>
         )}
@@ -602,28 +729,10 @@ export function ProfilePage() {
                       />
                       {hasOAuthProvider && !hasCredentialProvider && (
                         <p className="text-xs text-[#8d7760]">
-                          Email is managed by your {oauthProviderLabel} account.
+                          {t("emailManagedByProvider", { provider: oauthProviderLabel })}
                         </p>
                       )}
                     </div>
-
-                    {hasOAuthProvider && (
-                      <div className="grid gap-2 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                        <p className="font-medium text-[#4e3d2c]">Connected accounts</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(profile?.providers ?? [])
-                            .filter((p) => p !== "credential")
-                            .map((provider) => (
-                              <span
-                                key={provider}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#dcc7a3] bg-white px-3 py-1 text-xs font-medium capitalize"
-                              >
-                                {provider}
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                    )}
 
                     {hasCredentialProvider && (
                       <div>
@@ -687,6 +796,20 @@ export function ProfilePage() {
                 ) : null}
               </CardContent>
             </Card>
+
+            <LinkedAccounts
+              providers={providers}
+              onProvidersChange={() => {
+                void (async () => {
+                  try {
+                    const response = await getAccountProfile();
+                    setProfile(response.profile);
+                  } catch (error) {
+                    toastError(readableError(error));
+                  }
+                })();
+              }}
+            />
 
             <BadgeSelector auth={auth} />
           </div>

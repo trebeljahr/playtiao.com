@@ -17,6 +17,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
         email: "test@example.com",
         createdAt: "2025-01-01T00:00:00Z",
         updatedAt: "2025-01-01T00:00:00Z",
+        providers: ["credential"],
       },
     }),
     updateAccountProfile: (...args: unknown[]) => mockUpdateAccountProfile(...args),
@@ -80,6 +81,13 @@ const accountAuth: AuthResponse = {
     kind: "account",
   },
 };
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    linkSocial: vi.fn().mockResolvedValue({ data: { url: "" } }),
+    unlinkAccount: vi.fn().mockResolvedValue({ data: { status: true } }),
+  },
+}));
 
 vi.mock("@/lib/AuthContext", () => ({
   useAuth: () => ({

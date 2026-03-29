@@ -335,9 +335,17 @@
     "failedToResizeImage": "Error al redimensionar la imagen",
     "failedToLoadImage": "Error al cargar la imagen",
     "justNow": "Ahora mismo",
-    "rating": "Puntuaci\u00f3n",
+    "rating": "Puntuación",
     "ratingPercentile": "Top {percentile}%",
-    "ratingProvisional": "Provisional — juega partidas clasificatorias para calibrar"
+    "ratingProvisional": "Provisional — juega partidas clasificatorias para calibrar",
+    "linkedAccounts": "Cuentas vinculadas",
+    "linkedAccountsDesc": "Conecta otros métodos de inicio de sesión a tu cuenta.",
+    "linkNewAccount": "Vincular una cuenta nueva",
+    "unlink": "Desvincular",
+    "unlinking": "Desvinculando...",
+    "linking": "Vinculando...",
+    "passwordLogin": "Inicio con contraseña",
+    "emailManagedByProvider": "El email es gestionado por tu cuenta de {provider}."
   },
   "friends": {
     "findPlayers": "Buscar jugadores",
