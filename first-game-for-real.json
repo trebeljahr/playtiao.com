@@ -1,0 +1,1165 @@
+{
+  "_id": "69c6711eca4d6eeef9e4f399",
+  "roomId": "H3WN3T",
+  "roomType": "direct",
+  "status": "finished",
+  "state": {
+    "boardSize": 19,
+    "scoreToWin": 10,
+    "positions": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "white",
+        null,
+        "white",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "white",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "black",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "black",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        "black",
+        "black",
+        null,
+        null,
+        null,
+        null,
+        "black",
+        "black",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "white",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        "black",
+        null,
+        null,
+        null,
+        "white",
+        null,
+        "black",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "currentTurn": "white",
+    "pendingJump": [],
+    "pendingCaptures": [],
+    "score": {
+      "black": 12,
+      "white": 9
+    },
+    "history": [
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 9
+        },
+        "timestamp": 1774612919732
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 10,
+          "y": 11
+        },
+        "timestamp": 1774612929622
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 10,
+          "y": 9
+        },
+        "timestamp": 1774612939944
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 7,
+          "y": 7
+        },
+        "timestamp": 1774612971035
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 10,
+          "y": 10
+        },
+        "timestamp": 1774613021568
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 10,
+          "y": 12
+        },
+        "timestamp": 1774613092299
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 11,
+          "y": 13
+        },
+        "timestamp": 1774613101822
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 11,
+          "y": 8
+        },
+        "timestamp": 1774613107556
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 11,
+              "y": 13
+            },
+            "over": {
+              "x": 10,
+              "y": 12
+            },
+            "to": {
+              "x": 9,
+              "y": 11
+            },
+            "color": "white"
+          },
+          {
+            "from": {
+              "x": 9,
+              "y": 11
+            },
+            "over": {
+              "x": 10,
+              "y": 11
+            },
+            "to": {
+              "x": 11,
+              "y": 11
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774613159517
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 11,
+              "y": 8
+            },
+            "over": {
+              "x": 10,
+              "y": 9
+            },
+            "to": {
+              "x": 9,
+              "y": 10
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 9,
+              "y": 10
+            },
+            "over": {
+              "x": 10,
+              "y": 10
+            },
+            "to": {
+              "x": 11,
+              "y": 10
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 11,
+              "y": 10
+            },
+            "over": {
+              "x": 11,
+              "y": 11
+            },
+            "to": {
+              "x": 11,
+              "y": 12
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774613174067
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 8
+        },
+        "timestamp": 1774613176609
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 6,
+          "y": 6
+        },
+        "timestamp": 1774613183605
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 7
+        },
+        "timestamp": 1774613208889
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 7,
+          "y": 11
+        },
+        "timestamp": 1774613238568
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 10
+        },
+        "timestamp": 1774613261094
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 6,
+          "y": 12
+        },
+        "timestamp": 1774613285479
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 7
+        },
+        "timestamp": 1774613461208
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 6,
+          "y": 7
+        },
+        "timestamp": 1774613473777
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 5,
+          "y": 8
+        },
+        "timestamp": 1774613489419
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 6,
+              "y": 7
+            },
+            "over": {
+              "x": 5,
+              "y": 8
+            },
+            "to": {
+              "x": 4,
+              "y": 9
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774613631049
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 8,
+              "y": 7
+            },
+            "over": {
+              "x": 7,
+              "y": 7
+            },
+            "to": {
+              "x": 6,
+              "y": 7
+            },
+            "color": "white"
+          },
+          {
+            "from": {
+              "x": 6,
+              "y": 7
+            },
+            "over": {
+              "x": 6,
+              "y": 6
+            },
+            "to": {
+              "x": 6,
+              "y": 5
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774613638402
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 10,
+          "y": 9
+        },
+        "timestamp": 1774613655021
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 9
+        },
+        "timestamp": 1774613724782
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 11,
+          "y": 9
+        },
+        "timestamp": 1774613820226
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 11
+        },
+        "timestamp": 1774614035828
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 11,
+          "y": 7
+        },
+        "timestamp": 1774614064969
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 7
+        },
+        "timestamp": 1774614111340
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 10,
+          "y": 8
+        },
+        "timestamp": 1774614311705
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 8
+        },
+        "timestamp": 1774614357939
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 11,
+          "y": 8
+        },
+        "timestamp": 1774614372643
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 12
+        },
+        "timestamp": 1774614417518
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 10,
+              "y": 8
+            },
+            "over": {
+              "x": 9,
+              "y": 7
+            },
+            "to": {
+              "x": 8,
+              "y": 6
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774614502519
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 8,
+              "y": 7
+            },
+            "over": {
+              "x": 8,
+              "y": 6
+            },
+            "to": {
+              "x": 8,
+              "y": 5
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774614531750
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 10,
+              "y": 9
+            },
+            "over": {
+              "x": 9,
+              "y": 8
+            },
+            "to": {
+              "x": 8,
+              "y": 7
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774614659882
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 8,
+              "y": 8
+            },
+            "over": {
+              "x": 8,
+              "y": 7
+            },
+            "to": {
+              "x": 8,
+              "y": 6
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774614669428
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 10,
+          "y": 9
+        },
+        "timestamp": 1774614690207
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 8,
+          "y": 11
+        },
+        "timestamp": 1774614812880
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 6,
+          "y": 11
+        },
+        "timestamp": 1774614846496
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 5,
+          "y": 10
+        },
+        "timestamp": 1774614860770
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 7,
+          "y": 8
+        },
+        "timestamp": 1774614985723
+      },
+      {
+        "type": "put",
+        "color": "white",
+        "position": {
+          "x": 9,
+          "y": 10
+        },
+        "timestamp": 1774615069878
+      },
+      {
+        "type": "put",
+        "color": "black",
+        "position": {
+          "x": 5,
+          "y": 12
+        },
+        "timestamp": 1774615137528
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 5,
+              "y": 10
+            },
+            "over": {
+              "x": 6,
+              "y": 11
+            },
+            "to": {
+              "x": 7,
+              "y": 12
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774615237021
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 6,
+              "y": 12
+            },
+            "over": {
+              "x": 7,
+              "y": 12
+            },
+            "to": {
+              "x": 8,
+              "y": 12
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 8,
+              "y": 12
+            },
+            "over": {
+              "x": 9,
+              "y": 11
+            },
+            "to": {
+              "x": 10,
+              "y": 10
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 10,
+              "y": 10
+            },
+            "over": {
+              "x": 9,
+              "y": 9
+            },
+            "to": {
+              "x": 8,
+              "y": 8
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774615335872
+      },
+      {
+        "type": "jump",
+        "color": "white",
+        "jumps": [
+          {
+            "from": {
+              "x": 8,
+              "y": 9
+            },
+            "over": {
+              "x": 8,
+              "y": 8
+            },
+            "to": {
+              "x": 8,
+              "y": 7
+            },
+            "color": "white"
+          },
+          {
+            "from": {
+              "x": 8,
+              "y": 7
+            },
+            "over": {
+              "x": 7,
+              "y": 8
+            },
+            "to": {
+              "x": 6,
+              "y": 9
+            },
+            "color": "white"
+          }
+        ],
+        "timestamp": 1774615359120
+      },
+      {
+        "type": "jump",
+        "color": "black",
+        "jumps": [
+          {
+            "from": {
+              "x": 7,
+              "y": 11
+            },
+            "over": {
+              "x": 8,
+              "y": 11
+            },
+            "to": {
+              "x": 9,
+              "y": 11
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 9,
+              "y": 11
+            },
+            "over": {
+              "x": 8,
+              "y": 10
+            },
+            "to": {
+              "x": 7,
+              "y": 9
+            },
+            "color": "black"
+          },
+          {
+            "from": {
+              "x": 7,
+              "y": 9
+            },
+            "over": {
+              "x": 6,
+              "y": 9
+            },
+            "to": {
+              "x": 5,
+              "y": 9
+            },
+            "color": "black"
+          }
+        ],
+        "timestamp": 1774615369131
+      },
+      {
+        "type": "win",
+        "color": "black"
+      }
+    ]
+  },
+  "players": [
+    {
+      "playerId": "69c42ba0de28670887ce9c95",
+      "displayName": "Andreas Edmeier",
+      "kind": "account",
+      "profilePicture": "https://daaqzt8lwssmq.cloudfront.net/game-account-69c42ba0de28670887ce9c95-8bcaec7d-b6ae-4200-997a-4e6908d276a7.jpeg"
+    },
+    {
+      "playerId": "69c671a5ca4d6eeef9e4f40b",
+      "displayName": "ricotrebeljahr",
+      "kind": "account"
+    }
+  ],
+  "rematch": null,
+  "takeback": null,
+  "seats": {
+    "white": {
+      "playerId": "69c42ba0de28670887ce9c95",
+      "displayName": "Andreas Edmeier",
+      "kind": "account"
+    },
+    "black": {
+      "playerId": "69c671a5ca4d6eeef9e4f40b",
+      "displayName": "ricotrebeljahr",
+      "kind": "account"
+    }
+  },
+  "timeControl": null,
+  "clockMs": null,
+  "lastMoveAt": "2026-03-27T12:25:07.825Z",
+  "firstMoveDeadline": null,
+  "tournamentId": null,
+  "tournamentMatchId": null,
+  "createdAt": "2026-03-27T11:59:26.269Z",
+  "updatedAt": "2026-03-27T12:42:49.131Z",
+  "__v": 0
+}
