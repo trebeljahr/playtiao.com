@@ -48,6 +48,50 @@ function toSocialPlayerSummary(account: {
   };
 }
 
+/**
+ * For a list of GameAccount documents, look up SSO profile pictures from
+ * better-auth's `user` collection for any accounts that are missing one.
+ * Returns a map from account ID → SSO image URL.
+ */
+async function fetchSsoProfilePictures(
+  accounts: Pick<IGameAccount, "_id" | "profilePicture">[],
+): Promise<Map<string, string>> {
+  const missingPicIds = accounts
+    .filter((a) => !a.profilePicture)
+    .map((a) => String(a._id));
+
+  if (missingPicIds.length === 0) return new Map();
+
+  try {
+    const db = mongoose.connection.getClient().db();
+    const baUsers = await db
+      .collection("user")
+      .find({ _id: { $in: missingPicIds } as any, image: { $ne: null } })
+      .project({ _id: 1, image: 1 })
+      .toArray();
+    return new Map(
+      baUsers
+        .filter((u) => u.image)
+        .map((u) => [String(u._id), u.image as string]),
+    );
+  } catch {
+    // Non-critical — return empty map so callers still work
+    return new Map();
+  }
+}
+
+/** Enrich a list of GameAccount documents with SSO profile pictures where missing. */
+function applySsoFallback(
+  accounts: IGameAccount[],
+  ssoMap: Map<string, string>,
+): SocialPlayerSummary[] {
+  return accounts.map((account) => {
+    const id = String(account._id);
+    const profilePicture = account.profilePicture || ssoMap.get(id) || undefined;
+    return toSocialPlayerSummary({ ...account, profilePicture });
+  });
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -133,7 +177,8 @@ async function loadAccountsById(accountIds: ReadonlyArray<{ toString(): string }
     .lean<IGameAccount[]>()
     .exec();
 
-  return accounts.map((account) => toSocialPlayerSummary(account));
+  const ssoMap = await fetchSsoProfilePictures(accounts);
+  return applySsoFallback(accounts, ssoMap);
 }
 
 async function loadFriendsWithOnlineStatus(
@@ -156,27 +201,45 @@ async function loadInvitationSummaries(
     .limit(50)
     .exec();
 
-  return invitations
-    .filter((invitation) => {
-      // populate() may leave unpopulated refs if accounts were deleted
-      const sender = invitation.senderId as unknown as IGameAccount | null;
-      const recipient = invitation.recipientId as unknown as IGameAccount | null;
-      return sender?.displayName && recipient?.displayName;
-    })
-    .map((invitation) => {
-      const sender = invitation.senderId as unknown as IGameAccount;
-      const recipient = invitation.recipientId as unknown as IGameAccount;
+  const valid = invitations.filter((invitation) => {
+    // populate() may leave unpopulated refs if accounts were deleted
+    const sender = invitation.senderId as unknown as IGameAccount | null;
+    const recipient = invitation.recipientId as unknown as IGameAccount | null;
+    return sender?.displayName && recipient?.displayName;
+  });
 
-      return {
-        id: invitation.id,
-        gameId: invitation.gameId,
-        roomType: invitation.roomType,
-        createdAt: invitation.createdAt.toISOString(),
-        expiresAt: invitation.expiresAt.toISOString(),
-        sender: toSocialPlayerSummary(sender),
-        recipient: toSocialPlayerSummary(recipient),
-      };
-    });
+  // Collect all unique populated accounts that are missing profile pictures
+  const populatedAccounts: IGameAccount[] = [];
+  for (const inv of valid) {
+    const sender = inv.senderId as unknown as IGameAccount;
+    const recipient = inv.recipientId as unknown as IGameAccount;
+    if (!sender.profilePicture) populatedAccounts.push(sender);
+    if (!recipient.profilePicture) populatedAccounts.push(recipient);
+  }
+  const ssoMap = await fetchSsoProfilePictures(populatedAccounts);
+
+  return valid.map((invitation) => {
+    const sender = invitation.senderId as unknown as IGameAccount;
+    const recipient = invitation.recipientId as unknown as IGameAccount;
+    const senderId = sender.id ?? String(sender._id);
+    const recipientId = recipient.id ?? String(recipient._id);
+
+    return {
+      id: invitation.id,
+      gameId: invitation.gameId,
+      roomType: invitation.roomType,
+      createdAt: invitation.createdAt.toISOString(),
+      expiresAt: invitation.expiresAt.toISOString(),
+      sender: toSocialPlayerSummary({
+        ...sender,
+        profilePicture: sender.profilePicture || ssoMap.get(senderId),
+      }),
+      recipient: toSocialPlayerSummary({
+        ...recipient,
+        profilePicture: recipient.profilePicture || ssoMap.get(recipientId),
+      }),
+    };
+  });
 }
 
 function handleRouteError(error: unknown, req: Request, res: Response, fallbackMessage: string) {
@@ -418,8 +481,11 @@ router.get("/player/social/search", userSearchRateLimiter, async (req: Request, 
       .lean<IGameAccount[]>()
       .exec();
 
-    const results: SocialSearchResult[] = accounts.map((result) => ({
-      player: toSocialPlayerSummary(result),
+    const ssoMap = await fetchSsoProfilePictures(accounts);
+    const enriched = applySsoFallback(accounts, ssoMap);
+
+    const results: SocialSearchResult[] = accounts.map((result, i) => ({
+      player: enriched[i],
       relationship: getSearchRelationship(account, String(result._id)),
     }));
 

@@ -44,6 +44,19 @@ async function getEmailForAccount(accountId: string): Promise<string | undefined
   return baUser?.email ?? undefined;
 }
 
+/** Look up a user's SSO profile image from better-auth's user collection. */
+async function getSsoImageForAccount(accountId: string): Promise<string | undefined> {
+  try {
+    const db = mongoose.connection.getClient().db();
+    const baUser = await db
+      .collection("user")
+      .findOne({ _id: accountId as any }, { projection: { image: 1 } });
+    return (baUser?.image as string) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function buildPlayerIdentityFromAccount(
   account: {
     id: string;
@@ -307,12 +320,20 @@ router.get("/profile", async (req: Request, res: Response) => {
     const account = await requireAccount(req, res);
     if (!account) return;
 
-    const [email, providers] = await Promise.all([
+    const [email, providers, ssoImage] = await Promise.all([
       getEmailForAccount(account.id),
       getProvidersForAccount(account.id),
+      getSsoImageForAccount(account.id),
     ]);
+
+    // Use GameAccount.profilePicture as primary, fall back to SSO image
+    const profilePicture = account.profilePicture || ssoImage || undefined;
     return res.status(200).json({
-      profile: serializeAccountProfile(account, email, providers),
+      profile: serializeAccountProfile(
+        { ...account.toObject(), profilePicture },
+        email,
+        providers,
+      ),
     });
   } catch (error) {
     handleRouteError(error, req, res, "Unable to load profile right now.");
@@ -335,10 +356,24 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
       return res.status(404).json({ code: "NOT_FOUND", message: "Player not found." });
     }
 
+    // Fall back to better-auth's SSO image if GameAccount has no profile picture
+    let profilePicture = account.profilePicture;
+    if (!profilePicture) {
+      try {
+        const db = mongoose.connection.getClient().db();
+        const baUser = await db
+          .collection("user")
+          .findOne({ _id: account.id as any });
+        profilePicture = (baUser?.image as string) || undefined;
+      } catch {
+        // Non-critical
+      }
+    }
+
     return res.status(200).json({
       profile: {
         displayName: account.displayName,
-        profilePicture: account.profilePicture,
+        profilePicture,
         createdAt: account.createdAt,
       },
     });
