@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster, toast } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
@@ -345,6 +346,32 @@ function AuthDialog() {
   );
 }
 
+/**
+ * Redirects SSO users who haven't chosen a valid username to /onboarding.
+ * Prevents navigation away from /onboarding while needsUsername is true.
+ */
+function UsernameOnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { auth } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const needsUsername = auth?.player?.kind === "account" && auth.player.needsUsername === true;
+  const isOnboardingPage = pathname?.endsWith("/onboarding") ?? false;
+
+  useEffect(() => {
+    if (needsUsername && !isOnboardingPage) {
+      router.replace("/onboarding");
+    }
+  }, [needsUsername, isOnboardingPage, router]);
+
+  // While redirect is pending, show nothing to avoid flash
+  if (needsUsername && !isOnboardingPage) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
 function AppShell({ children }: { children: React.ReactNode }) {
   const { auth, authLoading } = useAuth();
 
@@ -356,7 +383,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <LobbySocketProvider auth={auth}>
       <SocialNotificationsProvider auth={auth}>
         <div className="min-h-screen bg-background text-foreground">
-          <main className="min-h-screen">{children}</main>
+          <UsernameOnboardingGuard>
+            <main className="min-h-screen">{children}</main>
+          </UsernameOnboardingGuard>
           <AuthDialog />
           <Toaster
             richColors

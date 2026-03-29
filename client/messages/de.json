@@ -531,5 +531,14 @@
     "backToHome": "Zurück zur Startseite",
     "genericError": "Etwas ist schiefgelaufen.",
     "selectImage": "Bitte wähle eine Bilddatei aus."
+  },
+  "onboarding": {
+    "title": "Profil einrichten",
+    "description": "Wähle einen Benutzernamen, um loszulegen. So finden dich andere Spieler.",
+    "usernameLabel": "Benutzername",
+    "usernamePlaceholder": "benutzername",
+    "usernameHint": "3-32 Zeichen. Nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche.",
+    "saving": "Speichern...",
+    "continue": "Weiter"
   }
 }

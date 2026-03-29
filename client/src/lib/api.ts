@@ -154,6 +154,16 @@ export function getPlayerIdentity() {
   return request<{ player: PlayerIdentity }>("/api/player/me");
 }
 
+/**
+ * Set username for SSO users during onboarding.
+ */
+export function setUsername(username: string) {
+  return request<{ auth: AuthResponse }>("/api/player/set-username", {
+    method: "POST",
+    body: { username },
+  });
+}
+
 export function createMultiplayerGame(settings?: {
   boardSize?: number;
   scoreToWin?: number;

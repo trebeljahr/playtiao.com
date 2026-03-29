@@ -527,5 +527,14 @@
     "backToHome": "Volver al inicio",
     "genericError": "Algo salió mal.",
     "selectImage": "Por favor selecciona un archivo de imagen."
+  },
+  "onboarding": {
+    "title": "Configura tu perfil",
+    "description": "Elige un nombre de usuario para empezar. Así te encontrarán otros jugadores.",
+    "usernameLabel": "Nombre de usuario",
+    "usernamePlaceholder": "usuario",
+    "usernameHint": "3-32 caracteres. Solo letras minúsculas, números, guiones y guiones bajos.",
+    "saving": "Guardando...",
+    "continue": "Continuar"
   }
 }

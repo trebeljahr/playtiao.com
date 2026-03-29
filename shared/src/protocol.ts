@@ -2,6 +2,19 @@ import type { GameState, PlayerColor, Position, ScoreState } from "./tiao";
 
 export type IdentityKind = "guest" | "account";
 
+/** Valid username: lowercase alphanumeric, hyphens, and underscores; 3-32 chars; starts with letter/number. */
+export const USERNAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 32;
+
+export function isValidUsername(name: string): boolean {
+  return (
+    name.length >= USERNAME_MIN_LENGTH &&
+    name.length <= USERNAME_MAX_LENGTH &&
+    USERNAME_REGEX.test(name)
+  );
+}
+
 export type PlayerIdentity = {
   playerId: string;
   displayName: string;
@@ -14,6 +27,8 @@ export type PlayerIdentity = {
   /** Which badge(s) the player chose to display (empty = hidden). */
   activeBadges?: string[];
   rating?: number;
+  /** True when the account's displayName doesn't meet username requirements (SSO users). */
+  needsUsername?: boolean;
 };
 
 export type PlayerSlot = {

@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
 import GameAccount from "../models/GameAccount";
-import { PlayerIdentity } from "../../shared/src";
+import { PlayerIdentity, isValidUsername } from "../../shared/src";
 
 async function toPlayerIdentity(user: {
   id: string;
@@ -22,9 +22,11 @@ async function toPlayerIdentity(user: {
   }
 
   const account = await GameAccount.findById(user.id);
+  const displayName = account?.displayName || user.displayName || user.name;
+  const needsUsername = !isValidUsername(displayName);
   return {
     playerId: user.id,
-    displayName: account?.displayName || user.displayName || user.name,
+    displayName,
     kind: "account",
     email: user.email,
     profilePicture: account?.profilePicture || user.image || undefined,
@@ -32,6 +34,7 @@ async function toPlayerIdentity(user: {
     badges: account?.badges ?? [],
     activeBadges: account?.activeBadges ?? [],
     rating: account?.rating?.overall?.elo,
+    ...(needsUsername ? { needsUsername: true } : {}),
   };
 }
 

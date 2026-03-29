@@ -7,6 +7,7 @@ import GameAccount from "../models/GameAccount";
 import { auth } from "../auth/auth";
 import { getPlayerFromRequest, requireAccount } from "../auth/sessionHelper";
 import { sanitizeDisplayName } from "../game/playerTokens";
+import { isValidUsername } from "../../shared/src";
 import { BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
 import { s3Client } from "../config/s3Client";
 import { classifyMongoError } from "../error-handling";
@@ -54,6 +55,7 @@ function buildPlayerIdentityFromAccount(
   },
   email?: string,
 ) {
+  const needsUsername = !isValidUsername(account.displayName);
   return {
     playerId: account.id,
     email,
@@ -64,6 +66,7 @@ function buildPlayerIdentityFromAccount(
     badges: account.badges ?? [],
     activeBadges: account.activeBadges ?? [],
     rating: account.rating?.overall?.elo,
+    ...(needsUsername ? { needsUsername: true } : {}),
   };
 }
 
@@ -220,6 +223,58 @@ router.get("/me", async (req: Request, res: Response) => {
     return res.status(200).json({ player });
   } catch (error) {
     handleRouteError(error, req, res, "Unable to load player session right now.");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// SSO username onboarding — set a valid username after social login
+// ---------------------------------------------------------------------------
+
+router.post("/set-username", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    const { username } = req.body as { username?: string };
+    const sanitized = username?.trim().toLowerCase();
+
+    if (!sanitized || !isValidUsername(sanitized)) {
+      return res.status(400).json({
+        code: "INVALID_USERNAME",
+        message:
+          "Usernames must be 3-32 characters, lowercase, and can only contain letters, numbers, hyphens, and underscores.",
+      });
+    }
+
+    const existing = await GameAccount.findOne({
+      displayName: sanitized,
+      _id: { $ne: account._id },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        code: "DUPLICATE_USERNAME",
+        message: "That username is already taken.",
+      });
+    }
+
+    account.displayName = sanitizeDisplayName(sanitized);
+    await account.save();
+
+    // Also update display name in better-auth's user collection
+    const db = mongoose.connection.getClient().db();
+    await db
+      .collection("user")
+      .updateOne(
+        { _id: account._id },
+        { $set: { name: account.displayName, displayName: account.displayName } },
+      );
+
+    const email = await getEmailForAccount(account.id);
+    const player = buildPlayerIdentityFromAccount(account, email);
+    return res.status(200).json({ auth: { player } });
+  } catch (error) {
+    return handleRouteError(error, req, res, "Unable to set username right now.");
   }
 });
 
