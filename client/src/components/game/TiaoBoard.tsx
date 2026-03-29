@@ -224,9 +224,9 @@ export function TiaoBoard({
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (!IS_TOUCH_DEVICE || disabled || !boardRef.current) return;
+      if (!IS_TOUCH_DEVICE || !boardRef.current) return;
 
-      // Let zoom hook see all events first
+      // Let zoom hook see all events first (zoom is always allowed)
       zoom.handlers.onTouchStart(e);
 
       // If multi-touch (pinch), clear preview and bail
@@ -234,6 +234,9 @@ export function TiaoBoard({
         setMobilePreview(null);
         return;
       }
+
+      // Game interactions (preview, drag, tap) are gated on disabled
+      if (disabled) return;
 
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
