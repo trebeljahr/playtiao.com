@@ -55,74 +55,80 @@ export function MatchCard({
 
   return (
     <div
-      className={`rounded-xl border p-3 ${
+      className={`overflow-hidden rounded-xl border p-3 ${
         featured ? "border-amber-400/60 bg-amber-50/40" : "border-white/50 bg-white/60"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 space-y-1">
-          {match.players.map((player, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-2 text-sm ${
-                match.winner && player?.playerId === match.winner
-                  ? "font-semibold"
-                  : match.winner
-                    ? "text-muted-foreground"
-                    : ""
-              }`}
-            >
-              <span className="w-5 text-right text-xs text-muted-foreground">
-                #{player?.seed ?? "?"}
+      {/* Top row: status badge aligned right */}
+      <div className="mb-1 flex min-h-[1.5rem] items-center justify-end">
+        {!isDone && (
+          <Badge className={statusColor(match.status)}>{statusLabel(match.status)}</Badge>
+        )}
+        {isDone && (
+          <div className="flex items-center gap-2">
+            {reason && <span className="text-[11px] text-muted-foreground">{reason}</span>}
+            {match.historyLength != null && (
+              <span className="text-[11px] text-muted-foreground">
+                {tCommon("moves", { count: match.historyLength })}
               </span>
-              {match.playerColors?.[i] && (
-                <span
-                  className={`h-3 w-3 shrink-0 rounded-full border ${
-                    match.playerColors[i] === "white"
-                      ? "border-slate-300 bg-white"
-                      : "border-slate-400 bg-slate-800"
-                  }`}
-                  title={match.playerColors[i] === "white" ? tGame("white") : tGame("black")}
-                />
-              )}
-              {player ? (
-                <PlayerIdentityRow
-                  player={player}
-                  currentPlayerId={currentPlayerId}
-                  avatarClassName="h-6 w-6"
-                  nameClassName="text-sm"
-                  className="min-w-0 flex-1"
-                />
-              ) : (
-                <span className="truncate text-muted-foreground">{t("tbd")}</span>
-              )}
-              {isDone && player?.playerId === match.winner && (
-                <span className="inline-flex items-center rounded-full border border-green-400 bg-green-50 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider text-green-700">
-                  {tGame("won")}
-                </span>
-              )}
-              {match.status !== "pending" && match.status !== "bye" && (
-                <span className="text-xs text-muted-foreground">{match.score[i]}</span>
-              )}
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        )}
+      </div>
 
-        <div className="flex flex-col items-end gap-1">
-          {!isDone && (
-            <Badge className={statusColor(match.status)}>{statusLabel(match.status)}</Badge>
-          )}
-          {isDone && (
-            <div className="flex flex-col items-end gap-0.5">
-              {reason && <span className="text-[11px] text-muted-foreground">{reason}</span>}
-              {match.historyLength != null && (
-                <span className="text-[11px] text-muted-foreground">
-                  {tCommon("moves", { count: match.historyLength })}
-                </span>
-              )}
-            </div>
-          )}
-          {match.roomId && match.status === "active" && (
+      {/* Player rows */}
+      <div className="min-w-0 space-y-1">
+        {match.players.map((player, i) => (
+          <div
+            key={i}
+            className={`flex min-w-0 items-center gap-2 text-sm ${
+              match.winner && player?.playerId === match.winner
+                ? "font-semibold"
+                : match.winner
+                  ? "text-muted-foreground"
+                  : ""
+            }`}
+          >
+            <span className="w-5 shrink-0 text-right text-xs text-muted-foreground">
+              #{player?.seed ?? "?"}
+            </span>
+            {match.playerColors?.[i] && (
+              <span
+                className={`h-3 w-3 shrink-0 rounded-full border ${
+                  match.playerColors[i] === "white"
+                    ? "border-slate-300 bg-white"
+                    : "border-slate-400 bg-slate-800"
+                }`}
+                title={match.playerColors[i] === "white" ? tGame("white") : tGame("black")}
+              />
+            )}
+            {player ? (
+              <PlayerIdentityRow
+                player={player}
+                currentPlayerId={currentPlayerId}
+                avatarClassName="h-6 w-6"
+                nameClassName="text-sm"
+                className="min-w-0 flex-1 flex-wrap"
+              />
+            ) : (
+              <span className="truncate text-muted-foreground">{t("tbd")}</span>
+            )}
+            {isDone && player?.playerId === match.winner && (
+              <span className="shrink-0 inline-flex items-center rounded-full border border-green-400 bg-green-50 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider text-green-700">
+                {tGame("won")}
+              </span>
+            )}
+            {match.status !== "pending" && match.status !== "bye" && (
+              <span className="shrink-0 text-xs text-muted-foreground">{match.score[i]}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom row: action buttons aligned right */}
+      {match.roomId && (match.status === "active" || isDone) && (
+        <div className="mt-2 flex items-center justify-end">
+          {match.status === "active" && (
             <Button
               size="sm"
               variant={isMyMatch ? "default" : "outline"}
@@ -131,7 +137,7 @@ export function MatchCard({
               {isMyMatch ? tCommon("play") : tCommon("watch")}
             </Button>
           )}
-          {match.roomId && isDone && (
+          {isDone && (
             <Button
               size="sm"
               variant="outline"
@@ -141,7 +147,7 @@ export function MatchCard({
             </Button>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
