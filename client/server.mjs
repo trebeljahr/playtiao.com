@@ -12,8 +12,64 @@
 
 import { createServer, request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
+import { existsSync, statSync, createReadStream } from "fs";
+import { join, extname, resolve } from "path";
 import { parse } from "url";
 import next from "next";
+
+const MIME_TYPES = {
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".mp3": "audio/mpeg",
+  ".json": "application/json",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+  ".webm": "video/webm",
+};
+
+const publicDir = resolve("./public");
+
+/**
+ * Try to serve a static file from the public directory.
+ * Returns true if the file was served, false otherwise.
+ */
+export function servePublicFile(req, res, pathname) {
+  // Decode URI-encoded characters (e.g. %20 -> space)
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+
+  // Resolve the full path and prevent path traversal
+  const filePath = resolve(join(publicDir, decodedPath));
+  if (!filePath.startsWith(publicDir + "/")) {
+    return false;
+  }
+
+  // Check if file exists and is a regular file
+  if (!existsSync(filePath)) {
+    return false;
+  }
+  const stat = statSync(filePath);
+  if (!stat.isFile()) {
+    return false;
+  }
+
+  const ext = extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+  res.writeHead(200, {
+    "Content-Type": contentType,
+    "Content-Length": stat.size,
+    "Cache-Control": "public, max-age=31536000, immutable",
+  });
+  createReadStream(filePath).pipe(res);
+  return true;
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -125,6 +181,11 @@ const httpServer = createServer((req, res) => {
 
   if (pathname.startsWith("/api/") || pathname.startsWith("/ws/")) {
     proxyRequest(req, res);
+    return;
+  }
+
+  // Serve static files from public/ directly (fixes Docker path mismatch)
+  if (servePublicFile(req, res, pathname)) {
     return;
   }
 
