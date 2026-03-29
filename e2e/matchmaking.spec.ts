@@ -1,22 +1,17 @@
 import { test, expect, Page } from "@playwright/test";
-import { signUpViaUI, dismissRulesIntro } from "./helpers";
+import { signUpViaUI, waitForAppReady, dismissRulesIntro } from "./helpers";
 
 async function startMatchmaking(page: Page) {
   await page.goto("/");
+  await waitForAppReady(page);
   const unlimitedBtn = page.locator('button:has-text("Unlimited time game")');
-  const quickMatch = page.locator('button:has-text("Quick match")');
-  const findMatch = page.locator('button:has-text("Unlimited time game")');
-  if (await unlimitedBtn.isVisible().catch(() => false)) {
-    await unlimitedBtn.click();
-  } else if (await quickMatch.isVisible().catch(() => false)) {
-    await quickMatch.click();
-  } else {
-    await findMatch.click();
-  }
+  await expect(unlimitedBtn).toBeVisible({ timeout: 5000 });
+  await unlimitedBtn.click();
 }
 
 async function startTimedMatchmaking(page: Page, label: string) {
   await page.goto("/");
+  await waitForAppReady(page);
   const preset = page.locator(`button:has-text("${label}")`);
   await expect(preset).toBeVisible({ timeout: 5000 });
   await preset.click();

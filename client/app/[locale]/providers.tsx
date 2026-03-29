@@ -265,7 +265,7 @@ function AuthDialog() {
                     }
                     placeholder="username"
                     autoComplete="name"
-                    pattern="^[a-z0-9][-a-z0-9_]*$"
+                    pattern="^[a-z0-9][a-z0-9_\-]*$"
                     minLength={3}
                     maxLength={32}
                     title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"

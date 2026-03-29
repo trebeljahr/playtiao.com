@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, waitForAppReady } from "./helpers";
 
 test.describe("Lobby cleanup — no Refresh buttons", () => {
   test("My Games page does NOT have a Refresh button", async ({ browser }) => {
@@ -12,6 +12,7 @@ test.describe("Lobby cleanup — no Refresh buttons", () => {
 
     // Navigate to My Games
     await page.goto("/games");
+    await waitForAppReady(page);
     await expect(page.locator("text=Match History")).toBeVisible();
 
     // Verify no Refresh button exists on the page

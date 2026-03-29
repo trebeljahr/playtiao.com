@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI, dismissRulesIntro } from "./helpers";
+import { signUpViaUI, waitForAppReady, dismissRulesIntro } from "./helpers";
 
 test.describe("Game review from My Games page", () => {
   test("no confetti fires when opening a finished game in review mode", async ({ browser }) => {
@@ -39,6 +39,7 @@ test.describe("Game review from My Games page", () => {
 
     // Navigate to My Games and open in review mode
     await alicePage.goto("/games");
+    await waitForAppReady(alicePage);
     await expect(alicePage.locator("text=Match History")).toBeVisible();
 
     // Track whether confetti fires by intercepting the canvas-confetti calls
@@ -115,6 +116,7 @@ test.describe("Game review from My Games page", () => {
     await bobContext.close();
 
     await alicePage.goto("/games");
+    await waitForAppReady(alicePage);
     await expect(alicePage.locator("text=Match History")).toBeVisible();
     await alicePage.click('button:has-text("Review")');
     await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/);

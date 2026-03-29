@@ -3,7 +3,11 @@ import { execSync } from "child_process";
 const CONTAINERS = ["tiao-e2e-mongo", "tiao-e2e-redis", "tiao-e2e-minio"];
 
 async function globalTeardown(): Promise<void> {
-  if (process.env.CI) {
+  // In CI, services are managed externally (GitHub Actions service containers).
+  // Locally, keep containers running so the next test run can reuse them
+  // (matches reuseExistingServer: true in playwright.config.ts).
+  // Set E2E_TEARDOWN=1 to force cleanup if you want a fresh slate.
+  if (process.env.CI || !process.env.E2E_TEARDOWN) {
     return;
   }
 

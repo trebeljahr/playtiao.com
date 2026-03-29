@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI, dismissRulesIntro } from "./helpers";
+import { signUpViaUI, waitForAppReady, dismissRulesIntro } from "./helpers";
 
 test("game review mode shows review nav buttons and allows friend requests", async ({
   browser,
@@ -46,6 +46,7 @@ test("game review mode shows review nav buttons and allows friend requests", asy
 
   // 6. Alice navigates away and comes back to review
   await alicePage.goto("/games");
+  await waitForAppReady(alicePage);
   await expect(alicePage.locator("text=Match History")).toBeVisible();
 
   // Click "Review" on the finished game
@@ -109,6 +110,7 @@ test("game review shows status title and allows returning to lobby", async ({ br
 
   // Navigate to review
   await alicePage.goto("/games");
+  await waitForAppReady(alicePage);
   await alicePage.click('button:has-text("Review")');
 
   // Verify we're on the game page in review mode
