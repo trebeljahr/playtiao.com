@@ -19,6 +19,7 @@ export function FriendsPage() {
   const t = useTranslations("friends");
   const tCommon = useTranslations("common");
   const tLobby = useTranslations("lobby");
+  const tConfig = useTranslations("config");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -242,7 +243,7 @@ export function FriendsPage() {
         <div className="space-y-4">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[#6e5437]">
-              {tLobby("boardSize")}
+              {tConfig("boardSize")}
             </label>
             <div className="flex gap-2">
               {[9, 13, 19].map((size) => (
@@ -260,7 +261,7 @@ export function FriendsPage() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[#6e5437]">
-              {tLobby("scoreToWin")}
+              {tConfig("scoreToWin")}
             </label>
             <div className="flex gap-2">
               {[5, 10, 15, 20].map((score) => (
