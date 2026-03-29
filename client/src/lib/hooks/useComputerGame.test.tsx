@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useComputerGame } from "./useComputerGame";
-import {
-  createInitialGameState,
-} from "@shared";
+import { createInitialGameState } from "@shared";
 
 // Store resolve/reject callbacks so tests can control when the AI "responds"
 let resolveAI: ((plan: any) => void) | null = null;
@@ -411,5 +409,73 @@ describe("useComputerGame – undo only goes back one round, not to the beginnin
     // Undo — canUndo goes back to false
     act(() => result.current.handleLocalUndoTurn());
     expect(result.current.canUndo).toBe(false);
+  });
+});
+
+describe("useComputerGame – AI moves after board reset", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resolveAI = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("triggers AI move when bot is white after reset", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // Default computer color is "black" (from mock). Player places first.
+    act(() => result.current.handleLocalBoardClick({ x: 9, y: 9 }));
+    expect(result.current.localGame.currentTurn).toBe("black");
+
+    // AI responds
+    await act(async () => {
+      resolveAI!({ type: "place", position: { x: 8, y: 8 }, score: 0 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(result.current.localGame.history.length).toBe(2);
+    resolveAI = null;
+
+    // Reset with computer as white — bot should move first on the fresh board
+    act(() => result.current.resetLocalGame("white"));
+
+    // After reset, game is fresh, currentTurn = "white", computerColor = "white"
+    expect(result.current.localGame.history.length).toBe(0);
+    expect(result.current.localGame.currentTurn).toBe("white");
+
+    // The AI effect should have fired — requestComputerMove was called
+    expect(resolveAI).not.toBeNull();
+    expect(result.current.computerThinking).toBe(true);
+  });
+
+  it("triggers AI move after consecutive resets with same histLen", async () => {
+    const { result } = renderHook(() => useComputerGame());
+
+    // Reset to bot-as-white, AI starts thinking
+    act(() => result.current.resetLocalGame("white"));
+    expect(resolveAI).not.toBeNull();
+
+    // AI responds
+    await act(async () => {
+      resolveAI!({ type: "place", position: { x: 9, y: 9 }, score: 0 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    resolveAI = null;
+
+    // Reset again with bot as white — should trigger AI again even though
+    // histLen is 0 both before and after the reset.
+    act(() => result.current.resetLocalGame("white"));
+    expect(result.current.localGame.history.length).toBe(0);
+    expect(resolveAI).not.toBeNull();
+    expect(result.current.computerThinking).toBe(true);
   });
 });

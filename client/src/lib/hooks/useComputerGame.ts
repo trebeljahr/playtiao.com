@@ -26,6 +26,12 @@ export function useComputerGame(difficulty: AIDifficulty = 3, settings?: Partial
   // cleanup doesn't need to reset computerThinking because the ref guards re-entry.
   const searchedForRef = useRef(-1);
 
+  // Track the last resetGeneration the effect has observed.  When it
+  // changes we must clear searchedForRef so the de-dup guard doesn't
+  // prevent the AI from starting a search on the fresh board (e.g. when
+  // histLen is 0 both before and after a reset).
+  const lastResetGenRef = useRef(resetGeneration);
+
   // Ref to cancel the current AI operation (search + timeouts)
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -51,6 +57,16 @@ export function useComputerGame(difficulty: AIDifficulty = 3, settings?: Partial
   const currentTurn = local.localGame.currentTurn;
 
   useEffect(() => {
+    // Detect board resets: when resetGeneration changes, clear the
+    // searchedForRef guard so the effect doesn't skip the new (identical-
+    // histLen) position.  Without this, a reset that lands on histLen 0
+    // while searchedForRef is already 0 (e.g. React StrictMode double-
+    // invoke or two consecutive resets) would silently skip the AI turn.
+    if (lastResetGenRef.current !== resetGeneration) {
+      lastResetGenRef.current = resetGeneration;
+      searchedForRef.current = -1;
+    }
+
     if (!needsMove) {
       searchedForRef.current = -1;
       return;
