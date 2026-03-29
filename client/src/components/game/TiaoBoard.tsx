@@ -340,12 +340,17 @@ export function TiaoBoard({
       touchStartRef.current = null;
 
       // If there's already a piece, a selection, or a jump target at this
-      // position, skip preview and let the normal click handler deal with it.
+      // position, skip preview and handle it directly. We can't rely on
+      // the browser generating a synthetic click from the touch event —
+      // some browsers/environments (e.g. Playwright) don't, so we call
+      // the handler ourselves and suppress the click to avoid double-fires.
       const piece = state.positions[pos.y]?.[pos.x];
       const hasActiveOrigin = !!activeOrigin;
 
       if (piece || hasActiveOrigin) {
-        // Let the regular onClick fire
+        e.preventDefault();
+        suppressClickRef.current = true;
+        onPointClick?.(pos);
         return;
       }
 

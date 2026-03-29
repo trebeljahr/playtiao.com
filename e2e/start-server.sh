@@ -44,10 +44,10 @@ if [ "${CI:-}" != "true" ]; then
     echo "[e2e] Initializing MinIO bucket..."
     docker rm -f "$MINIO_INIT_CONTAINER" 2>/dev/null || true
     docker run --rm --name "$MINIO_INIT_CONTAINER" \
-      --link "$MINIO_CONTAINER:minio" \
+      --network host \
       --entrypoint sh \
       minio/mc:latest -c "
-        until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done &&
+        until mc alias set local http://127.0.0.1:$MINIO_PORT minioadmin minioadmin; do sleep 1; done &&
         mc mb --ignore-existing local/tiao-e2e &&
         mc anonymous set download local/tiao-e2e
       "

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, waitForAppReady } from "./helpers";
 
 test("spectator can view an active game without joining", async ({ browser }) => {
   const aliceContext = await browser.newContext();
@@ -81,7 +81,7 @@ test('spectator sees "Spectating" title and players see spectator badge', async 
 test("lobby Watch a Game section navigates to game", async ({ page }) => {
   // Guest visits the lobby
   await page.goto("/");
-  await page.waitForLoadState("networkidle");
+  await waitForAppReady(page);
 
   // Scroll to the Watch a Game section
   const watchHeading = page.locator("text=Watch a Game");

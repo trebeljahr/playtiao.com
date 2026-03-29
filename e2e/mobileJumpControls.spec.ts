@@ -1,5 +1,5 @@
 import { test, expect, devices } from "@playwright/test";
-import { waitForAppReady, mobileClickCell } from "./helpers";
+import { waitForAppReady } from "./helpers";
 
 const iphone13 = devices["iPhone 13"];
 test.use({
@@ -20,22 +20,6 @@ function cell(page: import("@playwright/test").Page, x: number, y: number) {
 async function mobilePlaceStone(page: import("@playwright/test").Page, x: number, y: number) {
   await cell(page, x, y).tap();
   await cell(page, x, y).tap();
-}
-
-/**
- * Select a piece and execute a jump on mobile.
- * Playwright's .tap() doesn't fire the synthetic click event that the board
- * relies on for piece selection, so we use mobileClickCell to dispatch it.
- */
-async function mobileSelectAndJump(
-  page: import("@playwright/test").Page,
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-) {
-  await mobileClickCell(page, fromX, fromY);
-  await mobileClickCell(page, toX, toY);
 }
 
 test.describe("Mobile jump controls", () => {
@@ -63,8 +47,12 @@ test.describe("Mobile jump controls", () => {
     await mobilePlaceStone(page, 12, 9);
     await expect(page.locator("text=White to move")).toBeVisible();
 
-    // White selects piece at (9,9) and jumps over black at (10,9) to (11,9)
-    await mobileSelectAndJump(page, 9, 9, 11, 9);
+    // White selects piece at (9,9) — tap on existing piece triggers selection
+    // (handled by touchend in TiaoBoard which calls onPointClick directly)
+    await cell(page, 9, 9).tap();
+    // Jump over black at (10,9) to (11,9) — activeOrigin is set so touchend
+    // calls onPointClick directly
+    await cell(page, 11, 9).tap();
 
     // Should show floating confirm and undo buttons
     await expect(page.locator('button[aria-label="Confirm jump"]')).toBeVisible({ timeout: 3000 });
@@ -79,7 +67,9 @@ test.describe("Mobile jump controls", () => {
     await mobilePlaceStone(page, 8, 8);
     await mobilePlaceStone(page, 5, 5);
 
-    await mobileSelectAndJump(page, 9, 9, 11, 9);
+    // Select piece and jump
+    await cell(page, 9, 9).tap();
+    await cell(page, 11, 9).tap();
 
     // Tap Confirm
     await page.locator('button[aria-label="Confirm jump"]').tap();
@@ -98,15 +88,17 @@ test.describe("Mobile jump controls", () => {
     await mobilePlaceStone(page, 8, 8);
     await mobilePlaceStone(page, 5, 5);
 
-    await mobileSelectAndJump(page, 9, 9, 11, 9);
+    // Select piece and jump
+    await cell(page, 9, 9).tap();
+    await cell(page, 11, 9).tap();
 
     // Tap Undo (use first() since there may be both board-level and floating undo)
     await page.locator('button[aria-label="Undo last jump"]').first().tap();
 
     // Still White's turn (jump was reverted, not confirmed)
     await expect(page.locator("text=White to move")).toBeVisible();
-    // White piece should be back at (9,9)
-    await expect(cell(page, 9, 9)).toHaveAttribute("data-piece", "white");
+    // White piece should be back at (9,9) (allow time for state to update)
+    await expect(cell(page, 9, 9)).toHaveAttribute("data-piece", "white", { timeout: 3000 });
   });
 
   test("cannot switch to another piece during a pending jump", async ({ page }) => {
@@ -115,10 +107,12 @@ test.describe("Mobile jump controls", () => {
     await mobilePlaceStone(page, 8, 8);
     await mobilePlaceStone(page, 5, 5);
 
-    await mobileSelectAndJump(page, 9, 9, 11, 9);
+    // Select piece and jump
+    await cell(page, 9, 9).tap();
+    await cell(page, 11, 9).tap();
 
-    // Try to click white piece at (8,8) — should be ignored during pending jump
-    await mobileClickCell(page, 8, 8);
+    // Try to tap white piece at (8,8) — should be ignored during pending jump
+    await cell(page, 8, 8).tap();
 
     // Confirm button should still be visible (pending jump not cancelled)
     await expect(page.locator('button[aria-label="Confirm jump"]')).toBeVisible({ timeout: 2000 });

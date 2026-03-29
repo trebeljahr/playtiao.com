@@ -38,6 +38,7 @@ export async function signUpViaUI(page: Page, username: string, password: string
   const testEmail = email || `${username}@test.tiao.local`;
 
   await page.goto("/");
+  await waitForAppReady(page);
   await page.click('[aria-label="Open navigation"]');
   await page.click('button:has-text("Sign up")');
   await page.fill("#signup-display-name", username);
@@ -57,6 +58,7 @@ export async function signUpViaUI(page: Page, username: string, password: string
  */
 export async function signInViaUI(page: Page, usernameOrEmail: string, password: string) {
   await page.goto("/");
+  await waitForAppReady(page);
   await page.click('[aria-label="Open navigation"]');
   await page.click('button:has-text("Sign in")');
   await page.fill("#login-email", usernameOrEmail);
