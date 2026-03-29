@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { AuthResponse, MultiplayerGamesIndex } from "@shared";
 import { listMultiplayerGames } from "../api";
 import { toastError } from "../errors";
@@ -10,6 +10,18 @@ export function useGamesIndex(auth: AuthResponse | null) {
   });
   const [multiplayerGamesLoading, setMultiplayerGamesLoading] = useState(false);
   const [multiplayerGamesLoaded, setMultiplayerGamesLoaded] = useState(false);
+
+  // Reset loaded state when the player identity changes (e.g. after logout)
+  const prevPlayerIdRef = useRef(auth?.player.playerId ?? null);
+  useEffect(() => {
+    const currentPlayerId = auth?.player.playerId ?? null;
+    if (currentPlayerId !== prevPlayerIdRef.current) {
+      prevPlayerIdRef.current = currentPlayerId;
+      setMultiplayerGames({ active: [], finished: [] });
+      setMultiplayerGamesLoaded(false);
+      setMultiplayerGamesLoading(false);
+    }
+  }, [auth?.player.playerId]);
 
   const applyMultiplayerGamesIndex = useCallback((nextGames: MultiplayerGamesIndex) => {
     setMultiplayerGames({

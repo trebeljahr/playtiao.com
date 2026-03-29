@@ -28,6 +28,22 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
   const socialInvitationIdsRef = useRef<Set<string>>(new Set());
   const socialInvitationsHydratedRef = useRef(false);
 
+  // Reset loaded state when the player identity changes (e.g. after logout)
+  const prevPlayerIdRef = useRef(auth?.player.playerId ?? null);
+  useEffect(() => {
+    const currentPlayerId = auth?.player.playerId ?? null;
+    if (currentPlayerId !== prevPlayerIdRef.current) {
+      prevPlayerIdRef.current = currentPlayerId;
+      setSocialOverview(EMPTY_SOCIAL_OVERVIEW);
+      setSocialLoaded(false);
+      setSocialLoading(false);
+      setFriendSearchQuery("");
+      setFriendSearchResults([]);
+      socialInvitationIdsRef.current.clear();
+      socialInvitationsHydratedRef.current = false;
+    }
+  }, [auth?.player.playerId]);
+
   const applySocialOverview = useCallback(
     (nextOverview: SocialOverview, allowInviteToast: boolean) => {
       const incomingIds = new Set(

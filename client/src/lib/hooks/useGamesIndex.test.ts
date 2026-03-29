@@ -93,6 +93,42 @@ describe("useGamesIndex", () => {
     expect(result.current.multiplayerGames.finished).toEqual([]);
   });
 
+  it("clears stale games and re-fetches when player identity changes (logout)", async () => {
+    const oldGames = { active: [{ gameId: "OLD" }], finished: [] };
+    const newGames = { active: [], finished: [] };
+    mockListMultiplayerGames
+      .mockResolvedValueOnce({ games: oldGames })
+      .mockResolvedValueOnce({ games: newGames });
+
+    const { result, rerender } = renderHook(({ auth }) => useGamesIndex(auth), {
+      initialProps: { auth: mockAuth as AuthResponse | null },
+    });
+
+    // Wait for initial load with old user's games
+    await waitFor(() => {
+      expect(result.current.multiplayerGamesLoaded).toBe(true);
+    });
+    expect(result.current.multiplayerGames.active).toHaveLength(1);
+    expect(result.current.multiplayerGames.active[0].gameId).toBe("OLD");
+
+    // Simulate logout → new anonymous session (different playerId)
+    const newAuth: AuthResponse = {
+      player: {
+        kind: "guest",
+        playerId: "anon-new",
+        displayName: "Guest",
+      } as AuthResponse["player"],
+    };
+    rerender({ auth: newAuth });
+
+    // The identity change effect should clear games and trigger a re-fetch
+    await waitFor(() => {
+      expect(result.current.multiplayerGamesLoaded).toBe(true);
+    });
+    expect(result.current.multiplayerGames.active).toEqual([]);
+    expect(mockListMultiplayerGames).toHaveBeenCalledTimes(2);
+  });
+
   it("refreshMultiplayerGames resets state when auth becomes null", async () => {
     const games = { active: [{ gameId: "X" }], finished: [] };
     mockListMultiplayerGames.mockResolvedValue({ games });
