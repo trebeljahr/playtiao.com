@@ -1,13 +1,14 @@
 command -v git-lfs >/dev/null 2>&1 && git lfs pre-push "$@"
 
-printf "\n[pre-push] Typechecking client...\n"
-npm --prefix client run typecheck || { printf >&2 "\n[pre-push] Client typecheck failed.\n"; exit 1; }
+printf "\n[pre-push] Typechecking client + server (parallel)...\n"
+npm run typecheck || { printf >&2 "\n[pre-push] Typecheck failed.\n"; exit 1; }
 
-printf "[pre-push] Typechecking server...\n"
-npm --prefix server run build || { printf >&2 "\n[pre-push] Server typecheck failed.\n"; exit 1; }
+printf "[pre-push] Building client + running server tests (parallel)...\n"
+npx concurrently --kill-others-on-fail \
+  -n build,test \
+  "npm --prefix client run build" \
+  "npm --prefix server test" \
+  || { printf >&2 "\n[pre-push] Build or server tests failed.\n"; exit 1; }
 
-printf "[pre-push] Building client (next build)...\n"
-npm --prefix client run build || { printf >&2 "\n[pre-push] Client build failed.\n"; exit 1; }
-
-printf "[pre-push] Running unit tests...\n"
-npm run test:unit || { printf >&2 "\n[pre-push] Unit tests failed.\n"; exit 1; }
+printf "[pre-push] Running client tests...\n"
+npm --prefix client test || { printf >&2 "\n[pre-push] Client tests failed.\n"; exit 1; }
