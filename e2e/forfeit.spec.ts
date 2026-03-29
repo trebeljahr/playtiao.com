@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 test.describe("Forfeit in multiplayer", () => {
   test("forfeit button appears and forfeiting ends the game", async ({ browser }) => {
@@ -22,8 +22,10 @@ test.describe("Forfeit in multiplayer", () => {
     await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/);
     const gameUrl = alicePage.url();
 
-    // Bob joins the game
+    // Bob joins the game — dismiss rules intro for both new users
     await bobPage.goto(gameUrl);
+    await dismissRulesIntro(bobPage);
+    await dismissRulesIntro(alicePage);
     await expect(bobPage.locator("text=Live match")).toBeVisible();
     await expect(alicePage.locator("text=Live match")).toBeVisible();
 

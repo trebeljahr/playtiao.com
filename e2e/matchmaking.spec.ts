@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 async function startMatchmaking(page: Page) {
   await page.goto("/");
@@ -43,6 +43,9 @@ test("matchmaking pairs two players into a game", async ({ browser }) => {
   await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
   await expect(bobPage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
 
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
+
   // Both should see "Live match"
   await expect(alicePage.locator("text=Live match")).toBeVisible();
   await expect(bobPage.locator("text=Live match")).toBeVisible();
@@ -82,6 +85,9 @@ test("matchmaking game has no console errors", async ({ browser }) => {
   // Both should land in a game
   await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
   await expect(bobPage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
+
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
 
   // Wait for the game page to fully render
   await expect(alicePage.locator("text=Live match")).toBeVisible();
@@ -126,6 +132,9 @@ test("timed matchmaking (30+0) pairs two players", async ({ browser }) => {
   // Both should land in a game
   await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
   await expect(bobPage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 10000 });
+
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
 
   await expect(alicePage.locator("text=Live match")).toBeVisible();
   await expect(bobPage.locator("text=Live match")).toBeVisible();

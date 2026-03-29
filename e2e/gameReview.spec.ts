@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 test("game review mode shows review nav buttons and allows friend requests", async ({
   browser,
@@ -27,6 +27,8 @@ test("game review mode shows review nav buttons and allows friend requests", asy
 
   // 4. Bob joins the game
   await bobPage.goto(gameUrl);
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
   await expect(alicePage.locator("text=Live match")).toBeVisible();
 
@@ -58,7 +60,7 @@ test("game review mode shows review nav buttons and allows friend requests", asy
   await expect(alicePage.locator('button[aria-label="Go to end"]')).toBeVisible();
 
   // 8. Verify friend request button is visible for the opponent
-  const addFriendButton = alicePage.locator('button[title^="Send friend request"]');
+  const addFriendButton = alicePage.locator('button:has-text("Add friend")');
   await expect(addFriendButton).toBeVisible();
 
   // 9. Click friend request and verify pending badge appears
@@ -90,6 +92,8 @@ test("game review shows status title and allows returning to lobby", async ({ br
   const gameUrl = alicePage.url();
   const gameId = gameUrl.split("/").pop()!;
   await bobPage.goto(gameUrl);
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
 
   // Force finish

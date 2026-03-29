@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 test("multiplayer rematch decline flow", async ({ browser }) => {
   const aliceContext = await browser.newContext();
@@ -24,6 +24,8 @@ test("multiplayer rematch decline flow", async ({ browser }) => {
   const gameId = gameUrl.split("/").pop()!;
 
   await bobPage.goto(gameUrl);
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
 
   // Force finish the game

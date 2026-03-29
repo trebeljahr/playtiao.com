@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 test("multiplayer rematch flow", async ({ browser }) => {
   const aliceContext = await browser.newContext();
@@ -25,6 +25,8 @@ test("multiplayer rematch flow", async ({ browser }) => {
 
   // 4. Bob joins the game via URL
   await bobPage.goto(gameUrl);
+  await dismissRulesIntro(alicePage);
+  await dismissRulesIntro(bobPage);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
   await expect(alicePage.locator("text=Live match")).toBeVisible();
 

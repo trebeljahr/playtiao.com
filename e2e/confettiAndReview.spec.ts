@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signUpViaUI } from "./helpers";
+import { signUpViaUI, dismissRulesIntro } from "./helpers";
 
 test.describe("Game review from My Games page", () => {
   test("no confetti fires when opening a finished game in review mode", async ({ browser }) => {
@@ -23,6 +23,8 @@ test.describe("Game review from My Games page", () => {
     const gameUrl = alicePage.url();
     const gameId = gameUrl.split("/").pop()!;
     await bobPage.goto(gameUrl);
+    await dismissRulesIntro(alicePage);
+    await dismissRulesIntro(bobPage);
     await expect(bobPage.locator("text=Live match")).toBeVisible();
 
     // Force finish the game
@@ -95,6 +97,8 @@ test.describe("Game review from My Games page", () => {
     const gameUrl = alicePage.url();
     const gameId = gameUrl.split("/").pop()!;
     await bobPage.goto(gameUrl);
+    await dismissRulesIntro(alicePage);
+    await dismissRulesIntro(bobPage);
     await expect(bobPage.locator("text=Live match")).toBeVisible();
 
     // Force finish

@@ -31,6 +31,19 @@ export async function mobileClickCell(page: Page, x: number, y: number) {
 }
 
 /**
+ * Dismiss the "Welcome to Tiao!" rules intro modal that appears on
+ * multiplayer game pages for new users who haven't completed the tutorial.
+ * Call this after navigating to a game page.
+ */
+export async function dismissRulesIntro(page: Page) {
+  const dialog = page.locator("text=Welcome to Tiao!");
+  if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await page.locator('button:has-text("Got it")').click();
+    await expect(dialog).not.toBeVisible({ timeout: 2000 });
+  }
+}
+
+/**
  * Opens the nav drawer (hamburger menu) and clicks "Sign up",
  * fills in the form, and submits. Waits for the signup API to succeed.
  */
