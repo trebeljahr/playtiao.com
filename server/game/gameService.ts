@@ -315,11 +315,47 @@ export class GameService {
     });
   }
 
+  /** Enrich game summaries with fresh player data from GameAccount (profile picture, badges, etc.). */
+  private async enrichSummaries(summaries: MultiplayerGameSummary[]): Promise<void> {
+    const playerIds = new Set<string>();
+    for (const s of summaries) {
+      for (const color of ["white", "black"] as const) {
+        const slot = s.seats[color];
+        if (slot?.player.playerId) playerIds.add(slot.player.playerId);
+      }
+    }
+    if (playerIds.size === 0) return;
+
+    const accounts = await GameAccount.find(
+      { _id: { $in: [...playerIds] } },
+      { displayName: 1, profilePicture: 1, activeBadges: 1, badges: 1, rating: 1 },
+    ).lean();
+    const accountMap = new Map(accounts.map((a) => [String(a._id), a]));
+
+    for (const s of summaries) {
+      for (const color of ["white", "black"] as const) {
+        const slot = s.seats[color];
+        if (!slot) continue;
+        const fresh = accountMap.get(slot.player.playerId);
+        if (!fresh) continue;
+        slot.player = {
+          ...slot.player,
+          displayName: fresh.displayName ?? slot.player.displayName,
+          profilePicture: fresh.profilePicture ?? slot.player.profilePicture,
+          activeBadges: fresh.activeBadges ?? slot.player.activeBadges,
+          badges: fresh.badges ?? slot.player.badges,
+          rating: fresh.rating ?? slot.player.rating,
+        };
+      }
+    }
+  }
+
   async listGames(player: PlayerIdentity): Promise<MultiplayerGamesIndex> {
     const rooms = await this.store.listRoomsForPlayer(player.playerId);
     const summaries = rooms.map((room) =>
       this.toSummary(this.deriveRoomStatus(room), player.playerId),
     );
+    await this.enrichSummaries(summaries);
 
     return {
       active: summaries.filter((game) => game.status !== "finished"),
@@ -336,6 +372,7 @@ export class GameService {
     const hasMore = rooms.length > limit;
     const trimmed = hasMore ? rooms.slice(0, limit) : rooms;
     const games = trimmed.map((room) => this.toSummary(this.deriveRoomStatus(room), playerId));
+    await this.enrichSummaries(games);
     return { games, hasMore };
   }
 
@@ -365,6 +402,16 @@ export class GameService {
         ratingBefore: derived.ratingBefore ?? null,
       };
     });
+  }
+
+  /** Refresh a player's identity in all active rooms and broadcast updated snapshots. */
+  async refreshPlayerInActiveRooms(player: PlayerIdentity): Promise<void> {
+    const rooms = await this.store.listActiveRoomsForPlayer(player.playerId);
+    for (const room of rooms) {
+      this.refreshPlayerIdentity(room, player);
+      const savedRoom = await this.store.saveRoom(room);
+      this.broadcastSnapshot(savedRoom);
+    }
   }
 
   async connect(gameId: string, player: PlayerIdentity, socket: WebSocket): Promise<void> {
@@ -901,6 +948,9 @@ export class GameService {
           ...room.players[i],
           displayName: fresh.displayName,
           profilePicture: fresh.profilePicture,
+          rating: fresh.rating,
+          badges: fresh.badges,
+          activeBadges: fresh.activeBadges,
         };
       }
     }
@@ -911,6 +961,9 @@ export class GameService {
           ...seat,
           displayName: fresh.displayName,
           profilePicture: fresh.profilePicture,
+          rating: fresh.rating,
+          badges: fresh.badges,
+          activeBadges: fresh.activeBadges,
         };
       }
     }

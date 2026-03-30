@@ -158,9 +158,7 @@ export function FriendActiveGamesModal({
           const isYouPlaying = isYouWhite || isYouBlack;
 
           const statusBorder =
-            game.status === "active"
-              ? "border-[#a3c98a]/40"
-              : "border-[#d7c39e]";
+            game.status === "active" ? "border-[#a3c98a]/40" : "border-[#d7c39e]";
 
           return (
             <div
@@ -179,9 +177,7 @@ export function FriendActiveGamesModal({
                 >
                   {game.status === "active" ? t("statusActive") : t("statusWaiting")}
                 </span>
-                <span className="font-mono text-[10px] text-[#b5a48e]">
-                  {game.gameId}
-                </span>
+                <span className="font-mono text-[10px] text-[#b5a48e]">{game.gameId}</span>
               </div>
 
               {/* Player rows */}
@@ -215,23 +211,20 @@ export function FriendActiveGamesModal({
                   roomType={game.roomType}
                 />
                 <div className="flex items-center gap-2">
-                  {isYouPlaying && (
-                    <Button
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => handleJoin(game.gameId)}
-                    >
+                  {isYouPlaying ? (
+                    <Button size="sm" className="text-xs" onClick={() => handleJoin(game.gameId)}>
                       {t("joinGame")}
                     </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-xs"
+                      onClick={() => handleSpectate(game.gameId)}
+                    >
+                      {t("spectate")}
+                    </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="text-xs"
-                    onClick={() => handleSpectate(game.gameId)}
-                  >
-                    {t("spectate")}
-                  </Button>
                 </div>
               </div>
             </div>

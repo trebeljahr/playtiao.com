@@ -712,6 +712,12 @@ router.put("/profile", async (req: Request, res: Response) => {
       getProvidersForAccount(account.id),
     ]);
     const player = buildPlayerIdentityFromAccount(account, email);
+
+    // Propagate updated identity to active games in the background
+    gameService.refreshPlayerInActiveRooms(player).catch((err) => {
+      console.error("Failed to refresh player identity in active rooms:", err);
+    });
+
     return res.status(200).json({
       auth: { player },
       profile: serializeAccountProfile(account, email, providers),
@@ -785,6 +791,12 @@ router.post(
         getProvidersForAccount(account.id),
       ]);
       const player = buildPlayerIdentityFromAccount(account, email);
+
+      // Propagate updated identity to active games in the background
+      gameService.refreshPlayerInActiveRooms(player).catch((err) => {
+        console.error("Failed to refresh player identity in active rooms:", err);
+      });
+
       return res.status(200).json({
         auth: { player },
         profile: serializeAccountProfile(account, email, providers),
@@ -851,6 +863,12 @@ router.put("/badges/active", async (req: Request, res: Response) => {
 
     const email = await getEmailForAccount(account.id);
     const player = buildPlayerIdentityFromAccount(account, email);
+
+    // Propagate updated badges to active games in the background
+    gameService.refreshPlayerInActiveRooms(player).catch((err) => {
+      console.error("Failed to refresh player identity in active rooms:", err);
+    });
+
     return res.status(200).json({ auth: { player }, activeBadges: validActive });
   } catch (error) {
     return handleRouteError(error, req, res, "Unable to update active badges right now.");

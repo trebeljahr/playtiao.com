@@ -662,6 +662,7 @@
     "usernamePlaceholder": "username",
     "usernameHint": "3-32 characters. Lowercase letters, numbers, hyphens, and underscores only.",
     "saving": "Saving...",
-    "continue": "Continue"
+    "continue": "Continue",
+    "profilePictureHint": "Click to add a profile picture"
   }
 }

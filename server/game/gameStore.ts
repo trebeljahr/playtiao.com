@@ -414,6 +414,8 @@ export class MongoGameRoomStore implements GameRoomStore {
           "players.$[p].displayName": newIdentity.displayName,
           "players.$[p].kind": newIdentity.kind,
           "players.$[p].profilePicture": newIdentity.profilePicture,
+          "players.$[p].badges": newIdentity.badges,
+          "players.$[p].activeBadges": newIdentity.activeBadges,
         },
       },
       {
@@ -430,6 +432,8 @@ export class MongoGameRoomStore implements GameRoomStore {
           "seats.white.displayName": newIdentity.displayName,
           "seats.white.kind": newIdentity.kind,
           "seats.white.profilePicture": newIdentity.profilePicture,
+          "seats.white.badges": newIdentity.badges,
+          "seats.white.activeBadges": newIdentity.activeBadges,
         },
       },
     );
@@ -442,6 +446,8 @@ export class MongoGameRoomStore implements GameRoomStore {
           "seats.black.displayName": newIdentity.displayName,
           "seats.black.kind": newIdentity.kind,
           "seats.black.profilePicture": newIdentity.profilePicture,
+          "seats.black.badges": newIdentity.badges,
+          "seats.black.activeBadges": newIdentity.activeBadges,
         },
       },
     );

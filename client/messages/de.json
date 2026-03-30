@@ -662,6 +662,7 @@
     "usernamePlaceholder": "benutzername",
     "usernameHint": "3-32 Zeichen. Nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche.",
     "saving": "Speichern...",
-    "continue": "Weiter"
+    "continue": "Weiter",
+    "profilePictureHint": "Klicke, um ein Profilbild hinzuzufügen"
   }
 }

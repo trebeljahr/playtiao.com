@@ -177,7 +177,12 @@ export function PlayerIdentityRow({
         <button
           type="button"
           title={t("addFriend")}
-          className="flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[0.65rem] font-semibold transition-colors hover:bg-white/35 disabled:opacity-50"
+          className={cn(
+            "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold transition-colors disabled:opacity-50",
+            friendVariant === "light"
+              ? "bg-black/10 text-black/70 hover:bg-black/20"
+              : "bg-white/20 hover:bg-white/35",
+          )}
           onClick={onAddFriend}
           disabled={addFriendBusy}
         >

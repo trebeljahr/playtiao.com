@@ -37,6 +37,14 @@ const PlayerIdentitySchema = new Schema<PlayerIdentity>(
     rating: {
       type: Number,
     },
+    badges: {
+      type: [String],
+      default: undefined,
+    },
+    activeBadges: {
+      type: [String],
+      default: undefined,
+    },
   },
   {
     _id: false,
