@@ -68,9 +68,9 @@ function PlayerRow({
       ) : (
         <EmptySeatAvatar className="h-6 w-6" />
       )}
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#2b1e14]">
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1a1008]">
         {player?.displayName || unknownLabel}
-        {isYou && <span className="ml-1 text-[#8d7760]">{youLabel}</span>}
+        {isYou && <span className="ml-1 text-[#6b5540]">{youLabel}</span>}
       </span>
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
@@ -82,10 +82,10 @@ function PlayerRow({
           className={cn(
             "text-xs font-semibold tabular-nums",
             ratingChange > 0
-              ? "text-[#3d7a1e]"
+              ? "text-[#2a6310]"
               : ratingChange < 0
-                ? "text-[#b5443a]"
-                : "text-[#9a8770]",
+                ? "text-[#9a2e26]"
+                : "text-[#6b5a45]",
           )}
         >
           {ratingChange > 0 ? "+" : ""}
@@ -95,14 +95,14 @@ function PlayerRow({
       <span
         className={cn(
           "font-mono text-sm tabular-nums",
-          isWinner ? "font-bold text-[#2b1e14]" : "text-[#9a8770]",
+          isWinner ? "font-bold text-[#1a1008]" : "text-[#6b5a45]",
         )}
       >
         {score}
         <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
       </span>
       {clockMs != null && (
-        <span className="font-mono text-xs tabular-nums text-[#9a8770]">
+        <span className="font-mono text-xs tabular-nums text-[#6b5a45]">
           {formatClockTime(clockMs)}
         </span>
       )}
@@ -161,7 +161,7 @@ export function MatchHistoryCard({
             <Badge
               className={cn(
                 "text-xs font-bold border-0",
-                result === "won" ? "bg-[#2d6a1e] text-white" : "bg-[#9b2c2c] text-white",
+                result === "won" ? "bg-[#1a5c0a] text-white" : "bg-[#7f1d1d] text-white",
               )}
             >
               {result === "won" ? t("won") : t("lost")}
@@ -172,7 +172,7 @@ export function MatchHistoryCard({
               {t("colorWon", { color: translatePlayerColor(game.winner, t) ?? "" })}
             </Badge>
           )}
-          {reasonText && <span className="text-xs text-[#6e5b48]">{reasonText}</span>}
+          {reasonText && <span className="text-xs text-[#4a3928]">{reasonText}</span>}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
@@ -227,7 +227,7 @@ export function MatchHistoryCard({
           timeControl={game.timeControl}
           roomType={game.roomType}
         />
-        <span className="text-xs text-[#9a8770]">
+        <span className="text-xs text-[#6b5a45]">
           {formatGameTimestamp(game.updatedAt)} ·{" "}
           {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
