@@ -145,15 +145,16 @@ export function SocialNotificationsProvider({
 
           // Build contextual toast message with game details
           const details: string[] = [];
-          if (inv.boardSize && inv.boardSize !== 19)
-            details.push(`${inv.boardSize}×${inv.boardSize}`);
+          const board = inv.boardSize ?? 19;
+          details.push(`${board}×${board}`);
           if (inv.timeControl) {
             const mins = Math.round(inv.timeControl.initialMs / 60_000);
             const inc = Math.round(inv.timeControl.incrementMs / 1_000);
             details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
           }
-          if (inv.scoreToWin && inv.scoreToWin !== 10) details.push(`first to ${inv.scoreToWin}`);
-          const suffix = details.length > 0 ? ` (${details.join(", ")})` : "";
+          const score = inv.scoreToWin ?? 10;
+          details.push(`first to ${score}`);
+          const suffix = ` (${details.join(", ")})`;
 
           toast(`${senderName} invited you to a game${suffix}`, {
             id: `game-invitation:${invId}`,
