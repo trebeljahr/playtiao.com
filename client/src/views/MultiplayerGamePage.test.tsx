@@ -827,8 +827,8 @@ describe("MultiplayerGamePage", () => {
     const nextMatchBtns = screen.getAllByRole("button", { name: "Go to your next match" });
     expect(nextMatchBtns.length).toBeGreaterThan(0);
 
-    // Should show "Add Opponent Bob as a friend" button
-    const addFriendBtns = screen.getAllByRole("button", { name: /Add Opponent Bob as a friend/i });
+    // Should show "Add friend" button (for the opponent)
+    const addFriendBtns = screen.getAllByRole("button", { name: /Add friend/i });
     expect(addFriendBtns.length).toBeGreaterThan(0);
 
     // Should show "Back to tournament" buttons
