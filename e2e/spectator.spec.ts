@@ -88,9 +88,9 @@ test("lobby Watch a Game section navigates to game", async ({ page }) => {
   await spectateInput.scrollIntoViewIfNeeded();
   await expect(spectateInput).toBeVisible();
 
-  // Type a game ID and submit
+  // Type a game ID and submit via Enter key
   await spectateInput.fill("ABCDEF");
-  await page.locator('form:has(input[name="spectate-id"]) button[type="submit"]').click();
+  await spectateInput.press("Enter");
 
   // Should navigate to the game URL
   await expect(page).toHaveURL(/\/game\/ABCDEF/);

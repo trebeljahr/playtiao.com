@@ -98,8 +98,6 @@ test.describe("Mobile loupe – stone placement", () => {
     await expect(loupe).toBeVisible({ timeout: 2000 });
 
     // Tap at (8,8) — preview should move (not confirm at 9,9)
-    // Wait >150ms so the tap isn't treated as a quick-confirm of the preview
-    await page.waitForTimeout(200);
     await page.touchscreen.tap(cell88!.x + cell88!.width / 2, cell88!.y + cell88!.height / 2);
 
     // No stone placed at (9,9)

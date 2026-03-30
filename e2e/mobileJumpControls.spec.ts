@@ -92,8 +92,9 @@ test.describe("Mobile jump controls", () => {
     await cell(page, 9, 9).tap();
     await cell(page, 11, 9).tap();
 
-    // Tap Undo (use first() since there may be both board-level and floating undo)
-    await page.locator('button[aria-label="Undo last jump"]').first().tap();
+    // Tap the floating mobile Undo button (last one — the first is an invisible
+    // board-level overlay whose tap gets intercepted by the board's touchend)
+    await page.locator('button[aria-label="Undo last jump"]').last().tap();
 
     // Still White's turn (jump was reverted, not confirmed)
     await expect(page.locator("text=White to move")).toBeVisible();
