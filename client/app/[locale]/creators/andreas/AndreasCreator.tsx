@@ -10,7 +10,8 @@ export default function AndreasCreator() {
   return (
     <CreatorPage
       name="Andreas Edmeier"
-      username="Andreas Edmeier"
+      username="Assertores"
+      playerId={process.env.NEXT_PUBLIC_CREATOR_ANDREAS_ID}
       image="/creators/andreas.jpeg"
       roleKey="andreasRole"
       bioKey="andreasBio"

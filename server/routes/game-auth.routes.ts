@@ -388,11 +388,17 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
       return res.status(400).json({ code: "INVALID_USERNAME", message: "Username is required." });
     }
 
-    const account = await GameAccount.findOne({
-      displayName: {
-        $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
-      },
-    });
+    // Try by ID first (stable links), then fall back to display name
+    let account = mongoose.Types.ObjectId.isValid(username)
+      ? await GameAccount.findById(username)
+      : null;
+    if (!account) {
+      account = await GameAccount.findOne({
+        displayName: {
+          $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        },
+      });
+    }
     if (!account) {
       return res.status(404).json({ code: "NOT_FOUND", message: "Player not found." });
     }

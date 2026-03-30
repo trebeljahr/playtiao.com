@@ -13,6 +13,8 @@ type CreatorLink = { label: string; href: string };
 type CreatorPageProps = {
   name: string;
   username: string;
+  /** Stable player ID for profile links (falls back to username if not set). */
+  playerId?: string;
   image: string;
   roleKey: string;
   bioKey: string;
@@ -23,6 +25,7 @@ type CreatorPageProps = {
 export function CreatorPage({
   name,
   username,
+  playerId,
   image,
   roleKey,
   bioKey,
@@ -112,7 +115,9 @@ export function CreatorPage({
                 <button
                   type="button"
                   className="font-semibold text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]"
-                  onClick={() => router.push(`/profile/${encodeURIComponent(username)}`)}
+                  onClick={() =>
+                    router.push(`/profile/${encodeURIComponent(playerId ?? username)}`)
+                  }
                 >
                   @{username}
                 </button>
