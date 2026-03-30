@@ -124,9 +124,7 @@ function AnimatedRatingChange({
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
           className={cn(
             "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
-            roundedDelta > 0
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-red-100 text-red-600",
+            roundedDelta > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600",
           )}
         >
           {roundedDelta > 0 ? "+" : ""}
@@ -498,6 +496,12 @@ export function MultiplayerGamePage() {
   const isAwaitingFirstMove = firstMoveCountdownMs !== null && firstMoveCountdownMs > 0;
 
   const isMultiplayerParticipant = !!playerSeat;
+  const isInPlayerList =
+    isMultiplayerParticipant ||
+    (multiplayerSnapshot &&
+      auth &&
+      multiplayerSnapshot.players.some((p) => p.player.playerId === auth.player.playerId)) ||
+    false;
   const isSpectator = multiplayerSnapshot && !isMultiplayerParticipant;
   const spectatorCount = multiplayerSnapshot?.spectators.length ?? 0;
   const isTournamentGame = multiplayerSnapshot?.roomType === "tournament";
@@ -1126,7 +1130,7 @@ export function MultiplayerGamePage() {
                               );
                             })}
                             {auth?.player.kind === "account" &&
-                              isMultiplayerParticipant &&
+                              isInPlayerList &&
                               multiplayerSnapshot.players.length < 2 && (
                                 <Button
                                   variant="secondary"
@@ -1567,9 +1571,7 @@ export function MultiplayerGamePage() {
               const before = multiplayerSnapshot.ratingBefore[playerSeat];
               const after = multiplayerSnapshot.ratingAfter[playerSeat];
               const delta = after - before;
-              return (
-                <AnimatedRatingChange before={before} after={after} delta={delta} />
-              );
+              return <AnimatedRatingChange before={before} after={after} delta={delta} />;
             })()}
           {isMultiplayerParticipant && connectionState === "connected" ? (
             isTournamentGame ? (
