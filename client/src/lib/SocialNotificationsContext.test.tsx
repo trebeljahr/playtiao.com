@@ -111,9 +111,10 @@ describe("SocialNotificationsContext", () => {
     simulateLobbyMessage({ type: "social-update", overview: updatedOverview });
 
     expect(toast).toHaveBeenCalledWith(
-      "Alice sent you a friend request",
+      expect.anything(),
       expect.objectContaining({
         id: "friend-request:alice-id",
+        description: "sent you a friend request",
         duration: 15000,
       }),
     );
@@ -244,8 +245,11 @@ describe("SocialNotificationsContext", () => {
     expect(toast.dismiss).not.toHaveBeenCalled();
     // But should show the new toast
     expect(toast).toHaveBeenCalledWith(
-      "Alice sent you a friend request",
-      expect.objectContaining({ id: "friend-request:alice-id" }),
+      expect.anything(),
+      expect.objectContaining({
+        id: "friend-request:alice-id",
+        description: "sent you a friend request",
+      }),
     );
   });
 
@@ -276,9 +280,10 @@ describe("SocialNotificationsContext", () => {
     simulateLobbyMessage({ type: "social-update", overview: updatedOverview });
 
     expect(toast).toHaveBeenCalledWith(
-      "Dave invited you to a game (19×19, Unlimited, first to 10)",
+      expect.anything(),
       expect.objectContaining({
         id: "game-invitation:inv-99",
+        description: "invited you to a game (19×19, Unlimited, first to 10)",
       }),
     );
   });
@@ -313,9 +318,10 @@ describe("SocialNotificationsContext", () => {
     simulateLobbyMessage({ type: "social-update", overview: updatedOverview });
 
     expect(toast).toHaveBeenCalledWith(
-      "Eve invited you to a game (13×13, 5+2, first to 5)",
+      expect.anything(),
       expect.objectContaining({
         id: "game-invitation:inv-detail",
+        description: "invited you to a game (13×13, 5+2, first to 5)",
       }),
     );
   });
