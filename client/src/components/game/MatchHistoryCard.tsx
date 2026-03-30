@@ -17,6 +17,8 @@ import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 type MatchHistoryCardProps = {
   game: MultiplayerGameSummary;
   playerId: string;
+  /** When set, results are described in third person ("{name} forfeited") */
+  playerName?: string;
   copiedId: string | null;
   onCopy: () => void;
   onReview: () => void;
@@ -135,6 +137,7 @@ function PlayerRow({
 export function MatchHistoryCard({
   game,
   playerId,
+  playerName,
   copiedId,
   onCopy,
   onReview,
@@ -169,7 +172,7 @@ export function MatchHistoryCard({
     if (game.finishReason === "captured" && whiteScore < scoreToWin && blackScore < scoreToWin) {
       return null;
     }
-    return describeResult(result, game.finishReason, t) || null;
+    return describeResult(result, game.finishReason, t, playerName) || null;
   })();
 
   return (

@@ -245,36 +245,63 @@ export function formatFinishReason(
   }
 }
 
-/** Describe a game result for match history — context-aware messages. */
+/** Describe a game result for match history — context-aware messages.
+ *  When `playerName` is provided, uses third-person "{name} forfeited" style
+ *  instead of "You forfeited" (for viewing another player's profile). */
 export function describeResult(
   result: "won" | "lost" | null,
   finishReason: FinishReason | null,
-  t?: (key: string) => string,
+  t?: (key: string, values?: Record<string, string>) => string,
+  playerName?: string,
 ): string {
   if (!result) return "";
   if (result === "won") {
     switch (finishReason) {
       case "captured":
-        return t ? t("scoreTargetReached") : "Score target reached";
+        return t
+          ? playerName
+            ? t("playerReachedTarget", { name: playerName })
+            : t("scoreTargetReached")
+          : "Score target reached";
       case "forfeit":
         return t ? t("opponentForfeited") : "Opponent forfeited";
       case "timeout":
         return t ? t("opponentTimedOut") : "Opponent ran out of time";
       case "board_full":
-        return t ? t("boardFullYouWon") : "Board full — you had more points";
+        return t
+          ? playerName
+            ? t("boardFullPlayerWon", { name: playerName })
+            : t("boardFullYouWon")
+          : "Board full — you had more points";
       default:
         return "";
     }
   }
   switch (finishReason) {
     case "captured":
-      return t ? t("opponentReachedTarget") : "Opponent reached score target";
+      return t
+        ? playerName
+          ? t("opponentReachedTargetPlayer")
+          : t("opponentReachedTarget")
+        : "Opponent reached score target";
     case "forfeit":
-      return t ? t("youForfeited") : "You forfeited";
+      return t
+        ? playerName
+          ? t("playerForfeited", { name: playerName })
+          : t("youForfeited")
+        : "You forfeited";
     case "timeout":
-      return t ? t("youTimedOut") : "You ran out of time";
+      return t
+        ? playerName
+          ? t("playerTimedOut", { name: playerName })
+          : t("youTimedOut")
+        : "You ran out of time";
     case "board_full":
-      return t ? t("boardFullOpponentWon") : "Board full — opponent had more points";
+      return t
+        ? playerName
+          ? t("boardFullPlayerLost", { name: playerName })
+          : t("boardFullOpponentWon")
+        : "Board full — opponent had more points";
     default:
       return "";
   }

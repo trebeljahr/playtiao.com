@@ -353,6 +353,7 @@ export function PublicProfilePage() {
                         key={game.gameId}
                         game={game}
                         playerId={auth?.player.playerId ?? matchPlayerId!}
+                        playerName={isOwnProfile ? undefined : (profile?.displayName ?? undefined)}
                         copiedId={copiedId}
                         onCopy={() => handleCopy(game.gameId)}
                         onReview={() => router.push(`/game/${game.gameId}`)}
