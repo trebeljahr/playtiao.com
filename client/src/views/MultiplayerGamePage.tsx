@@ -867,7 +867,7 @@ export function MultiplayerGamePage() {
         <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,30rem)] xl:items-start">
           <div className="flex items-center justify-center xl:items-start xl:justify-end">
             <div
-              className="relative isolate mx-auto w-full max-w-[min(100%,calc(100svh-10rem))] xl:max-w-[min(100%,calc(100svh-5rem))]"
+              className="relative isolate mx-auto w-full max-w-[min(100%,calc(100svh-10rem))] xl:max-w-[min(100%,calc(100svh-3rem))]"
               style={boardWrapStyle}
             >
               {displayState && (
