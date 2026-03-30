@@ -29,9 +29,9 @@ function timeControlsMatch(a: TimeControl, b: TimeControl): boolean {
   return a.initialMs === b.initialMs && a.incrementMs === b.incrementMs;
 }
 
-/** Expanding window: starts at 100 Elo, grows by 5/second, capped at 1000. */
+/** Expanding window: starts at 100 Elo, grows by 25/second, capped at 1000. */
 const BASE_WINDOW = 100;
-const EXPANSION_PER_SECOND = 5;
+const EXPANSION_PER_SECOND = 25;
 const MAX_WINDOW = 1000;
 
 function computeEloWindow(waitMs: number): number {
