@@ -286,6 +286,36 @@ If the browser reaches `https://...` at all, Coolify's proxy is already handling
 
 If the app page still fails, the issue is usually frontend health or frontend-to-backend proxying, not certificate setup.
 
+### Deployed changes not showing up in production
+
+If you pushed to `main`, the GitHub Actions workflow succeeded, and the Coolify deploy API returned a success response — but prod is still running old code:
+
+1. **Check what image the running container is using:**
+
+   ```bash
+   docker inspect <container-name> --format '{{.Image}}'
+   ```
+
+2. **Check what image GHCR has for the `:main` tag:**
+
+   ```bash
+   docker manifest inspect ghcr.io/<owner>/<repo>-client:main
+   ```
+
+3. **Compare the digests.** If they don't match, Coolify restarted the container with a stale cached image instead of pulling the new one. This is a [known Coolify issue](https://github.com/coollabsio/coolify/issues/5318) — the deploy API queues a redeploy but does not always pull the latest image.
+
+4. **Verify the image creation date on the server:**
+
+   ```bash
+   docker images ghcr.io/<owner>/<repo>-client:main --format '{{.CreatedAt}}'
+   ```
+
+   If the timestamp is older than the latest GitHub Actions run, the server has a stale image.
+
+**Immediate fix:** In the Coolify UI, find the resource and use **"Pull latest images and restart"** (under the Advanced/Restart menu).
+
+**Permanent fix:** This is a known limitation of Coolify's deploy API — it does not guarantee an image pull. If this keeps happening, consider switching to a Docker Compose deployment where you control `docker compose pull && docker compose up -d` directly.
+
 ### Image pull or deploy errors from GHCR
 
 Check:
