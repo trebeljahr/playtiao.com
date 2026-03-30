@@ -354,7 +354,9 @@
     "unlinking": "Wird getrennt...",
     "linking": "Wird verknüpft...",
     "passwordLogin": "Passwort-Anmeldung",
-    "emailManagedByProvider": "Die E-Mail wird von deinem {provider}-Konto verwaltet."
+    "emailManagedByProvider": "Die E-Mail wird von deinem {provider}-Konto verwaltet.",
+    "copyProfileLink": "Profillink kopieren",
+    "copiedProfileLink": "Profillink kopiert!"
   },
   "friends": {
     "findPlayers": "Spieler finden",

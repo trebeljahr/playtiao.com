@@ -354,7 +354,9 @@
     "unlinking": "Unlinking...",
     "linking": "Linking...",
     "passwordLogin": "Password login",
-    "emailManagedByProvider": "Email is managed by your {provider} account."
+    "emailManagedByProvider": "Email is managed by your {provider} account.",
+    "copyProfileLink": "Copy profile link",
+    "copiedProfileLink": "Profile link copied!"
   },
   "friends": {
     "findPlayers": "Find players",

@@ -354,7 +354,9 @@
     "unlinking": "Desvinculando...",
     "linking": "Vinculando...",
     "passwordLogin": "Inicio con contraseña",
-    "emailManagedByProvider": "El email es gestionado por tu cuenta de {provider}."
+    "emailManagedByProvider": "El email es gestionado por tu cuenta de {provider}.",
+    "copyProfileLink": "Copiar enlace del perfil",
+    "copiedProfileLink": "Enlace del perfil copiado!"
   },
   "friends": {
     "findPlayers": "Buscar jugadores",

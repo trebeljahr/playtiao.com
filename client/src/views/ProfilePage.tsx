@@ -352,6 +352,7 @@ export function ProfilePage() {
   const [, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -825,6 +826,23 @@ export function ProfilePage() {
                       </Button>
                       <Button type="button" variant="outline" onClick={() => router.push("/")}>
                         {tCommon("backToLobby")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const url = `${window.location.origin}/profile/${encodeURIComponent(displayName)}`;
+                            await navigator.clipboard.writeText(url);
+                            toast.success(t("copiedProfileLink"));
+                            setCopyLinkFeedback(true);
+                            setTimeout(() => setCopyLinkFeedback(false), 2000);
+                          } catch {
+                            toast.error(tCommon("failedToCopy"));
+                          }
+                        }}
+                      >
+                        {copyLinkFeedback ? tCommon("copied") : t("copyProfileLink")}
                       </Button>
                     </div>
                   </form>
