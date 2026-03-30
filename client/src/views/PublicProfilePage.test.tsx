@@ -34,6 +34,34 @@ vi.mock("@/lib/SocialNotificationsContext", () => ({
   }),
 }));
 
+const mockSocialOverview = {
+  friends: [] as Array<{ playerId: string }>,
+  outgoingFriendRequests: [] as Array<{ playerId: string }>,
+  incomingFriendRequests: [] as Array<{ playerId: string }>,
+  invitations: [],
+};
+const mockHandleSendFriendRequest = vi.fn();
+const mockHandleCancelFriendRequest = vi.fn();
+const mockHandleAcceptFriendRequest = vi.fn();
+const mockHandleDeclineFriendRequest = vi.fn();
+const mockHandleRemoveFriend = vi.fn();
+vi.mock("@/lib/hooks/useSocialData", () => ({
+  useSocialData: () => ({
+    socialOverview: mockSocialOverview,
+    refreshSocialOverview: vi.fn(),
+    socialActionBusyKey: null,
+    handleSendFriendRequest: (...args: unknown[]) => mockHandleSendFriendRequest(...args),
+    handleCancelFriendRequest: (...args: unknown[]) => mockHandleCancelFriendRequest(...args),
+    handleAcceptFriendRequest: (...args: unknown[]) => mockHandleAcceptFriendRequest(...args),
+    handleDeclineFriendRequest: (...args: unknown[]) => mockHandleDeclineFriendRequest(...args),
+    handleRemoveFriend: (...args: unknown[]) => mockHandleRemoveFriend(...args),
+  }),
+}));
+
+vi.mock("@/lib/LobbySocketContext", () => ({
+  useLobbyMessage: vi.fn(),
+}));
+
 // Override useParams per test
 let mockParams: Record<string, string> = {};
 vi.mock("next/navigation", async () => {
@@ -97,6 +125,10 @@ describe("PublicProfilePage add friend (#92)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockParams = { username: "SomePlayer" };
+    // Reset social overview so profileId isn't in any list → friendRelationship = "none"
+    mockSocialOverview.friends = [];
+    mockSocialOverview.outgoingFriendRequests = [];
+    mockSocialOverview.incomingFriendRequests = [];
   });
 
   it("renders 'Add Friend' button when friendshipStatus is 'none'", async () => {
@@ -116,7 +148,7 @@ describe("PublicProfilePage add friend (#92)", () => {
     });
   });
 
-  it("calls sendFriendRequest and changes to 'Pending' button on click", async () => {
+  it("calls handleSendFriendRequest on click", async () => {
     mockGetPublicProfile.mockResolvedValue({
       profile: {
         displayName: "SomePlayer",
@@ -125,7 +157,6 @@ describe("PublicProfilePage add friend (#92)", () => {
         friendshipStatus: "none",
       },
     });
-    mockSendFriendRequest.mockResolvedValue({ message: "sent" });
 
     render(<PublicProfilePage />);
 
@@ -136,55 +167,50 @@ describe("PublicProfilePage add friend (#92)", () => {
     fireEvent.click(screen.getByRole("button", { name: /add friend/i }));
 
     await waitFor(() => {
-      expect(mockSendFriendRequest).toHaveBeenCalledWith("player-2");
-    });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /pending/i })).toBeInTheDocument();
+      expect(mockHandleSendFriendRequest).toHaveBeenCalledWith("player-2");
     });
   });
 
-  it("renders 'Already Friends' pill when friendshipStatus is 'friend'", async () => {
+  it("renders 'Unfriend' button when player is a friend", async () => {
+    mockSocialOverview.friends = [{ playerId: "player-2" }];
     mockGetPublicProfile.mockResolvedValue({
       profile: {
         displayName: "SomePlayer",
         playerId: "player-2",
         createdAt: "2025-01-01T00:00:00Z",
-        friendshipStatus: "friend",
       },
     });
 
     render(<PublicProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Friends")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /unfriend/i })).toBeInTheDocument();
     });
   });
 
-  it("renders 'Accept Request' button when friendshipStatus is 'incoming-request'", async () => {
+  it("renders 'Accept' button when there is an incoming friend request", async () => {
+    mockSocialOverview.incomingFriendRequests = [{ playerId: "player-2" }];
     mockGetPublicProfile.mockResolvedValue({
       profile: {
         displayName: "SomePlayer",
         playerId: "player-2",
         createdAt: "2025-01-01T00:00:00Z",
-        friendshipStatus: "incoming-request",
       },
     });
 
     render(<PublicProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /accept request/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /accept/i })).toBeInTheDocument();
     });
   });
 
-  it("does not render friend button when friendshipStatus is 'self'", async () => {
+  it("does not render friend buttons when viewing own profile", async () => {
     mockGetPublicProfile.mockResolvedValue({
       profile: {
         displayName: "MyUser",
         playerId: "me-1",
         createdAt: "2025-01-01T00:00:00Z",
-        friendshipStatus: "self",
       },
     });
 
@@ -195,8 +221,7 @@ describe("PublicProfilePage add friend (#92)", () => {
     });
 
     expect(screen.queryByRole("button", { name: /add friend/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("Friends")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /accept request/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /pending/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /unfriend/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
   });
 });

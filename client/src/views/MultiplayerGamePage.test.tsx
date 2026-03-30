@@ -887,7 +887,7 @@ describe("MultiplayerGamePage", () => {
       applyAuth: vi.fn(),
     });
 
-    // Waiting game: 1 player seated (creator), second slot empty (< 2 players)
+    // Waiting game: 1 player seated as white, black seat empty (< 2 players)
     const snapshot = makeMatchmakingSnapshot({
       roomType: "direct",
       status: "waiting",
