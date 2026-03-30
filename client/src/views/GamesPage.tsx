@@ -124,54 +124,52 @@ export function GamesPage() {
                           key={game.gameId}
                           className="flex flex-col gap-2 rounded-2xl border border-[#d7c39e] bg-white/40 p-4"
                         >
-                          {/* Row 1: vs. opponent + opponent score + resume */}
+                          {/* Row 1: playing as color + your score + resume */}
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="shrink-0 text-xs text-[#8d7760]">vs.</span>
-                              {opponent && (
-                                <PlayerIdentityRow
-                                  player={opponent}
-                                  linkToProfile={false}
-                                  className="min-w-0"
-                                  avatarClassName="h-5 w-5"
-                                  nameClassName="text-sm font-medium"
-                                />
-                              )}
-                              <span className="shrink-0 font-mono text-sm tabular-nums text-[#6b563e]">
-                                {opponentScore}
-                                <span className="text-xs font-normal opacity-50">
-                                  /{scoreToWin}
+                            {game.yourSeat && (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <span className="text-xs text-[#6b563e]">
+                                  {tCommon("playingAs", { color: "" })}
                                 </span>
-                              </span>
-                            </div>
+                                <span
+                                  className={cn(
+                                    "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+                                    game.yourSeat === "white"
+                                      ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
+                                      : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
+                                  )}
+                                />
+                                <span className="text-xs font-medium text-[#2b1e14]">
+                                  {yourColor}
+                                </span>
+                                <span className="font-mono text-xs tabular-nums text-[#6b563e]">
+                                  {yourScore}
+                                  <span className="font-normal opacity-50">/{scoreToWin}</span>
+                                </span>
+                              </div>
+                            )}
                             <Button size="sm" onClick={() => router.push(`/game/${game.gameId}`)}>
                               {tCommon("resume")}
                             </Button>
                           </div>
 
-                          {/* Row 2: playing as color + your score */}
-                          {game.yourSeat && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-[#6b563e]">
-                                {tCommon("playingAs", { color: "" })}
-                              </span>
-                              <span
-                                className={cn(
-                                  "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-                                  game.yourSeat === "white"
-                                    ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
-                                    : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
-                                )}
+                          {/* Row 2: vs. opponent + opponent score */}
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="shrink-0 text-xs text-[#8d7760]">vs.</span>
+                            {opponent && (
+                              <PlayerIdentityRow
+                                player={opponent}
+                                linkToProfile={false}
+                                className="min-w-0"
+                                avatarClassName="h-5 w-5"
+                                nameClassName="text-sm font-medium"
                               />
-                              <span className="text-xs font-medium text-[#2b1e14]">
-                                {yourColor}
-                              </span>
-                              <span className="font-mono text-xs tabular-nums text-[#6b563e]">
-                                {yourScore}
-                                <span className="font-normal opacity-50">/{scoreToWin}</span>
-                              </span>
-                            </div>
-                          )}
+                            )}
+                            <span className="shrink-0 font-mono text-sm tabular-nums text-[#6b563e]">
+                              {opponentScore}
+                              <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
+                            </span>
+                          </div>
 
                           {/* Row 3: status badge + config + cancel */}
                           <div className="flex items-center justify-between gap-2 pt-0.5">
