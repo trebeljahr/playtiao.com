@@ -10,7 +10,6 @@ export default function RicoCreator() {
   return (
     <CreatorPage
       name="Rico Trebeljahr"
-      username="ricotrebeljahr"
       playerId={process.env.NEXT_PUBLIC_CREATOR_RICO_ID}
       image="/creators/rico.jpeg"
       roleKey="ricoRole"

@@ -1,19 +1,19 @@
 "use client";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { getPublicProfile } from "@/lib/api";
 
 type CreatorLink = { label: string; href: string };
 
 type CreatorPageProps = {
   name: string;
-  username: string;
-  /** Stable player ID for profile links (falls back to username if not set). */
+  /** Stable player ID for profile links. */
   playerId?: string;
   image: string;
   roleKey: string;
@@ -24,7 +24,6 @@ type CreatorPageProps = {
 
 export function CreatorPage({
   name,
-  username,
   playerId,
   image,
   roleKey,
@@ -37,6 +36,16 @@ export function CreatorPage({
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!playerId) return;
+    getPublicProfile(playerId)
+      .then(({ profile }) => {
+        setProfileName(profile.displayName);
+      })
+      .catch(() => {});
+  }, [playerId]);
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -109,20 +118,20 @@ export function CreatorPage({
               ))}
             </div>
 
-            <div className="w-full border-t border-[#dbc6a2] pt-4">
-              <p className="text-center text-sm text-[#8d7760]">
-                {t("seeProfile")}{" "}
-                <button
-                  type="button"
-                  className="font-semibold text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]"
-                  onClick={() =>
-                    router.push(`/profile/${encodeURIComponent(playerId ?? username)}`)
-                  }
-                >
-                  @{username}
-                </button>
-              </p>
-            </div>
+            {playerId && (
+              <div className="w-full border-t border-[#dbc6a2] pt-4">
+                <p className="text-center text-sm text-[#8d7760]">
+                  {t("seeProfile")}{" "}
+                  <button
+                    type="button"
+                    className="font-semibold text-[#5d4732] underline decoration-[#d4c4a8] underline-offset-2 hover:text-[#3a2818]"
+                    onClick={() => router.push(`/profile/${encodeURIComponent(playerId)}`)}
+                  >
+                    @{profileName ?? name}
+                  </button>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
