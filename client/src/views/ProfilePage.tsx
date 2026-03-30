@@ -21,7 +21,9 @@ import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
+import { useSetActiveBadges } from "@/lib/useActiveBadge";
 import { updateActiveBadges } from "@/lib/api";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 const PROFILE_PIC_SIZE = 512;
@@ -80,21 +82,29 @@ function BadgeSelector({
 }) {
   const t = useTranslations("profile");
   const badges = (auth?.player.badges ?? []) as BadgeId[];
+  const [, setLocalBadges] = useSetActiveBadges();
   const activeBadges = (auth?.player.activeBadges ?? []) as string[];
 
   if (badges.length === 0) return null;
 
-  const updateBadges = (next: string[]) => {
+  const updateBadges = (next: BadgeId[]) => {
+    // Update localStorage (so navbar updates instantly)
+    setLocalBadges(next);
+    // Update auth state
     if (auth) {
       onAuthChange({ ...auth, player: { ...auth.player, activeBadges: next } });
     }
-    void updateActiveBadges(next);
+    // Sync to server (also triggers lobby WS notification for friends)
+    void updateActiveBadges(next).then(() => {
+      const badgeName = next.length > 0 ? BADGE_DEFINITIONS[next[0]]?.label : null;
+      toast.success(badgeName ? t("badgeUpdated", { badge: badgeName }) : t("badgeHiddenToast"));
+    });
   };
 
   const selectBadge = (badgeId: BadgeId) => {
     // Single-select: clicking the already-active badge deselects it
     const next = activeBadges.includes(badgeId) ? [] : [badgeId];
-    updateBadges(next);
+    updateBadges(next as BadgeId[]);
   };
 
   const hideAll = () => {

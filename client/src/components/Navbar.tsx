@@ -11,6 +11,7 @@ import { hasPreviewAccess } from "@/lib/featureGate";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { UserBadge, type BadgeId } from "@/components/UserBadge";
+import { useActiveBadgeId } from "@/lib/useActiveBadge";
 import { useRouter as useIntlRouter, usePathname as useIntlPathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
@@ -255,7 +256,8 @@ function LanguagePicker() {
 function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
   const player = auth?.player;
   const isAnonymous = player?.kind !== "account";
-  const activeBadgeId = player?.activeBadges?.[0] ?? null;
+  const localBadgeId = useActiveBadgeId();
+  const activeBadgeId = localBadgeId ?? player?.activeBadges?.[0] ?? null;
 
   return (
     <div className="flex items-center gap-1.5">
@@ -386,7 +388,7 @@ export function Navbar({
   ];
 
   const desktopNav = (
-    <div className="hidden items-center gap-1 lg:flex">
+    <div className="hidden items-center gap-1 md:flex">
       {navItems.map((item) => (
         <Button
           key={item.label}
@@ -598,11 +600,11 @@ export function Navbar({
               <div>
                 <PlayerSummary auth={auth} />
               </div>
-              <div className="hidden items-center gap-2 lg:flex">{accountControls}</div>
+              <div className="hidden items-center gap-2 md:flex">{accountControls}</div>
 
               <button
                 type="button"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.75)] text-[#28170e] transition-colors hover:bg-[rgba(255,252,245,0.9)] lg:hidden"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.75)] text-[#28170e] transition-colors hover:bg-[rgba(255,252,245,0.9)] md:hidden"
                 aria-label={t("openNavigation")}
                 aria-expanded={navOpen}
                 onClick={onToggleNav}

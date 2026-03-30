@@ -334,6 +334,8 @@
     "badgeDesc": "Choose which badge to show next to your name.",
     "badgeHidden": "Hidden",
     "badgeActive": "Your {badge} badge will appear next to your name in games, friend lists, and tournaments.",
+    "badgeUpdated": "Badge updated to {badge}!",
+    "badgeHiddenToast": "Badge hidden.",
     "devPreviewBadges": "Dev preview — all badges",
     "badgeTier": "Tier {tier} — {id}",
     "bio": "Bio",

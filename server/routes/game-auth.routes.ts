@@ -5,6 +5,7 @@ import { Jimp } from "jimp";
 import mongoose from "mongoose";
 import GameAccount from "../models/GameAccount";
 import GameRoom from "../models/GameRoom";
+import { gameService } from "../game/gameService";
 import { auth } from "../auth/auth";
 import { getPlayerFromRequest, requireAccount, requireAdmin } from "../auth/sessionHelper";
 import { sanitizeDisplayName } from "../game/playerTokens";
@@ -751,6 +752,13 @@ router.put("/badges/active", async (req: Request, res: Response) => {
 
     account.activeBadges = validActive;
     await account.save();
+
+    // Notify friends via lobby WebSocket so their UIs update in real time
+    for (const friendId of account.friends) {
+      gameService.broadcastLobby(friendId.toString(), {
+        type: "social-update",
+      });
+    }
 
     const email = await getEmailForAccount(account.id);
     const player = buildPlayerIdentityFromAccount(account, email);

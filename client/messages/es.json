@@ -334,6 +334,8 @@
     "badgeDesc": "Elige qué insignia mostrar junto a tu nombre.",
     "badgeHidden": "Oculta",
     "badgeActive": "Tu insignia de {badge} aparecerá junto a tu nombre en partidas, lista de amigos y torneos.",
+    "badgeUpdated": "Insignia actualizada a {badge}!",
+    "badgeHiddenToast": "Insignia oculta.",
     "devPreviewBadges": "Vista previa dev — todas las insignias",
     "badgeTier": "Nivel {tier} — {id}",
     "bio": "Biografía",

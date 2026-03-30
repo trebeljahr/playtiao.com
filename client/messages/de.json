@@ -334,6 +334,8 @@
     "badgeDesc": "Wähle, welches Abzeichen neben deinem Namen angezeigt wird.",
     "badgeHidden": "Versteckt",
     "badgeActive": "Dein {badge}-Abzeichen wird neben deinem Namen in Spielen, Freundeslisten und Turnieren angezeigt.",
+    "badgeUpdated": "Abzeichen auf {badge} aktualisiert!",
+    "badgeHiddenToast": "Abzeichen versteckt.",
     "devPreviewBadges": "Entwicklervorschau — alle Abzeichen",
     "badgeTier": "Stufe {tier} — {id}",
     "bio": "Bio",
