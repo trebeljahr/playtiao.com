@@ -655,6 +655,7 @@
     "usernamePlaceholder": "usuario",
     "usernameHint": "3-32 caracteres. Solo letras minúsculas, números, guiones y guiones bajos.",
     "saving": "Guardando...",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "profilePictureHint": "Haz clic para agregar una foto de perfil"
   }
 }
