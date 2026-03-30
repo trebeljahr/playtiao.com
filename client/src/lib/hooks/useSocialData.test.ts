@@ -248,6 +248,24 @@ describe("useSocialData", () => {
     expect(result.current.socialLoaded).toBe(false);
   });
 
+  it("does not retry infinitely when API returns an error", async () => {
+    mockGetSocialOverview.mockRejectedValue(new Error("502 Bad Gateway"));
+
+    const { result } = renderHook(() => useSocialData(mockAuth, false));
+
+    // Wait for the first (and only) fetch attempt to complete
+    await waitFor(() => {
+      expect(result.current.socialLoaded).toBe(true);
+    });
+
+    // Should have been called exactly once — no infinite retry loop
+    expect(mockGetSocialOverview).toHaveBeenCalledTimes(1);
+
+    // Wait extra time to confirm no additional calls are made
+    await new Promise((r) => setTimeout(r, 100));
+    expect(mockGetSocialOverview).toHaveBeenCalledTimes(1);
+  });
+
   it("does not trigger social actions for guest players", async () => {
     mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
 

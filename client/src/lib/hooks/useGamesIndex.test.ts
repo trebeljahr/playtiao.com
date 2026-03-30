@@ -129,6 +129,24 @@ describe("useGamesIndex", () => {
     expect(mockListMultiplayerGames).toHaveBeenCalledTimes(2);
   });
 
+  it("does not retry infinitely when API returns an error", async () => {
+    mockListMultiplayerGames.mockRejectedValue(new Error("502 Bad Gateway"));
+
+    const { result } = renderHook(() => useGamesIndex(mockAuth));
+
+    // Wait for the first (and only) fetch attempt to complete
+    await waitFor(() => {
+      expect(result.current.multiplayerGamesLoaded).toBe(true);
+    });
+
+    // Should have been called exactly once — no infinite retry loop
+    expect(mockListMultiplayerGames).toHaveBeenCalledTimes(1);
+
+    // Wait extra time to confirm no additional calls are made
+    await new Promise((r) => setTimeout(r, 100));
+    expect(mockListMultiplayerGames).toHaveBeenCalledTimes(1);
+  });
+
   it("refreshMultiplayerGames resets state when auth becomes null", async () => {
     const games = { active: [{ gameId: "X" }], finished: [] };
     mockListMultiplayerGames.mockResolvedValue({ games });

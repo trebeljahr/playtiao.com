@@ -80,6 +80,8 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
         applySocialOverview(response.overview, options.allowInviteToast ?? false);
         refreshNotifications();
       } catch (error) {
+        // Mark as loaded even on error to prevent infinite retry loops
+        setSocialLoaded(true);
         if (!options.silent) {
           toastError(error);
         }
@@ -277,11 +279,14 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
     [auth, refreshSocialOverview],
   );
 
+  // Initial fetch — only runs once per auth identity (guarded by socialLoaded)
+  const refreshSocialRef = useRef(refreshSocialOverview);
+  refreshSocialRef.current = refreshSocialOverview;
   useEffect(() => {
     if (auth?.player.kind === "account" && !socialLoaded && !socialLoading) {
-      void refreshSocialOverview({ allowInviteToast: true });
+      void refreshSocialRef.current({ allowInviteToast: true });
     }
-  }, [auth, socialLoaded, socialLoading, refreshSocialOverview]);
+  }, [auth, socialLoaded, socialLoading]);
 
   return {
     socialOverview,

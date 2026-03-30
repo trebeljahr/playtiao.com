@@ -49,6 +49,8 @@ export function useGamesIndex(auth: AuthResponse | null) {
         const response = await listMultiplayerGames();
         applyMultiplayerGamesIndex(response.games);
       } catch (error) {
+        // Mark as loaded even on error to prevent infinite retry loops
+        setMultiplayerGamesLoaded(true);
         if (!options.silent) {
           toastError(error);
         }
@@ -59,11 +61,14 @@ export function useGamesIndex(auth: AuthResponse | null) {
     [auth, applyMultiplayerGamesIndex],
   );
 
+  // Initial fetch — only runs once per auth identity (guarded by multiplayerGamesLoaded)
+  const refreshRef = useRef(refreshMultiplayerGames);
+  refreshRef.current = refreshMultiplayerGames;
   useEffect(() => {
     if (auth && !multiplayerGamesLoaded && !multiplayerGamesLoading) {
-      void refreshMultiplayerGames();
+      void refreshRef.current();
     }
-  }, [auth, multiplayerGamesLoaded, multiplayerGamesLoading, refreshMultiplayerGames]);
+  }, [auth, multiplayerGamesLoaded, multiplayerGamesLoading]);
 
   return {
     multiplayerGames,
