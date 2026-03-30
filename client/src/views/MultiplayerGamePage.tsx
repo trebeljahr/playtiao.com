@@ -430,6 +430,12 @@ export function MultiplayerGamePage() {
   const isAwaitingFirstMove = firstMoveCountdownMs !== null && firstMoveCountdownMs > 0;
 
   const isMultiplayerParticipant = !!playerSeat;
+  const isInPlayerList =
+    isMultiplayerParticipant ||
+    (multiplayerSnapshot &&
+      auth &&
+      multiplayerSnapshot.players.some((p) => p.player.playerId === auth.player.playerId)) ||
+    false;
   const isSpectator = multiplayerSnapshot && !isMultiplayerParticipant;
   const spectatorCount = multiplayerSnapshot?.spectators.length ?? 0;
   const isTournamentGame = multiplayerSnapshot?.roomType === "tournament";
@@ -1018,7 +1024,7 @@ export function MultiplayerGamePage() {
                                   <div className="flex items-center gap-2">
                                     {!slot &&
                                       auth?.player.kind === "account" &&
-                                      isMultiplayerParticipant && (
+                                      isInPlayerList && (
                                         <Button
                                           size="sm"
                                           variant="secondary"

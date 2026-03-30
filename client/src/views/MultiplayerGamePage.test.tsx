@@ -806,6 +806,155 @@ describe("MultiplayerGamePage", () => {
   // by e2e/spectateLink.spec.ts since the unit test environment doesn't fully
   // render the game board UI.
 
+  // --- #81: Invite friends button in waiting game room ---
+
+  it("shows invite button for account creator in a waiting game with one player", async () => {
+    const accountAuth: AuthResponse = {
+      player: {
+        kind: "account",
+        playerId: "account-aaa",
+        displayName: "Alice",
+      },
+    };
+
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: accountAuth,
+      authLoading: false,
+      appError: null,
+      authDialogOpen: false,
+      authDialogMode: "login",
+      authBusy: false,
+      authDialogError: null,
+      loginEmail: "",
+      loginPassword: "",
+      signupDisplayName: "",
+      signupEmail: "",
+      signupPassword: "",
+      signupConfirmPassword: "",
+      setAuth: vi.fn(),
+      setAuthDialogOpen: vi.fn(),
+      setAuthDialogMode: vi.fn(),
+      setAuthDialogError: vi.fn(),
+      setLoginEmail: vi.fn(),
+      setLoginPassword: vi.fn(),
+      setSignupDisplayName: vi.fn(),
+      setSignupEmail: vi.fn(),
+      setSignupPassword: vi.fn(),
+      setSignupConfirmPassword: vi.fn(),
+      onOpenAuth: vi.fn(),
+      handleLoginSubmit: vi.fn(),
+      handleSignupSubmit: vi.fn(),
+      handleForgotPassword: vi.fn(),
+      handleOAuthSignIn: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    });
+
+    // Waiting game: 1 player in players array, but seats are null (< 2 players)
+    const snapshot = makeMatchmakingSnapshot({
+      roomType: "direct",
+      status: "waiting",
+      players: [
+        {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+      ],
+      seats: { white: null, black: null },
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(screen.getByRole("button", { name: "Invite a Friend" })).toBeInTheDocument();
+  });
+
+  it("does not show invite button for guest creator in a waiting game", async () => {
+    // guestAuth is the default mock — kind: "guest"
+    const snapshot = makeMatchmakingSnapshot({
+      roomType: "direct",
+      status: "waiting",
+      players: [
+        {
+          player: { playerId: "guest-aaa", displayName: "Anonymous", kind: "guest" },
+          online: true,
+        },
+      ],
+      seats: { white: null, black: null },
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(screen.queryByRole("button", { name: "Invite a Friend" })).not.toBeInTheDocument();
+  });
+
+  it("does not show invite button when both slots are filled in a waiting game", async () => {
+    const accountAuth: AuthResponse = {
+      player: {
+        kind: "account",
+        playerId: "account-aaa",
+        displayName: "Alice",
+      },
+    };
+
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: accountAuth,
+      authLoading: false,
+      appError: null,
+      authDialogOpen: false,
+      authDialogMode: "login",
+      authBusy: false,
+      authDialogError: null,
+      loginEmail: "",
+      loginPassword: "",
+      signupDisplayName: "",
+      signupEmail: "",
+      signupPassword: "",
+      signupConfirmPassword: "",
+      setAuth: vi.fn(),
+      setAuthDialogOpen: vi.fn(),
+      setAuthDialogMode: vi.fn(),
+      setAuthDialogError: vi.fn(),
+      setLoginEmail: vi.fn(),
+      setLoginPassword: vi.fn(),
+      setSignupDisplayName: vi.fn(),
+      setSignupEmail: vi.fn(),
+      setSignupPassword: vi.fn(),
+      setSignupConfirmPassword: vi.fn(),
+      onOpenAuth: vi.fn(),
+      handleLoginSubmit: vi.fn(),
+      handleSignupSubmit: vi.fn(),
+      handleForgotPassword: vi.fn(),
+      handleOAuthSignIn: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    });
+
+    // Both players present, seats filled — no empty slot to show invite on
+    const snapshot = makeMatchmakingSnapshot({
+      roomType: "direct",
+      status: "waiting",
+      players: [
+        {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        {
+          player: { playerId: "account-bbb", displayName: "Bob", kind: "account" },
+          online: true,
+        },
+      ],
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(screen.queryByRole("button", { name: "Invite a Friend" })).not.toBeInTheDocument();
+  });
+
   it("displays spectator count next to eye icon when spectatorCount > 0", async () => {
     const snapshot = makeMatchmakingSnapshot({
       spectators: [
