@@ -48,7 +48,13 @@
     "lobby": "Sala",
     "mLeft": "Quedan {n}m",
     "hLeft": "Quedan {n}h",
-    "dLeft": "Quedan {n}d"
+    "dLeft": "Quedan {n}d",
+    "deletedPlayerTooltip": "Este jugador eliminó su cuenta.",
+    "connectionLost": "Conexión perdida. Intentando reconectar...",
+    "reconnected": "Reconectado!",
+    "inviteToSpectate": "Invitar a ver",
+    "cancelInvitation": "Cancelar",
+    "somethingWentWrong": "Algo salió mal."
   },
   "lobby": {
     "tagline": "Un elegante juego abstracto de estrategia. Juega en línea, con amigos o contra la IA.",
@@ -252,7 +258,9 @@
     "goToNextMatch": "Ir a tu siguiente partida",
     "redirectingIn": "Redirigiendo en {seconds}s...",
     "winner": "Ganador",
-    "unknownPlayer": "Desconocido"
+    "unknownPlayer": "Desconocido",
+    "rematchOffline": "Solicitar revancha",
+    "rematchOfflineDesc": "Tu oponente está desconectado. Se le notificará cuando vuelva."
   },
   "config": {
     "difficulty": "Dificultad",

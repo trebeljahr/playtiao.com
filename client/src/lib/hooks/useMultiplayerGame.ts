@@ -123,7 +123,7 @@ export function useMultiplayerGame(
     }
 
     if (reconnect.getAttempt() === 0) {
-      toast.error("There was a disconnect from the server. Reconnecting...");
+      toast.error("Connection lost. Trying to reconnect...", { duration: 5000 });
     }
 
     const snapshot = latestMultiplayerSnapshotRef.current;
@@ -342,9 +342,13 @@ export function useMultiplayerGame(
     try {
       const fetchGame = options.spectateOnly ? getMultiplayerGame : accessMultiplayerGame;
       const response = await fetchGame(snapshot.gameId);
+      const wasReconnect = reconnectRef.current.getAttempt() > 0;
       connectToRoom(response.snapshot, {
         preserveView: true,
       });
+      if (wasReconnect) {
+        toast.success("Reconnected!");
+      }
     } catch (error) {
       if (isNetworkError(error)) {
         setConnectionState("disconnected");

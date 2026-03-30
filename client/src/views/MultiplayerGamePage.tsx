@@ -58,7 +58,7 @@ function AnimatedEllipsis() {
     const interval = setInterval(() => setDots((d) => (d + 1) % 4), 500);
     return () => clearInterval(interval);
   }, []);
-  return <span className="inline-block w-[1.2em] text-left">{".".repeat(dots)}</span>;
+  return <span className="inline-block w-[1.5em] text-left">{".".repeat(dots)}</span>;
 }
 
 export function MultiplayerGamePage() {
@@ -663,7 +663,7 @@ export function MultiplayerGamePage() {
   async function handleCopySpectateLink() {
     if (!multiplayerSnapshot) return;
     try {
-      const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}`;
+      const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}?spectate`;
       await copyToClipboard(url);
       toast.success(tCommon("spectateLinkCopied"));
     } catch {
@@ -792,7 +792,7 @@ export function MultiplayerGamePage() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-[calc(100dvh-5rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-[20rem] xl:max-w-[28rem]">
+          <div className="mx-auto w-full max-w-[calc(100dvh-5rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-[22rem] xl:max-w-[30rem]">
             <div className="mx-auto w-full xl:mx-0">
               <Card
                 className={cn(
@@ -960,7 +960,7 @@ export function MultiplayerGamePage() {
                       </div>
                     )}
                     <div className="space-y-1 sm:order-1">
-                      <CardTitle className="font-display text-2xl text-[#2b1e14]">
+                      <CardTitle className="font-display text-2xl text-[#2b1e14] whitespace-nowrap">
                         {multiplayerSnapshot?.status === "active"
                           ? isSpectator
                             ? t("spectating")
@@ -1023,31 +1023,30 @@ export function MultiplayerGamePage() {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    {!slot && auth?.player.kind === "account" && isInPlayerList && (
-                                      <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        className="text-xs border-[#dcc7a2]"
-                                        onClick={() => setInviteDialogOpen(true)}
-                                      >
-                                        {t("inviteFriend")}
-                                      </Button>
+                                  <Badge
+                                    className={cn(
+                                      slot?.online
+                                        ? "bg-[#eef2e8] text-[#43513f]"
+                                        : "bg-[#f2e8d9] text-[#6e5b48]",
                                     )}
-                                    <Badge
-                                      className={cn(
-                                        slot?.online
-                                          ? "bg-[#eef2e8] text-[#43513f]"
-                                          : "bg-[#f2e8d9] text-[#6e5b48]",
-                                      )}
-                                    >
-                                      {slot?.online ? t("online") : t("offline")}
-                                    </Badge>
-                                  </div>
+                                  >
+                                    {slot?.online ? t("online") : t("offline")}
+                                  </Badge>
                                 </div>
                               );
                             })}
-                            <p className="mt-4 text-xs leading-relaxed text-[#7a6656]">
+                            {auth?.player.kind === "account" &&
+                              isMultiplayerParticipant &&
+                              multiplayerSnapshot.players.length < 2 && (
+                                <Button
+                                  variant="secondary"
+                                  className="w-full border-[#dcc7a2]"
+                                  onClick={() => setInviteDialogOpen(true)}
+                                >
+                                  {t("inviteFriend")}
+                                </Button>
+                              )}
+                            <p className="mt-2 text-xs leading-relaxed text-[#7a6656]">
                               {t("lobbyShareHint")}
                             </p>
                           </div>
@@ -1228,8 +1227,6 @@ export function MultiplayerGamePage() {
                       {winner &&
                         isMultiplayerParticipant &&
                         connectionState === "connected" &&
-                        multiplayerSnapshot.seats[playerSeat === "white" ? "black" : "white"]
-                          ?.online &&
                         (isTournamentGame ? (
                           <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
                             <Button onClick={() => router.push(tournamentBackPath)}>
@@ -1278,6 +1275,13 @@ export function MultiplayerGamePage() {
                                 <p className="text-center text-sm font-medium text-[#56703f]">
                                   {t("rematchRequestedWaiting")}
                                 </p>
+                                {!multiplayerSnapshot.seats[
+                                  playerSeat === "white" ? "black" : "white"
+                                ]?.online && (
+                                  <p className="text-center text-xs text-[#6e5b48]">
+                                    {t("rematchOfflineDesc")}
+                                  </p>
+                                )}
                                 {(multiplayerSnapshot.rematch?.requestedBy ?? []).some(
                                   (color) => color !== playerSeat,
                                 ) && (
@@ -1409,6 +1413,7 @@ export function MultiplayerGamePage() {
         onRevoke={handleRevokeInvite}
         inviteBusy={inviteBusy}
         revokeBusy={revokeBusy}
+        isGameFull={!!(multiplayerSnapshot?.seats.white && multiplayerSnapshot?.seats.black)}
       />
 
       <Dialog
@@ -1493,9 +1498,7 @@ export function MultiplayerGamePage() {
                 </div>
               );
             })()}
-          {isMultiplayerParticipant &&
-          connectionState === "connected" &&
-          multiplayerSnapshot?.seats[playerSeat === "white" ? "black" : "white"]?.online ? (
+          {isMultiplayerParticipant && connectionState === "connected" ? (
             isTournamentGame ? (
               <>
                 <Button

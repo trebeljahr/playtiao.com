@@ -10,13 +10,11 @@ import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { Navbar } from "@/components/Navbar";
 import {
-  getOpponentLabel,
   getSummaryStatusLabel,
   isSummaryYourTurn,
   translatePlayerColor,
-  PlayerOverviewAvatar,
-  EmptySeatAvatar,
 } from "@/components/game/GameShared";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { cancelMultiplayerGame } from "@/lib/api";
@@ -101,41 +99,16 @@ export function GamesPage() {
                       game.yourSeat === "white"
                         ? game.seats.black?.player
                         : game.seats.white?.player;
+                    const yourColor =
+                      translatePlayerColor(game.yourSeat ?? null, tGame) ?? game.yourSeat;
                     return (
                       <div
                         key={game.gameId}
-                        className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-[#d7c39e] bg-white/40"
+                        className="flex flex-col gap-2.5 p-4 rounded-2xl border border-[#d7c39e] bg-white/40"
                       >
-                        <div className="min-w-0 flex-1">
+                        {/* Status pill row */}
+                        <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            {game.yourSeat && (
-                              <span
-                                className={cn(
-                                  "inline-block h-3 w-3 shrink-0 rounded-full border",
-                                  game.yourSeat === "white"
-                                    ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
-                                    : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
-                                )}
-                                title={tCommon("playingAs", {
-                                  color:
-                                    translatePlayerColor(game.yourSeat ?? null, tGame) ??
-                                    game.yourSeat,
-                                })}
-                              />
-                            )}
-                            {opponent ? (
-                              <PlayerOverviewAvatar
-                                player={opponent}
-                                className="h-6 w-6 shrink-0"
-                              />
-                            ) : (
-                              <EmptySeatAvatar className="h-6 w-6 shrink-0" />
-                            )}
-                            <p className="truncate text-sm font-semibold text-[#2b1e14]">
-                              {getOpponentLabel(game, auth!.player.playerId, tGame)}
-                            </p>
-                          </div>
-                          <div className="mt-1.5 flex items-center gap-2">
                             <Badge
                               className={cn(
                                 isYourTurn
@@ -149,31 +122,63 @@ export function GamesPage() {
                               {game.score.white}-{game.score.black} ·{" "}
                               {tCommon("moves", { count: game.historyLength })}
                             </span>
-                            <GameConfigBadge
-                              boardSize={game.boardSize}
-                              scoreToWin={game.scoreToWin}
-                              timeControl={game.timeControl}
-                              roomType={game.roomType}
-                              compact
-                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {game.status === "waiting" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[#a0887a] hover:text-[#8b3a2a] hover:bg-red-50"
+                                onClick={() => handleDeleteGame(game.gameId)}
+                                disabled={deletingId === game.gameId}
+                              >
+                                {deletingId === game.gameId ? "…" : tCommon("cancel")}
+                              </Button>
+                            )}
+                            <Button size="sm" onClick={() => router.push(`/game/${game.gameId}`)}>
+                              {tCommon("resume")}
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {game.status === "waiting" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#a0887a] hover:text-[#8b3a2a] hover:bg-red-50"
-                              onClick={() => handleDeleteGame(game.gameId)}
-                              disabled={deletingId === game.gameId}
-                            >
-                              {deletingId === game.gameId ? "…" : tCommon("cancel")}
-                            </Button>
+                        {/* Player info: playing as color vs opponent */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {game.yourSeat && (
+                            <>
+                              <span className="shrink-0 text-xs text-[#6b563e]">
+                                {tCommon("playingAs", { color: "" })}
+                              </span>
+                              <span
+                                className={cn(
+                                  "inline-block h-3 w-3 shrink-0 rounded-full border",
+                                  game.yourSeat === "white"
+                                    ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
+                                    : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
+                                )}
+                              />
+                              <span className="shrink-0 text-xs font-medium text-[#2b1e14]">
+                                {yourColor}
+                              </span>
+                              <span className="shrink-0 text-xs text-[#8d7760]">vs.</span>
+                            </>
                           )}
-                          <Button onClick={() => router.push(`/game/${game.gameId}`)}>
-                            {tCommon("resume")}
-                          </Button>
+                          {opponent && (
+                            <PlayerIdentityRow
+                              player={opponent}
+                              linkToProfile={false}
+                              className="min-w-0"
+                              avatarClassName="h-5 w-5"
+                              nameClassName="text-xs"
+                            />
+                          )}
                         </div>
+                        {/* Game settings */}
+                        <GameConfigBadge
+                          boardSize={game.boardSize}
+                          scoreToWin={game.scoreToWin}
+                          timeControl={game.timeControl}
+                          roomType={game.roomType}
+                          compact
+                        />
                       </div>
                     );
                   })}

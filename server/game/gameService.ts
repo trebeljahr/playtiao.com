@@ -292,6 +292,29 @@ export class GameService {
     return this.toSnapshot(await this.getRoom(gameId));
   }
 
+  /**
+   * Forfeit a game on behalf of a player (e.g. during account deletion).
+   * Broadcasts the updated snapshot to all connected clients.
+   */
+  async forfeitForPlayer(gameId: string, playerId: string): Promise<void> {
+    await this.withLock(this.roomLockKey(gameId), async () => {
+      const room = await this.store.getRoom(gameId);
+      if (!room) return;
+
+      const derived = this.deriveRoomStatus(room);
+      if (derived.status !== "active") return;
+
+      const playerColor = getPlayerColorForRoom(derived, playerId);
+      if (!playerColor) return;
+
+      const result = forfeitGame(derived.state, playerColor, "forfeit");
+      if (!result.ok) return;
+      derived.state = result.value;
+      const savedRoom = await this.saveRoom(derived);
+      this.broadcastSnapshot(savedRoom);
+    });
+  }
+
   async listGames(player: PlayerIdentity): Promise<MultiplayerGamesIndex> {
     const rooms = await this.store.listRoomsForPlayer(player.playerId);
     const summaries = rooms.map((room) =>

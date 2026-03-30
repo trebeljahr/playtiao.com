@@ -247,18 +247,31 @@ export function MatchHistoryCard({
         />
       </div>
 
-      {/* Footer: game info */}
-      <div className="flex flex-wrap items-center gap-2">
-        <GameConfigBadge
-          boardSize={game.boardSize}
-          scoreToWin={game.scoreToWin}
-          timeControl={game.timeControl}
-          roomType={game.roomType}
-        />
+      {/* Footer: timestamp left, game settings pills right */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-[#6b5a45]">
           {formatGameTimestamp(game.updatedAt)} ·{" "}
           {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
+        <div className="flex items-center gap-1.5">
+          {game.boardSize && game.boardSize !== 19 && (
+            <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+              {game.boardSize}x{game.boardSize}
+            </span>
+          )}
+          {game.timeControl && (
+            <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+              {Math.floor(game.timeControl.initialMs / 60_000)}+
+              {Math.round(game.timeControl.incrementMs / 1_000)}
+            </span>
+          )}
+          {game.scoreToWin && game.scoreToWin !== 10 && (
+            <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+              {t("nPts", { n: game.scoreToWin })}
+            </span>
+          )}
+          <GameConfigBadge roomType={game.roomType} />
+        </div>
       </div>
     </div>
   );

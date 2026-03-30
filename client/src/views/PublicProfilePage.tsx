@@ -10,6 +10,7 @@ import {
   getPlayerMatchHistory,
   sendFriendRequest,
   acceptFriendRequest,
+  cancelFriendRequest,
   type PublicProfile,
 } from "@/lib/api";
 import type { MultiplayerGameSummary } from "@shared";
@@ -189,8 +190,9 @@ export function PublicProfilePage() {
                   )}
 
                   {auth?.player && friendStatus === "none" && profile.playerId && (
-                    <Button
-                      className="mt-4"
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#2b1e14] px-4 py-2 text-sm font-semibold text-[#f9f2e8] transition-colors hover:bg-[#3d2c1e] disabled:opacity-50"
                       disabled={friendActionBusy}
                       onClick={async () => {
                         setFriendActionBusy(true);
@@ -204,8 +206,16 @@ export function PublicProfilePage() {
                         }
                       }}
                     >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
+                        <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2.046 15.253c-.058.468.172.92.57 1.175A9.953 9.953 0 0 0 8 18c1.982 0 3.83-.578 5.384-1.573.398-.254.628-.707.57-1.175a6.001 6.001 0 0 0-11.908 0ZM15.75 6.5a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
+                      </svg>
                       {t("addFriend")}
-                    </Button>
+                    </button>
                   )}
 
                   {auth?.player && friendStatus === "incoming-request" && profile.playerId && (
@@ -228,10 +238,33 @@ export function PublicProfilePage() {
                     </Button>
                   )}
 
-                  {friendStatus === "outgoing-request" && (
-                    <p className="mt-4 inline-flex items-center rounded-xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-2 text-sm font-medium text-[#4e3d2c]">
-                      {t("requestSent")}
-                    </p>
+                  {friendStatus === "outgoing-request" && profile.playerId && (
+                    <button
+                      type="button"
+                      className="group mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#dcc7a3] bg-[#fff9ef] px-4 py-2 text-sm font-medium text-[#4e3d2c] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                      disabled={friendActionBusy}
+                      onClick={async () => {
+                        setFriendActionBusy(true);
+                        try {
+                          await cancelFriendRequest(profile.playerId!);
+                          setFriendStatus("none");
+                        } catch {
+                          toast.error(tCommon("somethingWentWrong"));
+                        } finally {
+                          setFriendActionBusy(false);
+                        }
+                      }}
+                    >
+                      {tCommon("pending")}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        className="h-3 w-3 opacity-50 group-hover:opacity-100"
+                      >
+                        <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                      </svg>
+                    </button>
                   )}
 
                   {friendStatus === "friend" && (

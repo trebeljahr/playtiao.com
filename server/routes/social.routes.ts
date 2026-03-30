@@ -8,6 +8,7 @@ import {
   SocialSearchResult,
 } from "../../shared/src";
 import { classifyMongoError } from "../error-handling";
+import { fetchSsoProfilePictures } from "../auth/ssoProfilePicture";
 import { GameServiceError, gameService } from "../game/gameService";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
 import GameAccount, { IGameAccount } from "../models/GameAccount";
@@ -54,29 +55,13 @@ function toSocialPlayerSummary(account: {
 }
 
 /**
- * For a list of GameAccount documents, look up SSO profile pictures from
- * better-auth's `user` collection for any accounts that are missing one.
- * Returns a map from account ID → SSO image URL.
+ * Look up SSO profile pictures for GameAccount documents that are missing one.
  */
-async function fetchSsoProfilePictures(
+async function fetchSsoProfilePicturesForAccounts(
   accounts: Pick<IGameAccount, "_id" | "profilePicture">[],
 ): Promise<Map<string, string>> {
   const missingPicIds = accounts.filter((a) => !a.profilePicture).map((a) => String(a._id));
-
-  if (missingPicIds.length === 0) return new Map();
-
-  try {
-    const db = mongoose.connection.getClient().db();
-    const baUsers = await db
-      .collection("user")
-      .find({ _id: { $in: missingPicIds } as any, image: { $ne: null } })
-      .project({ _id: 1, image: 1 })
-      .toArray();
-    return new Map(baUsers.filter((u) => u.image).map((u) => [String(u._id), u.image as string]));
-  } catch {
-    // Non-critical — return empty map so callers still work
-    return new Map();
-  }
+  return fetchSsoProfilePictures(missingPicIds);
 }
 
 /** Enrich a list of GameAccount documents with SSO profile pictures where missing. */
@@ -176,7 +161,7 @@ async function loadAccountsById(accountIds: ReadonlyArray<{ toString(): string }
     .lean<IGameAccount[]>()
     .exec();
 
-  const ssoMap = await fetchSsoProfilePictures(accounts);
+  const ssoMap = await fetchSsoProfilePicturesForAccounts(accounts);
   return applySsoFallback(accounts, ssoMap);
 }
 
@@ -215,7 +200,7 @@ async function loadInvitationSummaries(
     if (!sender.profilePicture) populatedAccounts.push(sender);
     if (!recipient.profilePicture) populatedAccounts.push(recipient);
   }
-  const ssoMap = await fetchSsoProfilePictures(populatedAccounts);
+  const ssoMap = await fetchSsoProfilePicturesForAccounts(populatedAccounts);
 
   // Fetch game rooms for config details
   const gameIds = [...new Set(valid.map((inv) => inv.gameId))];
@@ -503,7 +488,7 @@ router.get("/player/social/search", userSearchRateLimiter, async (req: Request, 
       .lean<IGameAccount[]>()
       .exec();
 
-    const ssoMap = await fetchSsoProfilePictures(accounts);
+    const ssoMap = await fetchSsoProfilePicturesForAccounts(accounts);
     const enriched = applySsoFallback(accounts, ssoMap);
 
     const results: SocialSearchResult[] = accounts.map((result, i) => ({

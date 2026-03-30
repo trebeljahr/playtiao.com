@@ -92,7 +92,7 @@ export function SocialNotificationsProvider({
       for (const req of nextOverview.incomingFriendRequests) {
         if (!prevRequestIdsRef.current.has(req.playerId)) {
           const reqPlayerId = req.playerId;
-          const reqName = req.displayName;
+          const reqName = req.displayName || "Someone";
           toast(`${reqName} sent you a friend request`, {
             id: `friend-request:${reqPlayerId}`,
             duration: 15000,
@@ -141,7 +141,7 @@ export function SocialNotificationsProvider({
         if (!prevInvitationIdsRef.current.has(inv.id)) {
           const invGameId = inv.gameId;
           const invId = inv.id;
-          const senderName = inv.sender.displayName;
+          const senderName = inv.sender?.displayName || "Someone";
           toast(`${senderName} invited you to a game`, {
             id: `game-invitation:${invId}`,
             duration: 15000,

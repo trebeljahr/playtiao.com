@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { classifyMongoError } from "../error-handling";
 import { gameService, GameServiceError } from "../game/gameService";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
+import { applySsoProfilePicturesToSummaries } from "../auth/ssoProfilePicture";
 import GameInvitation from "../models/GameInvitation";
 import GameAccount from "../models/GameAccount";
 import GameRoom, { type IGameRoom } from "../models/GameRoom";
@@ -168,6 +169,7 @@ router.get("/games", async (req: Request, res: Response) => {
 
   try {
     const games = await gameService.listGames(player);
+    await applySsoProfilePicturesToSummaries([...games.active, ...games.finished]);
     return res.status(200).json({ games });
   } catch (error) {
     return respondWithGameServiceError(

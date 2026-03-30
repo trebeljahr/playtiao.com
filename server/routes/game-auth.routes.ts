@@ -953,7 +953,7 @@ router.delete("/account", async (req: Request, res: Response) => {
 
     const accountId = String(account._id);
 
-    // (a) Forfeit active games and delete waiting games
+    // (a) Forfeit active games (via gameService for real-time broadcast) and delete waiting games
     const activeOrWaitingGames = await GameRoom.find({
       "players.playerId": accountId,
       status: { $in: ["waiting", "active"] },
@@ -963,18 +963,23 @@ router.delete("/account", async (req: Request, res: Response) => {
       if (game.status === "waiting") {
         await GameRoom.deleteOne({ _id: game._id });
       } else if (game.status === "active") {
-        // Set the opponent as winner by determining which seat the user occupies
-        const isWhite = game.seats?.white?.playerId === accountId;
-        const winnerColor = isWhite ? "black" : "white";
-        await GameRoom.updateOne(
-          { _id: game._id },
-          {
-            $set: {
-              status: "finished",
-              "state.winner": winnerColor,
+        // Use gameService to forfeit so the opponent gets a real-time WebSocket notification
+        try {
+          await gameService.forfeitForPlayer(String(game._id), accountId);
+        } catch {
+          // Fallback: direct DB update if gameService fails
+          const isWhite = game.seats?.white?.playerId === accountId;
+          const winnerColor = isWhite ? "black" : "white";
+          await GameRoom.updateOne(
+            { _id: game._id },
+            {
+              $set: {
+                status: "finished",
+                "state.winner": winnerColor,
+              },
             },
-          },
-        );
+          );
+        }
       }
     }
 
@@ -1087,12 +1092,14 @@ router.delete("/account", async (req: Request, res: Response) => {
     // (g) Delete the GameAccount document
     await GameAccount.deleteOne({ _id: account._id });
 
-    // (h) Delete better-auth data (user, session, account collections)
+    // (h) Delete better-auth data (user, session, account, verification collections)
     const db = mongoose.connection.getClient().db();
+    const userDoc = await db.collection("user").findOne({ _id: accountId as any });
     await Promise.all([
       db.collection("user").deleteOne({ _id: accountId as any }),
       db.collection("session").deleteMany({ userId: accountId } as any),
       db.collection("account").deleteMany({ userId: accountId } as any),
+      db.collection("verification").deleteMany({ identifier: userDoc?.email } as any),
     ]);
 
     return res.status(200).json({ message: "Account deleted successfully." });

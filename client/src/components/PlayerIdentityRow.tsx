@@ -6,6 +6,12 @@ import { UserBadge, type BadgeId } from "@/components/UserBadge";
 import { resolvePlayerBadges } from "@/lib/featureGate";
 import { Link } from "@/i18n/navigation";
 
+export const DELETED_PLAYER_NAME = "Deleted Player";
+
+export function isDeletedPlayer(player: { displayName?: string }): boolean {
+  return player.displayName === DELETED_PLAYER_NAME;
+}
+
 type PlayerIdentityRowProps = {
   player: {
     playerId?: string;
@@ -55,8 +61,9 @@ export function PlayerIdentityRow({
   const t = useTranslations("common");
   const isYou = currentPlayerId != null && player.playerId === currentPlayerId;
   const badgesToShow = resolvePlayerBadges(player);
+  const deleted = isDeletedPlayer(player);
 
-  const canLink = linkToProfile && player.displayName && !anonymous;
+  const canLink = linkToProfile && player.displayName && !anonymous && !deleted;
   const identityContent = (
     <>
       <PlayerOverviewAvatar player={player} anonymous={anonymous} className={avatarClassName} />
@@ -71,6 +78,30 @@ export function PlayerIdentityRow({
       </span>
       {anonymous && (
         <span title={t("guestPlayerTooltip")} className="shrink-0 cursor-help opacity-50">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-3.5 w-3.5"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </span>
+      )}
+      {deleted && (
+        <span
+          title={t("deletedPlayerTooltip")}
+          className={cn(
+            "inline-flex shrink-0 cursor-help items-center justify-center rounded-full",
+            friendVariant === "light"
+              ? "text-black/40 hover:text-black/60"
+              : "text-white/40 hover:text-white/60",
+          )}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
@@ -117,7 +148,7 @@ export function PlayerIdentityRow({
         </span>
       )}
 
-      {showPending && (
+      {showPending && !deleted && (
         <button
           type="button"
           title="Cancel friend request"
@@ -142,7 +173,7 @@ export function PlayerIdentityRow({
         </button>
       )}
 
-      {showAddFriend && onAddFriend && (
+      {showAddFriend && onAddFriend && !deleted && (
         <button
           type="button"
           title={t("addFriend")}

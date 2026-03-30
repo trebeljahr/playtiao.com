@@ -79,8 +79,8 @@ const MAX_MOVES = 50; // limit moves considered per node to keep search tractabl
 
 const LEVEL_PRESETS: LevelPreset[] = [
   { maxDepth: 2, timeMs: 1000, evalNoise: 150, skipProb: 0.3, nullMove: false, quiescence: false },
-  { maxDepth: 5, timeMs: 5000, evalNoise: 3, skipProb: 0, nullMove: true, quiescence: true },
-  { maxDepth: 6, timeMs: 6000, evalNoise: 0, skipProb: 0, nullMove: true, quiescence: true },
+  { maxDepth: 6, timeMs: 5000, evalNoise: 2, skipProb: 0, nullMove: true, quiescence: true },
+  { maxDepth: 7, timeMs: 6000, evalNoise: 0, skipProb: 0, nullMove: true, quiescence: true },
 ];
 
 export const AI_DIFFICULTY_LABELS: Record<number, string> = {
@@ -365,8 +365,8 @@ export function evaluate(state: GameState): number {
   const myJumpOrigins = getSelectableJumpOrigins(state, me).length;
   const oppJumpOrigins = getSelectableJumpOrigins(state, opp).length;
 
-  score += myJumpOrigins * 80 - oppJumpOrigins * 85;
-  score += (myPieces - oppPieces) * 3;
+  score += myJumpOrigins * 120 - oppJumpOrigins * 130;
+  score += (myPieces - oppPieces) * 5;
   score += (myCenterScore - oppCenterScore) * 2;
   score += myConnections - oppConnections;
 

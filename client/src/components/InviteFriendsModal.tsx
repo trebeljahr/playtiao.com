@@ -18,6 +18,8 @@ type InviteFriendsModalProps = {
   onRevoke: (invitationId: string) => void;
   inviteBusy: string | null;
   revokeBusy: string | null;
+  /** When true, the game is full and invites become spectate invitations. */
+  isGameFull?: boolean;
 };
 
 function SearchIcon({ className }: { className?: string }) {
@@ -91,8 +93,10 @@ export function InviteFriendsModal({
   onRevoke,
   inviteBusy,
   revokeBusy,
+  isGameFull,
 }: InviteFriendsModalProps) {
   const t = useTranslations("game");
+  const tCommon = useTranslations("common");
   const [search, setSearch] = useState("");
 
   // Sort friends: online first, then alphabetically
@@ -135,16 +139,21 @@ export function InviteFriendsModal({
 
     if (invitation) {
       return (
-        <Button
-          size="sm"
-          variant="outline"
-          className="shrink-0 gap-1.5 border-[#dcc7a2] text-xs text-[#8d7760] hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-          onClick={() => onRevoke(invitation.id)}
-          disabled={revokeBusy === invitation.id}
-        >
-          <UndoIcon className="h-3 w-3" />
-          {revokeBusy === invitation.id ? t("revoking") : t("revoke")}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge variant="outline" className="text-xs text-[#6b563e] border-[#dcc7a2]">
+            {tCommon("pending")}
+          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1 border-[#dcc7a2] text-xs text-[#8d7760] hover:border-red-300 hover:bg-red-50 hover:text-red-600 px-2"
+            onClick={() => onRevoke(invitation.id)}
+            disabled={revokeBusy === invitation.id}
+          >
+            <UndoIcon className="h-3 w-3" />
+            {revokeBusy === invitation.id ? t("revoking") : tCommon("cancelInvitation")}
+          </Button>
+        </div>
       );
     }
 
@@ -156,7 +165,11 @@ export function InviteFriendsModal({
         disabled={inviteBusy === friend.playerId}
       >
         <EnvelopeIcon className="h-3.5 w-3.5" />
-        {inviteBusy === friend.playerId ? t("sending") : t("invite")}
+        {inviteBusy === friend.playerId
+          ? t("sending")
+          : isGameFull
+            ? tCommon("inviteToSpectate")
+            : t("invite")}
       </Button>
     );
   }
