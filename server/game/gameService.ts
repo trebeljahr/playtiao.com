@@ -1072,11 +1072,19 @@ export class GameService {
     // Store rating snapshots on the room
     room.ratingBefore = { white: whiteElo, black: blackElo };
     room.ratingAfter = { white: newRatingA, black: newRatingB };
+
+    // Update player identity ratings so the snapshot reflects new ELO
+    if (room.seats.white) room.seats.white.rating = newRatingA;
+    if (room.seats.black) room.seats.black.rating = newRatingB;
+
     await this.store.saveRoom(room);
 
     console.log(
       `[game] Elo updated for room ${room.id}: white ${whiteElo}->${newRatingA}, black ${blackElo}->${newRatingB}`,
     );
+
+    // Re-broadcast the snapshot so clients receive the rating data
+    this.broadcastSnapshot(room);
   }
 
   private deriveRoomStatus(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
@@ -1239,6 +1247,8 @@ export class GameService {
         room.roomType === "tournament"
           ? !!(room.firstMoveDeadline || room.lastMoveAt) || !room.timeControl
           : undefined,
+      ratingBefore: room.ratingBefore ?? null,
+      ratingAfter: room.ratingAfter ?? null,
     };
   }
 

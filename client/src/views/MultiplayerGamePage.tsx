@@ -61,6 +61,82 @@ function AnimatedEllipsis() {
   return <span className="inline-block w-[1.5em] text-left">{".".repeat(dots)}</span>;
 }
 
+/** Counting-up animation from `before` to `after` with a bounce at the end. */
+function AnimatedRatingChange({
+  before,
+  after,
+  delta,
+}: {
+  before: number;
+  after: number;
+  delta: number;
+}) {
+  const [displayValue, setDisplayValue] = useState(Math.round(before));
+  const [animDone, setAnimDone] = useState(false);
+
+  useEffect(() => {
+    const start = Math.round(before);
+    const end = Math.round(after);
+    if (start === end) {
+      setDisplayValue(end);
+      setAnimDone(true);
+      return;
+    }
+
+    const totalSteps = Math.min(Math.abs(end - start), 30);
+    const duration = 800; // ms
+    const stepDuration = duration / totalSteps;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      // Ease-out: start fast, slow down at end
+      const progress = step / totalSteps;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(start + (end - start) * eased);
+      setDisplayValue(current);
+
+      if (step >= totalSteps) {
+        clearInterval(timer);
+        setDisplayValue(end);
+        setAnimDone(true);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [before, after]);
+
+  const roundedDelta = Math.round(delta);
+
+  return (
+    <div className="flex items-center justify-center gap-3 py-2">
+      <motion.span
+        className="font-display text-2xl font-bold text-[#2b1e14]"
+        animate={animDone ? { scale: [1.15, 1] } : {}}
+        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+      >
+        {displayValue}
+      </motion.span>
+      {roundedDelta !== 0 && (
+        <motion.span
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={animDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+          className={cn(
+            "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
+            roundedDelta > 0
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-red-100 text-red-600",
+          )}
+        >
+          {roundedDelta > 0 ? "+" : ""}
+          {roundedDelta}
+        </motion.span>
+      )}
+    </div>
+  );
+}
+
 export function MultiplayerGamePage() {
   const t = useTranslations("game");
   const tCommon = useTranslations("common");
@@ -1492,24 +1568,7 @@ export function MultiplayerGamePage() {
               const after = multiplayerSnapshot.ratingAfter[playerSeat];
               const delta = after - before;
               return (
-                <div className="flex items-center justify-center gap-2 py-1 text-sm">
-                  <span className="text-[#6e5b48]">{t("ratingChange")}:</span>
-                  <span
-                    className={
-                      delta > 0
-                        ? "font-semibold text-[#56703f]"
-                        : delta < 0
-                          ? "font-semibold text-[#a04040]"
-                          : "text-[#6e5b48]"
-                    }
-                  >
-                    {delta > 0
-                      ? t("ratingUp", { rating: Math.round(after), delta: Math.round(delta) })
-                      : delta < 0
-                        ? t("ratingDown", { rating: Math.round(after), delta: Math.round(delta) })
-                        : t("ratingUnchanged", { rating: Math.round(after) })}
-                  </span>
-                </div>
+                <AnimatedRatingChange before={before} after={after} delta={delta} />
               );
             })()}
           {isMultiplayerParticipant && connectionState === "connected" ? (
