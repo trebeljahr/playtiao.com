@@ -132,7 +132,7 @@ export function GamesPage() {
                               <EmptySeatAvatar className="h-6 w-6 shrink-0" />
                             )}
                             <p className="truncate text-sm font-semibold text-[#2b1e14]">
-                              {getOpponentLabel(game, auth.player.playerId, tGame)}
+                              {getOpponentLabel(game, auth!.player.playerId, tGame)}
                             </p>
                           </div>
                           <div className="mt-1.5 flex items-center gap-2">
@@ -195,7 +195,7 @@ export function GamesPage() {
                     <MatchHistoryCard
                       key={game.gameId}
                       game={game}
-                      playerId={auth.player.playerId}
+                      playerId={auth!.player.playerId}
                       copiedId={copiedId}
                       onCopy={() => handleCopy(game.gameId)}
                       onReview={() => router.push(`/game/${game.gameId}`)}
