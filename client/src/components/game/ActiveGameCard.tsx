@@ -48,7 +48,7 @@ export function ActiveGameCard({
       )}
     >
       {/* Row 0: game settings pills + resume */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 pb-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {game.boardSize && (
             <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
@@ -140,7 +140,7 @@ export function ActiveGameCard({
       )}
 
       {/* Row 3: status badge */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
+      <div className="flex items-center justify-between gap-2 pt-1.5">
         <Badge
           className={cn(
             "text-[10px]",
