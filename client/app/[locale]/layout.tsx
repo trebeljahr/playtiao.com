@@ -39,8 +39,6 @@ export const metadata: Metadata = {
     follow: true,
   },
   appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
     title: "Tiao",
   },
 };
