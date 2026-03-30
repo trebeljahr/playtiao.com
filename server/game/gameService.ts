@@ -58,6 +58,11 @@ const TOURNAMENT_FIRST_MOVE_TIMEOUT_MS = 60 * 1000;
 
 export interface TournamentGameCallback {
   onGameCompleted(roomId: string): Promise<void>;
+  broadcastLiveScore(
+    tournamentId: string,
+    matchId: string,
+    score: { white: number; black: number },
+  ): Promise<void>;
 }
 
 export class GameService {
@@ -596,6 +601,20 @@ export class GameService {
       this.scheduleClockTimer(savedRoom);
 
       this.broadcastSnapshot(savedRoom);
+
+      // Broadcast live score to tournament participants
+      if (savedRoom.tournamentId && savedRoom.tournamentMatchId && this.tournamentCallback) {
+        void this.tournamentCallback
+          .broadcastLiveScore(
+            savedRoom.tournamentId,
+            savedRoom.tournamentMatchId,
+            savedRoom.state.score,
+          )
+          .catch((err) => {
+            console.error("[game] Tournament live score broadcast failed", err);
+          });
+      }
+
       return this.toSnapshot(savedRoom);
     });
   }

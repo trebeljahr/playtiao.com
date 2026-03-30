@@ -56,6 +56,21 @@ export function useTournament(
           options?.onRoundComplete?.(payload.roundIndex as number);
           fetchTournament({ silent: true });
         }
+
+        if (payload.type === "tournament-score-update" && payload.tournamentId === tournamentId) {
+          setTournament((prev) => {
+            if (!prev) return prev;
+            const updated = structuredClone(prev);
+            for (const round of [...(updated.rounds ?? []), ...(updated.knockoutRounds ?? [])]) {
+              const match = round.matches.find((m) => m.matchId === payload.matchId);
+              if (match) {
+                match.score = payload.score as [number, number];
+                break;
+              }
+            }
+            return updated;
+          });
+        }
       },
       [tournamentId, fetchTournament, options?.onMatchReady, options?.onRoundComplete],
     ),

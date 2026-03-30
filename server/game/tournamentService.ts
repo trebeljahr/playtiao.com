@@ -1189,6 +1189,44 @@ export class TournamentService implements TournamentGameCallback {
     }
   }
 
+  /**
+   * Broadcast a live score update to all tournament participants.
+   * Called by gameService after each move in a tournament game.
+   */
+  async broadcastLiveScore(
+    tournamentId: string,
+    matchId: string,
+    score: { white: number; black: number },
+  ): Promise<void> {
+    const tournament = await this.store.getTournament(tournamentId);
+    if (!tournament) return;
+
+    // Find the match across all round arrays
+    let match: TournamentMatch | undefined;
+    for (const round of [...tournament.rounds, ...tournament.knockoutRounds]) {
+      match = round.matches.find((m) => m.matchId === matchId);
+      if (match) break;
+    }
+    if (!match) return;
+
+    // Map white/black score to [player0Score, player1Score] based on color assignments
+    const p0Color = match.playerColors?.[0] ?? "white";
+    const p1Color = match.playerColors?.[1] ?? "black";
+    const mappedScore: [number, number] = [score[p0Color], score[p1Color]];
+
+    const payload = {
+      type: "tournament-score-update" as const,
+      tournamentId,
+      matchId,
+      score: mappedScore,
+    };
+
+    for (const p of tournament.participants) {
+      this.gameService.broadcastLobby(p.playerId, payload);
+    }
+    this.gameService.broadcastLobby(tournament.creatorId, payload);
+  }
+
   // ── Serialization ──
 
   private async toSnapshot(t: StoredTournament): Promise<TournamentSnapshot> {
