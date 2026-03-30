@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { RequireAccount } from "@/components/RequireAccount";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -87,233 +88,239 @@ export function FriendsPage() {
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
 
-  useEffect(() => {
-    if (!auth || auth.player.kind !== "account") {
-      router.replace("/");
-    }
-  }, [auth, router]);
-
-  if (!auth || auth.player.kind !== "account") {
-    return null;
-  }
-
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+    <RequireAccount>
+      {() => (
+        <div className="relative min-h-screen overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
 
-      <Navbar
-        mode="lobby"
-        auth={auth}
-        navOpen={navOpen}
-        onToggleNav={() => setNavOpen(!navOpen)}
-        onCloseNav={() => setNavOpen(false)}
-        onOpenAuth={onOpenAuth}
-        onLogout={onLogout}
-      />
+          <Navbar
+            mode="lobby"
+            auth={auth}
+            navOpen={navOpen}
+            onToggleNav={() => setNavOpen(!navOpen)}
+            onCloseNav={() => setNavOpen(false)}
+            onOpenAuth={onOpenAuth}
+            onLogout={onLogout}
+          />
 
-      <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr]">
-          <Card className={paperCard}>
-            <CardHeader>
-              <CardTitle>{t("findPlayers")}</CardTitle>
-              <CardDescription>{t("findPlayersDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder={t("playerNamePlaceholder")}
-                  value={social.friendSearchQuery}
-                  onChange={(e) => social.setFriendSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && social.runFriendSearch()}
-                />
-                <Button onClick={social.runFriendSearch} disabled={social.friendSearchBusy}>
-                  {tCommon("search")}
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {social.friendSearchResults.map((result) => (
-                  <div
-                    key={result.player.playerId}
-                    className="flex items-center justify-between p-2 rounded-xl bg-white/40"
-                  >
-                    <PlayerIdentityRow player={result.player} linkToProfile />
-                    {result.relationship === "friend" ? (
-                      <Badge variant="outline">{t("friend")}</Badge>
-                    ) : result.relationship === "outgoing-request" ? (
-                      <Badge variant="outline" className="text-[#8d7760]">
-                        {t("pending")}
-                      </Badge>
-                    ) : result.relationship === "incoming-request" ? (
-                      <Button
-                        size="sm"
-                        onClick={() => social.handleAcceptFriendRequest(result.player.playerId)}
-                      >
-                        {tCommon("accept")}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => social.handleSendFriendRequest(result.player.playerId)}
-                      >
-                        {tCommon("add")}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-5">
-            <Card className={paperCard}>
-              <CardHeader>
-                <CardTitle>{t("pending")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
-                    {t("incomingRequests")}
-                  </h4>
-                  {social.socialOverview.incomingFriendRequests.map((req) => (
-                    <div
-                      key={req.playerId}
-                      className="flex items-center justify-between p-3 rounded-xl bg-white/40"
-                    >
-                      <PlayerIdentityRow player={req} nameClassName="font-medium" linkToProfile />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => social.handleAcceptFriendRequest(req.playerId)}
-                        >
-                          {tCommon("accept")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => social.handleDeclineFriendRequest(req.playerId)}
-                        >
-                          {tCommon("decline")}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {social.socialOverview.incomingFriendRequests.length === 0 && (
-                    <p className="text-sm text-[#6e5b48]">{t("noPendingRequests")}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
-                    {t("outgoingRequests")}
-                  </h4>
-                  {social.socialOverview.outgoingFriendRequests.map((req) => (
-                    <div
-                      key={req.playerId}
-                      className="flex items-center justify-between p-3 rounded-xl bg-white/40"
-                    >
-                      <PlayerIdentityRow player={req} nameClassName="font-medium" linkToProfile />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs text-[#8d7760] hover:text-red-600"
-                        onClick={() => social.handleCancelFriendRequest(req.playerId)}
-                        disabled={social.socialActionBusyKey === `friend-cancel:${req.playerId}`}
-                      >
-                        {tCommon("cancel")}
-                      </Button>
-                    </div>
-                  ))}
-                  {social.socialOverview.outgoingFriendRequests.length === 0 && (
-                    <p className="text-sm text-[#6e5b48]">{t("noOutgoingRequests")}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className={paperCard}>
-              <CardHeader>
-                <CardTitle>{t("friends")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {social.socialOverview.friends.map((friend) => (
-                  <div key={friend.playerId} className="space-y-2 p-3 rounded-xl bg-white/40">
-                    <PlayerIdentityRow
-                      player={friend}
-                      online={friend.online}
-                      nameClassName="font-medium"
-                      linkToProfile
+          <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
+            <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr]">
+              <Card className={paperCard}>
+                <CardHeader>
+                  <CardTitle>{t("findPlayers")}</CardTitle>
+                  <CardDescription>{t("findPlayersDesc")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("playerNamePlaceholder")}
+                      value={social.friendSearchQuery}
+                      onChange={(e) => social.setFriendSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && social.runFriendSearch()}
                     />
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-xs"
-                        onClick={() => setActiveGamesFriendId(friend.playerId)}
-                      >
-                        {t("seeActiveGames")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-xs"
-                        onClick={() => openInviteDialog(friend.playerId)}
-                      >
-                        {t("inviteToGame")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs text-[#8d7760] hover:text-red-600"
-                        onClick={() => social.handleRemoveFriend(friend.playerId)}
-                        disabled={social.socialActionBusyKey === `friend-remove:${friend.playerId}`}
-                      >
-                        {t("unfriend")}
-                      </Button>
-                    </div>
+                    <Button onClick={social.runFriendSearch} disabled={social.friendSearchBusy}>
+                      {tCommon("search")}
+                    </Button>
                   </div>
-                ))}
-                {social.socialOverview.friends.length === 0 && (
-                  <p className="text-sm text-[#6e5b48]">{t("emptyFriendList")}</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  <div className="space-y-2">
+                    {social.friendSearchResults.map((result) => (
+                      <div
+                        key={result.player.playerId}
+                        className="flex items-center justify-between p-2 rounded-xl bg-white/40"
+                      >
+                        <PlayerIdentityRow player={result.player} linkToProfile />
+                        {result.relationship === "friend" ? (
+                          <Badge variant="outline">{t("friend")}</Badge>
+                        ) : result.relationship === "outgoing-request" ? (
+                          <Badge variant="outline" className="text-[#8d7760]">
+                            {t("pending")}
+                          </Badge>
+                        ) : result.relationship === "incoming-request" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => social.handleAcceptFriendRequest(result.player.playerId)}
+                          >
+                            {tCommon("accept")}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => social.handleSendFriendRequest(result.player.playerId)}
+                          >
+                            {tCommon("add")}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-5">
+                <Card className={paperCard}>
+                  <CardHeader>
+                    <CardTitle>{t("pending")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
+                        {t("incomingRequests")}
+                      </h4>
+                      {social.socialOverview.incomingFriendRequests.map((req) => (
+                        <div
+                          key={req.playerId}
+                          className="flex items-center justify-between p-3 rounded-xl bg-white/40"
+                        >
+                          <PlayerIdentityRow
+                            player={req}
+                            nameClassName="font-medium"
+                            linkToProfile
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => social.handleAcceptFriendRequest(req.playerId)}
+                            >
+                              {tCommon("accept")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => social.handleDeclineFriendRequest(req.playerId)}
+                            >
+                              {tCommon("decline")}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {social.socialOverview.incomingFriendRequests.length === 0 && (
+                        <p className="text-sm text-[#6e5b48]">{t("noPendingRequests")}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
+                        {t("outgoingRequests")}
+                      </h4>
+                      {social.socialOverview.outgoingFriendRequests.map((req) => (
+                        <div
+                          key={req.playerId}
+                          className="flex items-center justify-between p-3 rounded-xl bg-white/40"
+                        >
+                          <PlayerIdentityRow
+                            player={req}
+                            nameClassName="font-medium"
+                            linkToProfile
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-[#8d7760] hover:text-red-600"
+                            onClick={() => social.handleCancelFriendRequest(req.playerId)}
+                            disabled={
+                              social.socialActionBusyKey === `friend-cancel:${req.playerId}`
+                            }
+                          >
+                            {tCommon("cancel")}
+                          </Button>
+                        </div>
+                      ))}
+                      {social.socialOverview.outgoingFriendRequests.length === 0 && (
+                        <p className="text-sm text-[#6e5b48]">{t("noOutgoingRequests")}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className={paperCard}>
+                  <CardHeader>
+                    <CardTitle>{t("friends")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {social.socialOverview.friends.map((friend) => (
+                      <div key={friend.playerId} className="space-y-2 p-3 rounded-xl bg-white/40">
+                        <PlayerIdentityRow
+                          player={friend}
+                          online={friend.online}
+                          nameClassName="font-medium"
+                          linkToProfile
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="text-xs"
+                            onClick={() => setActiveGamesFriendId(friend.playerId)}
+                          >
+                            {t("seeActiveGames")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="text-xs"
+                            onClick={() => openInviteDialog(friend.playerId)}
+                          >
+                            {t("inviteToGame")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-[#8d7760] hover:text-red-600"
+                            onClick={() => social.handleRemoveFriend(friend.playerId)}
+                            disabled={
+                              social.socialActionBusyKey === `friend-remove:${friend.playerId}`
+                            }
+                          >
+                            {t("unfriend")}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {social.socialOverview.friends.length === 0 && (
+                      <p className="text-sm text-[#6e5b48]">{t("emptyFriendList")}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </main>
+
+          <Dialog
+            open={!!inviteDialogFriendId}
+            onOpenChange={(open) => {
+              if (!open) setInviteDialogFriendId(null);
+            }}
+            title={t("inviteToGame")}
+            description={
+              inviteDialogFriend
+                ? t("inviteDialogDesc", { name: inviteDialogFriend.displayName })
+                : undefined
+            }
+          >
+            <GameConfigPanel
+              mode="multiplayer"
+              boardSize={inviteBoardSize}
+              onBoardSizeChange={setInviteBoardSize}
+              scoreToWin={inviteScoreToWin}
+              onScoreToWinChange={setInviteScoreToWin}
+              timeControl={inviteTimeControl}
+              onTimeControlChange={setInviteTimeControl}
+              submitLabel={t("createAndInvite")}
+              onSubmit={handleInviteToGame}
+              busy={inviteBusy === inviteDialogFriendId}
+            />
+          </Dialog>
+
+          <FriendActiveGamesModal
+            friend={activeGamesFriend}
+            open={!!activeGamesFriendId}
+            onOpenChange={(open) => {
+              if (!open) setActiveGamesFriendId(null);
+            }}
+          />
         </div>
-      </main>
-
-      <Dialog
-        open={!!inviteDialogFriendId}
-        onOpenChange={(open) => {
-          if (!open) setInviteDialogFriendId(null);
-        }}
-        title={t("inviteToGame")}
-        description={
-          inviteDialogFriend
-            ? t("inviteDialogDesc", { name: inviteDialogFriend.displayName })
-            : undefined
-        }
-      >
-        <GameConfigPanel
-          mode="multiplayer"
-          boardSize={inviteBoardSize}
-          onBoardSizeChange={setInviteBoardSize}
-          scoreToWin={inviteScoreToWin}
-          onScoreToWinChange={setInviteScoreToWin}
-          timeControl={inviteTimeControl}
-          onTimeControlChange={setInviteTimeControl}
-          submitLabel={t("createAndInvite")}
-          onSubmit={handleInviteToGame}
-          busy={inviteBusy === inviteDialogFriendId}
-        />
-      </Dialog>
-
-      <FriendActiveGamesModal
-        friend={activeGamesFriend}
-        open={!!activeGamesFriendId}
-        onOpenChange={(open) => {
-          if (!open) setActiveGamesFriendId(null);
-        }}
-      />
-    </div>
+      )}
+    </RequireAccount>
   );
 }

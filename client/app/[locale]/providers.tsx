@@ -15,20 +15,6 @@ import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
 import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 
-function LoadingScreen() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
-      <div className="rounded-3xl border border-border/80 bg-card/95 px-8 py-7 text-center shadow-[0_24px_70px_-40px_rgba(52,34,19,0.55)]">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-black/10 bg-[linear-gradient(180deg,#faf0da,#ecd4a7)] font-display text-4xl text-[#24160d] shadow-[0_18px_30px_-22px_rgba(36,22,13,0.85)]">
-          跳
-        </div>
-        <p className="mt-4 font-display text-3xl">Opening Tiao</p>
-        <p className="mt-2 text-sm text-muted-foreground">Preparing the board.</p>
-      </div>
-    </div>
-  );
-}
-
 function OAuthButtons() {
   const { handleOAuthSignIn } = useAuth();
 
@@ -374,11 +360,7 @@ function UsernameOnboardingGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { auth, authLoading } = useAuth();
-
-  if (authLoading) {
-    return <LoadingScreen />;
-  }
+  const { auth } = useAuth();
 
   return (
     <LobbySocketProvider auth={auth}>
