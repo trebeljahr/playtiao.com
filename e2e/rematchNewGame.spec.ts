@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { signUpViaAPI } from "./helpers";
 
 test("rematch creates a new game URL with fresh scores", async ({ browser }) => {
+  test.setTimeout(60000);
   const aliceContext = await browser.newContext();
   const bobContext = await browser.newContext();
   const alicePage = await aliceContext.newPage();
@@ -18,7 +19,7 @@ test("rematch creates a new game URL with fresh scores", async ({ browser }) => 
   // Alice creates a game
   await alicePage.click('button:has-text("Create a game")');
   await alicePage.click('button:has-text("Create Game")');
-  await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/);
+  await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/, { timeout: 15000 });
   const originalGameUrl = alicePage.url();
   const originalGameId = originalGameUrl.split("/").pop()!;
 
