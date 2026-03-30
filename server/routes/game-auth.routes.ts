@@ -947,10 +947,8 @@ router.delete("/account", async (req: Request, res: Response) => {
     await GameRoom.updateMany(
       { "players.playerId": accountId, status: "finished" },
       {
-        $set: {
-          "players.$[p].displayName": ANON_NAME,
-          "players.$[p].profilePicture": undefined,
-        },
+        $set: { "players.$[p].displayName": ANON_NAME },
+        $unset: { "players.$[p].profilePicture": "" },
       },
       { arrayFilters: [{ "p.playerId": accountId }] },
     );
@@ -981,6 +979,7 @@ router.delete("/account", async (req: Request, res: Response) => {
       for (const participant of tournament.participants) {
         if (participant.playerId === accountId) {
           participant.displayName = ANON_NAME;
+          participant.profilePicture = undefined;
         }
       }
       // Anonymize match player entries in rounds
@@ -994,10 +993,12 @@ router.delete("/account", async (req: Request, res: Response) => {
           const players = match.players as Array<{
             playerId: string;
             displayName: string;
+            profilePicture?: string;
           } | null>;
           for (const player of players) {
             if (player && player.playerId === accountId) {
               player.displayName = ANON_NAME;
+              player.profilePicture = undefined;
             }
           }
         }
