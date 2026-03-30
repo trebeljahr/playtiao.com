@@ -492,7 +492,11 @@ export function Navbar({
       <div className="mt-6 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4 text-left">
         <div className="flex items-center gap-3 text-left">
           <PlayerIdentityRow
-            player={{ displayName: player?.displayName, profilePicture: player?.profilePicture }}
+            player={{
+              displayName: player?.displayName,
+              profilePicture: player?.profilePicture,
+              activeBadges: player?.activeBadges,
+            }}
             anonymous={isAnonymous}
             avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
             nameClassName="text-base font-semibold"
