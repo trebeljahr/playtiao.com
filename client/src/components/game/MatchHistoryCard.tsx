@@ -66,7 +66,7 @@ function PlayerRow({
   anonymous?: boolean;
 }) {
   const gameStats = (
-    <>
+    <div className="ml-auto flex shrink-0 items-center gap-1.5">
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
           {winnerLabel}
@@ -87,6 +87,11 @@ function PlayerRow({
           {ratingChange}
         </span>
       )}
+      {clockMs != null && (
+        <span className="font-mono text-xs tabular-nums text-[#6b5a45]">
+          {formatClockTime(clockMs)}
+        </span>
+      )}
       <span
         className={cn(
           "font-mono text-sm tabular-nums",
@@ -96,12 +101,7 @@ function PlayerRow({
         {score}
         <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
       </span>
-      {clockMs != null && (
-        <span className="font-mono text-xs tabular-nums text-[#6b5a45]">
-          {formatClockTime(clockMs)}
-        </span>
-      )}
-    </>
+    </div>
   );
 
   return (
@@ -246,7 +246,7 @@ export function MatchHistoryCard({
           {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
         <div className="flex items-center gap-1.5">
-          {game.boardSize && game.boardSize !== 19 && (
+          {game.boardSize && (
             <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
               {game.boardSize}x{game.boardSize}
             </span>
