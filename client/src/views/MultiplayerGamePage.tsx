@@ -64,10 +64,12 @@ function AnimatedEllipsis() {
 
 /** Counting-up animation from `before` to `after` with a bounce at the end. */
 function AnimatedRatingChange({
+  label,
   before,
   after,
   delta,
 }: {
+  label: string;
   before: number;
   after: number;
   delta: number;
@@ -110,7 +112,8 @@ function AnimatedRatingChange({
   const roundedDelta = Math.round(delta);
 
   return (
-    <div className="flex items-center justify-center gap-3 py-2">
+    <div className="flex items-center justify-end gap-3 py-2 mb-2">
+      <span className="text-sm text-[#6e5b48]">{label}:</span>
       <motion.span
         className="font-display text-2xl font-bold text-[#2b1e14]"
         animate={animDone ? { scale: [1.15, 1] } : {}}
@@ -1599,7 +1602,14 @@ export function MultiplayerGamePage() {
               const before = multiplayerSnapshot.ratingBefore[playerSeat];
               const after = multiplayerSnapshot.ratingAfter[playerSeat];
               const delta = after - before;
-              return <AnimatedRatingChange before={before} after={after} delta={delta} />;
+              return (
+                <AnimatedRatingChange
+                  label={t("ratingChange")}
+                  before={before}
+                  after={after}
+                  delta={delta}
+                />
+              );
             })()}
           {isMultiplayerParticipant && connectionState === "connected" ? (
             isTournamentGame ? (
