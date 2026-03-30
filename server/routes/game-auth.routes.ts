@@ -202,6 +202,27 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
       email = baUser.email;
     }
 
+    // Before calling better-auth, verify the user's GameAccount still exists.
+    // If it was deleted, the BA user record may linger but the game identity is
+    // gone — reject early so the client gets a clear error instead of repeated
+    // 404s on downstream endpoints.
+    const db = mongoose.connection.getClient().db();
+    const baUser = await db.collection("user").findOne({ email } as any);
+    if (baUser) {
+      const gameAccount = await GameAccount.findById(baUser._id);
+      if (!gameAccount) {
+        // The BA user record is orphaned — clean it up so the email is freed
+        // and future sign-up attempts won't collide.
+        await db.collection("account").deleteMany({ userId: baUser._id } as any);
+        await db.collection("session").deleteMany({ userId: baUser._id } as any);
+        await db.collection("user").deleteOne({ _id: baUser._id });
+        return res.status(401).json({
+          code: "ACCOUNT_DELETED",
+          message: "This account has been deleted. You can create a new one with this email.",
+        });
+      }
+    }
+
     // Delegate to better-auth's sign-in endpoint and get the raw response
     // (which includes Set-Cookie headers)
     const baResponse = await auth.api.signInEmail({
@@ -226,14 +247,14 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
 
     // Return a PlayerIdentity-shaped response for backwards compatibility
     const account = await GameAccount.findById(result.user.id);
-    const player = account
-      ? buildPlayerIdentityFromAccount(account, result.user.email)
-      : {
-          playerId: result.user.id,
-          displayName: result.user.name,
-          kind: "account" as const,
-          email: result.user.email,
-        };
+    if (!account) {
+      return res.status(401).json({
+        code: "ACCOUNT_DELETED",
+        message: "This account has been deleted. You can create a new one with this email.",
+      });
+    }
+
+    const player = buildPlayerIdentityFromAccount(account, result.user.email);
 
     return res.status(200).json({ player });
   } catch (error: any) {

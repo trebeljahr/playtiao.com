@@ -108,15 +108,28 @@ export const auth = betterAuth({
           // (custom uploads go through CloudFront, SSO images are external URLs).
           try {
             const account = await GameAccount.findById(session.userId);
-            if (!account) return;
+            if (!account) {
+              // Orphaned BA user — GameAccount was deleted but BA records linger.
+              // Clean up so the email is freed for re-registration.
+              try {
+                const db = (await import("mongoose")).default.connection.getClient().db();
+                await db.collection("session").deleteMany({ userId: session.userId } as any);
+                await db.collection("account").deleteMany({ userId: session.userId } as any);
+                await db.collection("user").deleteOne({ _id: session.userId as any });
+                console.info(
+                  `[auth] Cleaned up orphaned BA records for deleted user ${session.userId}`,
+                );
+              } catch (cleanupErr) {
+                console.warn("[auth] Failed to clean up orphaned BA records:", cleanupErr);
+              }
+              return;
+            }
 
             // If the user already has a custom-uploaded picture, don't overwrite
             if (account.profilePicture && account.profilePicture.includes("cloudfront")) return;
 
             const db = (await import("mongoose")).default.connection.getClient().db();
-            const baUser = await db
-              .collection("user")
-              .findOne({ _id: session.userId as any });
+            const baUser = await db.collection("user").findOne({ _id: session.userId as any });
             const ssoImage = baUser?.image as string | null | undefined;
 
             if (ssoImage && ssoImage !== account.profilePicture) {

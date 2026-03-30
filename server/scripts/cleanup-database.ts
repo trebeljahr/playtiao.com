@@ -171,6 +171,21 @@ async function main() {
   });
   log(`Deleted ${accountResult.deletedCount} accounts.`);
 
+  // Delete better-auth records (user, account, session) for deleted users
+  // so their emails are fully freed and won't cause "user already exists" errors.
+  const db = mongoose.connection.db!;
+  const keepIdStrings = [...keepAccountIds];
+  const baUserResult = await db.collection("user").deleteMany({ _id: { $nin: keepIdStrings } });
+  log(`Deleted ${baUserResult.deletedCount} better-auth user records.`);
+  const baAccountResult = await db
+    .collection("account")
+    .deleteMany({ userId: { $nin: keepIdStrings } });
+  log(`Deleted ${baAccountResult.deletedCount} better-auth account records.`);
+  const baSessionResult = await db
+    .collection("session")
+    .deleteMany({ userId: { $nin: keepIdStrings } });
+  log(`Deleted ${baSessionResult.deletedCount} better-auth session records.`);
+
   // Delete sessions for deleted accounts
   const sessionResult = await GameSession.deleteMany({
     playerId: { $nin: [...keepPlayerIds] },
