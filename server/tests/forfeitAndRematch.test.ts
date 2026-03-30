@@ -67,13 +67,13 @@ test("cannot forfeit a game that is not active (waiting)", async () => {
 
   const created = await service.createGame(alice);
 
-  // Game is in "waiting" status — alice is the only player and not seated
+  // Game is in "waiting" status — alice is pre-seated but game is not active
   await assert.rejects(
     () =>
       service.applyAction(created.gameId, alice, {
         type: "forfeit",
       }),
-    (error) => isGameServiceError(error, "NOT_IN_GAME"),
+    (error) => isGameServiceError(error, "GAME_NOT_ACTIVE"),
   );
 });
 

@@ -19,6 +19,7 @@ import {
   HourglassSpinner,
   RoomCodeCopyPill,
   ShareLinkCopyPill,
+  CheckIcon,
   PlayerOverviewAvatar,
   EmptySeatAvatar,
   formatPlayerName,
@@ -759,7 +760,13 @@ export function MultiplayerGamePage() {
     try {
       const url = `${window.location.origin}/game/${multiplayerSnapshot.gameId}?spectate`;
       await copyToClipboard(url);
+      setCopyFeedback(tCommon("spectateLinkCopied"));
+      setCopyFeedbackKey("spectate-link");
       toast.success(tCommon("spectateLinkCopied"));
+      setTimeout(() => {
+        setCopyFeedback(null);
+        setCopyFeedbackKey(null);
+      }, 2000);
     } catch {
       toast.error(tCommon("failedToCopy"));
     }
@@ -1021,36 +1028,57 @@ export function MultiplayerGamePage() {
                           copied={copyFeedbackKey === "share-link" && !!copyFeedback}
                           onCopy={handleCopyGameLink}
                         />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            spectatorCount > 0
-                              ? setSpectatorDialogOpen(true)
-                              : handleCopySpectateLink()
-                          }
-                          className="mr-1 inline-flex h-10 items-center gap-1.5 rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-3.5 text-xs font-semibold text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
-                          title={
-                            spectatorCount > 0
-                              ? `${spectatorCount} spectator${spectatorCount !== 1 ? "s" : ""}`
-                              : "Copy spectate link"
-                          }
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                          {spectatorCount > 0 && spectatorCount}
-                        </button>
+                        {(() => {
+                          const spectateCopied =
+                            copyFeedbackKey === "spectate-link" && !!copyFeedback;
+                          return (
+                            <motion.button
+                              type="button"
+                              onClick={() =>
+                                spectatorCount > 0
+                                  ? setSpectatorDialogOpen(true)
+                                  : handleCopySpectateLink()
+                              }
+                              animate={
+                                spectateCopied
+                                  ? { scale: [1, 1.05, 1], y: [0, -2, 0] }
+                                  : { scale: 1, y: 0 }
+                              }
+                              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                              className={cn(
+                                "mr-1 inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-colors hover:-translate-y-0.5",
+                                spectateCopied
+                                  ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]"
+                                  : "border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] text-[#f9f2e8]",
+                              )}
+                              title={
+                                spectatorCount > 0
+                                  ? `${spectatorCount} spectator${spectatorCount !== 1 ? "s" : ""}`
+                                  : "Copy spectate link"
+                              }
+                            >
+                              {spectateCopied ? (
+                                <CheckIcon />
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              )}
+                              {spectatorCount > 0 && spectatorCount}
+                            </motion.button>
+                          );
+                        })()}
                       </div>
                     )}
                     <div className="space-y-1 sm:order-1">
@@ -1833,7 +1861,7 @@ export function MultiplayerGamePage() {
                 setRulesIntroOpen(false);
               }}
             >
-              {isSpectator ? t("startSpectating") : t("gotItPlay")}
+              {isSpectator && !isInPlayerList ? t("startSpectating") : t("gotItPlay")}
             </Button>
             <Button variant="outline" onClick={() => router.push("/tutorial")}>
               {t("learnToPlay")}

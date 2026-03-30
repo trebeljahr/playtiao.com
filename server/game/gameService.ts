@@ -230,7 +230,17 @@ export class GameService {
         timeControl: options.timeControl,
       });
 
-      return this.toSnapshot(room);
+      // Pre-seat the creator so they are recognized as a participant immediately
+      const creatorSeat: PlayerColor = this.seatRandom() < 0.5 ? "white" : "black";
+      const seatedRoom = await this.saveRoom({
+        ...room,
+        seats: {
+          white: creatorSeat === "white" ? creator : null,
+          black: creatorSeat === "black" ? creator : null,
+        },
+      });
+
+      return this.toSnapshot(seatedRoom);
     });
   }
 
@@ -246,12 +256,17 @@ export class GameService {
         throw new GameServiceError(403, "NOT_IN_GAME", "You are not a player in this game.");
       }
 
-      // Mark as finished so it no longer blocks guest game creation
-      await this.saveRoom({
-        ...room,
-        status: "finished",
-        state: { ...room.state, history: [...room.state.history, { type: "draw" }] },
-      });
+      if (room.players.length <= 1) {
+        // Only player in the game — delete it entirely so it doesn't appear in history
+        await this.store.deleteRoom(gameId);
+      } else {
+        // Another player exists — mark as finished so it doesn't block them
+        await this.saveRoom({
+          ...room,
+          status: "finished",
+          state: { ...room.state, history: [...room.state.history, { type: "draw" }] },
+        });
+      }
     });
   }
 
@@ -291,6 +306,13 @@ export class GameService {
 
   async getSnapshot(gameId: string): Promise<MultiplayerSnapshot> {
     return this.toSnapshot(await this.getRoom(gameId));
+  }
+
+  /** Re-read room from DB and broadcast to all connected clients. */
+  async rebroadcastSnapshot(gameId: string): Promise<void> {
+    const room = await this.store.getRoom(gameId);
+    if (!room) return;
+    this.broadcastSnapshot(this.deriveRoomStatus(room));
   }
 
   /**
@@ -933,10 +955,19 @@ export class GameService {
     }
 
     const players = [...room.players, player];
-    const seats =
-      players.length === 2 && !room.seats.white && !room.seats.black
-        ? this.assignSeats(players[0], players[1])
-        : room.seats;
+    let seats: MultiplayerSeatAssignments;
+    if (players.length === 2 && !room.seats.white && !room.seats.black) {
+      // Neither seat taken — random assignment (e.g. matchmaking)
+      seats = this.assignSeats(players[0], players[1]);
+    } else if (players.length === 2 && (room.seats.white || room.seats.black)) {
+      // One seat pre-filled (creator) — assign joiner to the empty seat
+      seats = {
+        white: room.seats.white ?? player,
+        black: room.seats.black ?? player,
+      };
+    } else {
+      seats = room.seats;
+    }
 
     return this.saveRoom({
       ...room,
@@ -1089,24 +1120,17 @@ export class GameService {
 
   private deriveRoomStatus(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
     const players = this.normalizePlayers(room.players, room.seats);
-    const seats =
-      players.length < 2
-        ? {
-            white: null,
-            black: null,
-          }
-        : {
-            white:
-              room.seats.white &&
-              players.some((player) => player.playerId === room.seats.white?.playerId)
-                ? { ...room.seats.white }
-                : null,
-            black:
-              room.seats.black &&
-              players.some((player) => player.playerId === room.seats.black?.playerId)
-                ? { ...room.seats.black }
-                : null,
-          };
+    // Validate seats: keep a seat only if the seated player is still in the room
+    const seats = {
+      white:
+        room.seats.white && players.some((player) => player.playerId === room.seats.white?.playerId)
+          ? { ...room.seats.white }
+          : null,
+      black:
+        room.seats.black && players.some((player) => player.playerId === room.seats.black?.playerId)
+          ? { ...room.seats.black }
+          : null,
+    };
     const status = this.getStatus(room.state, players, seats);
     const rematch = status === "finished" ? this.normalizeRematch(room.rematch, seats) : null;
 

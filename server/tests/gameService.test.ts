@@ -32,7 +32,6 @@ class FakeSocket {
   }
 }
 
-
 test("rooms persist across service instances and randomize seats on second join", async () => {
   const store = new InMemoryGameRoomStore();
   const creatorService = new GameService(store, () => 0.9);
@@ -43,8 +42,9 @@ test("rooms persist across service instances and randomize seats on second join"
   const created = await creatorService.createGame(alice);
   assert.equal(created.status, "waiting");
   assert.equal(created.players.length, 1);
+  // Creator is pre-seated (seatRandom=0.9 ≥ 0.5 → black)
   assert.equal(created.seats.white, null);
-  assert.equal(created.seats.black, null);
+  assert.equal(created.seats.black?.player.playerId, alice.playerId);
 
   await creatorService.joinGame(created.gameId, bob);
 
@@ -53,6 +53,7 @@ test("rooms persist across service instances and randomize seats on second join"
   assert.equal(reopened.gameId, created.gameId);
   assert.equal(reopened.status, "active");
   assert.equal(reopened.players.length, 2);
+  // Joiner fills the empty seat (white)
   assert.equal(reopened.seats.white?.player.playerId, bob.playerId);
   assert.equal(reopened.seats.black?.player.playerId, alice.playerId);
 });

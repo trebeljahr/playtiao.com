@@ -193,7 +193,7 @@ test("actions on waiting room are rejected", async () => {
         type: "place-piece",
         position: { x: 9, y: 9 },
       }),
-    (error) => isGameServiceError(error, "NOT_IN_GAME"),
+    (error) => isGameServiceError(error, "WAITING_FOR_OPPONENT"),
   );
 });
 

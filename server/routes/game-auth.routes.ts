@@ -998,13 +998,15 @@ router.delete("/account", async (req: Request, res: Response) => {
       status: { $in: ["waiting", "active"] },
     });
 
+    const forfeitedGameIds: string[] = [];
     for (const game of activeOrWaitingGames) {
       if (game.status === "waiting") {
         await GameRoom.deleteOne({ _id: game._id });
       } else if (game.status === "active") {
         // Use gameService to forfeit so the opponent gets a real-time WebSocket notification
         try {
-          await gameService.forfeitForPlayer(String(game._id), accountId);
+          await gameService.forfeitForPlayer(game.roomId, accountId);
+          forfeitedGameIds.push(game.roomId);
         } catch {
           // Fallback: direct DB update if gameService fails
           const isWhite = game.seats?.white?.playerId === accountId;
@@ -1051,6 +1053,15 @@ router.delete("/account", async (req: Request, res: Response) => {
         $unset: { "seats.black.profilePicture": "" },
       },
     );
+
+    // Re-broadcast snapshots for forfeited games so opponents see "Deleted Player" immediately
+    for (const roomId of forfeitedGameIds) {
+      try {
+        await gameService.rebroadcastSnapshot(roomId);
+      } catch {
+        // Best-effort — opponent will see it on next refresh
+      }
+    }
 
     // (c) Anonymize tournaments — replace identity in participants and match players
     const tournaments = await Tournament.find({ "participants.playerId": accountId });

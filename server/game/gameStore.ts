@@ -75,6 +75,7 @@ export interface GameRoomStore {
     limit: number,
     beforeDate?: Date,
   ): Promise<StoredMultiplayerRoom[]>;
+  deleteRoom(roomId: string): Promise<void>;
   migratePlayerIdentity(oldPlayerId: string, newIdentity: PlayerIdentity): Promise<number>;
   unlinkTournamentGames(tournamentId: string): Promise<number>;
 }
@@ -272,6 +273,10 @@ export class MongoGameRoomStore implements GameRoomStore {
       .exec();
 
     return room ? toStoredRoom(room) : null;
+  }
+
+  async deleteRoom(roomId: string): Promise<void> {
+    await GameRoom.deleteOne({ roomId: normalizeRoomId(roomId) });
   }
 
   async saveRoom(room: StoredMultiplayerRoom): Promise<StoredMultiplayerRoom> {
@@ -510,6 +515,10 @@ export class InMemoryGameRoomStore implements GameRoomStore {
   async getRoom(roomId: string): Promise<StoredMultiplayerRoom | null> {
     const room = this.rooms.get(normalizeRoomId(roomId));
     return room ? cloneStoredRoom(room) : null;
+  }
+
+  async deleteRoom(roomId: string): Promise<void> {
+    this.rooms.delete(normalizeRoomId(roomId));
   }
 
   async saveRoom(room: StoredMultiplayerRoom): Promise<StoredMultiplayerRoom> {
