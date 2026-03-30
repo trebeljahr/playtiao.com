@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
-import { useSetActiveBadges } from "@/lib/useActiveBadge";
 import { updateActiveBadges } from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -82,15 +81,12 @@ function BadgeSelector({
 }) {
   const t = useTranslations("profile");
   const badges = (auth?.player.badges ?? []) as BadgeId[];
-  const [, setLocalBadges] = useSetActiveBadges();
   const activeBadges = (auth?.player.activeBadges ?? []) as string[];
 
   if (badges.length === 0) return null;
 
   const updateBadges = (next: BadgeId[]) => {
-    // Update localStorage (so navbar updates instantly)
-    setLocalBadges(next);
-    // Update auth state
+    // Update auth state instantly (navbar re-renders immediately)
     if (auth) {
       onAuthChange({ ...auth, player: { ...auth.player, activeBadges: next } });
     }
