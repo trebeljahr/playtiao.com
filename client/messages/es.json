@@ -356,7 +356,14 @@
     "passwordLogin": "Inicio con contraseña",
     "emailManagedByProvider": "El email es gestionado por tu cuenta de {provider}.",
     "copyProfileLink": "Copiar enlace del perfil",
-    "copiedProfileLink": "Enlace del perfil copiado!"
+    "copiedProfileLink": "Enlace del perfil copiado!",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountDesc": "Elimina permanentemente tu cuenta y todos los datos asociados. Esta accion no se puede deshacer.",
+    "deleteAccountConfirm": "Estas seguro de que quieres eliminar tu cuenta? Se eliminara tu perfil, se anonimizara tu historial de partidas y se cerrara tu sesion. Esto no se puede deshacer.",
+    "deleteAccountWarning": "Esta accion es permanente y no se puede deshacer.",
+    "typeNameToConfirm": "Escribe tu nombre para confirmar: {name}",
+    "deleteMyAccount": "Eliminar mi cuenta",
+    "deleting": "Eliminando..."
   },
   "friends": {
     "findPlayers": "Buscar jugadores",

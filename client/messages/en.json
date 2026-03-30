@@ -356,7 +356,14 @@
     "passwordLogin": "Password login",
     "emailManagedByProvider": "Email is managed by your {provider} account.",
     "copyProfileLink": "Copy profile link",
-    "copiedProfileLink": "Profile link copied!"
+    "copiedProfileLink": "Profile link copied!",
+    "deleteAccount": "Delete Account",
+    "deleteAccountDesc": "Permanently delete your account and all associated data. This action cannot be undone.",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This will permanently remove your profile, anonymize your game history, and log you out. This cannot be undone.",
+    "deleteAccountWarning": "This action is permanent and cannot be undone.",
+    "typeNameToConfirm": "Type your display name to confirm: {name}",
+    "deleteMyAccount": "Delete My Account",
+    "deleting": "Deleting..."
   },
   "friends": {
     "findPlayers": "Find players",

@@ -4,7 +4,9 @@ import express, { Request, Response } from "express";
 import { Jimp } from "jimp";
 import mongoose from "mongoose";
 import GameAccount from "../models/GameAccount";
+import GameInvitation from "../models/GameInvitation";
 import GameRoom from "../models/GameRoom";
+import Tournament from "../models/Tournament";
 import { gameService } from "../game/gameService";
 import { auth } from "../auth/auth";
 import { getPlayerFromRequest, requireAccount, requireAdmin } from "../auth/sessionHelper";
@@ -892,6 +894,173 @@ router.post("/admin/badges/revoke", async (req: Request, res: Response) => {
     });
   } catch (error) {
     return handleRouteError(error, req, res, "Unable to revoke badge right now.");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /account — permanently delete account with GDPR-compliant anonymization
+// ---------------------------------------------------------------------------
+
+router.delete("/account", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    const { displayName } = req.body as { displayName?: string };
+
+    if (!displayName || displayName !== account.displayName) {
+      return res.status(400).json({
+        code: "DISPLAY_NAME_MISMATCH",
+        message: "You must type your exact display name to confirm account deletion.",
+      });
+    }
+
+    const accountId = String(account._id);
+
+    // (a) Forfeit active games and delete waiting games
+    const activeOrWaitingGames = await GameRoom.find({
+      "players.playerId": accountId,
+      status: { $in: ["waiting", "active"] },
+    });
+
+    for (const game of activeOrWaitingGames) {
+      if (game.status === "waiting") {
+        await GameRoom.deleteOne({ _id: game._id });
+      } else if (game.status === "active") {
+        // Set the opponent as winner by determining which seat the user occupies
+        const isWhite = game.seats?.white?.playerId === accountId;
+        const winnerColor = isWhite ? "black" : "white";
+        await GameRoom.updateOne(
+          { _id: game._id },
+          {
+            $set: {
+              status: "finished",
+              "state.winner": winnerColor,
+            },
+          },
+        );
+      }
+    }
+
+    // (b) Anonymize game history (GDPR) — replace user identity in finished games
+    const ANON_NAME = "Deleted Player";
+    await GameRoom.updateMany(
+      { "players.playerId": accountId, status: "finished" },
+      {
+        $set: {
+          "players.$[p].displayName": ANON_NAME,
+          "players.$[p].profilePicture": undefined,
+        },
+      },
+      { arrayFilters: [{ "p.playerId": accountId }] },
+    );
+    // Also anonymize in seats
+    await GameRoom.updateMany(
+      { "seats.white.playerId": accountId, status: "finished" },
+      {
+        $set: {
+          "seats.white.displayName": ANON_NAME,
+        },
+        $unset: { "seats.white.profilePicture": "" },
+      },
+    );
+    await GameRoom.updateMany(
+      { "seats.black.playerId": accountId, status: "finished" },
+      {
+        $set: {
+          "seats.black.displayName": ANON_NAME,
+        },
+        $unset: { "seats.black.profilePicture": "" },
+      },
+    );
+
+    // (c) Anonymize tournaments — replace identity in participants and match players
+    const tournaments = await Tournament.find({ "participants.playerId": accountId });
+    for (const tournament of tournaments) {
+      // Anonymize participant entries
+      for (const participant of tournament.participants) {
+        if (participant.playerId === accountId) {
+          participant.displayName = ANON_NAME;
+        }
+      }
+      // Anonymize match player entries in rounds
+      const allRounds = [
+        ...tournament.rounds,
+        ...tournament.knockoutRounds,
+        ...tournament.groups.flatMap((g: any) => g.rounds),
+      ];
+      for (const round of allRounds) {
+        for (const match of round.matches) {
+          const players = match.players as Array<{
+            playerId: string;
+            displayName: string;
+          } | null>;
+          for (const player of players) {
+            if (player && player.playerId === accountId) {
+              player.displayName = ANON_NAME;
+            }
+          }
+        }
+      }
+      // Anonymize group standings
+      for (const group of tournament.groups) {
+        for (const standing of group.standings) {
+          if (standing.playerId === accountId) {
+            standing.displayName = ANON_NAME;
+          }
+        }
+      }
+      await tournament.save();
+    }
+
+    // (d) Remove user's ID from all other accounts' friend lists
+    await GameAccount.updateMany(
+      {},
+      {
+        $pull: {
+          friends: account._id,
+          sentFriendRequests: account._id,
+          receivedFriendRequests: account._id,
+        } as any,
+      },
+    );
+
+    // (e) Delete all game invitations involving this user
+    await GameInvitation.deleteMany({
+      $or: [{ senderId: account._id }, { recipientId: account._id }],
+    });
+
+    // (f) Delete profile picture from S3 if it's a CloudFront URL
+    if (account.profilePicture?.startsWith(`${CLOUDFRONT_URL}/`)) {
+      try {
+        const s3Key = account.profilePicture.split("/").pop();
+        if (s3Key) {
+          await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: s3Key,
+            }),
+          );
+        }
+      } catch (error) {
+        console.error("Error deleting profile picture from S3 during account deletion:", error);
+      }
+    }
+
+    // (g) Delete the GameAccount document
+    await GameAccount.deleteOne({ _id: account._id });
+
+    // (h) Delete better-auth data (user, session, account collections)
+    const db = mongoose.connection.getClient().db();
+    await Promise.all([
+      db.collection("user").deleteOne({ _id: accountId as any }),
+      db.collection("session").deleteMany({ userId: accountId } as any),
+      db.collection("account").deleteMany({ userId: accountId } as any),
+    ]);
+
+    return res.status(200).json({ message: "Account deleted successfully." });
+  } catch (error) {
+    return handleRouteError(error, req, res, "Unable to delete account right now.");
   }
 });
 

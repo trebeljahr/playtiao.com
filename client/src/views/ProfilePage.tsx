@@ -16,6 +16,7 @@ import {
   type AccountProfile,
   updateAccountProfile,
   uploadAccountProfilePicture,
+  deleteAccount,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
@@ -353,6 +354,9 @@ export function ProfilePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -871,9 +875,82 @@ export function ProfilePage() {
             />
 
             <BadgeSelector auth={auth} onAuthChange={onAuthChange} />
+
+            <Card className="border-red-300 bg-red-50/50">
+              <CardHeader>
+                <CardTitle className="text-red-700">{t("deleteAccount")}</CardTitle>
+                <CardDescription className="text-red-600/80">
+                  {t("deleteAccountDesc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
+                  onClick={() => {
+                    setDeleteConfirmName("");
+                    setDeleteModalOpen(true);
+                  }}
+                >
+                  {t("deleteAccount")}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         ) : null}
       </main>
+
+      <Dialog
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title={t("deleteAccount")}
+        description={t("deleteAccountConfirm")}
+      >
+        <div className="space-y-4">
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {t("deleteAccountWarning")}
+          </p>
+
+          <div className="grid gap-2">
+            <label htmlFor="delete-confirm-name" className="text-sm font-medium text-[#4e3d2c]">
+              {t("typeNameToConfirm", { name: profile?.displayName ?? "" })}
+            </label>
+            <Input
+              id="delete-confirm-name"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={profile?.displayName ?? ""}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
+              disabled={deleting || deleteConfirmName !== profile?.displayName}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await deleteAccount(deleteConfirmName);
+                  setDeleteModalOpen(false);
+                  await onLogout();
+                  router.push("/");
+                } catch (error) {
+                  toastError(readableError(error));
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? t("deleting") : t("deleteMyAccount")}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              {tCommon("cancel")}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog
         open={passwordModalOpen}

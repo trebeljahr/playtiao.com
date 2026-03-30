@@ -360,6 +360,13 @@ export function uploadAccountProfilePicture(file: File) {
   );
 }
 
+export function deleteAccount(displayName: string) {
+  return request<{ message: string }>("/api/player/account", {
+    method: "DELETE",
+    body: { displayName },
+  });
+}
+
 export function updateActiveBadges(activeBadges: string[]) {
   return request<{ auth: AuthResponse; activeBadges: string[] }>("/api/player/badges/active", {
     method: "PUT",
