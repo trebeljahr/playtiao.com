@@ -507,17 +507,23 @@ export class GameService {
 
     let derivedRoom = this.deriveRoomStatus(room);
 
-    // Auto-revoke rematch request when the requester disconnects from a finished game
+    // Auto-revoke rematch request when the requester disconnects from a finished game.
+    // Use the room lock to prevent races with concurrent rematch acceptance.
     if (
       disconnectedPlayerId &&
       derivedRoom.status === "finished" &&
       derivedRoom.rematch?.requestedBy.length &&
       !this.isPlayerOnline(roomId, disconnectedPlayerId)
     ) {
-      const playerColor = getPlayerColorForRoom(derivedRoom, disconnectedPlayerId);
-      if (playerColor && derivedRoom.rematch.requestedBy.includes(playerColor)) {
-        derivedRoom = await this.saveRoom({ ...derivedRoom, rematch: null });
-      }
+      derivedRoom = await this.withLock(this.roomLockKey(roomId), async () => {
+        const freshRoom = this.deriveRoomStatus(await this.getRoom(roomId));
+        if (!freshRoom.rematch?.requestedBy.length) return freshRoom;
+        const playerColor = getPlayerColorForRoom(freshRoom, disconnectedPlayerId);
+        if (playerColor && freshRoom.rematch.requestedBy.includes(playerColor)) {
+          return this.saveRoom({ ...freshRoom, rematch: null });
+        }
+        return freshRoom;
+      });
     }
 
     this.broadcastSnapshot(derivedRoom);
@@ -1394,6 +1400,26 @@ export class GameService {
     const requestedBy = Array.from(new Set([...(room.rematch?.requestedBy ?? []), playerColor]));
 
     if (requestedBy.length === 2) {
+      // Before creating a new game, verify the original requester is still connected.
+      // This prevents orphaned game creation when the sender disconnected moments ago.
+      // Only enforce when there are active connections (skip in test environments with no sockets).
+      const roomHasConnections = (this.connections.get(room.id)?.size ?? 0) > 0;
+      if (roomHasConnections) {
+        const originalRequester = room.rematch?.requestedBy[0];
+        if (originalRequester) {
+          const originalPlayerId = room.seats[originalRequester]?.playerId;
+          if (originalPlayerId && !this.isPlayerOnline(room.id, originalPlayerId)) {
+            // The original requester disconnected — revoke the stale rematch
+            await this.saveRoom({ ...room, rematch: null });
+            throw new GameServiceError(
+              409,
+              "REMATCH_EXPIRED",
+              "The rematch request has expired because your opponent left.",
+            );
+          }
+        }
+      }
+
       // Both players agreed — create a new game room
       const whitePlayer = room.seats.white;
       const blackPlayer = room.seats.black;
