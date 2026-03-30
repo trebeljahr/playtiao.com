@@ -5,6 +5,7 @@ import type { AuthResponse } from "@shared";
 import { ProfilePage } from "./ProfilePage";
 
 const mockUpdateAccountProfile = vi.fn();
+const mockDeleteAccount = vi.fn();
 const mockApplyAuth = vi.fn();
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -22,6 +23,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
     }),
     updateAccountProfile: (...args: unknown[]) => mockUpdateAccountProfile(...args),
     uploadAccountProfilePicture: vi.fn(),
+    deleteAccount: (...args: unknown[]) => mockDeleteAccount(...args),
   };
 });
 
@@ -276,5 +278,112 @@ describe("ProfilePage password change modal", () => {
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(screen.queryByLabelText(/current password/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("ProfilePage copy profile link (#93)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders 'Copy profile link' button for logged-in users", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /copy profile link/i })).toBeInTheDocument();
+    });
+  });
+
+  it("calls navigator.clipboard.writeText with the correct URL when clicked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /copy profile link/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /copy profile link/i }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/profile/TestUser"));
+    });
+  });
+});
+
+describe("ProfilePage delete account (#91)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders 'Delete Account' button and description", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete account/i })).toBeInTheDocument();
+    });
+  });
+
+  it("opens a confirmation dialog when clicking Delete Account", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete account/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+
+    expect(screen.getByText(/delete your account\?/i)).toBeInTheDocument();
+  });
+
+  it("has 'Delete My Account' button disabled when name does not match", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete account/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+
+    const deleteBtn = screen.getByRole("button", { name: /delete my account/i });
+    expect(deleteBtn).toBeDisabled();
+  });
+
+  it("enables 'Delete My Account' button when name matches exactly", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete account/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+
+    const input = screen.getByPlaceholderText("TestUser");
+    fireEvent.change(input, { target: { value: "TestUser" } });
+
+    const deleteBtn = screen.getByRole("button", { name: /delete my account/i });
+    expect(deleteBtn).toBeEnabled();
+  });
+
+  it("calls deleteAccount API when confirmed", async () => {
+    mockDeleteAccount.mockResolvedValue({ message: "deleted" });
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete account/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+
+    const input = screen.getByPlaceholderText("TestUser");
+    fireEvent.change(input, { target: { value: "TestUser" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete my account/i }));
+
+    await waitFor(() => {
+      expect(mockDeleteAccount).toHaveBeenCalled();
+    });
   });
 });
