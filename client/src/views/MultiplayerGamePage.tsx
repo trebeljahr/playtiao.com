@@ -839,7 +839,6 @@ export function MultiplayerGamePage() {
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
 
   const boardWrapStyle = {
-    maxWidth: "min(100%, calc(100svh - 5rem))",
     aspectRatio: "1/1",
   };
 
@@ -867,7 +866,10 @@ export function MultiplayerGamePage() {
       <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,30rem)] xl:items-start">
           <div className="flex items-center justify-center xl:items-start xl:justify-end">
-            <div className="relative isolate mx-auto w-full" style={boardWrapStyle}>
+            <div
+              className="relative isolate mx-auto w-full max-w-[min(100%,calc(100svh-15rem))] xl:max-w-[min(100%,calc(100svh-5rem))]"
+              style={boardWrapStyle}
+            >
               {displayState && (
                 <TiaoBoard
                   state={displayState}
