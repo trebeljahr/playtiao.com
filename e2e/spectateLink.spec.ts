@@ -1,0 +1,92 @@
+import { test, expect } from "@playwright/test";
+import { signUpViaAPI, waitForAppReady } from "./helpers";
+
+function uniqueName(prefix: string) {
+  return `${prefix}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+test.describe("Spectate link always visible (#90)", () => {
+  test("eye icon is visible with 0 spectators and copies spectate link on click", async ({
+    browser,
+  }) => {
+    const aliceContext = await browser.newContext();
+    const bobContext = await browser.newContext();
+    const alicePage = await aliceContext.newPage();
+    const bobPage = await bobContext.newPage();
+
+    // Grant clipboard permissions
+    await aliceContext.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    const aliceName = uniqueName("alice");
+    const bobName = uniqueName("bob");
+
+    await signUpViaAPI(alicePage, aliceName, "password123");
+    await signUpViaAPI(bobPage, bobName, "password123");
+
+    // Alice creates a game
+    await alicePage.click('button:has-text("Create a game")');
+    await alicePage.click('button:has-text("Create Game")');
+    await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/);
+    const gameUrl = alicePage.url();
+
+    // Bob joins the game
+    await bobPage.goto(gameUrl);
+    await expect(bobPage.locator("text=Live match")).toBeVisible({ timeout: 10000 });
+
+    // The eye icon (spectate button) should be visible even with 0 spectators.
+    // It uses an SVG eye icon — look for the button that contains the eye path.
+    const eyeButton = alicePage.locator('button:has(svg path[d*="M2.062"])');
+    await expect(eyeButton).toBeVisible({ timeout: 5000 });
+
+    // Click the eye icon — should copy spectate link to clipboard
+    await eyeButton.click();
+
+    // Verify a toast appears confirming the link was copied
+    await expect(
+      alicePage
+        .locator("text=Copied")
+        .or(alicePage.locator("text=copied"))
+        .or(alicePage.locator("text=spectate link")),
+    ).toBeVisible({ timeout: 3000 });
+
+    await aliceContext.close();
+    await bobContext.close();
+  });
+
+  test("eye icon shows spectator count when spectators are present", async ({ browser }) => {
+    const aliceContext = await browser.newContext();
+    const bobContext = await browser.newContext();
+    const spectatorContext = await browser.newContext();
+
+    const alicePage = await aliceContext.newPage();
+    const bobPage = await bobContext.newPage();
+    const spectatorPage = await spectatorContext.newPage();
+
+    const aliceName = uniqueName("alice");
+    const bobName = uniqueName("bob");
+
+    await signUpViaAPI(alicePage, aliceName, "password123");
+    await signUpViaAPI(bobPage, bobName, "password123");
+
+    // Alice creates a game
+    await alicePage.click('button:has-text("Create a game")');
+    await alicePage.click('button:has-text("Create Game")');
+    await expect(alicePage).toHaveURL(/\/game\/[A-Z0-9]{6}/);
+    const gameUrl = alicePage.url();
+
+    // Bob joins the game
+    await bobPage.goto(gameUrl);
+    await expect(bobPage.locator("text=Live match")).toBeVisible({ timeout: 10000 });
+
+    // Spectator visits the game
+    await spectatorPage.goto(gameUrl);
+    await expect(spectatorPage.locator('[data-testid="cell-9-9"]')).toBeVisible();
+
+    // Eye icon should now show count "1" for Alice
+    await expect(alicePage.locator('[title="1 spectator"]')).toBeVisible({ timeout: 5000 });
+
+    await aliceContext.close();
+    await bobContext.close();
+    await spectatorContext.close();
+  });
+});
