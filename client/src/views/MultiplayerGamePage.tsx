@@ -889,7 +889,9 @@ export function MultiplayerGamePage() {
                     <HourglassSpinner className="text-[#7b5f3f]" />
                     {isTournamentUnstarted
                       ? t("waitingForOpponentToConnect")
-                      : t("waitingForOpponent")}
+                      : isSpectator
+                        ? t("waitingForGameToStart")
+                        : t("waitingForOpponent")}
                   </div>
                 </div>
               )}
