@@ -8,14 +8,22 @@ import { Link } from "@/i18n/navigation";
 
 export const DELETED_PLAYER_NAME = "Deleted Player";
 
-function InfoTooltip({ text, className }: { text: string; className?: string }) {
+function InfoTooltip({
+  text,
+  className,
+  iconClassName,
+}: {
+  text: string;
+  className?: string;
+  iconClassName?: string;
+}) {
   return (
     <span className={cn("group/tip relative inline-flex items-center justify-center", className)}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
-        className="h-3.5 w-3.5"
+        className={cn("h-3.5 w-3.5", iconClassName)}
       >
         <path
           fillRule="evenodd"
@@ -99,13 +107,17 @@ export function PlayerIdentityRow({
         )}
       </span>
       {anonymous && (
-        <InfoTooltip text={t("guestPlayerTooltip")} className="shrink-0 cursor-help opacity-50" />
+        <InfoTooltip
+          text={t("guestPlayerTooltip")}
+          className="shrink-0"
+          iconClassName="opacity-50"
+        />
       )}
       {deleted && (
         <InfoTooltip
           text={t("deletedPlayerTooltip")}
           className={cn(
-            "shrink-0 cursor-help",
+            "shrink-0",
             friendVariant === "light"
               ? "text-black/40 hover:text-black/60"
               : "text-white/40 hover:text-white/60",
