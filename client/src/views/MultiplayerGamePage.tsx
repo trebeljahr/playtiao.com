@@ -112,7 +112,7 @@ function AnimatedRatingChange({
   const roundedDelta = Math.round(delta);
 
   return (
-    <div className="flex items-center justify-end gap-3 py-2 mb-2">
+    <div className="flex items-center justify-start gap-3 py-2 mb-2">
       <span className="text-sm text-[#6e5b48]">{label}:</span>
       <motion.span
         className="font-display text-2xl font-bold text-[#2b1e14]"
