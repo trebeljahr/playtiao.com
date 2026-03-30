@@ -172,14 +172,6 @@ export function MultiplayerGamePage() {
         const fetchGame = spectateOnly ? getMultiplayerGame : accessMultiplayerGame;
         const response = await fetchGame(gameId);
 
-        if (spectateOnly && response.snapshot.status === "waiting") {
-          if (!cancelled) {
-            toast.error(tCommon("spectateNotAvailable"));
-            router.push("/");
-          }
-          return;
-        }
-
         if (!cancelled) {
           connectToRoom(response.snapshot);
         }
@@ -512,8 +504,11 @@ export function MultiplayerGamePage() {
     }
   }, [multiplayerSnapshot?.takeback?.requestedBy, playerSeat]);
 
-  // Toast for incoming rematch requests
+  // Toast for incoming rematch requests.
+  // Skip the initial toast when the page loads with an existing rematch request,
+  // because the lobby already showed that notification before the player navigated here.
   const lastRematchToastRef = useRef(false);
+  const initialRematchSuppressedRef = useRef(false);
   useEffect(() => {
     const rematchRequesters = multiplayerSnapshot?.rematch?.requestedBy ?? [];
     const opponentRequested = rematchRequesters.some((color) => color !== playerSeat);
@@ -521,21 +516,46 @@ export function MultiplayerGamePage() {
 
     const rematchToastId = `rematch-${multiplayerSnapshot?.gameId ?? "unknown"}`;
     if (opponentRequested && !weAlreadyRequested && !lastRematchToastRef.current) {
-      lastRematchToastRef.current = true;
-      toast(t("opponentWantsRematch"), {
-        id: rematchToastId,
-        action: {
-          label: tCommon("accept"),
-          onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
-        },
-        cancel: {
-          label: tCommon("decline"),
-          onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
-        },
-        duration: Infinity,
-      });
+      // Suppress the very first rematch toast on page load — the lobby already showed it
+      if (!initialRematchSuppressedRef.current) {
+        initialRematchSuppressedRef.current = true;
+        lastRematchToastRef.current = true;
+      } else {
+        lastRematchToastRef.current = true;
+        const opponentSeat = playerSeat === "white" ? "black" : "white";
+        const opponentName =
+          multiplayerSnapshot?.seats[opponentSeat]?.player.displayName ?? "undefined";
+        const boardSize = multiplayerSnapshot?.state.boardSize;
+        const scoreToWin = multiplayerSnapshot?.state.scoreToWin;
+        const tc = multiplayerSnapshot?.timeControl;
+        const tcLabel = tc
+          ? `${Math.floor(tc.initialMs / 60000)}+${Math.floor(tc.incrementMs / 1000)}`
+          : null;
+        const details = [
+          boardSize ? `${boardSize}x${boardSize}` : null,
+          scoreToWin ? `${scoreToWin}pts` : null,
+          tcLabel,
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        toast(t("opponentWantsRematch", { opponent: opponentName }), {
+          id: rematchToastId,
+          description: details || undefined,
+          action: {
+            label: tCommon("accept"),
+            onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
+          },
+          cancel: {
+            label: tCommon("decline"),
+            onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
+          },
+          duration: Infinity,
+        });
+      }
     }
     if (!opponentRequested) {
+      initialRematchSuppressedRef.current = true;
       if (lastRematchToastRef.current) {
         toast.dismiss(rematchToastId);
       }

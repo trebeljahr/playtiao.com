@@ -299,23 +299,59 @@ describe("MultiplayerGamePage", () => {
     expect(screen.queryByTestId("review-nav-buttons")).not.toBeInTheDocument();
   });
 
-  it("shows rematch toast when opponent requests rematch", async () => {
+  it("shows rematch toast when opponent requests rematch after initial load", async () => {
     const { toast } = await import("sonner");
+    const { useMultiplayerGame } = await import("@/lib/hooks/useMultiplayerGame");
+    const { useSocialData } = await import("@/lib/hooks/useSocialData");
+    (useSocialData as ReturnType<typeof vi.fn>).mockReturnValue(defaultSocialMock);
 
     const state = createInitialGameState();
     state.score = { black: 10, white: 0 };
 
-    const snapshot = makeMatchmakingSnapshot({
+    // First render: finished game, no rematch yet
+    const snapshotNoRematch = makeMatchmakingSnapshot({
+      status: "finished",
+      state,
+      rematch: null,
+    });
+
+    (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      multiplayerSnapshot: snapshotNoRematch,
+      multiplayerSelection: null,
+      connectionState: "connected",
+      connectToRoom: mockConnectToRoom,
+      sendMultiplayerMessage: mockSendMultiplayerMessage,
+      setMultiplayerSelection: mockSetMultiplayerSelection,
+      multiplayerBusy: false,
+      setMultiplayerBusy: mockSetMultiplayerBusy,
+      multiplayerError: null,
+    });
+
+    const { rerender } = render(<MultiplayerGamePage />);
+
+    // Second render: opponent requests rematch (simulates live snapshot update)
+    const snapshotWithRematch = makeMatchmakingSnapshot({
       status: "finished",
       state,
       rematch: { requestedBy: ["black"] }, // opponent (we're white)
     });
 
-    await setupMocks(snapshot);
-    render(<MultiplayerGamePage />);
+    (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      multiplayerSnapshot: snapshotWithRematch,
+      multiplayerSelection: null,
+      connectionState: "connected",
+      connectToRoom: mockConnectToRoom,
+      sendMultiplayerMessage: mockSendMultiplayerMessage,
+      setMultiplayerSelection: mockSetMultiplayerSelection,
+      multiplayerBusy: false,
+      setMultiplayerBusy: mockSetMultiplayerBusy,
+      multiplayerError: null,
+    });
+
+    rerender(<MultiplayerGamePage />);
 
     expect(toast).toHaveBeenCalledWith(
-      "Opponent wants a rematch!",
+      expect.stringContaining("wants a rematch!"),
       expect.objectContaining({
         action: expect.objectContaining({ label: "Accept" }),
         cancel: expect.objectContaining({ label: "Decline" }),

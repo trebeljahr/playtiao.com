@@ -177,7 +177,7 @@
     "acceptRematch": "Revanche annehmen",
     "rematch": "Revanche",
     "opponentRequestedTakeback": "Gegner möchte einen Zug zurücknehmen",
-    "opponentWantsRematch": "Gegner will eine Revanche!",
+    "opponentWantsRematch": "{opponent, select, undefined {Gegner} other {{opponent}}} will eine Revanche!",
     "nMin": "{n} Min.",
     "nToWin": "{n} zum Sieg",
     "nPts": "{n} Pkt.",

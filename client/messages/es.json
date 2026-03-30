@@ -176,7 +176,7 @@
     "acceptRematch": "Aceptar revancha",
     "rematch": "Revancha",
     "opponentRequestedTakeback": "Tu rival quiere deshacer una jugada",
-    "opponentWantsRematch": "¡Tu rival quiere revancha!",
+    "opponentWantsRematch": "¡{opponent, select, undefined {Tu rival} other {{opponent}}} quiere revancha!",
     "nMin": "{n} min",
     "nToWin": "{n} para ganar",
     "nPts": "{n}pts",

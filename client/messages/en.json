@@ -177,7 +177,7 @@
     "acceptRematch": "Accept Rematch",
     "rematch": "Rematch",
     "opponentRequestedTakeback": "Opponent requested a takeback",
-    "opponentWantsRematch": "Opponent wants a rematch!",
+    "opponentWantsRematch": "{opponent, select, undefined {Opponent} other {{opponent}}} wants a rematch!",
     "nMin": "{n} min",
     "nToWin": "{n} to win",
     "nPts": "{n}pts",
