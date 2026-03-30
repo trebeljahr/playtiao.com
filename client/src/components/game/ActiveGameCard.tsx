@@ -2,7 +2,6 @@ import type { MultiplayerGameSummary } from "@shared";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GameConfigBadge } from "./GameConfigBadge";
 import { getSummaryStatusLabel, isSummaryYourTurn, translatePlayerColor } from "./GameShared";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { cn } from "@/lib/utils";
@@ -66,7 +65,6 @@ export function ActiveGameCard({
               ? `${Math.floor(game.timeControl.initialMs / 60_000)}+${Math.round(game.timeControl.incrementMs / 1_000)}`
               : tGame("unlimitedTime")}
           </span>
-          <GameConfigBadge roomType={game.roomType} />
         </div>
         <div className="flex items-center gap-2">
           {isWaiting && onDelete && (
