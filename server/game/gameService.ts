@@ -489,6 +489,17 @@ export class GameService {
       return;
     }
 
+    // Ensure the clock timer is running for active timed games (e.g. after
+    // server restart or if no timer was scheduled for this room yet).
+    if (
+      room.status === "active" &&
+      room.clockMs &&
+      room.lastMoveAt &&
+      !this.clockTimers.has(room.id)
+    ) {
+      this.scheduleClockTimer(room);
+    }
+
     this.broadcastSnapshot(room);
   }
 
@@ -1956,6 +1967,26 @@ export class GameService {
     if (timer) {
       clearTimeout(timer);
       this.clockTimers.delete(roomId);
+    }
+  }
+
+  /**
+   * Restore clock timers for all active timed games.
+   * Called on server startup to recover in-memory timers lost during restart.
+   * Also handles games where time already expired while the server was down.
+   */
+  async restoreClockTimers(): Promise<void> {
+    const rooms = await this.store.findActiveTimedRooms();
+    let scheduled = 0;
+
+    for (const room of rooms) {
+      if (this.clockTimers.has(room.id)) continue;
+      this.scheduleClockTimer(this.deriveRoomStatus(room));
+      scheduled++;
+    }
+
+    if (scheduled > 0) {
+      console.info(`[game] Restored clock timers for ${scheduled} active timed game(s)`);
     }
   }
 

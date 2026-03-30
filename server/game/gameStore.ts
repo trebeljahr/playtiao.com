@@ -76,6 +76,7 @@ export interface GameRoomStore {
     beforeDate?: Date,
   ): Promise<StoredMultiplayerRoom[]>;
   deleteRoom(roomId: string): Promise<void>;
+  findActiveTimedRooms(): Promise<StoredMultiplayerRoom[]>;
   migratePlayerIdentity(oldPlayerId: string, newIdentity: PlayerIdentity): Promise<number>;
   unlinkTournamentGames(tournamentId: string): Promise<number>;
 }
@@ -277,6 +278,18 @@ export class MongoGameRoomStore implements GameRoomStore {
 
   async deleteRoom(roomId: string): Promise<void> {
     await GameRoom.deleteOne({ roomId: normalizeRoomId(roomId) });
+  }
+
+  async findActiveTimedRooms(): Promise<StoredMultiplayerRoom[]> {
+    const rooms = await GameRoom.find({
+      status: "active",
+      clockMs: { $ne: null },
+      lastMoveAt: { $ne: null },
+    })
+      .lean<PersistedGameRoom[]>()
+      .exec();
+
+    return rooms.map(toStoredRoom);
   }
 
   async saveRoom(room: StoredMultiplayerRoom): Promise<StoredMultiplayerRoom> {
@@ -611,6 +624,14 @@ export class InMemoryGameRoomStore implements GameRoomStore {
       (r) => r.tournamentId === tournamentId && r.tournamentMatchId === matchId,
     );
     return room ? cloneStoredRoom(room) : null;
+  }
+
+  async findActiveTimedRooms(): Promise<StoredMultiplayerRoom[]> {
+    return Array.from(this.rooms.values())
+      .filter(
+        (room) => room.status === "active" && room.clockMs !== null && room.lastMoveAt !== null,
+      )
+      .map(cloneStoredRoom);
   }
 
   async migratePlayerIdentity(oldPlayerId: string, newIdentity: PlayerIdentity): Promise<number> {

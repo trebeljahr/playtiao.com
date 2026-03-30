@@ -254,6 +254,9 @@ async function start(): Promise<void> {
   try {
     await connectToDB();
 
+    // Restore in-memory clock timers for active timed games (lost on restart)
+    await gameService.restoreClockTimers();
+
     server.listen(PORT, () => {
       console.info(`Tiao server listening on http://localhost:${PORT}`);
     });
