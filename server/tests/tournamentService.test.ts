@@ -1049,6 +1049,7 @@ describe("Tournament live scores", () => {
     await tournamentService.registerPlayer(t.tournamentId, alice);
     await tournamentService.registerPlayer(t.tournamentId, bob);
     await tournamentService.registerPlayer(t.tournamentId, charlie);
+    await tournamentService.startTournament(t.tournamentId, "alice");
 
     const broadcastCalls: Array<{ playerId: string; payload: Record<string, unknown> }> = [];
     const originalBroadcast = gameService.broadcastLobby.bind(gameService);
@@ -1058,7 +1059,10 @@ describe("Tournament live scores", () => {
     };
 
     // Call broadcastLiveScore with match data
-    (tournamentService as any).broadcastLiveScore(t, "R0M0", [3, 1]);
+    await (tournamentService as any).broadcastLiveScore(t.tournamentId, "R0M0", {
+      white: 3,
+      black: 1,
+    });
 
     // Filter for score-update messages
     const scoreUpdates = broadcastCalls.filter((c) => c.payload.type === "tournament-score-update");
@@ -1078,6 +1082,7 @@ describe("Tournament live scores", () => {
     const t = await tournamentService.createTournament(alice, defaultSettings(), "Score Map Test");
     await tournamentService.registerPlayer(t.tournamentId, alice);
     await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
 
     const broadcastCalls: Array<{ playerId: string; payload: Record<string, unknown> }> = [];
     gameService.broadcastLobby = (playerId: string, payload: Record<string, unknown>) => {
@@ -1085,7 +1090,10 @@ describe("Tournament live scores", () => {
     };
 
     // Scores should be aligned to player slot order, not color order
-    (tournamentService as any).broadcastLiveScore(t, "R0M0", [5, 2]);
+    await (tournamentService as any).broadcastLiveScore(t.tournamentId, "R0M0", {
+      white: 5,
+      black: 2,
+    });
 
     const scoreUpdates = broadcastCalls.filter((c) => c.payload.type === "tournament-score-update");
 
@@ -1113,15 +1121,19 @@ describe("Tournament live scores", () => {
     await tournamentService.registerPlayer(t.tournamentId, bob);
     await tournamentService.registerPlayer(t.tournamentId, charlie);
     await tournamentService.registerPlayer(t.tournamentId, dave);
+    await tournamentService.startTournament(t.tournamentId, "alice");
 
     const broadcastCalls: Array<{ playerId: string; payload: Record<string, unknown> }> = [];
     gameService.broadcastLobby = (playerId: string, payload: Record<string, unknown>) => {
       broadcastCalls.push({ playerId, payload });
     };
 
-    // If group-stage matches exist, broadcastLiveScore should find them
+    // Group-stage match IDs use the group prefix (e.g. "G0-R0M0")
     // even though they live in group rounds rather than top-level rounds
-    (tournamentService as any).broadcastLiveScore(t, "G0R0M0", [1, 0]);
+    await (tournamentService as any).broadcastLiveScore(t.tournamentId, "G0-R0M0", {
+      white: 1,
+      black: 0,
+    });
 
     const scoreUpdates = broadcastCalls.filter((c) => c.payload.type === "tournament-score-update");
 
@@ -1137,13 +1149,17 @@ describe("Tournament live scores", () => {
     const t = await tournamentService.createTournament(alice, defaultSettings(), "Dedup Test");
     await tournamentService.registerPlayer(t.tournamentId, alice);
     await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
 
     const broadcastCalls: Array<{ playerId: string; payload: Record<string, unknown> }> = [];
     gameService.broadcastLobby = (playerId: string, payload: Record<string, unknown>) => {
       broadcastCalls.push({ playerId, payload });
     };
 
-    (tournamentService as any).broadcastLiveScore(t, "R0M0", [2, 3]);
+    await (tournamentService as any).broadcastLiveScore(t.tournamentId, "R0M0", {
+      white: 2,
+      black: 3,
+    });
 
     const scoreUpdates = broadcastCalls.filter((c) => c.payload.type === "tournament-score-update");
 

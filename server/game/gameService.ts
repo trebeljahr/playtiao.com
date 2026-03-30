@@ -49,6 +49,7 @@ import { InMemoryLockProvider, LockProvider } from "./lockProvider";
 import { InMemoryMatchmakingStore, MatchmakingStore } from "./matchmakingStore";
 import { computeNewRatings, DEFAULT_RATING } from "./elo";
 import GameAccount from "../models/GameAccount";
+import { isValidObjectId } from "mongoose";
 
 type RoomConnections = Map<WebSocket, string>;
 
@@ -326,8 +327,11 @@ export class GameService {
     }
     if (playerIds.size === 0) return;
 
+    const validIds = [...playerIds].filter(isValidObjectId);
+    if (validIds.length === 0) return;
+
     const accounts = await GameAccount.find(
-      { _id: { $in: [...playerIds] } },
+      { _id: { $in: validIds } },
       { displayName: 1, profilePicture: 1, activeBadges: 1, badges: 1, rating: 1 },
     ).lean();
     const accountMap = new Map(accounts.map((a) => [String(a._id), a]));
