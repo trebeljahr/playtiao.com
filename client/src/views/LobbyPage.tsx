@@ -15,6 +15,7 @@ import { Navbar } from "@/components/Navbar";
 import { isSummaryYourTurn, translatePlayerColor } from "@/components/game/GameShared";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
@@ -635,17 +636,38 @@ export function LobbyPage() {
                       {socialOverview.incomingInvitations.slice(0, 3).map((inv) => (
                         <div
                           key={inv.id}
-                          className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group"
+                          className="rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group space-y-3"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="flex flex-col">
-                              <p className="font-semibold text-lg text-[#2b1e14]">
-                                {inv.sender.displayName}
-                              </p>
-                              <p className="text-sm text-[#7a6656]">Game {inv.gameId}</p>
-                            </div>
+                          <PlayerIdentityRow
+                            player={inv.sender}
+                            currentPlayerId={auth?.player.playerId}
+                            linkToProfile={false}
+                            className="gap-3"
+                          />
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-[#6b5a45]">
+                            <GameConfigBadge
+                              boardSize={inv.boardSize}
+                              scoreToWin={inv.scoreToWin}
+                              timeControl={inv.timeControl}
+                              roomType={inv.roomType}
+                            />
+                            {inv.assignedColor && (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-2 py-1">
+                                <span
+                                  className={cn(
+                                    "inline-block h-3 w-3 rounded-full border",
+                                    inv.assignedColor === "white"
+                                      ? "border-[#ddd2bf] bg-[#f4eee3]"
+                                      : "border-[#191410] bg-[#2d2622]",
+                                  )}
+                                />
+                                {tc("playingAs", {
+                                  color: translatePlayerColor(inv.assignedColor!, tGame) ?? "",
+                                })}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 pt-1">
                             <Button
                               size="sm"
                               variant="outline"

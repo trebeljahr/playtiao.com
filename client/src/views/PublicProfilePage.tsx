@@ -18,11 +18,12 @@ import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { resolvePlayerBadges } from "@/lib/featureGate";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export function PublicProfilePage() {
   const t = useTranslations("publicProfile");
   const tCommon = useTranslations("common");
+  const tConfig = useTranslations("config");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const params = useParams<{ username: string }>();
@@ -37,6 +38,7 @@ export function PublicProfilePage() {
   const [matchHasMore, setMatchHasMore] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const locale = useLocale();
 
   useEffect(() => {
     if (!params?.username) return;
@@ -107,12 +109,8 @@ export function PublicProfilePage() {
       />
 
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 pb-12 pt-20 sm:px-6 lg:pt-24">
-        <Button
-          variant="ghost"
-          className="self-start text-[#8b7356]"
-          onClick={() => router.push("/")}
-        >
-          &larr; {tCommon("backToLobby")}
+        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
+          &larr; {tCommon("back")}
         </Button>
 
         {loading && (
@@ -145,6 +143,11 @@ export function PublicProfilePage() {
                 />
 
                 <div className="text-center">
+                  {friendStatus === "self" && (
+                    <span className="mb-2 inline-flex items-center rounded-full border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1 text-xs font-semibold text-[#6b5630]">
+                      {t("yourProfile")}
+                    </span>
+                  )}
                   <div className="flex items-center justify-center gap-2">
                     <h1 className="font-display text-3xl font-bold text-[#2b1e14]">
                       {profile.displayName}
@@ -176,7 +179,7 @@ export function PublicProfilePage() {
                   {profile.createdAt && (
                     <p className="mt-2 text-sm text-[#8d7760]">
                       {t("memberSince", {
-                        date: new Date(profile.createdAt).toLocaleDateString(undefined, {
+                        date: new Date(profile.createdAt).toLocaleDateString(locale, {
                           month: "long",
                           year: "numeric",
                         }),
@@ -272,6 +275,9 @@ export function PublicProfilePage() {
                     profile.favoriteTimeControl ||
                     profile.favoriteScore) && (
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
+                      <h3 className="w-full text-center text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
+                        {t("favoriteGameTypes")}
+                      </h3>
                       {profile.favoriteBoard && (
                         <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
                           {t("favoriteBoard", { size: profile.favoriteBoard })}
@@ -279,7 +285,12 @@ export function PublicProfilePage() {
                       )}
                       {profile.favoriteTimeControl && (
                         <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
-                          {t("favoriteTimeControl", { tc: profile.favoriteTimeControl })}
+                          {t("favoriteTimeControl", {
+                            tc:
+                              profile.favoriteTimeControl === "unlimited"
+                                ? tConfig("unlimited")
+                                : profile.favoriteTimeControl,
+                          })}
                         </span>
                       )}
                       {profile.favoriteScore && (
@@ -310,7 +321,7 @@ export function PublicProfilePage() {
             )}
 
             {/* Match history */}
-            {matchHistory.length > 0 && matchPlayerId && (
+            {matchHistory.length > 0 && (matchPlayerId || auth?.player.playerId) && (
               <Card className={paperCard + " w-full"}>
                 <CardContent className="py-6">
                   <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
@@ -321,7 +332,7 @@ export function PublicProfilePage() {
                       <MatchHistoryCard
                         key={game.gameId}
                         game={game}
-                        playerId={matchPlayerId}
+                        playerId={auth?.player.playerId ?? matchPlayerId!}
                         copiedId={copiedId}
                         onCopy={() => handleCopy(game.gameId)}
                         onReview={() => router.push(`/game/${game.gameId}`)}

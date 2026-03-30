@@ -15,6 +15,7 @@ import { formatClockTime } from "./GameClock";
 import { cn } from "@/lib/utils";
 import { UserBadge, type BadgeId } from "@/components/UserBadge";
 import { resolvePlayerBadges } from "@/lib/featureGate";
+import { Link } from "@/i18n/navigation";
 
 type MatchHistoryCardProps = {
   game: MultiplayerGameSummary;
@@ -49,6 +50,7 @@ function PlayerRow({
   youLabel,
   winnerLabel,
   unknownLabel,
+  anonymous,
 }: {
   player: { displayName?: string; profilePicture?: string; activeBadges?: string[] } | null;
   color: PlayerColor;
@@ -61,24 +63,41 @@ function PlayerRow({
   youLabel: string;
   winnerLabel: string;
   unknownLabel: string;
+  anonymous?: boolean;
 }) {
+  const canLink = player?.displayName && !anonymous;
+  const nameContent = (
+    <>
+      <span className="truncate">
+        {player?.displayName || unknownLabel}
+        {isYou && <span className="ml-1 text-[#6b5540]">{youLabel}</span>}
+      </span>
+      {resolvePlayerBadges(player).map((id) => (
+        <UserBadge key={id} badge={id as BadgeId} compact />
+      ))}
+    </>
+  );
+
   return (
     <div className="flex items-center gap-2.5 rounded-xl px-3 py-2">
       <ColorDot color={color} />
       {player ? (
-        <PlayerOverviewAvatar player={player} className="h-6 w-6" />
+        <PlayerOverviewAvatar player={player} anonymous={anonymous} className="h-6 w-6" />
       ) : (
         <EmptySeatAvatar className="h-6 w-6" />
       )}
-      <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-[#1a1008]">
-        <span className="truncate">
-          {player?.displayName || unknownLabel}
-          {isYou && <span className="ml-1 text-[#6b5540]">{youLabel}</span>}
+      {canLink ? (
+        <Link
+          href={`/profile/${encodeURIComponent(player.displayName!)}`}
+          className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-[#1a1008] hover:underline"
+        >
+          {nameContent}
+        </Link>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-[#1a1008]">
+          {nameContent}
         </span>
-        {resolvePlayerBadges(player).map((id) => (
-          <UserBadge key={id} badge={id as BadgeId} compact />
-        ))}
-      </span>
+      )}
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
           {winnerLabel}
@@ -210,6 +229,7 @@ export function MatchHistoryCard({
           youLabel={tCommon("you")}
           winnerLabel={t("winner")}
           unknownLabel={t("unknownPlayer")}
+          anonymous={game.seats?.white?.player.kind === "guest"}
         />
         <PlayerRow
           player={blackPlayer}
@@ -223,6 +243,7 @@ export function MatchHistoryCard({
           youLabel={tCommon("you")}
           winnerLabel={t("winner")}
           unknownLabel={t("unknownPlayer")}
+          anonymous={game.seats?.black?.player.kind === "guest"}
         />
       </div>
 

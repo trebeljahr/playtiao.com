@@ -22,6 +22,7 @@
     "add": "Add",
     "loading": "Loading...",
     "anonymous": "Anonymous",
+    "guestPlayerTooltip": "This is an anonymous guest player",
     "you": "(you)",
     "vs": "vs {opponent}",
     "moves": "{count} moves",
@@ -481,6 +482,7 @@
     "gamesPlayed": "Games played",
     "gamesWon": "Won",
     "gamesLost": "Lost",
+    "favoriteGameTypes": "Favorite Game Types",
     "favoriteBoard": "{size}x{size} board",
     "favoriteTimeControl": "{tc} time",
     "favoriteScore": "First to {score}",
@@ -490,7 +492,8 @@
     "addFriend": "Add Friend",
     "requestSent": "Request Sent",
     "alreadyFriends": "Friends",
-    "acceptRequest": "Accept Request"
+    "acceptRequest": "Accept Request",
+    "yourProfile": "Your Profile"
   },
   "tutorial": {
     "back": "← Back",

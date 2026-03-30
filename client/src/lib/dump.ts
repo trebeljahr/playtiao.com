@@ -7,8 +7,18 @@ export type LogEntry = {
 export const LOG_BUFFER_SIZE = 500;
 export const logBuffer: LogEntry[] = [];
 
+function safeStringify(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    if (value instanceof HTMLElement) return `<${value.tagName.toLowerCase()}>`;
+    return String(value);
+  }
+}
+
 export function captureLog(level: LogEntry["level"], args: unknown[]) {
-  const message = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+  const message = args.map(safeStringify).join(" ");
 
   logBuffer.push({
     timestamp: new Date().toISOString(),

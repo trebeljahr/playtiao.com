@@ -12,6 +12,7 @@ import { GameServiceError, gameService } from "../game/gameService";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
 import GameAccount, { IGameAccount } from "../models/GameAccount";
 import GameInvitation from "../models/GameInvitation";
+import GameRoom from "../models/GameRoom";
 import { userSearchRateLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
@@ -216,11 +217,30 @@ async function loadInvitationSummaries(
   }
   const ssoMap = await fetchSsoProfilePictures(populatedAccounts);
 
+  // Fetch game rooms for config details
+  const gameIds = [...new Set(valid.map((inv) => inv.gameId))];
+  const gameRooms = await GameRoom.find(
+    { roomId: { $in: gameIds } },
+    { roomId: 1, "state.boardSize": 1, "state.scoreToWin": 1, timeControl: 1, seats: 1 },
+  ).lean();
+  const gameRoomMap = new Map(gameRooms.map((r) => [r.roomId, r]));
+
   return valid.map((invitation) => {
     const sender = invitation.senderId as unknown as IGameAccount;
     const recipient = invitation.recipientId as unknown as IGameAccount;
     const senderId = sender.id ?? String(sender._id);
     const recipientId = recipient.id ?? String(recipient._id);
+
+    const room = gameRoomMap.get(invitation.gameId);
+    // Determine which color the recipient would play as
+    let assignedColor: "white" | "black" | undefined;
+    if (room?.seats) {
+      const recipientPlayerId = recipientId;
+      if (room.seats.white?.playerId === recipientPlayerId) assignedColor = "white";
+      else if (room.seats.black?.playerId === recipientPlayerId) assignedColor = "black";
+      else if (!room.seats.white?.playerId && room.seats.black?.playerId) assignedColor = "white";
+      else if (room.seats.white?.playerId && !room.seats.black?.playerId) assignedColor = "black";
+    }
 
     return {
       id: invitation.id,
@@ -236,6 +256,10 @@ async function loadInvitationSummaries(
         ...recipient,
         profilePicture: recipient.profilePicture || ssoMap.get(recipientId),
       }),
+      boardSize: room?.state?.boardSize,
+      scoreToWin: room?.state?.scoreToWin,
+      timeControl: room?.timeControl ?? undefined,
+      assignedColor,
     };
   });
 }

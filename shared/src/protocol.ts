@@ -194,6 +194,12 @@ export type GameInvitationSummary = {
   recipient: SocialPlayerSummary;
   createdAt: string;
   expiresAt: string;
+  /** Game configuration details (populated from the game room) */
+  boardSize?: number;
+  scoreToWin?: number;
+  timeControl?: TimeControl;
+  /** The color the invited player will play as, if a seat is already assigned */
+  assignedColor?: PlayerColor;
 };
 
 export type SocialOverview = {

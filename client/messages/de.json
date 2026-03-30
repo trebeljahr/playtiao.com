@@ -22,6 +22,7 @@
     "add": "Hinzufügen",
     "loading": "Laden...",
     "anonymous": "Anonym",
+    "guestPlayerTooltip": "Dies ist ein anonymer Gastspieler",
     "you": "(du)",
     "vs": "gegen {opponent}",
     "moves": "{count} Züge",
@@ -481,8 +482,9 @@
     "gamesPlayed": "Gespielte Partien",
     "gamesWon": "Gewonnen",
     "gamesLost": "Verloren",
+    "favoriteGameTypes": "Lieblingsspieltypen",
     "favoriteBoard": "{size}x{size} Brett",
-    "favoriteTimeControl": "{tc} Zeitkontrolle",
+    "favoriteTimeControl": "Bedenkzeit: {tc}",
     "favoriteScore": "Zuerst auf {score}",
     "badges": "Abzeichen",
     "matchHistory": "Spielverlauf",
@@ -490,7 +492,8 @@
     "addFriend": "Freund hinzufügen",
     "requestSent": "Anfrage gesendet",
     "alreadyFriends": "Freunde",
-    "acceptRequest": "Anfrage annehmen"
+    "acceptRequest": "Anfrage annehmen",
+    "yourProfile": "Dein Profil"
   },
   "tutorial": {
     "back": "← Zurück",

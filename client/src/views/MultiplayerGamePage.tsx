@@ -525,9 +525,11 @@ export function MultiplayerGamePage() {
     const opponentRequested = rematchRequesters.some((color) => color !== playerSeat);
     const weAlreadyRequested = playerSeat ? rematchRequesters.includes(playerSeat) : false;
 
+    const rematchToastId = `rematch-${multiplayerSnapshot?.gameId ?? "unknown"}`;
     if (opponentRequested && !weAlreadyRequested && !lastRematchToastRef.current) {
       lastRematchToastRef.current = true;
       toast(t("opponentWantsRematch"), {
+        id: rematchToastId,
         action: {
           label: tCommon("accept"),
           onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
@@ -541,7 +543,7 @@ export function MultiplayerGamePage() {
     }
     if (!opponentRequested) {
       if (lastRematchToastRef.current) {
-        toast.dismiss();
+        toast.dismiss(rematchToastId);
       }
       lastRematchToastRef.current = false;
     }
@@ -1022,18 +1024,16 @@ export function MultiplayerGamePage() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {!slot &&
-                                      auth?.player.kind === "account" &&
-                                      isInPlayerList && (
-                                        <Button
-                                          size="sm"
-                                          variant="secondary"
-                                          className="text-xs border-[#dcc7a2]"
-                                          onClick={() => setInviteDialogOpen(true)}
-                                        >
-                                          {t("inviteFriend")}
-                                        </Button>
-                                      )}
+                                    {!slot && auth?.player.kind === "account" && isInPlayerList && (
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="text-xs border-[#dcc7a2]"
+                                        onClick={() => setInviteDialogOpen(true)}
+                                      >
+                                        {t("inviteFriend")}
+                                      </Button>
+                                    )}
                                     <Badge
                                       className={cn(
                                         slot?.online
@@ -1294,7 +1294,9 @@ export function MultiplayerGamePage() {
                                     sendMultiplayerMessage({
                                       type: "request-rematch",
                                     });
-                                    if (!multiplayerSnapshot.rematch?.requestedBy.length) {
+                                    if (multiplayerSnapshot.rematch?.requestedBy.length) {
+                                      toast.dismiss(`rematch-${multiplayerSnapshot.gameId}`);
+                                    } else {
                                       toast.success(t("rematchSent"));
                                     }
                                   }}
@@ -1547,7 +1549,9 @@ export function MultiplayerGamePage() {
                   <Button
                     onClick={() => {
                       sendMultiplayerMessage({ type: "request-rematch" });
-                      if (!multiplayerSnapshot?.rematch?.requestedBy.length) {
+                      if (multiplayerSnapshot?.rematch?.requestedBy.length) {
+                        toast.dismiss(`rematch-${multiplayerSnapshot.gameId}`);
+                      } else {
                         toast.success(t("rematchSent"));
                       }
                       setGameOverDialogOpen(false);

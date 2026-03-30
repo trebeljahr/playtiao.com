@@ -103,8 +103,8 @@ export function translatePlayerColor(
   return t(color); // resolves "game.white" / "game.black"
 }
 
-export function formatGameTimestamp(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+export function formatGameTimestamp(value: string, locale?: string) {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -140,7 +140,7 @@ export function getSummaryStatusLabel(
 ) {
   if (summary.status === "finished") {
     const color = t
-      ? translatePlayerColor(summary.winner, t) ?? ""
+      ? (translatePlayerColor(summary.winner, t) ?? "")
       : formatPlayerColor(summary.winner);
     return t ? t("colorWon", { color }) : `${color} won`;
   }
