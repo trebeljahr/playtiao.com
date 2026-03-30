@@ -572,6 +572,42 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/profile/:username/games", async (req: Request, res: Response) => {
+  try {
+    const username = req.params.username?.trim().toLowerCase();
+    if (!username) {
+      return res.status(400).json({ code: "INVALID_USERNAME", message: "Username is required." });
+    }
+
+    let account = mongoose.Types.ObjectId.isValid(username)
+      ? await GameAccount.findById(username)
+      : null;
+    if (!account) {
+      account = await GameAccount.findOne({
+        displayName: {
+          $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        },
+      });
+    }
+    if (!account) {
+      return res.status(404).json({ code: "NOT_FOUND", message: "Player not found." });
+    }
+
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const before = req.query.before ? new Date(req.query.before as string) : undefined;
+    if (before && isNaN(before.getTime())) {
+      return res.status(400).json({ code: "INVALID_CURSOR", message: "Invalid 'before' date." });
+    }
+
+    const playerId = String(account._id);
+    const result = await gameService.listFinishedGames(playerId, limit, before);
+
+    res.json({ playerId, games: result.games, hasMore: result.hasMore });
+  } catch (error) {
+    handleRouteError(error, req, res, "Unable to load match history right now.");
+  }
+});
+
 router.put("/profile", async (req: Request, res: Response) => {
   try {
     const account = await requireAccount(req, res);

@@ -304,6 +304,18 @@ export class GameService {
     };
   }
 
+  async listFinishedGames(
+    playerId: string,
+    limit = 20,
+    beforeDate?: Date,
+  ): Promise<{ games: MultiplayerGameSummary[]; hasMore: boolean }> {
+    const rooms = await this.store.listFinishedRoomsForPlayer(playerId, limit + 1, beforeDate);
+    const hasMore = rooms.length > limit;
+    const trimmed = hasMore ? rooms.slice(0, limit) : rooms;
+    const games = trimmed.map((room) => this.toSummary(this.deriveRoomStatus(room), playerId));
+    return { games, hasMore };
+  }
+
   async listActiveGamesForPlayer(playerId: string): Promise<FriendActiveGameSummary[]> {
     const rooms = await this.store.listActiveRoomsForPlayer(playerId);
     return rooms.map((room) => {

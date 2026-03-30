@@ -13,6 +13,8 @@ import {
 import { GameConfigBadge } from "./GameConfigBadge";
 import { formatClockTime } from "./GameClock";
 import { cn } from "@/lib/utils";
+import { UserBadge, type BadgeId } from "@/components/UserBadge";
+import { resolvePlayerBadges } from "@/lib/featureGate";
 
 type MatchHistoryCardProps = {
   game: MultiplayerGameSummary;
@@ -48,7 +50,7 @@ function PlayerRow({
   winnerLabel,
   unknownLabel,
 }: {
-  player: { displayName?: string; profilePicture?: string } | null;
+  player: { displayName?: string; profilePicture?: string; activeBadges?: string[] } | null;
   color: PlayerColor;
   score: number;
   scoreToWin: number;
@@ -68,9 +70,14 @@ function PlayerRow({
       ) : (
         <EmptySeatAvatar className="h-6 w-6" />
       )}
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1a1008]">
-        {player?.displayName || unknownLabel}
-        {isYou && <span className="ml-1 text-[#6b5540]">{youLabel}</span>}
+      <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-[#1a1008]">
+        <span className="truncate">
+          {player?.displayName || unknownLabel}
+          {isYou && <span className="ml-1 text-[#6b5540]">{youLabel}</span>}
+        </span>
+        {resolvePlayerBadges(player).map((id) => (
+          <UserBadge key={id} badge={id as BadgeId} compact />
+        ))}
       </span>
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">

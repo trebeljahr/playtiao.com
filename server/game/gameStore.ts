@@ -70,6 +70,11 @@ export interface GameRoomStore {
     tournamentId: string,
     matchId: string,
   ): Promise<StoredMultiplayerRoom | null>;
+  listFinishedRoomsForPlayer(
+    playerId: string,
+    limit: number,
+    beforeDate?: Date,
+  ): Promise<StoredMultiplayerRoom[]>;
   migratePlayerIdentity(oldPlayerId: string, newIdentity: PlayerIdentity): Promise<number>;
   unlinkTournamentGames(tournamentId: string): Promise<number>;
 }
@@ -341,6 +346,32 @@ export class MongoGameRoomStore implements GameRoomStore {
     return rooms.map(toStoredRoom);
   }
 
+  async listFinishedRoomsForPlayer(
+    playerId: string,
+    limit: number,
+    beforeDate?: Date,
+  ): Promise<StoredMultiplayerRoom[]> {
+    const filter: Record<string, unknown> = {
+      status: "finished",
+      $or: [
+        { "players.playerId": playerId },
+        { "seats.white.playerId": playerId },
+        { "seats.black.playerId": playerId },
+      ],
+    };
+    if (beforeDate) {
+      filter.updatedAt = { $lt: beforeDate };
+    }
+
+    const rooms = await GameRoom.find(filter)
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean<PersistedGameRoom[]>()
+      .exec();
+
+    return rooms.map(toStoredRoom);
+  }
+
   async findUnfinishedRoomByPlayer(playerId: string): Promise<StoredMultiplayerRoom | null> {
     const room = await GameRoom.findOne({
       status: {
@@ -519,12 +550,30 @@ export class InMemoryGameRoomStore implements GameRoomStore {
     const rooms = Array.from(this.rooms.values())
       .filter(
         (room) =>
-          room.status !== "finished" &&
-          room.players.some((player) => player.playerId === playerId),
+          room.status !== "finished" && room.players.some((player) => player.playerId === playerId),
       )
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     return rooms.map(cloneStoredRoom);
+  }
+
+  async listFinishedRoomsForPlayer(
+    playerId: string,
+    limit: number,
+    beforeDate?: Date,
+  ): Promise<StoredMultiplayerRoom[]> {
+    let rooms = Array.from(this.rooms.values())
+      .filter(
+        (room) =>
+          room.status === "finished" && room.players.some((player) => player.playerId === playerId),
+      )
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+    if (beforeDate) {
+      rooms = rooms.filter((room) => room.updatedAt.getTime() < beforeDate.getTime());
+    }
+
+    return rooms.slice(0, limit).map(cloneStoredRoom);
   }
 
   async findUnfinishedRoomByPlayer(playerId: string): Promise<StoredMultiplayerRoom | null> {

@@ -7,15 +7,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   getPublicProfile,
+  getPlayerMatchHistory,
   sendFriendRequest,
   acceptFriendRequest,
   type PublicProfile,
 } from "@/lib/api";
+import type { MultiplayerGameSummary } from "@shared";
 import { toast } from "sonner";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
+import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { resolvePlayerBadges } from "@/lib/featureGate";
-import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 export function PublicProfilePage() {
@@ -30,19 +32,55 @@ export function PublicProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [friendStatus, setFriendStatus] = useState<PublicProfile["friendshipStatus"]>();
   const [friendActionBusy, setFriendActionBusy] = useState(false);
+  const [matchHistory, setMatchHistory] = useState<MultiplayerGameSummary[]>([]);
+  const [matchPlayerId, setMatchPlayerId] = useState<string | null>(null);
+  const [matchHasMore, setMatchHasMore] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params?.username) return;
     setLoading(true);
     setError(null);
-    getPublicProfile(decodeURIComponent(params.username))
+    const decoded = decodeURIComponent(params.username);
+    getPublicProfile(decoded)
       .then((res) => {
         setProfile(res.profile);
         setFriendStatus(res.profile.friendshipStatus);
       })
       .catch(() => setError("not-found"))
       .finally(() => setLoading(false));
+    getPlayerMatchHistory(decoded)
+      .then((res) => {
+        setMatchHistory(res.games);
+        setMatchPlayerId(res.playerId);
+        setMatchHasMore(res.hasMore);
+      })
+      .catch(() => {});
   }, [params?.username]);
+
+  const handleLoadMore = async () => {
+    if (!params?.username || matchLoading || !matchHasMore) return;
+    setMatchLoading(true);
+    const lastGame = matchHistory[matchHistory.length - 1];
+    try {
+      const res = await getPlayerMatchHistory(decodeURIComponent(params.username), {
+        before: lastGame.updatedAt,
+      });
+      setMatchHistory((prev) => [...prev, ...res.games]);
+      setMatchHasMore(res.hasMore);
+    } catch {
+      /* silent */
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+
+  const handleCopy = (gameId: string) => {
+    void navigator.clipboard.writeText(gameId);
+    setCopiedId(gameId);
+    setTimeout(() => setCopiedId((prev) => (prev === gameId ? null : prev)), 1800);
+  };
 
   const paperCard =
     "border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.96),rgba(244,231,207,0.94))]";
@@ -251,15 +289,6 @@ export function PublicProfilePage() {
                       )}
                     </div>
                   )}
-
-                  <div className="mt-5 flex justify-center gap-3">
-                    <Link
-                      href={`/games?player=${encodeURIComponent(profile.displayName)}`}
-                      className="text-xs font-medium text-[#8b7356] hover:text-[#4e3d2c] hover:underline"
-                    >
-                      {t("viewGameHistory")} &rarr;
-                    </Link>
-                  </div>
                 </CardContent>
               </Card>
             )}
@@ -276,6 +305,41 @@ export function PublicProfilePage() {
                       <UserBadge key={id} badge={id as BadgeId} />
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Match history */}
+            {matchHistory.length > 0 && matchPlayerId && (
+              <Card className={paperCard + " w-full"}>
+                <CardContent className="py-6">
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                    {t("matchHistory")}
+                  </h2>
+                  <div className="grid gap-3">
+                    {matchHistory.map((game) => (
+                      <MatchHistoryCard
+                        key={game.gameId}
+                        game={game}
+                        playerId={matchPlayerId}
+                        copiedId={copiedId}
+                        onCopy={() => handleCopy(game.gameId)}
+                        onReview={() => router.push(`/game/${game.gameId}`)}
+                      />
+                    ))}
+                  </div>
+                  {matchHasMore && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="ghost"
+                        className="text-[#8b7356]"
+                        onClick={handleLoadMore}
+                        disabled={matchLoading}
+                      >
+                        {matchLoading ? "..." : t("loadMore")}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

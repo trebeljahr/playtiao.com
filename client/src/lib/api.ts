@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   FriendActiveGameSummary,
   MatchmakingState,
+  MultiplayerGameSummary,
   MultiplayerGamesIndex,
   MultiplayerSnapshot,
   PlayerIdentity,
@@ -335,6 +336,19 @@ export type PublicProfile = {
 
 export function getPublicProfile(username: string) {
   return request<{ profile: PublicProfile }>(`/api/player/profile/${encodeURIComponent(username)}`);
+}
+
+export function getPlayerMatchHistory(
+  username: string,
+  options?: { limit?: number; before?: string },
+) {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set("limit", String(options.limit));
+  if (options?.before) params.set("before", options.before);
+  const qs = params.toString();
+  return request<{ playerId: string; games: MultiplayerGameSummary[]; hasMore: boolean }>(
+    `/api/player/profile/${encodeURIComponent(username)}/games${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export function updateAccountProfile(body: {
