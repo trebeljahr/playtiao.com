@@ -207,13 +207,17 @@ export function MultiplayerGamePage() {
     }
   }, [multiplayerSnapshot, auth]);
 
-  // Close invite modal when both seats are filled (opponent joined)
+  // Close invite modal, scroll to board, and notify when both seats are filled
   const bothSeated = !!(multiplayerSnapshot?.seats.white && multiplayerSnapshot?.seats.black);
+  const prevBothSeatedRef = useRef(bothSeated);
   useEffect(() => {
-    if (bothSeated) {
+    if (bothSeated && !prevBothSeatedRef.current) {
       setInviteDialogOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast(t("gameStarted"));
     }
-  }, [bothSeated]);
+    prevBothSeatedRef.current = bothSeated;
+  }, [bothSeated, t]);
 
   // Real-time social updates (friend online status, invitation state)
   useLobbyMessage((payload) => {

@@ -119,6 +119,7 @@
     "white": "White",
     "black": "Black",
     "draw": "Draw!",
+    "gameStarted": "Game started!",
     "wins": "{color} wins!",
     "winsOnTime": "{color} wins on time!",
     "toMove": "{color} to move",
