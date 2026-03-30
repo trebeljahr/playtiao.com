@@ -851,7 +851,7 @@ describe("MultiplayerGamePage", () => {
       applyAuth: vi.fn(),
     });
 
-    // Waiting game: 1 player in players array, but seats are null (< 2 players)
+    // Waiting game: 1 player seated (creator), second slot empty (< 2 players)
     const snapshot = makeMatchmakingSnapshot({
       roomType: "direct",
       status: "waiting",
@@ -861,7 +861,13 @@ describe("MultiplayerGamePage", () => {
           online: true,
         },
       ],
-      seats: { white: null, black: null },
+      seats: {
+        white: {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        black: null,
+      },
     });
 
     await setupMocks(snapshot);

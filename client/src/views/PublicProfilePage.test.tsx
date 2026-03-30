@@ -116,7 +116,7 @@ describe("PublicProfilePage add friend (#92)", () => {
     });
   });
 
-  it("calls sendFriendRequest and changes to 'Request Sent' on click", async () => {
+  it("calls sendFriendRequest and changes to 'Pending' button on click", async () => {
     mockGetPublicProfile.mockResolvedValue({
       profile: {
         displayName: "SomePlayer",
@@ -140,7 +140,7 @@ describe("PublicProfilePage add friend (#92)", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/request sent/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /pending/i })).toBeInTheDocument();
     });
   });
 
@@ -197,6 +197,6 @@ describe("PublicProfilePage add friend (#92)", () => {
     expect(screen.queryByRole("button", { name: /add friend/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Friends")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /accept request/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/request sent/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pending/i })).not.toBeInTheDocument();
   });
 });
