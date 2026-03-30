@@ -14,6 +14,7 @@ export function createReconnectScheduler(onReconnect: () => void, options: Recon
   const config = { ...DEFAULTS, ...options };
   let attempt = 0;
   let timer: number | null = null;
+  let stableTimer: number | null = null;
 
   function schedule() {
     clear();
@@ -26,14 +27,23 @@ export function createReconnectScheduler(onReconnect: () => void, options: Recon
     timer = window.setTimeout(onReconnect, delay);
   }
 
+  /** Mark the connection as stable after a short grace period. */
   function reset() {
-    attempt = 0;
+    if (stableTimer !== null) window.clearTimeout(stableTimer);
+    stableTimer = window.setTimeout(() => {
+      attempt = 0;
+      stableTimer = null;
+    }, 3000);
   }
 
   function clear() {
     if (timer !== null) {
       window.clearTimeout(timer);
       timer = null;
+    }
+    if (stableTimer !== null) {
+      window.clearTimeout(stableTimer);
+      stableTimer = null;
     }
   }
 
