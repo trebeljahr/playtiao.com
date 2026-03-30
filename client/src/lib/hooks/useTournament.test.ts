@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTournament } from "./useTournament";
 import type { AuthResponse, TournamentSnapshot } from "@shared";
 
@@ -80,6 +80,9 @@ function makeTournamentSnapshot(overrides?: Partial<TournamentSnapshot>): Tourna
 }
 
 // --- Tests ---
+// Note: React 18 emits false-positive "not wrapped in act(...)" warnings for
+// async state updates triggered by useEffect. These are harmless and resolved
+// in React 19. See https://github.com/reactwg/react-18/discussions/102
 
 describe("useTournament — #89 tournament live scores", () => {
   beforeEach(() => {
@@ -93,8 +96,7 @@ describe("useTournament — #89 tournament live scores", () => {
 
     const { result } = renderHook(() => useTournament(mockAuth, "T001"));
 
-    // Wait for initial fetch
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.tournament).not.toBeNull();
     });
 
@@ -110,7 +112,6 @@ describe("useTournament — #89 tournament live scores", () => {
       });
     });
 
-    // The hook should update the match score in local state without refetching
     expect(result.current.tournament!.rounds[0].matches[0].score).toEqual([3, 1]);
   });
 
@@ -153,11 +154,10 @@ describe("useTournament — #89 tournament live scores", () => {
 
     const { result } = renderHook(() => useTournament(mockAuth, "T001"));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.tournament).not.toBeNull();
     });
 
-    // Simulate live score update for a group-stage match
     act(() => {
       lobbyMessageCallback?.({
         type: "tournament-score-update",
@@ -167,7 +167,6 @@ describe("useTournament — #89 tournament live scores", () => {
       });
     });
 
-    // Should update the group-stage match score
     const groupMatch = result.current.tournament!.groups[0].rounds[0].matches[0];
     expect(groupMatch.score).toEqual([2, 4]);
   });
@@ -178,11 +177,10 @@ describe("useTournament — #89 tournament live scores", () => {
 
     const { result } = renderHook(() => useTournament(mockAuth, "T001"));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.tournament).not.toBeNull();
     });
 
-    // Score update for a different tournament
     act(() => {
       lobbyMessageCallback?.({
         type: "tournament-score-update",
@@ -192,7 +190,6 @@ describe("useTournament — #89 tournament live scores", () => {
       });
     });
 
-    // Score should remain unchanged
     expect(result.current.tournament!.rounds[0].matches[0].score).toEqual([0, 0]);
   });
 });
