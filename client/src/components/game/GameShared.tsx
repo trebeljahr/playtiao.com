@@ -50,6 +50,21 @@ export function LinkIcon({ className }: { className?: string }) {
   );
 }
 
+export function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={cn("h-4 w-4", className)}>
+      <path
+        d="M1.719 10.29a.833.833 0 0 1 0-.58 8.958 8.958 0 0 1 16.563 0 .833.833 0 0 1 0 .58 8.958 8.958 0 0 1-16.563 0Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 export function CheckIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={cn("h-4 w-4", className)}>
@@ -355,6 +370,59 @@ export function EmptySeatAvatar({ className }: { className?: string }) {
   );
 }
 
+/** Inner icon circle used by all dark-pill buttons. Shows a checkmark when `copied` is true. */
+export function DarkPillIconCircle({ copied, icon }: { copied: boolean; icon: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
+        copied ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]" : "border-white/15 bg-white/8",
+      )}
+    >
+      {copied ? <CheckIcon /> : icon}
+    </span>
+  );
+}
+
+/** Dark pill button with bounce animation on success. Used for copy actions in the game header. */
+export function DarkPillButton({
+  copied,
+  onClick,
+  icon,
+  ariaLabel,
+  title,
+  className: extraClassName,
+  hideIcon,
+  children,
+}: {
+  copied: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  ariaLabel?: string;
+  title?: string;
+  className?: string;
+  hideIcon?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      animate={copied ? { scale: [1, 1.05, 1], y: [0, -2, 0] } : { scale: 1, y: 0 }}
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5",
+        extraClassName,
+      )}
+      aria-label={ariaLabel}
+      title={title}
+    >
+      {children}
+      {!hideIcon && <DarkPillIconCircle copied={copied} icon={icon} />}
+    </motion.button>
+  );
+}
+
 export function RoomCodeCopyPill({
   gameId,
   copied,
@@ -367,74 +435,60 @@ export function RoomCodeCopyPill({
   hideCopyIcon?: boolean;
 }) {
   return (
-    <motion.button
-      type="button"
+    <DarkPillButton
+      copied={copied}
       onClick={onCopy}
-      animate={
-        copied
-          ? {
-              scale: [1, 1.05, 1],
-              y: [0, -2, 0],
-            }
-          : {
-              scale: 1,
-              y: 0,
-            }
-      }
-      transition={{
-        duration: 0.42,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] px-4 py-2 text-sm font-semibold text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
-      aria-label={`Copy game ID ${gameId}`}
+      icon={<CopyIcon />}
+      ariaLabel={`Copy game ID ${gameId}`}
+      className="gap-2 px-4 py-2 text-sm font-semibold"
+      hideIcon={hideCopyIcon}
     >
       <span className="font-mono tracking-[0.18em]">{gameId}</span>
-      {!hideCopyIcon && (
-        <span
-          className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
-            copied ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]" : "border-white/15 bg-white/8",
-          )}
-        >
-          {copied ? <CheckIcon /> : <CopyIcon />}
-        </span>
-      )}
-    </motion.button>
+    </DarkPillButton>
   );
 }
 
 export function ShareLinkCopyPill({ copied, onCopy }: { copied: boolean; onCopy: () => void }) {
   return (
-    <motion.button
-      type="button"
+    <DarkPillButton
+      copied={copied}
       onClick={onCopy}
-      animate={
-        copied
-          ? {
-              scale: [1, 1.05, 1],
-              y: [0, -2, 0],
-            }
-          : {
-              scale: 1,
-              y: 0,
-            }
-      }
-      transition={{
-        duration: 0.42,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-[linear-gradient(180deg,#39312b,#16110d)] text-[#f9f2e8] shadow-[0_18px_32px_-26px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5"
-      aria-label="Copy share link"
+      icon={<LinkIcon />}
+      ariaLabel="Copy share link"
+      className="h-10 w-10"
+    />
+  );
+}
+
+export function SpectateButton({
+  copied,
+  spectatorCount,
+  onCopy,
+  onShowSpectators,
+}: {
+  copied: boolean;
+  spectatorCount: number;
+  onCopy: () => void;
+  onShowSpectators: () => void;
+}) {
+  const label =
+    spectatorCount > 0
+      ? `${spectatorCount} spectator${spectatorCount !== 1 ? "s" : ""}`
+      : "Copy spectate link";
+  return (
+    <DarkPillButton
+      copied={copied}
+      onClick={spectatorCount > 0 ? onShowSpectators : onCopy}
+      icon={<EyeIcon />}
+      ariaLabel={label}
+      title={label}
+      className={cn(
+        "mr-1 h-10",
+        spectatorCount > 0 ? "gap-1.5 px-3.5 text-xs font-semibold" : "w-10",
+      )}
     >
-      <span
-        className={cn(
-          "flex h-6 w-6 items-center justify-center rounded-full border text-[#f9f2e8]/90 transition-colors",
-          copied ? "border-[#a7d08e] bg-[#456136] text-[#eef9e8]" : "border-white/15 bg-white/8",
-        )}
-      >
-        {copied ? <CheckIcon /> : <LinkIcon />}
-      </span>
-    </motion.button>
+      {spectatorCount > 0 && <span className="order-1">{spectatorCount}</span>}
+    </DarkPillButton>
   );
 }
 
