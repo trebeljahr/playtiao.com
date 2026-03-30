@@ -48,26 +48,26 @@ export function ActiveGameCard({
             : "border-[#d7c39e] bg-white/40",
       )}
     >
-      {/* Row 1: playing as color + your score + resume */}
+      {/* Row 0: game settings pills + resume */}
       <div className="flex items-center justify-between gap-2">
-        {game.yourSeat && (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-                game.yourSeat === "white"
-                  ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
-                  : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
-              )}
-            />
-            <span className="text-xs text-[#6b563e]">{tCommon("playingAs", { color: "" })}</span>
-            <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
-            <span className="font-mono text-xs tabular-nums text-[#6b563e]">
-              {yourScore}
-              <span className="font-normal opacity-50">/{scoreToWin}</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {game.boardSize && (
+            <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+              {game.boardSize}x{game.boardSize}
             </span>
-          </div>
-        )}
+          )}
+          {game.scoreToWin && (
+            <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+              {tGame("nPts", { n: game.scoreToWin })}
+            </span>
+          )}
+          <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
+            {game.timeControl
+              ? `${Math.floor(game.timeControl.initialMs / 60_000)}+${Math.round(game.timeControl.incrementMs / 1_000)}`
+              : tGame("unlimitedTime")}
+          </span>
+          <GameConfigBadge roomType={game.roomType} />
+        </div>
         <div className="flex items-center gap-2">
           {isWaiting && onDelete && (
             <Button
@@ -85,6 +85,26 @@ export function ActiveGameCard({
           </Button>
         </div>
       </div>
+
+      {/* Row 1: playing as color + your score */}
+      {game.yourSeat && (
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className={cn(
+              "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+              game.yourSeat === "white"
+                ? "border-[#ddd2bf] bg-[radial-gradient(circle_at_30%_28%,#fffdfa,#f4eee3_58%,#d9ccb8)]"
+                : "border-[#191410] bg-[radial-gradient(circle_at_30%_28%,#5d554f,#2d2622_58%,#0f0c0b)]",
+            )}
+          />
+          <span className="text-xs text-[#6b563e]">{tCommon("playingAs", { color: "" })}</span>
+          <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
+          <span className="ml-auto font-mono text-xs tabular-nums text-[#6b563e]">
+            {yourScore}
+            <span className="font-normal opacity-50">/{scoreToWin}</span>
+          </span>
+        </div>
+      )}
 
       {/* Row 2: vs. opponent (with PlayerIdentityRow) + opponent score */}
       {opponent && (
@@ -120,27 +140,6 @@ export function ActiveGameCard({
       {!opponent && isWaiting && (
         <span className="text-xs text-[#8d7760]">{tGame("waitingForOpponent")}</span>
       )}
-
-      {/* Game settings pills */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {game.boardSize && (
-          <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
-            {game.boardSize}x{game.boardSize}
-          </span>
-        )}
-        {game.scoreToWin && (
-          <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
-            {tGame("nPts", { n: game.scoreToWin })}
-          </span>
-        )}
-        {game.timeControl && (
-          <span className="rounded-full border border-[#d7c39e] bg-[#fff9ef] px-2 py-0.5 text-[10px] font-medium text-[#6b5a45]">
-            {Math.floor(game.timeControl.initialMs / 60_000)}+
-            {Math.round(game.timeControl.incrementMs / 1_000)}
-          </span>
-        )}
-        <GameConfigBadge roomType={game.roomType} />
-      </div>
 
       {/* Row 3: status badge */}
       <div className="flex items-center justify-between gap-2 pt-0.5">
