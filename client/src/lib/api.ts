@@ -374,6 +374,13 @@ export function uploadAccountProfilePicture(file: File) {
   );
 }
 
+export function setAccountPassword(password: string) {
+  return request<{ providers: string[] }>("/api/player/set-password", {
+    method: "POST",
+    body: { password },
+  });
+}
+
 export function deleteAccount(displayName: string) {
   return request<{ message: string }>("/api/player/account", {
     method: "DELETE",

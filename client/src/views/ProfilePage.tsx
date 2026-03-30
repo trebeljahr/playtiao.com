@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
-import { updateActiveBadges } from "@/lib/api";
+import { updateActiveBadges, setAccountPassword } from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -261,16 +261,12 @@ function LinkedAccounts({
 
     setSavingPassword(true);
     try {
-      const { error } = await (authClient as any).setPassword({ newPassword });
-      if (error) {
-        setPasswordError(readableError(error));
-      } else {
-        setSetPasswordOpen(false);
-        setNewPasswordValue("");
-        setConfirmPasswordValue("");
-        toast.success(t("passwordSet"));
-        onProvidersChange();
-      }
+      await setAccountPassword(newPassword);
+      setSetPasswordOpen(false);
+      setNewPasswordValue("");
+      setConfirmPasswordValue("");
+      toast.success(t("passwordSet"));
+      onProvidersChange();
     } catch (error) {
       setPasswordError(readableError(error));
     } finally {
@@ -288,8 +284,13 @@ function LinkedAccounts({
         <CardContent className="space-y-4">
           {/* Password/credential provider */}
           {hasCredential && (
-            <div className="flex items-center justify-between rounded-xl border border-[#dcc7a3] bg-white px-4 py-2.5">
-              <span className="text-sm font-medium text-[#4e3d2c]">{t("passwordLogin")}</span>
+            <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5">
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
+                {t("passwordLogin")}
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                  {t("connected")}
+                </span>
+              </span>
               {unlinkableProviders && (
                 <Button
                   type="button"
@@ -314,11 +315,14 @@ function LinkedAccounts({
                 return (
                   <div
                     key={providerId}
-                    className="flex items-center justify-between rounded-xl border border-[#dcc7a3] bg-white px-4 py-2.5"
+                    className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5"
                   >
                     <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
                       {Icon && <Icon className="h-4 w-4" />}
                       {meta?.label ?? providerId}
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                        {t("connected")}
+                      </span>
                     </span>
                     {unlinkableProviders && (
                       <Button

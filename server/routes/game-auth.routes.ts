@@ -755,6 +755,69 @@ router.put("/profile", async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
+// Set password (for SSO-only users who want to add credential login)
+// ---------------------------------------------------------------------------
+
+router.post("/set-password", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    const { password } = req.body ?? {};
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({
+        code: "MISSING_PASSWORD",
+        message: "Password is required.",
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        code: "INVALID_PASSWORD",
+        message: "Passwords must be at least 8 characters long.",
+      });
+    }
+
+    const providers = await getProvidersForAccount(account.id);
+    if (providers.includes("credential")) {
+      return res.status(409).json({
+        code: "CREDENTIAL_EXISTS",
+        message: "This account already has a password. Use change password instead.",
+      });
+    }
+
+    // Hash the password using bcrypt (same config as better-auth)
+    const bcrypt = await import("bcrypt");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Get the user's email from better-auth
+    const email = await getEmailForAccount(account.id);
+    if (!email) {
+      return res.status(400).json({
+        code: "NO_EMAIL",
+        message: "Cannot set a password without an email address.",
+      });
+    }
+
+    // Insert a credential account entry into better-auth's account collection
+    const db = mongoose.connection.getClient().db();
+    await db.collection("account").insertOne({
+      userId: account.id,
+      providerId: "credential",
+      accountId: account.id,
+      password: hashedPassword,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const updatedProviders = await getProvidersForAccount(account.id);
+    return res.status(200).json({ providers: updatedProviders });
+  } catch (error) {
+    return handleRouteError(error, req, res, "Unable to set password right now.");
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Profile picture
 // ---------------------------------------------------------------------------
 

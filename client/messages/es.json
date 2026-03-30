@@ -364,6 +364,7 @@
     "linkNewAccount": "Vincular una cuenta nueva",
     "unlink": "Desvincular",
     "unlinking": "Desvinculando...",
+    "connected": "Conectado",
     "linking": "Vinculando...",
     "passwordLogin": "Inicio con contraseña",
     "emailManagedByProvider": "El email es gestionado por tu cuenta de {provider}.",

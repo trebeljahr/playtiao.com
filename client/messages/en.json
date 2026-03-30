@@ -365,6 +365,7 @@
     "linkNewAccount": "Link a new account",
     "unlink": "Unlink",
     "unlinking": "Unlinking...",
+    "connected": "Connected",
     "linking": "Linking...",
     "passwordLogin": "Password login",
     "addPasswordLogin": "Add password login",
