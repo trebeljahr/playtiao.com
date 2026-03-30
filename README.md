@@ -23,12 +23,15 @@ For the complete rulebook, see [docs/GAME_RULES.md](docs/GAME_RULES.md).
 ## Features
 
 - **Local play** -- two players on the same device
-- **Computer opponent** -- play against an AI
+- **Computer opponent** -- play against an AI with multiple difficulty levels
 - **Online multiplayer** -- real-time games over WebSocket
 - **Matchmaking** -- automatic opponent pairing
+- **Tournaments** -- create and join tournaments with bracket play
 - **Friends and invitations** -- add friends, invite them to games
-- **Game history** -- browse your past matches
-- **Accounts** -- optional signup with profile pictures, or play as a guest
+- **Game history** -- browse your past matches with move-by-move review
+- **Public profiles** -- player stats, ratings, and badges
+- **Accounts** -- sign up with email/password or OAuth (GitHub, Google, Discord), or play as a guest
+- **Tutorial** -- interactive tutorial to learn the game rules
 
 ## Quick Start
 
@@ -48,29 +51,35 @@ npm run dev
 
 No `.env` file needed -- `server/.env.development` ships with defaults that point at the local Docker containers. If you need custom settings (e.g. real AWS credentials), create `server/.env` and it will take precedence.
 
-Open `http://localhost:3000`. The Vite frontend proxies API/WebSocket requests to the Express backend. Uploaded files go to local MinIO, browsable at `http://localhost:9001` (user: `minioadmin`, password: `minioadmin`).
+By default, the dev script picks random free ports (printed on startup) to avoid conflicts. Use `npm run dev:fixed` for fixed ports (client on `http://localhost:3000`, server on `http://localhost:5005`). The Next.js dev server proxies API and WebSocket requests to the Express backend automatically. Uploaded files go to local MinIO, browsable at `http://localhost:9001` (user: `minioadmin`, password: `minioadmin`).
 
 ### Available Commands
 
 ```bash
-npm run dev            # Start both client and server with hot reload
-npm run dev:infra      # Start local MongoDB + MinIO containers
-npm run dev:infra:stop # Stop containers (data preserved)
-npm run dev:infra:reset# Stop containers and wipe all data (clean slate)
-npm run client         # Start only the Vite frontend
-npm run server         # Start only the Express backend
-npm test               # Run server unit tests
+npm run dev              # Start client + server with hot reload (random ports)
+npm run dev:fixed        # Same, with fixed ports (3000 + 5005)
+npm run dev:lan          # Same, accessible from local network
+npm run dev:infra        # Start local MongoDB + MinIO + Redis containers
+npm run dev:infra:stop   # Stop containers (data preserved)
+npm run dev:infra:reset  # Stop containers and wipe all data (clean slate)
+npm run client           # Start only the Next.js frontend
+npm run server           # Start only the Express backend
+npm run test:unit        # Run unit tests (server + client)
+npm run test:e2e         # Run Playwright end-to-end tests
+npm run typecheck        # TypeScript type checking
+npm run eslint           # Lint both client and server
 ```
 
 ## Project Structure
 
 ```
 tiao/
-├── client/          React + Vite + Tailwind frontend
+├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
 ├── e2e/             Playwright end-to-end tests
-└── docs/            Documentation
+├── docs/            Markdown documentation
+└── docs-site/       Docusaurus documentation site
 ```
 
 The game engine (`shared/src/tiao.ts`) is a set of pure functions with no side effects -- both the server and client use it to validate and apply moves.
@@ -89,14 +98,14 @@ The game engine (`shared/src/tiao.ts`) is a set of pure functions with no side e
 ## Testing
 
 ```bash
-# Server unit tests (68 tests)
-npm --prefix server test
+# All unit tests (server + client)
+npm run test:unit
 
-# Client unit tests (63 tests)
-cd client && npx vitest run
+# E2E tests (spawns isolated test infrastructure)
+npm run test:e2e
 
-# E2E tests (requires running servers)
-npx playwright test
+# Everything
+npm test
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) for the full guide.
@@ -105,7 +114,7 @@ See [docs/TESTING.md](docs/TESTING.md) for the full guide.
 
 Production runs as two Docker containers:
 
-- **client** -- Nginx serving the Vite build, proxying `/api` and `/ws` to the backend
+- **client** -- Node.js serving the Next.js app, proxying `/api` and `/ws` to the backend
 - **server** -- Express + WebSocket on a single Node.js process
 
 ### Required Environment Variables
@@ -113,16 +122,19 @@ Production runs as two Docker containers:
 **Backend:**
 
 - `MONGODB_URI` -- MongoDB connection string
-- `TOKEN_SECRET` -- secret for session token hashing
+- `TOKEN_SECRET` -- secret for session token hashing (also used as `BETTER_AUTH_SECRET` fallback)
 - `S3_BUCKET_NAME`, `S3_PUBLIC_URL` -- for profile picture uploads
 - `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
 **Optional:**
 
-- `FRONTEND_URL` -- for cross-origin CORS setups
+- `FRONTEND_URL` -- for CORS and better-auth base URL
 - `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` -- for S3-compatible providers (MinIO, etc.)
 - `REDIS_URL` -- enables distributed matchmaking, locks, and rate limiting (falls back to in-memory)
 - `PORT` -- server port (defaults to 5005 in dev)
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` -- GitHub OAuth
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` -- Google OAuth
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` -- Discord OAuth
 
 See `.env.example` files in `server/` and `client/` for templates.
 

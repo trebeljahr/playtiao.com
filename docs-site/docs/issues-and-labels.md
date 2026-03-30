@@ -9,7 +9,7 @@ This page explains how we use GitHub Issues and labels to track work on Tiao. Wh
 
 ## Opening an Issue
 
-When you [create a new issue](https://github.com/trebeljahr/tiao/issues/new/choose), you'll see a template chooser with three options:
+When you [create a new issue](https://github.com/trebeljahr/playtiao.com/issues/new/choose), you'll see a template chooser with three options:
 
 | Template                      | Use when...                                       |
 | ----------------------------- | ------------------------------------------------- |
@@ -19,7 +19,7 @@ When you [create a new issue](https://github.com/trebeljahr/tiao/issues/new/choo
 
 Each template is a structured form — fill in the fields and we'll have everything we need to act on it. Blank issues are disabled to keep things organized.
 
-For **questions and discussions**, use [GitHub Discussions](https://github.com/trebeljahr/tiao/discussions) instead of issues. For **security vulnerabilities**, use [GitHub Security Advisories](https://github.com/trebeljahr/tiao/security/advisories/new) to report them privately.
+For **questions and discussions**, use [GitHub Discussions](https://github.com/trebeljahr/playtiao.com/discussions) instead of issues. For **security vulnerabilities**, use [GitHub Security Advisories](https://github.com/trebeljahr/playtiao.com/security/advisories/new) to report them privately.
 
 ## Labels
 
@@ -98,9 +98,9 @@ Opened ──► status: triage ──► status: confirmed ──► Someone pi
 
 Looking for something to contribute? Filter by:
 
-- [`good first issue`](https://github.com/trebeljahr/tiao/labels/good%20first%20issue) — great starting points if you're new
-- [`help wanted`](https://github.com/trebeljahr/tiao/labels/help%20wanted) — issues where we'd love community help
-- [`status: confirmed`](https://github.com/trebeljahr/tiao/labels/status%3A%20confirmed) — all confirmed issues ready for work
+- [`good first issue`](https://github.com/trebeljahr/playtiao.com/labels/good%20first%20issue) — great starting points if you're new
+- [`help wanted`](https://github.com/trebeljahr/playtiao.com/labels/help%20wanted) — issues where we'd love community help
+- [`status: confirmed`](https://github.com/trebeljahr/playtiao.com/labels/status%3A%20confirmed) — all confirmed issues ready for work
 
 ## Pull Requests
 

@@ -24,7 +24,7 @@ Players take turns placing pieces or jumping over enemy pieces to capture them:
 
 Jumps can chain -- keep jumping with the same piece if more captures are available. First to 10 captures wins.
 
-Try the [interactive tutorial](https://tiao.ricos.site/tutorial) to learn by playing.
+Try the [interactive tutorial](https://your-domain-example.com/tutorial) to learn by playing.
 
 ## Features
 
@@ -34,7 +34,10 @@ Try the [interactive tutorial](https://tiao.ricos.site/tutorial) to learn by pla
 - **Matchmaking** -- automatic opponent pairing
 - **Friends and invitations** -- add friends, invite them to games
 - **Game history** -- browse your past matches
-- **Accounts** -- optional signup with profile pictures, or play as a guest
+- **Tournaments** -- create and join tournaments with bracket play
+- **Public profiles** -- player stats, ratings, and badges
+- **Accounts** -- sign up with email/password or OAuth (GitHub, Google, Discord), or play as a guest
+- **Tutorial** -- interactive tutorial to learn the game rules
 
 ## Quick Start
 
@@ -99,7 +102,7 @@ Both modes proxy API and WebSocket requests from the client dev server to the ba
 
 ```
 tiao/
-├── client/          React + Vite + Tailwind frontend
+├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
 ├── e2e/             Playwright end-to-end tests

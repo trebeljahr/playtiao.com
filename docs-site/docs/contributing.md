@@ -54,11 +54,12 @@ By default this picks random free ports for the client and server to avoid confl
 
 ```
 tiao/
-├── client/          React + Vite + Tailwind frontend
+├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
 ├── e2e/             Playwright end-to-end tests
-└── docs/            Documentation
+├── docs/            Markdown documentation
+└── docs-site/       Docusaurus documentation site
 ```
 
 See [architecture](architecture) for a deeper dive into the system design.
@@ -142,15 +143,16 @@ All game rules live here as pure functions. If you're fixing game mechanics, thi
 The server orchestrates multiplayer games, authentication, and social features. Key files:
 
 - `game/gameService.ts` -- core game service that validates moves, manages connections, and broadcasts state
+- `game/tournamentService.ts` -- tournament lifecycle (create, register, bracket management)
 - `game/gameStore.ts` -- persistence layer (MongoDB in production, in-memory for tests)
-- `routes/` -- Express route handlers
-- `auth/playerSessionStore.ts` -- session management
+- `routes/` -- Express route handlers (auth, games, social, tournaments, admin)
+- `auth/auth.ts` -- better-auth configuration (email/password, OAuth, anonymous)
 
 ### Client (`client/src/`)
 
 The frontend is organized around pages and hooks:
 
-- `pages/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile)
+- `views/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
 - `lib/hooks/` -- state management hooks for each feature
 - `lib/api.ts` -- HTTP and WebSocket client
 - `components/` -- shared UI components

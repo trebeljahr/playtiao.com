@@ -67,28 +67,29 @@ This document records the key architectural decisions made in Tiao, the reasonin
 
 ---
 
-## 4. Session Strategy: HMAC Cookie Digests
+## 4. Session Strategy: better-auth
 
 > Investigation: [002-auth-strategy.md](investigations/002-auth-strategy.md)
 
-**Context:** The server needs to authenticate players across HTTP requests and WebSocket connections. Options considered: JWT tokens, opaque session tokens, HMAC-digested cookies.
+**Context:** The server needs to authenticate players across HTTP requests and WebSocket connections. The original implementation used custom HMAC cookie digests, but as OAuth support and more auth features were needed, a managed solution became more practical.
 
-**Decision:** Sessions use HttpOnly cookies containing a random 48-byte base64url token. The server stores only the HMAC-SHA256 digest (keyed with `TOKEN_SECRET`) in MongoDB's `GameSession` collection with a TTL index for automatic expiration.
+**Decision:** Migrate from custom HMAC session handling to [better-auth](https://www.better-auth.com/), a TypeScript-first auth library with built-in support for email/password, OAuth providers, anonymous sessions, and session management. better-auth uses HttpOnly cookies and stores sessions in MongoDB via its MongoDB adapter.
 
-**Why not JWT:**
+**Why better-auth over custom sessions:**
 
-- JWTs can't be revoked without a blacklist (which requires storage anyway)
-- Game sessions need server-side state (player identity, session validity)
-- JWT tokens are larger (header + payload + signature) than a simple cookie
-- No need for cross-service token validation (single backend)
+- Built-in OAuth support (GitHub, Google, Discord) without writing provider integrations
+- Anonymous/guest accounts as a first-class plugin
+- Session management (30-day duration, auto-refresh) handled by the library
+- Password hashing (bcrypt), rate limiting, and security best practices included
+- Custom routes can still wrap better-auth APIs (e.g., login by username)
 
 **Consequences:**
 
-- Immediate session revocation (delete from DB)
-- DB query on every authenticated request (fast with indexed `tokenDigest`)
-- TOKEN_SECRET compromise requires credential rotation (not token re-issuance)
-- 30-day TTL with MongoDB TTL index for automatic cleanup
-- SameSite=Strict + HttpOnly + Secure flags prevent XSS and CSRF
+- Auth state split across better-auth collections (`user`, `session`, `account`) and Tiao's `GameAccount`
+- `GameAccount._id` matches `user._id` to link game data with auth data
+- Custom login route resolves usernames to emails before delegating to better-auth
+- `TOKEN_SECRET` serves as fallback for `BETTER_AUTH_SECRET`
+- SameSite=Lax + HttpOnly + Secure flags for cookie security
 
 ---
 
@@ -209,13 +210,13 @@ Messages are JSON-serialized and dispatched through `GameService.applyAction()`.
 
 ---
 
-## 10. Vite to Next.js 14 App Router Migration
+## 10. Vite to Next.js 14 App Router Migration (Completed)
 
 > Investigation: [007-client-framework.md](investigations/007-client-framework.md)
 
-**Context:** The client was a Vite-powered React SPA with react-router-dom. As the project matured, the SPA model became limiting: no server-side rendering for SEO, no social sharing meta tags (Open Graph), and no control over initial HTML for performance. A framework with SSR capabilities was needed.
+**Context:** The client was originally a Vite-powered React SPA with react-router-dom. The SPA model was limiting: no server-side rendering for SEO, no social sharing meta tags (Open Graph), and no control over initial HTML for performance.
 
-**Decision:** Migrate to Next.js 14 App Router. This required:
+**Decision:** Migrated to Next.js 14 App Router. This required:
 
 - Replacing react-router-dom with Next.js file-system routing (`app/` directory)
 - Creating a custom `server.mjs` wrapping Next.js with `http-proxy` for WebSocket proxying — same-origin session cookies don't work with cross-origin WebSocket connections

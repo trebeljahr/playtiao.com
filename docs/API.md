@@ -4,92 +4,52 @@ Complete REST API and WebSocket protocol reference for Tiao.
 
 ## Authentication
 
-All endpoints require a `tiao.session` HttpOnly cookie, set automatically by the guest, signup, and login endpoints. Endpoints return `401` if no valid session is present. Social and profile endpoints additionally return `403` if the player is a guest (account required).
+Authentication is handled by [better-auth](https://www.better-auth.com/) with HttpOnly session cookies. Sessions are stored in MongoDB and last 30 days (refreshed after 24 hours of activity).
+
+### Authentication Methods
+
+- **Email/password** -- sign up and sign in via better-auth's built-in endpoints
+- **OAuth** -- GitHub, Google, and Discord (when configured)
+- **Anonymous/guest** -- play without an account (limited to 10 games)
+
+### Built-in Auth Endpoints (better-auth)
+
+These are mounted at `/api/auth/*` and handled directly by better-auth:
+
+| Method | Path                        | Description            |
+| ------ | --------------------------- | ---------------------- |
+| POST   | `/api/auth/sign-up/email`   | Create account (email) |
+| POST   | `/api/auth/sign-in/email`   | Sign in (email)        |
+| POST   | `/api/auth/sign-out`        | Sign out               |
+| GET    | `/api/auth/session`         | Check session          |
+| POST   | `/api/auth/change-password` | Change password        |
+
+OAuth callback endpoints are also mounted here for GitHub, Google, and Discord.
+
+### Player Types
+
+| Type      | Identity                  | Persistence                                 |
+| --------- | ------------------------- | ------------------------------------------- |
+| `guest`   | Anonymous                 | Session only, limited to 10 games           |
+| `account` | Email + password or OAuth | Full profile, friends, history, tournaments |
+
+Social, profile, tournament, and badge endpoints return `403` for guests (account required).
 
 ---
 
-## Player Authentication
+## Custom Auth Endpoints
 
-### POST /api/player/guest
-
-Create a guest session.
-
-**Request:**
-
-```json
-{
-  "displayName": "Player1"
-}
-```
-
-All fields are optional. A display name is generated if omitted.
-
-**Response 201:**
-
-```json
-{
-  "player": {
-    "playerId": "abc123",
-    "displayName": "Player1",
-    "kind": "guest"
-  }
-}
-```
-
-Sets the `tiao.session` HttpOnly cookie.
-
----
-
-### POST /api/player/signup
-
-Create an account.
-
-**Request:**
-
-```json
-{
-  "email": "user@example.com",
-  "password": "securepass",
-  "displayName": "MyName"
-}
-```
-
-Only `password` is required. `email` and `displayName` are optional.
-
-**Response 201:**
-
-```json
-{
-  "player": {
-    "playerId": "abc123",
-    "displayName": "MyName",
-    "kind": "account",
-    "email": "user@example.com"
-  }
-}
-```
-
-Sets the `tiao.session` HttpOnly cookie.
-
-**Errors:**
-
-| Status | Reason                                                                                                   |
-| ------ | -------------------------------------------------------------------------------------------------------- |
-| 400    | Missing password, password too short (<8 chars), display name too short (<3 chars), invalid email format |
-| 409    | Email or username already taken                                                                          |
-| 503    | Database unavailable                                                                                     |
-
----
+These wrap or extend better-auth for Tiao-specific behavior.
 
 ### POST /api/player/login
 
-Login to an existing account.
+Login with a username or email. Resolves usernames to email addresses before delegating to better-auth.
 
 **Request:**
 
 ```json
 {
-  "identifier": "user@example.com",
+  "identifier": "myusername",
   "password": "securepass"
 }
 ```
@@ -102,28 +62,31 @@ Login to an existing account.
 {
   "player": {
     "playerId": "abc123",
-    "displayName": "MyName",
+    "displayName": "myusername",
     "kind": "account",
-    "email": "user@example.com"
+    "email": "user@example.com",
+    "badges": ["supporter"],
+    "activeBadges": ["supporter"],
+    "rating": 1500
   }
 }
 ```
 
-Sets the `tiao.session` HttpOnly cookie.
+Sets the session cookie.
 
 **Errors:**
 
-| Status | Reason                            |
-| ------ | --------------------------------- |
-| 400    | Missing identifier or password    |
-| 401    | Account not found, wrong password |
-| 503    | Database unavailable              |
+| Status | Reason                         |
+| ------ | ------------------------------ |
+| 400    | Missing identifier or password |
+| 401    | Invalid credentials            |
+| 503    | Database unavailable           |
 
 ---
 
 ### POST /api/player/logout
 
-Destroy the current session.
+Server-side session acknowledgment. Session invalidation is handled client-side via better-auth's `signOut()`.
 
 **Response 204:** No body.
 
@@ -131,7 +94,7 @@ Destroy the current session.
 
 ### GET /api/player/me
 
-Get the current authenticated player.
+Get the current authenticated player identity.
 
 **Response 200:**
 
@@ -139,13 +102,19 @@ Get the current authenticated player.
 {
   "player": {
     "playerId": "abc123",
-    "displayName": "MyName",
+    "displayName": "myusername",
     "kind": "account",
     "email": "user@example.com",
-    "profilePicture": "https://..."
+    "profilePicture": "https://...",
+    "hasSeenTutorial": true,
+    "badges": ["supporter"],
+    "activeBadges": ["supporter"],
+    "rating": 1500
   }
 }
 ```
+
+For accounts that signed up via OAuth and haven't set a username yet, the response includes `"needsUsername": true`.
 
 **Errors:**
 
@@ -155,35 +124,120 @@ Get the current authenticated player.
 
 ---
 
-## Player Profile
+### POST /api/player/set-username
 
-Account-only endpoints. Guests receive `403`.
+Set a valid username after OAuth sign-up. Required before the player can use most features.
 
-### GET /api/player/profile
+**Request:**
 
-Get account profile.
+```json
+{
+  "username": "myusername"
+}
+```
+
+Usernames must be 3-32 characters, lowercase, and can only contain letters, numbers, hyphens, and underscores.
 
 **Response 200:**
 
 ```json
 {
-  "profile": {
-    "displayName": "MyName",
-    "email": "user@example.com",
-    "profilePicture": "https://...",
-    "createdAt": "2025-01-15T10:30:00.000Z",
-    "updatedAt": "2025-02-20T14:00:00.000Z"
+  "auth": {
+    "player": { "...": "PlayerIdentity" }
   }
 }
 ```
 
 **Errors:**
 
-| Status | Reason                |
-| ------ | --------------------- |
-| 401    | Not authenticated     |
-| 403    | Not an account player |
-| 404    | Account not found     |
+| Status | Reason                  |
+| ------ | ----------------------- |
+| 400    | Invalid username format |
+| 403    | Not an account player   |
+| 409    | Username already taken  |
+
+---
+
+### POST /api/player/tutorial-complete
+
+Mark the interactive tutorial as completed for the current account.
+
+**Response 200:**
+
+```json
+{
+  "auth": {
+    "player": { "...": "PlayerIdentity" }
+  }
+}
+```
+
+---
+
+## Player Profile
+
+Account-only endpoints. Guests receive `403`.
+
+### GET /api/player/profile
+
+Get the authenticated user's profile.
+
+**Response 200:**
+
+```json
+{
+  "profile": {
+    "displayName": "myusername",
+    "email": "user@example.com",
+    "profilePicture": "https://...",
+    "badges": ["supporter"],
+    "activeBadges": ["supporter"],
+    "bio": "I love Tiao!",
+    "rating": 1500,
+    "gamesPlayed": 42,
+    "ratingPercentile": 75,
+    "providers": ["credential", "github"],
+    "createdAt": "2025-01-15T10:30:00.000Z",
+    "updatedAt": "2025-02-20T14:00:00.000Z"
+  }
+}
+```
+
+---
+
+### GET /api/player/profile/:username
+
+Get a public player profile. No authentication required.
+
+**Response 200:**
+
+```json
+{
+  "profile": {
+    "displayName": "alice",
+    "profilePicture": "https://...",
+    "rating": 1650,
+    "gamesPlayed": 100,
+    "gamesWon": 60,
+    "gamesLost": 40,
+    "ratingPercentile": 85,
+    "bio": "Tiao enthusiast",
+    "badges": ["supporter"],
+    "activeBadges": ["supporter"],
+    "favoriteBoard": 19,
+    "favoriteTimeControl": "5+3",
+    "favoriteScore": 10,
+    "createdAt": "2025-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Errors:**
+
+| Status | Reason           |
+| ------ | ---------------- |
+| 400    | Invalid username |
+| 404    | Player not found |
 
 ---
 
@@ -195,46 +249,39 @@ Update account profile. All fields are optional, but at least one must be provid
 
 ```json
 {
-  "displayName": "NewName",
-  "email": "new@example.com",
-  "password": "newsecurepass"
+  "displayName": "newname",
+  "password": "newsecurepass",
+  "currentPassword": "oldsecurepass",
+  "bio": "Updated bio"
 }
 ```
+
+`currentPassword` is required when changing the password.
 
 **Response 200:**
 
 ```json
 {
   "auth": {
-    "player": {
-      "playerId": "abc123",
-      "displayName": "NewName",
-      "kind": "account",
-      "email": "new@example.com"
-    }
+    "player": { "...": "PlayerIdentity" }
   },
-  "profile": {
-    "displayName": "NewName",
-    "email": "new@example.com",
-    "profilePicture": "https://...",
-    "createdAt": "2025-01-15T10:30:00.000Z",
-    "updatedAt": "2025-03-01T09:00:00.000Z"
-  }
+  "profile": { "...": "AccountProfile" }
 }
 ```
 
 **Errors:**
 
-| Status | Reason                                                                       |
-| ------ | ---------------------------------------------------------------------------- |
-| 400    | Nothing to update, display name too short, password too short, invalid email |
-| 409    | Username or email already taken                                              |
+| Status | Reason                                                             |
+| ------ | ------------------------------------------------------------------ |
+| 400    | Nothing to update, display name too short/long, password too short |
+| 401    | Current password is incorrect                                      |
+| 409    | Username already taken                                             |
 
 ---
 
 ### POST /api/player/profile-picture
 
-Upload a profile picture. Expects `multipart/form-data` with a field named `profilePicture`.
+Upload a profile picture. Expects `multipart/form-data` with a field named `profilePicture`. Images are resized to 320px wide and converted to JPEG before uploading to S3.
 
 **Request:**
 
@@ -248,20 +295,9 @@ Field: profilePicture (file)
 ```json
 {
   "auth": {
-    "player": {
-      "playerId": "abc123",
-      "displayName": "MyName",
-      "kind": "account",
-      "profilePicture": "https://..."
-    }
+    "player": { "...": "PlayerIdentity" }
   },
-  "profile": {
-    "displayName": "MyName",
-    "email": "user@example.com",
-    "profilePicture": "https://...",
-    "createdAt": "2025-01-15T10:30:00.000Z",
-    "updatedAt": "2025-03-01T09:00:00.000Z"
-  }
+  "profile": { "...": "AccountProfile" }
 }
 ```
 
@@ -273,52 +309,46 @@ Field: profilePicture (file)
 
 ---
 
+## Badges
+
+### PUT /api/player/badges/active
+
+Set the active badge displayed on your profile. Only one badge can be active at a time.
+
+**Request:**
+
+```json
+{
+  "activeBadges": ["supporter"]
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "auth": {
+    "player": { "...": "PlayerIdentity" }
+  },
+  "activeBadges": ["supporter"]
+}
+```
+
+---
+
 ## Games
 
 ### GET /api/games
 
-List the authenticated player's games. Account only.
+List the authenticated player's games (active and finished).
 
 **Response 200:**
 
 ```json
 {
   "games": {
-    "active": [
-      {
-        "gameId": "ABC123",
-        "roomType": "direct",
-        "status": "active",
-        "createdAt": "2025-03-01T12:00:00.000Z",
-        "updatedAt": "2025-03-01T12:05:00.000Z",
-        "currentTurn": "white",
-        "historyLength": 4,
-        "winner": null,
-        "yourSeat": "white",
-        "score": { "white": 2, "black": 2 },
-        "players": [
-          {
-            "player": { "playerId": "abc123", "displayName": "Alice", "kind": "account" },
-            "online": true
-          },
-          {
-            "player": { "playerId": "def456", "displayName": "Bob", "kind": "account" },
-            "online": false
-          }
-        ],
-        "seats": {
-          "white": {
-            "player": { "playerId": "abc123", "displayName": "Alice", "kind": "account" },
-            "online": true
-          },
-          "black": {
-            "player": { "playerId": "def456", "displayName": "Bob", "kind": "account" },
-            "online": false
-          }
-        }
-      }
-    ],
-    "finished": []
+    "active": [{ "...": "MultiplayerGameSummary" }],
+    "finished": [{ "...": "MultiplayerGameSummary" }]
   }
 }
 ```
@@ -329,36 +359,36 @@ List the authenticated player's games. Account only.
 
 Create a new game room.
 
-**Request:** No body required.
+**Request (optional):**
+
+```json
+{
+  "boardSize": 19,
+  "scoreToWin": 10,
+  "timeControl": {
+    "initialMs": 300000,
+    "incrementMs": 3000
+  }
+}
+```
+
+All fields are optional. Defaults: 19x19 board, 10 captures to win, no time control.
 
 **Response 201:**
 
 ```json
 {
-  "snapshot": {
-    "gameId": "XYZ789",
-    "roomType": "direct",
-    "status": "waiting",
-    "createdAt": "2025-03-01T12:00:00.000Z",
-    "updatedAt": "2025-03-01T12:00:00.000Z",
-    "state": { "...": "full board state" },
-    "players": [
-      {
-        "player": { "playerId": "abc123", "displayName": "Alice", "kind": "account" },
-        "online": false
-      }
-    ],
-    "rematch": null,
-    "seats": {
-      "white": {
-        "player": { "playerId": "abc123", "displayName": "Alice", "kind": "account" },
-        "online": false
-      },
-      "black": null
-    }
-  }
+  "snapshot": { "...": "MultiplayerSnapshot" }
 }
 ```
+
+---
+
+### DELETE /api/games/:gameId
+
+Cancel a waiting game (before an opponent joins).
+
+**Response 204:** No body.
 
 ---
 
@@ -370,17 +400,7 @@ Get a game snapshot.
 
 ```json
 {
-  "snapshot": {
-    "gameId": "XYZ789",
-    "roomType": "direct",
-    "status": "active",
-    "createdAt": "2025-03-01T12:00:00.000Z",
-    "updatedAt": "2025-03-01T12:10:00.000Z",
-    "state": { "...": "full board state" },
-    "players": [],
-    "rematch": null,
-    "seats": { "white": null, "black": null }
-  }
+  "snapshot": { "...": "MultiplayerSnapshot" }
 }
 ```
 
@@ -426,11 +446,46 @@ Access a game. Takes a seat if one is available; spectates if the game is full.
 
 ---
 
+### GET /api/games/:gameId/og
+
+Public endpoint returning minimal game metadata for OpenGraph tags. No authentication required.
+
+**Response 200:**
+
+```json
+{
+  "gameId": "ABC123",
+  "status": "active",
+  "boardSize": 19,
+  "scoreToWin": 10,
+  "score": { "white": 5, "black": 3 },
+  "white": "Alice",
+  "black": "Bob",
+  "whiteRating": 1500,
+  "blackRating": 1600,
+  "timeControl": { "initialMs": 300000, "incrementMs": 3000 },
+  "roomType": "direct"
+}
+```
+
+---
+
 ## Matchmaking
 
 ### POST /api/matchmaking
 
 Enter the matchmaking queue.
+
+**Request (optional):**
+
+```json
+{
+  "timeControl": {
+    "initialMs": 300000,
+    "incrementMs": 3000
+  }
+}
+```
 
 **Response 200:**
 
@@ -485,7 +540,7 @@ Leave the matchmaking queue.
 
 ### POST /api/games/:gameId/test-finish
 
-Force finish a game. Development only.
+Force finish a game. Test environment only.
 
 **Request:**
 
@@ -507,9 +562,9 @@ Force finish a game. Development only.
 
 **Errors:**
 
-| Status | Reason                    |
-| ------ | ------------------------- |
-| 403    | Not allowed in production |
+| Status | Reason                       |
+| ------ | ---------------------------- |
+| 403    | Not allowed outside of tests |
 
 ---
 
@@ -548,7 +603,7 @@ Get the full social overview including friends, requests, and invitations.
 
 ### GET /api/player/social/search?q=query
 
-Search for players by display name or exact email.
+Search for players by display name or exact email. Rate-limited.
 
 **Query parameters:**
 
@@ -568,26 +623,12 @@ Search for players by display name or exact email.
         "kind": "account"
       },
       "relationship": "friend"
-    },
-    {
-      "player": {
-        "playerId": "jkl012",
-        "displayName": "Dana",
-        "kind": "account"
-      },
-      "relationship": "none"
     }
   ]
 }
 ```
 
 Possible `relationship` values: `"none"`, `"friend"`, `"incoming-request"`, `"outgoing-request"`.
-
-**Errors:**
-
-| Status | Reason                                   |
-| ------ | ---------------------------------------- |
-| 400    | Query too short (less than 2 characters) |
 
 ---
 
@@ -663,6 +704,34 @@ Cancel an outgoing friend request.
 
 ---
 
+### POST /api/player/social/friends/:accountId/remove
+
+Remove a friend.
+
+**Response 200:**
+
+```json
+{
+  "message": "Friend removed."
+}
+```
+
+---
+
+### GET /api/player/social/friends/:friendId/active-games
+
+View a friend's currently active games.
+
+**Response 200:**
+
+```json
+{
+  "games": [{ "...": "MultiplayerGameSummary" }]
+}
+```
+
+---
+
 ### POST /api/player/social/game-invitations
 
 Send a game invitation to a friend.
@@ -707,7 +776,7 @@ Send a game invitation to a friend.
 
 ### POST /api/player/social/game-invitations/:invitationId/revoke
 
-Revoke a sent invitation.
+Revoke a sent invitation (sender only).
 
 **Response 200:**
 
@@ -717,11 +786,388 @@ Revoke a sent invitation.
 }
 ```
 
-**Errors:**
+---
 
-| Status | Reason                                  |
-| ------ | --------------------------------------- |
-| 404    | Invitation not found or already expired |
+### POST /api/player/social/game-invitations/:invitationId/decline
+
+Decline a received invitation (recipient only).
+
+**Response 200:**
+
+```json
+{
+  "message": "Invitation declined."
+}
+```
+
+---
+
+## Tournaments
+
+All tournament endpoints require account authentication unless otherwise noted.
+
+### GET /api/tournaments
+
+List public tournaments. Optionally filter by status.
+
+**Query parameters:**
+
+| Parameter | Required | Description                                          |
+| --------- | -------- | ---------------------------------------------------- |
+| `status`  | No       | Filter by status (e.g. `open`, `active`, `finished`) |
+
+**Response 200:**
+
+```json
+{
+  "tournaments": [{ "...": "TournamentSnapshot" }]
+}
+```
+
+---
+
+### GET /api/tournaments/my
+
+List the current player's tournaments.
+
+**Response 200:**
+
+```json
+{
+  "tournaments": [{ "...": "TournamentSnapshot" }]
+}
+```
+
+---
+
+### POST /api/tournaments
+
+Create a new tournament.
+
+**Request:**
+
+```json
+{
+  "name": "Weekend Open",
+  "description": "A casual weekend tournament",
+  "settings": {
+    "format": "single-elimination",
+    "maxParticipants": 16
+  }
+}
+```
+
+**Response 201:**
+
+```json
+{
+  "tournament": { "...": "TournamentSnapshot" }
+}
+```
+
+---
+
+### GET /api/tournaments/:id
+
+Get a tournament snapshot.
+
+**Response 200:**
+
+```json
+{
+  "tournament": { "...": "TournamentSnapshot" }
+}
+```
+
+---
+
+### POST /api/tournaments/:id/access
+
+Access a private tournament via invite code.
+
+**Request:**
+
+```json
+{
+  "inviteCode": "ABC123"
+}
+```
+
+---
+
+### POST /api/tournaments/:id/register
+
+Register for a tournament.
+
+**Request (optional):**
+
+```json
+{
+  "inviteCode": "ABC123"
+}
+```
+
+Invite code is required for private tournaments.
+
+---
+
+### POST /api/tournaments/:id/unregister
+
+Unregister from a tournament.
+
+---
+
+### POST /api/tournaments/:id/start
+
+Start the tournament. Creator/admin only.
+
+---
+
+### POST /api/tournaments/:id/cancel
+
+Cancel the tournament. Creator/admin only.
+
+---
+
+### PUT /api/tournaments/:id/seeding
+
+Update tournament seeds. Admin only.
+
+**Request:**
+
+```json
+{
+  "seeds": [
+    { "playerId": "abc123", "seed": 1 },
+    { "playerId": "def456", "seed": 2 }
+  ]
+}
+```
+
+---
+
+### POST /api/tournaments/:id/seeding/randomize
+
+Randomize tournament seeds. Admin only.
+
+---
+
+### PUT /api/tournaments/:id/featured-match
+
+Set the featured match for spectators. Admin only.
+
+**Request:**
+
+```json
+{
+  "matchId": "match-001"
+}
+```
+
+Pass `null` to clear.
+
+---
+
+### POST /api/tournaments/:id/matches/:matchId/forfeit
+
+Admin-forfeit a tournament match.
+
+**Request:**
+
+```json
+{
+  "loserId": "abc123"
+}
+```
+
+---
+
+## Admin
+
+Admin endpoints require an admin account. A user becomes an admin when `isAdmin: true` is set on their `GameAccount` document in MongoDB (there is no self-service admin promotion).
+
+### How Admin Works
+
+The `requireAdmin` middleware checks two things:
+
+1. The request has a valid account session (not a guest)
+2. The account's `isAdmin` field is `true`
+
+If either check fails, the endpoint returns `403`.
+
+### GET /api/player/admin/users/search?q=query
+
+Search users by display name (case-insensitive, up to 20 results).
+
+**Response 200:**
+
+```json
+{
+  "users": [
+    {
+      "playerId": "abc123",
+      "displayName": "alice",
+      "badges": ["supporter"],
+      "activeBadges": ["supporter"]
+    }
+  ]
+}
+```
+
+---
+
+### POST /api/player/admin/badges/grant
+
+Grant a badge to a player.
+
+**Request:**
+
+```json
+{
+  "playerId": "abc123",
+  "badgeId": "supporter"
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "badges": ["supporter"],
+  "activeBadges": []
+}
+```
+
+---
+
+### POST /api/player/admin/badges/revoke
+
+Revoke a badge from a player. Also removes the badge from `activeBadges` if it was being displayed.
+
+**Request:**
+
+```json
+{
+  "playerId": "abc123",
+  "badgeId": "supporter"
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "badges": [],
+  "activeBadges": []
+}
+```
+
+---
+
+### Available Badge IDs
+
+| Badge ID            | Tier | Description              |
+| ------------------- | ---- | ------------------------ |
+| `supporter`         | 1    | Supporter badge          |
+| `contributor`       | 1    | Contributor badge        |
+| `super-supporter`   | 2    | Animated supporter badge |
+| `official-champion` | 2    | Animated champion badge  |
+| `creator`           | 3    | Animated rainbow badge   |
+| `badge-1`           | 1    | Coral                    |
+| `badge-2`           | 1    | Indigo                   |
+| `badge-3`           | 2    | Pink (animated)          |
+| `badge-4`           | 2    | Cyan (animated)          |
+| `badge-5`           | 1    | Stone                    |
+| `badge-6`           | 2    | Amber/Red (animated)     |
+| `badge-7`           | 3    | Rainbow (animated)       |
+| `badge-8`           | 2    | Deep Blue (animated)     |
+
+Tiers: 1 = static gradient, 2 = animated shimmer, 3 = rainbow animation with glow.
+
+Players can display one active badge at a time via `PUT /api/player/badges/active`.
+
+---
+
+### Managing Admin and Badges via mongosh
+
+You can grant admin privileges and badges directly in the database. This is useful for bootstrapping the first admin account or for environments where the admin UI is not yet accessible.
+
+**Connect to MongoDB:**
+
+```bash
+# Local development (Docker Compose)
+docker compose exec mongo mongosh tiao
+
+# If mongosh is installed locally
+mongosh mongodb://localhost:27017/tiao
+
+# Production (replace with your connection string)
+mongosh "mongodb+srv://..."
+```
+
+**Find a user by username:**
+
+```javascript
+db.gameaccounts.findOne({ displayName: "alice" });
+```
+
+**Make a user admin:**
+
+```javascript
+db.gameaccounts.updateOne({ displayName: "alice" }, { $set: { isAdmin: true } });
+```
+
+**Remove admin privileges:**
+
+```javascript
+db.gameaccounts.updateOne({ displayName: "alice" }, { $set: { isAdmin: false } });
+```
+
+**Grant a badge:**
+
+```javascript
+db.gameaccounts.updateOne({ displayName: "alice" }, { $addToSet: { badges: "creator" } });
+```
+
+`$addToSet` is used instead of `$push` so the badge is only added if it is not already present.
+
+**Revoke a badge:**
+
+```javascript
+db.gameaccounts.updateOne(
+  { displayName: "alice" },
+  { $pull: { badges: "creator", activeBadges: "creator" } },
+);
+```
+
+This removes the badge from both `badges` and `activeBadges` in one operation.
+
+**Check a user's admin status and badges:**
+
+```javascript
+db.gameaccounts.findOne({ displayName: "alice" }, { isAdmin: 1, badges: 1, activeBadges: 1 });
+```
+
+**List all admins:**
+
+```javascript
+db.gameaccounts.find({ isAdmin: true }, { displayName: 1 });
+```
+
+---
+
+## Health
+
+### GET /api/health
+
+**Response 200:**
+
+```json
+{
+  "status": "ok",
+  "database": "connected"
+}
+```
 
 ---
 
@@ -735,7 +1181,7 @@ Connect to a game room via WebSocket:
 ws://host/api/ws?gameId=ROOM_ID
 ```
 
-The `tiao.session` cookie is sent automatically by the browser.
+The session cookie is sent automatically by the browser.
 
 #### Client-to-Server Messages
 
@@ -838,20 +1284,7 @@ Account authentication required.
 ```json
 {
   "type": "game-update",
-  "summary": {
-    "gameId": "ABC123",
-    "status": "active",
-    "currentTurn": "white",
-    "yourSeat": "white",
-    "score": { "white": 5, "black": 3 },
-    "roomType": "direct",
-    "createdAt": "2025-03-01T12:00:00.000Z",
-    "updatedAt": "2025-03-01T12:10:00.000Z",
-    "historyLength": 10,
-    "winner": null,
-    "players": [],
-    "seats": { "white": null, "black": null }
-  }
+  "summary": { "...": "MultiplayerGameSummary" }
 }
 ```
 
@@ -869,6 +1302,8 @@ Account authentication required.
   }
 }
 ```
+
+A social update may also arrive without the `overview` field, signaling that the client should re-fetch the overview via REST.
 
 ---
 
@@ -933,6 +1368,12 @@ Account authentication required.
   kind: "guest" | "account";
   email?: string;
   profilePicture?: string;
+  badges?: string[];
+  activeBadges?: string[];
+  rating?: number;
+  hasSeenTutorial?: boolean;
+  needsUsername?: boolean;     // true for OAuth accounts without a username
+  isAdmin?: boolean;
 }
 ```
 

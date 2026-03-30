@@ -19,11 +19,12 @@ Tiao is an open-source multiplayer board game platform — think "lichess for Ti
 
 ```
 tiao/
-├── client/          React + Vite + Tailwind frontend
+├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
 ├── e2e/             Playwright end-to-end tests
-└── docs/            Documentation (you are here)
+├── docs/            Markdown documentation (you are here)
+└── docs-site/       Docusaurus documentation site
 ```
 
 The three runtime packages — `shared`, `server`, and `client` — form a dependency chain:
@@ -104,6 +105,10 @@ The server auto-detects Redis when `REDIS_URL` is set and falls back to in-memor
 - **Move validation** — `applyAction()` validates every move server-side using the shared game engine before persisting
 - **State broadcast** — `broadcastSnapshot()` pushes updated state to all connected players and lobby listeners
 
+### TournamentService
+
+`TournamentService` (in `server/game/tournamentService.ts`) manages tournament lifecycle: creation, registration, bracket generation, match progression, and result tracking. Tournament games are linked to regular `GameRoom` records via `tournamentId` and `tournamentMatchId` fields.
+
 ### WebSocket Endpoints
 
 ```
@@ -129,20 +134,29 @@ This abstraction keeps the game logic testable without requiring a running datab
 
 ## Client Layer
 
-The frontend is built with React 18, TypeScript, Vite, and Tailwind CSS.
+The frontend is built with React 18, TypeScript, Next.js 14, and Tailwind CSS. A custom `server.mjs` proxies `/api` and `/ws` requests to the Express backend and serves the Next.js application.
 
 ### Pages
 
-| Page                  | Purpose                          |
-| --------------------- | -------------------------------- |
-| `LobbyPage`           | Live game feed, social activity  |
-| `LocalGamePage`       | Two players on one device        |
-| `ComputerGamePage`    | Play against the AI              |
-| `MultiplayerGamePage` | Online game via WebSocket        |
-| `MatchmakingPage`     | Queue for a random opponent      |
-| `FriendsPage`         | Friend list and requests         |
-| `GamesPage`           | Game library (active + finished) |
-| `ProfilePage`         | User profile and settings        |
+Pages live in `client/src/views/`.
+
+| Page                  | Purpose                           |
+| --------------------- | --------------------------------- |
+| `LobbyPage`           | Live game feed, social activity   |
+| `LocalGamePage`       | Two players on one device         |
+| `ComputerGamePage`    | Play against the AI               |
+| `MultiplayerGamePage` | Online game via WebSocket         |
+| `MatchmakingPage`     | Queue for a random opponent       |
+| `FriendsPage`         | Friend list and requests          |
+| `GamesPage`           | Game library (active + finished)  |
+| `ProfilePage`         | User profile and settings         |
+| `PublicProfilePage`   | Public player stats and badges    |
+| `TournamentListPage`  | Tournament listing and discovery  |
+| `TournamentPage`      | Single tournament view (brackets) |
+| `CreatorPage`         | Creator/about page                |
+| `SetUsernamePage`     | Set username after OAuth sign-up  |
+| `TutorialPage`        | Interactive game tutorial         |
+| `AdminBadgesPage`     | Admin badge management            |
 
 ### Hooks Architecture
 
@@ -178,50 +192,45 @@ This gives the game a snappy feel while the server remains the single source of 
 
 ### Session Model
 
-Authentication uses HttpOnly session cookies (`tiao.session`) backed by MongoDB.
+Authentication uses [better-auth](https://www.better-auth.com/) with HttpOnly session cookies backed by MongoDB.
 
-```
-Browser                          Server                    MongoDB
-  |                                |                          |
-  |-- request with cookie -------->|                          |
-  |                                |-- lookup tokenDigest --->|
-  |                                |<-- GameSession ----------|
-  |                                |                          |
-  |   (session validated,          |                          |
-  |    player identity resolved)   |                          |
-```
+- Session duration: 30 days (refreshed after 24 hours of activity)
+- Passwords hashed with bcrypt (10 salt rounds)
+- OAuth providers: GitHub, Google, Discord (when configured)
+- Anonymous/guest accounts via better-auth's anonymous plugin
 
-- Session token: 48 random bytes, base64url-encoded, sent as a cookie
-- Stored in DB as: SHA-256 HMAC digest of the token (the raw token is never stored)
-- TTL: 30 days, enforced by a MongoDB TTL index on `expiresAt`
+Custom routes in `server/routes/game-auth.routes.ts` extend better-auth for Tiao-specific behavior (e.g., login by username, SSO onboarding).
 
 ### Player Types
 
-| Type      | Identity         | Persistence                    |
-| --------- | ---------------- | ------------------------------ |
-| `guest`   | Anonymous UUID   | Session only, no saved data    |
-| `account` | Email + password | Full profile, friends, history |
+| Type      | Identity                | Persistence                                 |
+| --------- | ----------------------- | ------------------------------------------- |
+| `guest`   | Anonymous               | Session only, limited to 10 games           |
+| `account` | Email/password or OAuth | Full profile, friends, history, tournaments |
 
-Account passwords are hashed with bcrypt.
+### Badge System
 
-### Test Infrastructure
-
-In tests, `InMemoryPlayerSessionStore` replaces the MongoDB-backed store, keeping tests fast and isolated.
+Players can earn and display badges on their profiles. Badges are stored in `GameAccount.badges[]` and the active badge in `GameAccount.activeBadges[]`. Admins can grant and revoke badges. During preview, badge entitlements are hardcoded client-side; once Stripe entitlements are wired up, validation will use the account's owned badges.
 
 ---
 
 ## Database
 
-Tiao uses MongoDB with four collections.
+Tiao uses MongoDB. Application collections are managed by Tiao; auth collections are managed by better-auth.
 
-### Collections
+### Application Collections
 
 **GameAccount**
 
 ```
 {
-  email, passwordHash, displayName, profilePicture,
-  friends[], receivedFriendRequests[], sentFriendRequests[]
+  _id             matches better-auth user._id
+  displayName, profilePicture, bio,
+  friends[], receivedFriendRequests[], sentFriendRequests[],
+  badges[], activeBadges[],
+  rating          { overall: { elo, gamesPlayed } }
+  hasSeenTutorial boolean
+  isAdmin         boolean
 }
 ```
 
@@ -236,18 +245,10 @@ Tiao uses MongoDB with four collections.
   players[]       Connected player references
   seats           { white: PlayerId, black: PlayerId }
   rematch         Rematch tracking metadata
-}
-```
-
-**GameSession**
-
-```
-{
-  tokenDigest     SHA-256 HMAC of session token
-  playerId        Reference to guest UUID or account ID
-  kind            "guest" | "account"
-  displayName
-  expiresAt       TTL index (30 days)
+  timeControl     { initialMs, incrementMs } | null
+  tournamentId    Reference to Tournament (if tournament match)
+  tournamentMatchId
+  ratingBefore, ratingAfter
 }
 ```
 
@@ -260,6 +261,28 @@ Tiao uses MongoDB with four collections.
   expiresAt
 }
 ```
+
+**Tournament**
+
+```
+{
+  tournamentId    unique string ID
+  name, description,
+  creatorId       Reference to GameAccount
+  status          "open" | "active" | "finished" | "cancelled"
+  settings        TournamentSettings (format, maxParticipants, etc.)
+  participants[]  Registered players with seeds
+  rounds[]        Bracket rounds with matches
+  groups[]        Group stage data (if applicable)
+  knockoutRounds[] Knockout bracket data
+  featuredMatchId Currently featured match for spectators
+  inviteCode      For private tournaments
+}
+```
+
+### Auth Collections (better-auth managed)
+
+better-auth automatically manages `user`, `session`, and `account` collections for authentication state. Tiao's `GameAccount._id` matches `user._id` to link game data with auth data.
 
 ### Redis
 
@@ -316,8 +339,8 @@ Key properties:
                     Internet
                        |
               +--------+--------+
-              |     Nginx       |    client container
-              |  (static files) |    - serves React build
+              |   Node.js       |    client container
+              |   Next.js app   |    - serves the frontend
               |  (reverse proxy)|    - proxies /api/* to server
               +--------+--------+
                        |
@@ -337,7 +360,7 @@ Key properties:
               +-----------------+
 ```
 
-Both containers are deployed as Docker images. The client container runs Nginx, which serves the static frontend bundle and reverse-proxies all `/api` requests to the server container. This same-origin setup avoids cross-origin cookie issues with the session cookie.
+Both containers are deployed as Docker images. The client container runs a Node.js server (`server.mjs`) that serves the Next.js application and reverse-proxies all `/api` and `/ws` requests to the server container. This same-origin setup avoids cross-origin cookie issues with the session cookie.
 
 When Redis is available, the server can scale horizontally — matchmaking state and locks are shared across instances rather than held in a single process. Set the `REDIS_URL` environment variable to configure the connection. Without Redis, the server runs as a single instance with in-memory state, which is sufficient for low-traffic deployments.
 

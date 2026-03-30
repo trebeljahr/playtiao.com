@@ -18,13 +18,13 @@ git clone https://github.com/YOUR_USERNAME/tiao.git
 cd tiao
 ```
 
-2. Install dependencies for all packages:
+2. Install dependencies:
 
 ```bash
 npm install
-cd server && npm install && cd ..
-cd client && npm install && cd ..
 ```
+
+The root `postinstall` script automatically installs dependencies for `client/`, `server/`, and `docs-site/`.
 
 3. Set up environment variables:
 
@@ -41,19 +41,20 @@ Edit `server/.env` with your MongoDB connection string and a random token secret
 npm run dev
 ```
 
-This runs the Vite frontend on `http://localhost:3000` and the Express backend on `http://localhost:5005`. Vite proxies `/api` and `/ws` to the backend automatically.
+By default this picks random free ports for the client and server to avoid conflicts. The chosen URLs are printed on startup. Use `npm run dev:fixed` for fixed ports (client on `http://localhost:3000`, server on `http://localhost:5005`). The Next.js dev server proxies `/api` and `/ws` to the backend automatically.
 
-5. Open `http://localhost:3000` in your browser.
+5. Open the URL printed in the terminal.
 
 ## Project Structure
 
 ```
 tiao/
-├── client/          React + Vite + Tailwind frontend
+├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
 ├── e2e/             Playwright end-to-end tests
-└── docs/            Documentation
+├── docs/            Markdown documentation
+└── docs-site/       Docusaurus documentation site
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a deeper dive into the system design.
@@ -119,15 +120,16 @@ All game rules live here as pure functions. If you're changing game mechanics, t
 The server orchestrates multiplayer games, authentication, and social features. Key files:
 
 - `game/gameService.ts` -- core game service that validates moves, manages connections, and broadcasts state
+- `game/tournamentService.ts` -- tournament lifecycle (create, register, bracket management)
 - `game/gameStore.ts` -- persistence layer (MongoDB in production, in-memory for tests)
-- `routes/` -- Express route handlers
-- `auth/playerSessionStore.ts` -- session management
+- `routes/` -- Express route handlers (auth, games, social, tournaments, admin)
+- `auth/auth.ts` -- better-auth configuration (email/password, OAuth, anonymous)
 
 ### Client (`client/src/`)
 
 The frontend is organized around pages and hooks:
 
-- `pages/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile)
+- `views/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
 - `lib/hooks/` -- state management hooks for each feature
 - `lib/api.ts` -- HTTP and WebSocket client
 - `components/` -- shared UI components

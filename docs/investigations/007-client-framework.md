@@ -1,6 +1,6 @@
 # Investigation: Client Framework (Vite SPA vs Next.js)
 
-**Status:** Decided — see [ADR #10 (Vite to Next.js 14 App Router Migration)](../ARCHITECTURE_DECISIONS.md#10-vite-to-nextjs-14-app-router-migration)
+**Status:** Decided — see [ADR #10 (Vite to Next.js 14 App Router Migration)](../ARCHITECTURE_DECISIONS.md#10-vite-to-nextjs-14-app-router-migration-completed)
 **Date:** 2026-03-27
 
 ## Context

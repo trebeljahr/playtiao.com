@@ -33,7 +33,7 @@ Tiao is now set up to deploy as two applications:
 
 The recommended production shape still keeps a single browser origin:
 
-- the frontend serves the SPA
+- the frontend serves the Next.js application via a Node.js server
 - either the frontend proxies `/api` and `/api/ws` to the backend over the private network, or Coolify path-routes those same paths directly to the backend
 - the backend does not serve frontend assets anymore
 
@@ -54,7 +54,7 @@ MongoDB backs more than account metadata here:
 
 - multiplayer room persistence
 - social data
-- opaque session storage for the `HttpOnly` auth cookie
+- session storage for better-auth's `HttpOnly` auth cookie
 
 ## What `localhost` Means In Coolify
 
@@ -84,8 +84,8 @@ Suggested base settings:
 The backend does not need a public domain if the frontend proxies traffic to it over the internal network.
 If you want to keep a single public domain without depending on an internal upstream hostname, you can instead attach path-based domains:
 
-- `https://tiao.your-domain.com/api`
-- `https://tiao.your-domain.com/api/ws`
+- `https://your-domain-example.com/api`
+- `https://your-domain-example.com/api/ws`
 
 ### Frontend app
 
@@ -96,7 +96,7 @@ Suggested base settings:
 - Registry image tag: `main`
 - Port: `80`
 - Health Check Path: `/healthz`
-- Domain: `https://tiao.your-domain.com`
+- Domain: `https://your-domain-example.com`
 
 Important:
 
@@ -139,10 +139,16 @@ Optional:
 - `FRONTEND_URL`
 - `S3_ENDPOINT`
 - `S3_FORCE_PATH_STYLE`
+- `REDIS_URL` -- enables distributed matchmaking, locks, and rate limiting
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` -- GitHub OAuth
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` -- Google OAuth
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` -- Discord OAuth
+- `BETTER_AUTH_URL` -- custom auth base URL (falls back to `FRONTEND_URL`)
+- `BETTER_AUTH_SECRET` -- auth signing secret (falls back to `TOKEN_SECRET`)
 
 Notes:
 
-- the backend `FRONTEND_URL` should be the public frontend URL if you want strict CORS when accessing the backend directly
+- the backend `FRONTEND_URL` should be the public frontend URL — it is used for CORS and as the better-auth base URL
 - `S3_ENDPOINT` and `S3_FORCE_PATH_STYLE=true` are useful for MinIO and some S3-compatible providers.
 
 Frontend runtime variables:
@@ -156,16 +162,16 @@ Notes:
 
 Recommended values for a first production deploy:
 
-- `FRONTEND_URL=https://tiao.your-domain.com`
+- `FRONTEND_URL=https://your-domain-example.com`
 - `MONGODB_URI=<Coolify Mongo internal URL or managed Mongo URL>`
 - `PORT=3000` or simply omit `PORT` and let the backend default to `3000`
 - `BACKEND_UPSTREAM=http://<coolify-internal-backend-host>:3000`
 
 Recommended values for a single-domain Coolify path-routing deploy:
 
-- frontend domain: `https://tiao.your-domain.com`
-- backend domains: `https://tiao.your-domain.com/api,https://tiao.your-domain.com/api/ws`
-- `FRONTEND_URL=https://tiao.your-domain.com`
+- frontend domain: `https://your-domain-example.com`
+- backend domains: `https://your-domain-example.com/api,https://your-domain-example.com/api/ws`
+- `FRONTEND_URL=https://your-domain-example.com`
 - backend `PORT=3000` or omit it
 - no extra public backend hostname is required
 
@@ -189,7 +195,7 @@ Recommended values for a single-domain Coolify path-routing deploy:
 16. Point it at `ghcr.io/<owner>/<repo>-client:main`.
 17. Set the frontend port to `80`.
 18. Set the frontend health check path to `/healthz`.
-19. Attach the public domain, for example `https://tiao.ricos.site`.
+19. Attach the public domain, for example `https://your-domain-example.com`.
 20. Set `BACKEND_UPSTREAM` to the backend app's internal URL, for example `http://tiao-server:3000`.
 21. Deploy the frontend once and confirm the site loads at the public domain.
 22. After the first successful deploy, keep using the GitHub Actions workflow for ongoing redeploys.
@@ -214,7 +220,7 @@ Whether you use the frontend proxy or Coolify path-based routing, the browser ca
 - no browser-facing CORS complexity is required in the default production setup
 - multiplayer websocket URLs continue to work without special browser configuration
 
-If `https://tiao.your-domain.com` returns a response from Coolify or Traefik, then DNS and HTTPS are at least partially working.
+If `https://your-domain-example.com` returns a response from Coolify or Traefik, then DNS and HTTPS are at least partially working.
 
 If you see `no available server`, that usually means:
 
@@ -308,6 +314,178 @@ Check:
 - tag is `main`
 - the apps are not accidentally configured with `:main` inside the image name field
 - Coolify has registry credentials if the images are private
+
+## Docker Debugging Guide
+
+When something goes wrong in a Coolify/Docker deployment, you need to inspect the containers directly. This section covers the most common Docker debugging commands and explains what each one does, so you can diagnose problems even if you are not deeply familiar with Docker.
+
+### Key concept: containers are isolated processes
+
+Each Docker container is an isolated process with its own filesystem, network interfaces, and environment variables. Containers communicate with each other over Docker networks — **not via `localhost`**. When a container tries to reach `localhost`, it is talking to itself, not to another container. This is the most common source of "connection refused" errors in containerized deployments.
+
+In Coolify, containers in the same project share a Docker network and can reach each other by their container/service name (e.g., `tiao-server`, `mongo`). The exact hostname depends on how Coolify names the container — check with `docker inspect`.
+
+### Listing containers
+
+```bash
+# Show all running containers with their names, ports, and status
+docker ps
+
+# Show all containers including stopped ones
+docker ps -a
+```
+
+The output shows container IDs, names, ports, and how long each has been running. If a container keeps restarting (`Up 3 seconds` repeatedly), it is crashing on startup — check its logs next.
+
+### Reading container logs
+
+```bash
+# View the last 100 lines of a container's output
+docker logs --tail 100 <container-name>
+
+# Follow logs in real time (like tail -f)
+docker logs -f <container-name>
+
+# Show timestamps alongside each log line
+docker logs --tail 50 -t <container-name>
+```
+
+Logs show everything the application writes to stdout and stderr. This is where you will see startup errors, crash stack traces, and request logs. Most problems are diagnosable from logs alone.
+
+For Docker Compose services (local development):
+
+```bash
+# View logs for all services at once
+docker compose logs
+
+# Follow logs for a specific service
+docker compose logs -f server
+```
+
+### Shelling into a container
+
+```bash
+# Open an interactive shell inside a running container
+docker exec -it <container-name> sh
+
+# If the container has bash installed
+docker exec -it <container-name> bash
+```
+
+This drops you into the container's filesystem. From here you can:
+
+- Check if config files exist and have the right contents
+- Test network connectivity (`wget`, `curl`, or `nc` if available)
+- Inspect environment variables with `env` or `printenv`
+- Check the process list with `ps aux`
+
+Type `exit` to leave the container shell. Nothing you do inside the shell persists across container restarts (unless you write to a mounted volume).
+
+### Checking environment variables
+
+```bash
+# Print all environment variables inside a container
+docker exec <container-name> printenv
+
+# Check a specific variable
+docker exec <container-name> printenv MONGODB_URI
+```
+
+This is the fastest way to verify that Coolify injected the right environment variables. If a variable is missing or has the wrong value, update it in the Coolify app settings and redeploy.
+
+### Inspecting container configuration
+
+```bash
+# Show full container config (networks, mounts, env vars, ports, etc.)
+docker inspect <container-name>
+
+# Show just the network settings
+docker inspect --format '{{json .NetworkSettings.Networks}}' <container-name> | python3 -m json.tool
+
+# Show just the mounted volumes
+docker inspect --format '{{json .Mounts}}' <container-name> | python3 -m json.tool
+```
+
+`docker inspect` returns a large JSON document with everything Docker knows about the container. The `--format` flag with Go templates lets you extract specific sections. This is useful for checking which Docker network a container is on and what IP address it was assigned.
+
+### Debugging container networking
+
+```bash
+# List all Docker networks
+docker network ls
+
+# Show which containers are on a specific network and their IPs
+docker network inspect <network-name>
+```
+
+If one container cannot reach another, check that they are on the same Docker network. Coolify typically creates a network per project. You can also test connectivity from inside a container:
+
+```bash
+# Shell into the frontend container and test if it can reach the backend
+docker exec -it <frontend-container> sh
+wget -qO- http://<backend-container-name>:3000/api/health
+```
+
+If the backend's internal hostname is unknown, find it with `docker network inspect` — it lists every container on that network with its IP and aliases.
+
+### Monitoring resource usage
+
+```bash
+# Live view of CPU, memory, and network usage per container
+docker stats
+
+# One-time snapshot (non-interactive)
+docker stats --no-stream
+```
+
+If a container is using 100% of its memory limit, it may be getting OOM-killed (killed by the operating system for using too much memory) and restarting. Coolify lets you set memory limits per app — increase them if the container is consistently hitting the ceiling.
+
+### Checking data persistence (volumes)
+
+```bash
+# List all Docker volumes
+docker volume ls
+
+# Show where a volume is stored on disk
+docker volume inspect <volume-name>
+```
+
+Volumes persist data across container restarts. If your MongoDB data disappears after a redeploy, check that the volume is correctly attached. If a volume exists but seems empty, the container might be writing to a different path — verify with `docker inspect` on the container to see its mount configuration.
+
+### Copying files in/out of containers
+
+```bash
+# Copy a file from inside a container to your local machine
+docker cp <container-name>:/path/in/container ./local-path
+
+# Copy a local file into a running container
+docker cp ./local-file <container-name>:/path/in/container
+```
+
+Useful for extracting log files, database dumps, or configuration files for inspection.
+
+### Connecting to MongoDB inside Docker
+
+```bash
+# Local development
+docker compose exec mongo mongosh tiao
+
+# Production (if you have SSH access to the host)
+docker exec -it <mongo-container-name> mongosh tiao
+```
+
+See the [Admin section in the API reference](API.md#managing-admin-and-badges-via-mongosh) for common database queries.
+
+### Further reading
+
+- [Docker CLI reference](https://docs.docker.com/reference/cli/docker/) — complete command reference
+- [Docker Compose CLI reference](https://docs.docker.com/reference/cli/docker/compose/) — multi-container orchestration
+- [Docker networking overview](https://docs.docker.com/engine/network/) — how containers communicate
+- [Docker volumes](https://docs.docker.com/engine/storage/volumes/) — persistent data storage
+- [Coolify documentation](https://coolify.io/docs/) — Coolify-specific deployment concepts
+- [Coolify troubleshooting](https://coolify.io/docs/knowledge-base/faq) — common Coolify issues
+
+---
 
 ## What To Automate Later
 

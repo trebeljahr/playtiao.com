@@ -1,6 +1,6 @@
 # Investigation: Authentication Strategy
 
-**Status:** Decided — see [ADR #4 (Session Strategy: HMAC Cookie Digests)](../ARCHITECTURE_DECISIONS.md#4-session-strategy-hmac-cookie-digests) and [ADR #8 (Dual Authentication: Guest + Account)](../ARCHITECTURE_DECISIONS.md#8-dual-authentication-guest--account)
+**Status:** Decided — see [ADR #4 (Session Strategy: better-auth)](../ARCHITECTURE_DECISIONS.md#4-session-strategy-better-auth) and [ADR #8 (Dual Authentication: Guest + Account)](../ARCHITECTURE_DECISIONS.md#8-dual-authentication-guest--account)
 **Date:** 2026-03-25
 
 ## Context
