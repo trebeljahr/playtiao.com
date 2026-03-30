@@ -19,7 +19,7 @@ type PlayerIdentityRowProps = {
   currentPlayerId?: string;
   avatarClassName?: string;
   online?: boolean | null;
-  /** Wrap the avatar + name in a link to the player's public profile. */
+  /** Wrap the avatar + name in a link to the player's public profile (default: true). */
   linkToProfile?: boolean;
   showFriendBadge?: boolean;
   showAddFriend?: boolean;
@@ -40,7 +40,7 @@ export function PlayerIdentityRow({
   currentPlayerId,
   avatarClassName,
   online,
-  linkToProfile,
+  linkToProfile = true,
   showFriendBadge,
   showAddFriend,
   onAddFriend,
