@@ -51,6 +51,7 @@ function makeTournamentSnapshot(overrides?: Partial<TournamentSnapshot>): Tourna
     rounds: [
       {
         roundIndex: 0,
+        label: "Round 1",
         status: "active",
         matches: [
           {
@@ -123,6 +124,7 @@ describe("useTournament — #89 tournament live scores", () => {
           rounds: [
             {
               roundIndex: 0,
+              label: "Round 1",
               status: "active",
               matches: [
                 {
