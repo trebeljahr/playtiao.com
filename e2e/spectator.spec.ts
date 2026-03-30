@@ -89,7 +89,8 @@ test("lobby Watch a Game section navigates to game", async ({ page }) => {
   await expect(spectateInput).toBeVisible();
 
   // Type a game ID and submit via Enter key
-  await spectateInput.fill("ABCDEF");
+  await spectateInput.click();
+  await spectateInput.type("ABCDEF");
   await spectateInput.press("Enter");
 
   // Should navigate to the game URL
