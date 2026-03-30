@@ -209,6 +209,14 @@ export function MultiplayerGamePage() {
     }
   }, [multiplayerSnapshot, auth]);
 
+  // Close invite modal when both seats are filled (opponent joined)
+  const bothSeated = !!(multiplayerSnapshot?.seats.white && multiplayerSnapshot?.seats.black);
+  useEffect(() => {
+    if (bothSeated) {
+      setInviteDialogOpen(false);
+    }
+  }, [bothSeated]);
+
   // Real-time social updates (friend online status, invitation state)
   useLobbyMessage((payload) => {
     if (payload.type === "social-update") {
