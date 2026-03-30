@@ -348,7 +348,7 @@ export class GameService {
           profilePicture: fresh.profilePicture ?? slot.player.profilePicture,
           activeBadges: fresh.activeBadges ?? slot.player.activeBadges,
           badges: fresh.badges ?? slot.player.badges,
-          rating: fresh.rating ?? slot.player.rating,
+          rating: fresh.rating?.overall?.elo ?? slot.player.rating,
         };
       }
     }
