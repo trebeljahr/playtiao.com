@@ -585,7 +585,6 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
         favoriteBoard,
         favoriteTimeControl,
         favoriteScore,
-        playerId,
         friendshipStatus,
       },
     });

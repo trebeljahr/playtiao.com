@@ -175,7 +175,9 @@ async function main() {
   // so their emails are fully freed and won't cause "user already exists" errors.
   const db = mongoose.connection.db!;
   const keepIdStrings = [...keepAccountIds];
-  const baUserResult = await db.collection("user").deleteMany({ _id: { $nin: keepIdStrings } });
+  const baUserResult = await db
+    .collection("user")
+    .deleteMany({ _id: { $nin: keepIdStrings.map((id) => new mongoose.Types.ObjectId(id)) } });
   log(`Deleted ${baUserResult.deletedCount} better-auth user records.`);
   const baAccountResult = await db
     .collection("account")
