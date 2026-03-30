@@ -209,12 +209,16 @@ function LinkedAccounts({
   async function handleLink(provider: "github" | "google" | "discord") {
     setBusy(provider);
     try {
-      await authClient.linkSocial({
+      const { error } = await authClient.linkSocial({
         provider,
         callbackURL: window.location.href,
       });
+      if (error) {
+        toastError(readableError(error));
+      }
     } catch (error) {
       toastError(readableError(error));
+    } finally {
       setBusy(null);
     }
   }
