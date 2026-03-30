@@ -57,7 +57,10 @@ export default defineConfig({
     },
     {
       command: "npm run client",
-      url: `http://localhost:${E2E_CLIENT_PORT}`,
+      // Use /api/player/me through the client proxy as health check —
+      // this ensures the Tiao Next.js server is running (not some other
+      // dev server that happens to occupy the same port).
+      url: `http://localhost:${E2E_CLIENT_PORT}/api/player/me`,
       reuseExistingServer: !process.env.CI,
       env: {
         PORT: E2E_CLIENT_PORT,
