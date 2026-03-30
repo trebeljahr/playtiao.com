@@ -11,6 +11,7 @@ import {
   acceptFriendRequest,
   type PublicProfile,
 } from "@/lib/api";
+import { toast } from "sonner";
 import { PlayerOverviewAvatar } from "@/components/game/GameShared";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { resolvePlayerBadges } from "@/lib/featureGate";
@@ -155,6 +156,8 @@ export function PublicProfilePage() {
                         try {
                           await sendFriendRequest(profile.playerId!);
                           setFriendStatus("outgoing-request");
+                        } catch {
+                          toast.error(tCommon("somethingWentWrong"));
                         } finally {
                           setFriendActionBusy(false);
                         }
@@ -173,6 +176,8 @@ export function PublicProfilePage() {
                         try {
                           await acceptFriendRequest(profile.playerId!);
                           setFriendStatus("friend");
+                        } catch {
+                          toast.error(tCommon("somethingWentWrong"));
                         } finally {
                           setFriendActionBusy(false);
                         }

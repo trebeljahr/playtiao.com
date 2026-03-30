@@ -1201,9 +1201,14 @@ export class TournamentService implements TournamentGameCallback {
     const tournament = await this.store.getTournament(tournamentId);
     if (!tournament) return;
 
-    // Find the match across all round arrays
+    // Find the match across all round arrays (including group-stage rounds)
     let match: TournamentMatch | undefined;
-    for (const round of [...tournament.rounds, ...tournament.knockoutRounds]) {
+    const allRounds = [
+      ...tournament.rounds,
+      ...tournament.knockoutRounds,
+      ...(tournament.groups ?? []).flatMap((g: any) => g.rounds ?? []),
+    ];
+    for (const round of allRounds) {
       match = round.matches.find((m) => m.matchId === matchId);
       if (match) break;
     }
@@ -1221,10 +1226,14 @@ export class TournamentService implements TournamentGameCallback {
       score: mappedScore,
     };
 
+    const notified = new Set<string>();
     for (const p of tournament.participants) {
       this.gameService.broadcastLobby(p.playerId, payload);
+      notified.add(p.playerId);
     }
-    this.gameService.broadcastLobby(tournament.creatorId, payload);
+    if (!notified.has(tournament.creatorId)) {
+      this.gameService.broadcastLobby(tournament.creatorId, payload);
+    }
   }
 
   // ── Serialization ──

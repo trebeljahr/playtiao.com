@@ -61,8 +61,13 @@ export function useTournament(
           setTournament((prev) => {
             if (!prev) return prev;
             const updated = structuredClone(prev);
-            for (const round of [...(updated.rounds ?? []), ...(updated.knockoutRounds ?? [])]) {
-              const match = round.matches.find((m) => m.matchId === payload.matchId);
+            const allRounds = [
+              ...(updated.rounds ?? []),
+              ...(updated.knockoutRounds ?? []),
+              ...(updated.groups ?? []).flatMap((g: any) => g.rounds ?? []),
+            ];
+            for (const round of allRounds) {
+              const match = round.matches.find((m: any) => m.matchId === payload.matchId);
               if (match) {
                 match.score = payload.score as [number, number];
                 break;
