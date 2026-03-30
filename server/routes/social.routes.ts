@@ -234,11 +234,11 @@ async function loadInvitationSummaries(
       createdAt: invitation.createdAt.toISOString(),
       expiresAt: invitation.expiresAt.toISOString(),
       sender: toSocialPlayerSummary({
-        ...sender,
+        ...sender.toObject(),
         profilePicture: sender.profilePicture || ssoMap.get(senderId),
       }),
       recipient: toSocialPlayerSummary({
-        ...recipient,
+        ...recipient.toObject(),
         profilePicture: recipient.profilePicture || ssoMap.get(recipientId),
       }),
       boardSize: room?.state?.boardSize,

@@ -276,7 +276,7 @@ describe("SocialNotificationsContext", () => {
     simulateLobbyMessage({ type: "social-update", overview: updatedOverview });
 
     expect(toast).toHaveBeenCalledWith(
-      "Dave invited you to a game (19×19, first to 10)",
+      "Dave invited you to a game (19×19, Unlimited, first to 10)",
       expect.objectContaining({
         id: "game-invitation:inv-99",
       }),

@@ -141,7 +141,8 @@ export function SocialNotificationsProvider({
         if (!prevInvitationIdsRef.current.has(inv.id)) {
           const invGameId = inv.gameId;
           const invId = inv.id;
-          const senderName = inv.sender?.displayName || "Someone";
+          const sender = inv.sender;
+          const senderName = (typeof sender === "object" ? sender?.displayName : null) || "Someone";
 
           // Build contextual toast message with game details
           const details: string[] = [];
@@ -151,6 +152,8 @@ export function SocialNotificationsProvider({
             const mins = Math.round(inv.timeControl.initialMs / 60_000);
             const inc = Math.round(inv.timeControl.incrementMs / 1_000);
             details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
+          } else {
+            details.push("Unlimited");
           }
           const score = inv.scoreToWin ?? 10;
           details.push(`first to ${score}`);
