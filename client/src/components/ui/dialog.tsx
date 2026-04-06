@@ -71,7 +71,7 @@ export function Dialog({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-300 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-xs"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       onMouseDown={handleBackdropMouseDown}

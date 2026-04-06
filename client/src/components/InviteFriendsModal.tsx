@@ -201,7 +201,7 @@ export function InviteFriendsModal({
         )}
 
         {/* Friends list */}
-        <div className="max-h-[20rem] space-y-2 overflow-y-auto">
+        <div className="max-h-80 space-y-2 overflow-y-auto">
           {socialOverview.friends.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-6">
               <UserGroupIcon className="text-[#b7a48e]" />

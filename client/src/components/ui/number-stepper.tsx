@@ -57,7 +57,7 @@ export function NumberStepper({
             min={min}
             max={max}
             className={cn(
-              "h-8 w-12 border-x border-[#d8c29c] bg-transparent text-center font-mono text-base font-semibold text-[#2b1e14] outline-none",
+              "h-8 w-12 border-x border-[#d8c29c] bg-transparent text-center font-mono text-base font-semibold text-[#2b1e14] outline-hidden",
               "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
             )}
           />

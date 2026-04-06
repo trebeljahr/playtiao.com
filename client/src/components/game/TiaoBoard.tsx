@@ -487,7 +487,7 @@ export function TiaoBoard({
 
   return (
     <div
-      className="relative z-0 overflow-hidden rounded-[2rem] border p-3"
+      className="relative z-0 overflow-hidden rounded-4xl border p-3"
       style={{
         borderColor: theme.boardBorder,
         background: theme.boardBg,
@@ -505,7 +505,7 @@ export function TiaoBoard({
           "relative aspect-square w-full rounded-[1.55rem]",
           IS_TOUCH_DEVICE && "touch-none",
           zoom.isAnimating &&
-            "transition-transform duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]",
         )}
         style={{
           background: theme.boardInnerBg,
@@ -770,7 +770,7 @@ export function TiaoBoard({
                 />
               ) : isHoveredEmpty ? (
                 <span
-                  className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm"
+                  className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-xs"
                   style={{
                     borderColor:
                       state.currentTurn === "black"
@@ -786,7 +786,7 @@ export function TiaoBoard({
         })}
 
         <svg
-          className="pointer-events-none absolute inset-0 z-[80] h-full w-full"
+          className="pointer-events-none absolute inset-0 z-80 h-full w-full"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           aria-hidden="true"
@@ -1046,7 +1046,7 @@ export function TiaoBoard({
 
         {showConfirmOverlay && forcedJumpOrigin ? (
           <span
-            className="pointer-events-none absolute z-[95] flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
+            className="pointer-events-none absolute z-95 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
             style={{
               borderColor: theme.confirmBorder,
               background: theme.confirmBg,
@@ -1080,7 +1080,7 @@ export function TiaoBoard({
                   onPointerLeave={() => setUndoHovered(false)}
                   onFocus={() => setUndoHovered(true)}
                   onBlur={() => setUndoHovered(false)}
-                  className="absolute z-[90] aspect-square -translate-x-1/2 -translate-y-1/2 bg-transparent"
+                  className="absolute z-90 aspect-square -translate-x-1/2 -translate-y-1/2 bg-transparent"
                   style={{
                     left: `${pp(lastJump.from.x)}%`,
                     top: `${pp(lastJump.from.y)}%`,
@@ -1094,7 +1094,7 @@ export function TiaoBoard({
 
         {undoHovered && lastPendingJump ? (
           <span
-            className="pointer-events-none absolute z-[95] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
+            className="pointer-events-none absolute z-95 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border"
             style={{
               borderColor: theme.undoBorder,
               background: theme.undoBg,
@@ -1118,7 +1118,7 @@ export function TiaoBoard({
         {/* Mobile crosshair overlay */}
         {mobilePreview && !disabled && IS_TOUCH_DEVICE && (
           <svg
-            className="pointer-events-none absolute inset-0 z-[35] h-full w-full"
+            className="pointer-events-none absolute inset-0 z-35 h-full w-full"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden="true"
@@ -1214,7 +1214,7 @@ export function TiaoBoard({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-5 right-5 z-[100] flex items-center gap-2"
+            className="absolute bottom-5 right-5 z-100 flex items-center gap-2"
           >
             {/* Cancel + Confirm placement */}
             {mobilePreview && !disabled && (
@@ -1222,7 +1222,7 @@ export function TiaoBoard({
                 <button
                   type="button"
                   onClick={() => setMobilePreview(null)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur-sm transition-colors active:bg-[rgba(200,180,150,0.9)]"
                   aria-label="Cancel placement"
                 >
                   <svg viewBox="0 0 14 14" fill="none" className="h-4 w-4">
@@ -1243,7 +1243,7 @@ export function TiaoBoard({
                     onPointClick?.(pos);
                   }}
                   className={cn(
-                    "flex h-11 items-center gap-1.5 rounded-full border px-3.5 shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors",
+                    "flex h-11 items-center gap-1.5 rounded-full border px-3.5 shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur-sm transition-colors",
                     mobilePreviewValid
                       ? "border-[#8aad6a]/50 bg-[rgba(255,248,232,0.92)] text-[#5e7b4e] active:bg-[rgba(200,220,180,0.9)]"
                       : "border-[#c4a978]/30 bg-[rgba(255,248,232,0.6)] text-[#b0a08a] cursor-not-allowed",
@@ -1270,7 +1270,7 @@ export function TiaoBoard({
                   <button
                     type="button"
                     onClick={onUndoLastJump}
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,180,150,0.9)]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9837b]/50 bg-[rgba(255,248,232,0.92)] text-[#9a5b52] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur-sm transition-colors active:bg-[rgba(200,180,150,0.9)]"
                     aria-label="Undo last jump"
                   >
                     <svg viewBox="0 0 14 14" fill="none" className="h-4 w-4">
@@ -1287,7 +1287,7 @@ export function TiaoBoard({
                   <button
                     type="button"
                     onClick={onConfirmJump}
-                    className="flex h-11 items-center gap-1.5 rounded-full border border-[#8aad6a]/50 bg-[rgba(255,248,232,0.92)] px-3.5 text-[#5e7b4e] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur transition-colors active:bg-[rgba(200,220,180,0.9)]"
+                    className="flex h-11 items-center gap-1.5 rounded-full border border-[#8aad6a]/50 bg-[rgba(255,248,232,0.92)] px-3.5 text-[#5e7b4e] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur-sm transition-colors active:bg-[rgba(200,220,180,0.9)]"
                     aria-label="Confirm jump"
                   >
                     <svg viewBox="0 0 14 14" fill="none" className="h-4 w-4">
@@ -1309,7 +1309,7 @@ export function TiaoBoard({
               <button
                 type="button"
                 onClick={zoom.resetZoom}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-[#af8a56]/50 bg-[rgba(255,248,232,0.92)] px-3 text-[#3a2818] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur"
+                className="flex h-9 items-center gap-1.5 rounded-full border border-[#af8a56]/50 bg-[rgba(255,248,232,0.92)] px-3 text-[#3a2818] shadow-[0_8px_20px_-8px_rgba(66,39,11,0.5)] backdrop-blur-sm"
               >
                 <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" aria-hidden="true">
                   <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />

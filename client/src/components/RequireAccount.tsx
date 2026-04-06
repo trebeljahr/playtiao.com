@@ -13,7 +13,7 @@ const paperCard =
 function PageSkeleton() {
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       {/* Navbar placeholder */}
       <div className="flex h-14 items-center px-4 animate-pulse">
@@ -34,8 +34,8 @@ function PageSkeleton() {
                 className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4"
               >
                 <div className="flex flex-col gap-2">
-                  <div className="h-5 w-24 rounded bg-[#e8dcc8]" />
-                  <div className="h-3.5 w-40 rounded bg-[#ede3d2]" />
+                  <div className="h-5 w-24 rounded-sm bg-[#e8dcc8]" />
+                  <div className="h-3.5 w-40 rounded-sm bg-[#ede3d2]" />
                 </div>
                 <div className="h-8 w-16 rounded-lg bg-[#e8dcc8]" />
               </div>

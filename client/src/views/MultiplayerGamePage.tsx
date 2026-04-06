@@ -844,7 +844,7 @@ export function MultiplayerGamePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       <Navbar
         mode="multiplayer"
@@ -863,7 +863,7 @@ export function MultiplayerGamePage() {
         />
       )}
 
-      <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
+      <main className="mx-auto flex max-w-416 flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,30rem)] xl:items-start">
           <div className="flex items-center justify-center xl:items-start xl:justify-end">
             <div
@@ -900,7 +900,7 @@ export function MultiplayerGamePage() {
               {/* Review nav buttons moved to card header pill area */}
               {(multiplayerSnapshot?.status === "waiting" || isTournamentUnstarted) && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
+                  <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/92 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur-sm">
                     <HourglassSpinner className="text-[#7b5f3f]" />
                     {isTournamentUnstarted
                       ? t("waitingForOpponentToConnect")
@@ -913,7 +913,7 @@ export function MultiplayerGamePage() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-[calc(100svh-8rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-[22rem] xl:max-w-[30rem]">
+          <div className="mx-auto w-full max-w-[calc(100svh-8rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-88 xl:max-w-120">
             <div className="mx-auto w-full xl:mx-0">
               <Card
                 className={cn(
@@ -937,7 +937,7 @@ export function MultiplayerGamePage() {
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-1 py-1 shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          className="flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-1 py-1 shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
                           data-testid="review-nav-buttons"
                         >
                           <MoveListNavButtons
@@ -950,7 +950,7 @@ export function MultiplayerGamePage() {
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
                         >
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           {connectionState === "connecting" ? t("connecting") : t("reconnecting")}
@@ -959,7 +959,7 @@ export function MultiplayerGamePage() {
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#c9a84c] bg-[#fffbeb]/96 px-3 py-2 text-sm font-semibold text-[#8b6914] shadow-[0_16px_28px_-22px_rgba(139,105,20,0.42)] backdrop-blur"
+                          className="flex items-center gap-2 rounded-full border border-[#c9a84c] bg-[#fffbeb]/96 px-3 py-2 text-sm font-semibold text-[#8b6914] shadow-[0_16px_28px_-22px_rgba(139,105,20,0.42)] backdrop-blur-sm"
                         >
                           <span className="font-mono tabular-nums text-base">
                             {formatClockTime(firstMoveCountdownMs)}
@@ -970,7 +970,7 @@ export function MultiplayerGamePage() {
                         <motion.div
                           initial={{ opacity: 0, y: -8, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur"
+                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
                         >
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           <span className="font-mono tabular-nums">
@@ -986,7 +986,7 @@ export function MultiplayerGamePage() {
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur"
+                            className="flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur-sm"
                           >
                             {t("yourMove")}
                           </motion.div>
@@ -999,7 +999,7 @@ export function MultiplayerGamePage() {
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur min-w-0"
+                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm min-w-0"
                           >
                             <HourglassSpinner className="shrink-0 text-[#7b5f3f]" />
                             <span className="truncate">{t("waitingForOpponent")}</span>
@@ -1013,7 +1013,7 @@ export function MultiplayerGamePage() {
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center gap-2 rounded-full border border-[#c4b5d4] bg-[#f5f0fc]/96 px-3 py-2 text-sm font-semibold text-[#5a4570] shadow-[0_16px_28px_-22px_rgba(90,69,112,0.42)] backdrop-blur"
+                            className="flex items-center gap-2 rounded-full border border-[#c4b5d4] bg-[#f5f0fc]/96 px-3 py-2 text-sm font-semibold text-[#5a4570] shadow-[0_16px_28px_-22px_rgba(90,69,112,0.42)] backdrop-blur-sm"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -1534,7 +1534,7 @@ export function MultiplayerGamePage() {
       {gameOverDialogOpen && (
         <canvas
           ref={confettiCanvasCallback}
-          className="pointer-events-none fixed inset-0 z-[400] h-full w-full"
+          className="pointer-events-none fixed inset-0 z-400 h-full w-full"
         />
       )}
 
@@ -1668,7 +1668,7 @@ export function MultiplayerGamePage() {
         description={t("spectatorsDesc")}
       >
         <div className="space-y-4">
-          <div className="space-y-2 max-h-[16rem] overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {multiplayerSnapshot?.spectators.length === 0 ? (
               <p className="text-center text-sm text-[#6e5b48] py-4">{t("noSpectatorsYet")}</p>
             ) : (

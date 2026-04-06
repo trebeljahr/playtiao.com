@@ -149,7 +149,7 @@ export async function getPlayerProfiles(
       const accounts = (await GameAccount.find(
         { _id: { $in: missing } },
         { displayName: 1, profilePicture: 1, "rating.overall.elo": 1, badges: 1, activeBadges: 1 },
-      ).lean()) as Array<{
+      ).lean()) as unknown as Array<{
         _id: unknown;
         displayName: string;
         profilePicture?: string;

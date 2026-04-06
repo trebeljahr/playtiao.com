@@ -160,7 +160,7 @@ function LanguagePicker() {
   const intlPathname = useIntlPathname();
   const [open, setOpen] = useState(false);
   const [openAbove, setOpenAbove] = useState(false);
-  const closeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleSelect = useCallback(
@@ -223,7 +223,7 @@ function LanguagePicker() {
             exit={{ opacity: 0, scale: 0.92, y: openAbove ? 6 : -6 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "absolute right-0 z-50 min-w-[8.5rem] overflow-hidden rounded-xl border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.97)] py-1 shadow-[0_12px_28px_-10px_rgba(99,67,28,0.35)] backdrop-blur",
+              "absolute right-0 z-50 min-w-34 overflow-hidden rounded-xl border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.97)] py-1 shadow-[0_12px_28px_-10px_rgba(99,67,28,0.35)] backdrop-blur-sm",
               openAbove ? "bottom-full mb-1.5" : "top-full mt-1.5",
             )}
           >
@@ -258,7 +258,7 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
     <div className="flex items-center gap-1.5">
       <LanguagePicker />
       <SoundToggle />
-      <div className="max-w-[14rem] rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
+      <div className="max-w-56 rounded-full border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.94)] px-2.5 py-1.5 text-left text-[#28170e] shadow-[0_12px_26px_-20px_rgba(99,67,28,0.45)]">
         <PlayerIdentityRow
           player={{
             displayName: player?.displayName ?? "Guest",
@@ -267,7 +267,7 @@ function PlayerSummary({ auth }: { auth: AuthResponse | null }) {
           }}
           anonymous={isAnonymous}
           linkToProfile={false}
-          avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
+          avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-xs"
           nameClassName="text-sm font-semibold"
           friendVariant="light"
           className="gap-3"
@@ -495,7 +495,7 @@ export function Navbar({
               activeBadges: player?.activeBadges,
             }}
             anonymous={isAnonymous}
-            avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-sm"
+            avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-xs"
             nameClassName="text-base font-semibold"
             className="min-w-0 flex-1 gap-3"
           />
@@ -576,7 +576,7 @@ export function Navbar({
       {minimalMode ? (
         <button
           type="button"
-          className="fixed left-3 top-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur transition-colors hover:bg-[rgba(255,252,245,0.96)]"
+          className="fixed left-3 top-3 z-60 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur-sm transition-colors hover:bg-[rgba(255,252,245,0.96)]"
           aria-label={t("openNavigation")}
           aria-expanded={navOpen}
           onClick={onToggleNav}
@@ -584,7 +584,7 @@ export function Navbar({
           <HamburgerIcon open={navOpen} />
         </button>
       ) : (
-        <nav className="sticky top-0 z-40 border-b border-[#af8a56]/35 bg-[linear-gradient(180deg,rgba(245,223,178,0.97),rgba(225,189,119,0.98))] shadow-[0_20px_40px_-28px_rgba(96,63,24,0.4)] backdrop-blur">
+        <nav className="sticky top-0 z-40 border-b border-[#af8a56]/35 bg-[linear-gradient(180deg,rgba(245,223,178,0.97),rgba(225,189,119,0.98))] shadow-[0_20px_40px_-28px_rgba(96,63,24,0.4)] backdrop-blur-sm">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <Brand onClick={() => handleNav("/")} />
@@ -615,7 +615,7 @@ export function Navbar({
       <AnimatePresence>
         {navOpen && (
           <motion.div
-            className="fixed inset-0 z-50 bg-[rgba(15,11,8,0.5)] backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-[rgba(15,11,8,0.5)] backdrop-blur-xs"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

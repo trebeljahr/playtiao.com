@@ -124,7 +124,7 @@ function BadgeSelector({
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
               activeBadges.length === 0
-                ? "border-[#8c7a5e] bg-[#f5ecd8] text-[#4e3d2c] shadow-sm"
+                ? "border-[#8c7a5e] bg-[#f5ecd8] text-[#4e3d2c] shadow-xs"
                 : "border-[#dcc7a3] text-[#9a8670] hover:border-[#b69a6e]",
             )}
           >
@@ -144,7 +144,7 @@ function BadgeSelector({
                 className={cn(
                   "rounded-xl border p-2 transition-all",
                   isActive
-                    ? "border-[#8c7a5e] bg-[#f5ecd8] shadow-sm"
+                    ? "border-[#8c7a5e] bg-[#f5ecd8] shadow-xs"
                     : "border-transparent hover:border-[#dcc7a3]",
                 )}
               >
@@ -709,7 +709,7 @@ export function ProfilePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,232,0.76),_transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,232,0.76),transparent_62%)]" />
 
       <Navbar
         mode="lobby"
@@ -757,7 +757,7 @@ export function ProfilePage() {
                   ref={dropZoneRef}
                   role="button"
                   tabIndex={0}
-                  className={`group relative mx-auto flex h-56 w-56 cursor-pointer items-center justify-center overflow-hidden rounded-[2rem] border-2 border-dashed transition-all ${
+                  className={`group relative mx-auto flex h-56 w-56 cursor-pointer items-center justify-center overflow-hidden rounded-4xl border-2 border-dashed transition-all ${
                     dragging
                       ? "border-[#b08440] bg-[linear-gradient(180deg,#fff6e2,#f0d9a8)] scale-[1.03] shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
                       : "border-[#d4bd94] bg-[linear-gradient(180deg,#fbf2de,#ead5aa)] shadow-[0_24px_60px_-38px_rgba(58,35,16,0.6)] hover:border-[#c4a46e] hover:shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
@@ -896,7 +896,7 @@ export function ProfilePage() {
                         placeholder={t("bioPlaceholder")}
                         rows={3}
                         maxLength={500}
-                        className="flex w-full rounded-xl border border-[#dcc7a3] bg-[#fffdf8] px-3 py-2 text-sm text-[#2b1e14] shadow-sm placeholder:text-[#b8a68e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b08440] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-full rounded-xl border border-[#dcc7a3] bg-[#fffdf8] px-3 py-2 text-sm text-[#2b1e14] shadow-xs placeholder:text-[#b8a68e] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#b08440] disabled:cursor-not-allowed disabled:opacity-50"
                       />
                       <p className="text-xs text-[#8d7760]">
                         {t("bioHint", { count: bio.length, max: 500 })}

@@ -28,7 +28,7 @@ describe("Badge", () => {
     expect(el.className).toContain("bg-[#f0e6d4]");
   });
 
-  it("renders outline variant without background fill", () => {
+  it("renders outline-solid variant without background fill", () => {
     const { container } = render(<Badge variant="outline">Tag</Badge>);
     const el = container.firstElementChild!;
     expect(el.className).toContain("bg-transparent");

@@ -100,7 +100,7 @@ router.get("/tournaments/:id", async (req: Request, res: Response) => {
   try {
     const player = await getPlayerFromRequest(req);
     const snapshot = await tournamentService.getTournamentSnapshot(
-      req.params.id,
+      req.params.id as string,
       player?.playerId,
     );
     return res.status(200).json({ tournament: snapshot });
@@ -122,8 +122,11 @@ router.post("/tournaments/:id/access", async (req: Request, res: Response) => {
         .json({ code: "VALIDATION_ERROR", message: "Invite code is required." });
     }
 
-    await tournamentService.accessTournament(req.params.id, player.playerId, inviteCode);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id, player.playerId);
+    await tournamentService.accessTournament(req.params.id as string, player.playerId, inviteCode);
+    const snapshot = await tournamentService.getTournamentSnapshot(
+      req.params.id as string,
+      player.playerId,
+    );
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to access tournament.");
@@ -137,8 +140,8 @@ router.post("/tournaments/:id/register", async (req: Request, res: Response) => 
 
   try {
     const { inviteCode } = req.body as { inviteCode?: string };
-    await tournamentService.registerPlayer(req.params.id, player, inviteCode);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.registerPlayer(req.params.id as string, player, inviteCode);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to register for tournament.");
@@ -151,8 +154,8 @@ router.post("/tournaments/:id/unregister", async (req: Request, res: Response) =
   if (!player) return;
 
   try {
-    await tournamentService.unregisterPlayer(req.params.id, player.playerId);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.unregisterPlayer(req.params.id as string, player.playerId);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to unregister from tournament.");
@@ -165,8 +168,8 @@ router.post("/tournaments/:id/start", async (req: Request, res: Response) => {
   if (!player) return;
 
   try {
-    await tournamentService.startTournament(req.params.id, player.playerId);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.startTournament(req.params.id as string, player.playerId);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to start tournament.");
@@ -179,8 +182,8 @@ router.post("/tournaments/:id/cancel", async (req: Request, res: Response) => {
   if (!player) return;
 
   try {
-    await tournamentService.cancelTournament(req.params.id, player.playerId);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.cancelTournament(req.params.id as string, player.playerId);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to cancel tournament.");
@@ -200,8 +203,8 @@ router.put("/tournaments/:id/seeding", async (req: Request, res: Response) => {
         .json({ code: "VALIDATION_ERROR", message: "Seeds array is required." });
     }
 
-    await tournamentService.updateSeeding(req.params.id, player.playerId, seeds);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.updateSeeding(req.params.id as string, player.playerId, seeds);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to update seeding.");
@@ -214,8 +217,8 @@ router.post("/tournaments/:id/seeding/randomize", async (req: Request, res: Resp
   if (!player) return;
 
   try {
-    await tournamentService.randomizeSeeding(req.params.id, player.playerId);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.randomizeSeeding(req.params.id as string, player.playerId);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to randomize seeding.");
@@ -229,8 +232,8 @@ router.put("/tournaments/:id/featured-match", async (req: Request, res: Response
 
   try {
     const { matchId } = req.body as { matchId: string | null };
-    await tournamentService.setFeaturedMatch(req.params.id, player.playerId, matchId);
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    await tournamentService.setFeaturedMatch(req.params.id as string, player.playerId, matchId);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to set featured match.");
@@ -249,12 +252,12 @@ router.post("/tournaments/:id/matches/:matchId/forfeit", async (req: Request, re
     }
 
     await tournamentService.forfeitMatch(
-      req.params.id,
-      req.params.matchId,
+      req.params.id as string,
+      req.params.matchId as string,
       loserId,
       player.playerId,
     );
-    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id);
+    const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return respondWithError(res, error, "Unable to forfeit match.");

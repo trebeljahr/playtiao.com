@@ -60,7 +60,7 @@ export function MatchCard({
       }`}
     >
       {/* Top row: status badge aligned right */}
-      <div className="mb-1 flex min-h-[1.5rem] items-center justify-end">
+      <div className="mb-1 flex min-h-6 items-center justify-end">
         {!isDone && (
           <Badge className={statusColor(match.status)}>{statusLabel(match.status)}</Badge>
         )}

@@ -641,7 +641,7 @@ router.post(
         return;
       }
 
-      const requesterId = req.params.accountId;
+      const requesterId = req.params.accountId as string;
       if (!mongoose.Types.ObjectId.isValid(requesterId)) {
         return res.status(400).json({ message: "Invalid account ID." });
       }
@@ -730,7 +730,7 @@ router.post(
         return;
       }
 
-      const requesterId = req.params.accountId;
+      const requesterId = req.params.accountId as string;
       if (!mongoose.Types.ObjectId.isValid(requesterId)) {
         return res.status(400).json({ message: "Invalid account ID." });
       }
@@ -811,7 +811,7 @@ router.post(
         return;
       }
 
-      const targetId = req.params.accountId;
+      const targetId = req.params.accountId as string;
       if (!mongoose.Types.ObjectId.isValid(targetId)) {
         return res.status(400).json({ message: "Invalid account ID." });
       }
@@ -1041,12 +1041,12 @@ router.post(
         return;
       }
 
-      if (!mongoose.Types.ObjectId.isValid(req.params.invitationId)) {
+      if (!mongoose.Types.ObjectId.isValid(req.params.invitationId as string)) {
         return res.status(400).json({ message: "Invalid invitation ID." });
       }
 
       const invitation = await GameInvitation.findOne({
-        _id: req.params.invitationId,
+        _id: req.params.invitationId as string,
         senderId: account._id,
         status: "pending",
         expiresAt: {
@@ -1084,12 +1084,12 @@ router.post(
         return;
       }
 
-      if (!mongoose.Types.ObjectId.isValid(req.params.invitationId)) {
+      if (!mongoose.Types.ObjectId.isValid(req.params.invitationId as string)) {
         return res.status(400).json({ message: "Invalid invitation ID." });
       }
 
       const invitation = await GameInvitation.findOne({
-        _id: req.params.invitationId,
+        _id: req.params.invitationId as string,
         recipientId: account._id,
         status: "pending",
         expiresAt: {
@@ -1125,7 +1125,7 @@ router.get("/player/social/friends/:friendId/active-games", async (req: Request,
       return;
     }
 
-    const friendId = req.params.friendId;
+    const friendId = req.params.friendId as string;
     if (!friendId || !mongoose.Types.ObjectId.isValid(friendId)) {
       return res.status(400).json({ message: "Invalid account ID." });
     }
@@ -1150,7 +1150,7 @@ router.post("/player/social/friends/:accountId/remove", async (req: Request, res
       return;
     }
 
-    const targetId = req.params.accountId;
+    const targetId = req.params.accountId as string;
     if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
       return res.status(400).json({ message: "Invalid account ID." });
     }

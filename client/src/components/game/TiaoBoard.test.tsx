@@ -129,7 +129,7 @@ describe("TiaoBoard – desktop behavior (no touch)", () => {
 
     // No loupe should be rendered
     const board = screen.getByTestId("tiao-board");
-    expect(board.querySelector('[class*="z-[100]"]')).toBeNull();
+    expect(board.querySelector('[class*="z-100"]')).toBeNull();
   });
 });
 
@@ -400,7 +400,7 @@ describe("TiaoBoard – crosshair overlay", () => {
     );
 
     const board = screen.getByTestId("tiao-board");
-    // Crosshair SVG has z-[35] class — should not exist on desktop
-    expect(board.querySelector('[class*="z-[35]"]')).toBeNull();
+    // Crosshair SVG has z-35 class — should not exist on desktop
+    expect(board.querySelector('[class*="z-35"]')).toBeNull();
   });
 });

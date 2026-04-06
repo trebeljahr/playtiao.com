@@ -53,7 +53,7 @@ async function sendUpload(
     headers: {
       "Content-Type": `multipart/form-data; boundary=${boundary}`,
     },
-    body,
+    body: new Uint8Array(body),
   });
 
   const json = (await response.json()) as { message: string };

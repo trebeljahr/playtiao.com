@@ -42,8 +42,8 @@ function LobbySectionSkeleton() {
               className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4"
             >
               <div className="flex flex-col gap-2">
-                <div className="h-5 w-24 rounded bg-[#e8dcc8]" />
-                <div className="h-3.5 w-40 rounded bg-[#ede3d2]" />
+                <div className="h-5 w-24 rounded-sm bg-[#e8dcc8]" />
+                <div className="h-3.5 w-40 rounded-sm bg-[#ede3d2]" />
               </div>
               <div className="h-8 w-16 rounded-lg bg-[#e8dcc8]" />
             </div>
@@ -240,7 +240,7 @@ export function LobbyPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       <Navbar
         mode="lobby"
@@ -264,7 +264,7 @@ export function LobbyPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-2 sm:gap-4"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] border-2 border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-4xl text-[#25170d] shadow-[0_32px_64px_-24px_rgba(37,23,13,0.85)] sm:h-24 sm:w-24 sm:rounded-[2.5rem] sm:text-6xl">
+              <span className="flex h-16 w-16 items-center justify-center rounded-3xl border-2 border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-4xl text-[#25170d] shadow-[0_32px_64px_-24px_rgba(37,23,13,0.85)] sm:h-24 sm:w-24 sm:rounded-[2.5rem] sm:text-6xl">
                 跳
               </span>
               <h1 className="font-display text-5xl tracking-tighter text-[#2f2015] sm:text-7xl">
@@ -284,7 +284,7 @@ export function LobbyPage() {
           </section>
         )}
 
-        <section className="mt-6 columns-1 gap-6 md:mt-8 md:columns-2 xl:columns-none xl:grid xl:grid-cols-3 [&>*]:mb-6 xl:[&>*]:mb-0">
+        <section className="mt-6 columns-1 gap-6 md:mt-8 md:columns-2 xl:columns-none xl:grid xl:grid-cols-3 *:mb-6 xl:*:mb-0">
           {/* Local — Over the Board */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -523,7 +523,7 @@ export function LobbyPage() {
                       {socialOverview.incomingInvitations.slice(0, 3).map((inv) => (
                         <div
                           key={inv.id}
-                          className="rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group space-y-3"
+                          className="rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs hover:border-[#b98d49] transition-colors group space-y-3"
                         >
                           <PlayerIdentityRow
                             player={inv.sender}
@@ -565,7 +565,7 @@ export function LobbyPage() {
                             </Button>
                             <Button
                               size="sm"
-                              className="shadow-sm group-hover:scale-105 transition-transform"
+                              className="shadow-xs group-hover:scale-105 transition-transform"
                               onClick={() => router.push(`/game/${inv.gameId}`)}
                             >
                               {tc("accept")}
@@ -686,7 +686,7 @@ export function LobbyPage() {
                     {lobbyTournaments.map((item) => (
                       <div
                         key={item.tournamentId}
-                        className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-sm hover:border-[#b98d49] transition-colors group cursor-pointer"
+                        className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs hover:border-[#b98d49] transition-colors group cursor-pointer"
                         onClick={() => router.push(`/tournament/${item.tournamentId}`)}
                       >
                         <div className="flex flex-col min-w-0">
@@ -716,7 +716,7 @@ export function LobbyPage() {
                         </div>
                         <Button
                           size="sm"
-                          className="shrink-0 shadow-sm group-hover:scale-105 transition-transform"
+                          className="shrink-0 shadow-xs group-hover:scale-105 transition-transform"
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/tournament/${item.tournamentId}`);

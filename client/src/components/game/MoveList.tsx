@@ -222,7 +222,7 @@ const MoveCell = React.forwardRef<HTMLButtonElement, MoveCellProps>(function Mov
     return (
       <span
         className={cn(
-          "inline-block rounded px-1.5 py-0.5 font-mono text-[#2b1e14]",
+          "inline-block rounded-sm px-1.5 py-0.5 font-mono text-[#2b1e14]",
           isActive && "bg-[#e8dcc8] font-semibold",
         )}
       >
@@ -237,7 +237,7 @@ const MoveCell = React.forwardRef<HTMLButtonElement, MoveCellProps>(function Mov
       type="button"
       onClick={() => onSelect?.(moveIdx)}
       className={cn(
-        "inline-block cursor-pointer rounded px-1.5 py-0.5 font-mono text-[#2b1e14] transition-colors hover:bg-[#f0e6d4]",
+        "inline-block cursor-pointer rounded-sm px-1.5 py-0.5 font-mono text-[#2b1e14] transition-colors hover:bg-[#f0e6d4]",
         isActive && "bg-[#e8dcc8] font-semibold",
       )}
     >

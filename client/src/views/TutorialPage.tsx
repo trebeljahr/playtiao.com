@@ -208,7 +208,7 @@ export function TutorialPage() {
   const showNextButton = !isInteractive || (isInteractive && isRevisiting);
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[24rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       <Navbar
         mode="tutorial"

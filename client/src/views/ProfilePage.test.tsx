@@ -38,7 +38,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 
 function motionProxy(tag: string) {
   return ({ children, onClick, className, ...rest }: Record<string, unknown>) => {
-    const Tag = tag as keyof JSX.IntrinsicElements;
+    const Tag = tag as keyof React.JSX.IntrinsicElements;
     return (
       <Tag
         onClick={onClick as React.MouseEventHandler}

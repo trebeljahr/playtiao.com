@@ -67,7 +67,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
       description: (
         <div className="space-y-3">
           <div className="flex justify-center">
-            <span className="flex h-20 w-20 items-center justify-center rounded-[2rem] border-2 border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-5xl text-[#25170d] shadow-[0_24px_48px_-20px_rgba(37,23,13,0.7)]">
+            <span className="flex h-20 w-20 items-center justify-center rounded-4xl border-2 border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-5xl text-[#25170d] shadow-[0_24px_48px_-20px_rgba(37,23,13,0.7)]">
               跳
             </span>
           </div>

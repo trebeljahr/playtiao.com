@@ -70,7 +70,7 @@ export function GameSidePanel({
   const hasClock = timeControl !== null && clock !== undefined;
 
   return (
-    <div className="mx-auto w-full max-w-[calc(100dvh-5rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-[20rem] xl:max-w-[28rem]">
+    <div className="mx-auto w-full max-w-[calc(100dvh-5rem)] space-y-4 xl:mx-0 xl:w-auto xl:min-w-[20rem] xl:max-w-md">
       <div className="mx-auto w-full xl:mx-0">
         <Card
           className={cn(

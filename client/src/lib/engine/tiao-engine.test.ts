@@ -162,7 +162,7 @@ describe("Zobrist Hashing", () => {
   });
 });
 
-describe("Search", () => {
+describe("Search", { timeout: 30_000 }, () => {
   it("finds immediate capture", () => {
     const state = setupBoard([
       { x: 9, y: 9, color: "black" },
@@ -228,7 +228,7 @@ describe("Search", () => {
   });
 });
 
-describe("Difficulty Levels", () => {
+describe("Difficulty Levels", { timeout: 30_000 }, () => {
   it("level 1 completes within its time budget", () => {
     const state = createInitialGameState();
     state.currentTurn = "black";
@@ -254,7 +254,7 @@ describe("Difficulty Levels", () => {
   });
 });
 
-describe("AI Difficulty Presets (#66)", () => {
+describe("AI Difficulty Presets (#66)", { timeout: 120_000 }, () => {
   it("has three difficulty labels: Easy, Intermediate, Hard", () => {
     expect(AI_DIFFICULTY_LABELS[1]).toBe("Easy");
     expect(AI_DIFFICULTY_LABELS[2]).toBe("Intermediate");

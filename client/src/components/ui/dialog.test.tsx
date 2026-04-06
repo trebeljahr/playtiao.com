@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 /* ---------- mock framer-motion ---------- */
 function motionProxy(tag: string) {
   return ({ children, onClick, onMouseDown, className, ...rest }: Record<string, unknown>) => {
-    const Tag = tag as keyof JSX.IntrinsicElements;
+    const Tag = tag as keyof React.JSX.IntrinsicElements;
     const domProps: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(rest)) {
       if (

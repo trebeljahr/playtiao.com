@@ -118,7 +118,7 @@ export function ComputerGamePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[18rem] bg-[radial-gradient(circle_at_top,_rgba(255,247,231,0.76),_transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       <Navbar
         mode="lobby"
@@ -130,7 +130,7 @@ export function ComputerGamePage() {
         onLogout={onLogout}
       />
 
-      <main className="mx-auto flex max-w-[104rem] flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
+      <main className="mx-auto flex max-w-416 flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         {difficulty === null ? (
           <section className="flex items-center justify-center py-12">
             <Card className={cn(paperCard, "w-full max-w-md")}>
@@ -173,9 +173,9 @@ export function ComputerGamePage() {
                   disabled={computer.controlsDisabled}
                 />
                 {computer.computerThinking && (
-                  <div className="pointer-events-none absolute inset-0 z-[200] flex items-center justify-center">
+                  <div className="pointer-events-none absolute inset-0 z-200 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/95 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur">
+                      <div className="flex items-center gap-3 rounded-3xl border border-[#dcc7a2] bg-[#fff7ec]/95 px-5 py-3 text-sm font-semibold text-[#5d4732] shadow-lg backdrop-blur-sm">
                         <HourglassSpinner className="text-[#7b5f3f]" />
                         {t("aiThinking")}
                       </div>

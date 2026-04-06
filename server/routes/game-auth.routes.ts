@@ -407,7 +407,7 @@ router.get("/profile", async (req: Request, res: Response) => {
 
 router.get("/profile/:username", async (req: Request, res: Response) => {
   try {
-    const username = req.params.username?.trim().toLowerCase();
+    const username = (req.params.username as string)?.trim().toLowerCase();
     if (!username) {
       return res.status(400).json({ code: "INVALID_USERNAME", message: "Username is required." });
     }
@@ -599,7 +599,7 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
 
 router.get("/profile/:username/games", async (req: Request, res: Response) => {
   try {
-    const username = req.params.username?.trim().toLowerCase();
+    const username = (req.params.username as string)?.trim().toLowerCase();
     if (!username) {
       return res.status(400).json({ code: "INVALID_USERNAME", message: "Username is required." });
     }

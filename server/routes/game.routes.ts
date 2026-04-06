@@ -251,7 +251,7 @@ router.delete("/games/:gameId", async (req: Request, res: Response) => {
   if (!player) return;
 
   try {
-    const gameId = req.params.gameId?.trim().toUpperCase();
+    const gameId = (req.params.gameId as string)?.trim().toUpperCase();
     if (!gameId) {
       return res.status(400).json({ code: "INVALID_GAME_ID", message: "Game ID is required." });
     }
@@ -298,12 +298,12 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!isValidGameId(req.params.gameId)) {
+  if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
-    const snapshot = await gameService.joinGame(req.params.gameId, player);
+    const snapshot = await gameService.joinGame(req.params.gameId as string, player);
 
     // When the game is now active (2 players joined), revoke all remaining invites
     if (snapshot.status === "active") {
@@ -352,12 +352,12 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!isValidGameId(req.params.gameId)) {
+  if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
-    const snapshot = await gameService.accessGame(req.params.gameId, player);
+    const snapshot = await gameService.accessGame(req.params.gameId as string, player);
 
     if (player.kind === "account") {
       await acceptPendingInvitationsForPlayer(snapshot.gameId, player.playerId);
@@ -410,13 +410,13 @@ router.delete("/games/:gameId", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!isValidGameId(req.params.gameId)) {
+  if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
-    await gameService.cancelWaitingRoom(req.params.gameId, player);
-    void revokeAllPendingInvitationsForGame(req.params.gameId);
+    await gameService.cancelWaitingRoom(req.params.gameId as string, player);
+    void revokeAllPendingInvitationsForGame(req.params.gameId as string);
     return res.status(204).send();
   } catch (error) {
     return respondWithGameServiceError(res, error, "Unable to cancel that game right now.");
@@ -429,12 +429,12 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!isValidGameId(req.params.gameId)) {
+  if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
-    const snapshot = await gameService.getSnapshot(req.params.gameId);
+    const snapshot = await gameService.getSnapshot(req.params.gameId as string);
     return res.status(200).json({ snapshot });
   } catch (error) {
     return respondWithGameServiceError(res, error, "Unable to load that game right now.");
@@ -446,13 +446,13 @@ router.get("/games/:gameId", async (req: Request, res: Response) => {
  * No authentication required so crawlers / SSR can fetch it.
  */
 router.get("/games/:gameId/og", async (req: Request, res: Response) => {
-  if (!isValidGameId(req.params.gameId)) {
+  if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
   try {
     const room = (await GameRoom.findOne(
-      { roomId: req.params.gameId.trim().toUpperCase() },
+      { roomId: (req.params.gameId as string).trim().toUpperCase() },
       {
         status: 1,
         "state.boardSize": 1,
@@ -488,7 +488,7 @@ router.get("/games/:gameId/og", async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({
-      gameId: req.params.gameId.trim().toUpperCase(),
+      gameId: (req.params.gameId as string).trim().toUpperCase(),
       status: room.status,
       boardSize: room.state?.boardSize,
       scoreToWin: room.state?.scoreToWin,
@@ -682,7 +682,7 @@ router.post("/games/:gameId/test-finish", async (req: Request, res: Response) =>
       .json({ code: "FORBIDDEN", message: "Only available in test environment." });
   }
 
-  const { gameId } = req.params;
+  const gameId = req.params.gameId as string;
   const { winner } = req.body as { winner: string };
 
   if (typeof winner !== "string" || (winner !== "white" && winner !== "black")) {

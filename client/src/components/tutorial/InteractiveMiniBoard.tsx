@@ -595,7 +595,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                     />
                   ) : showHoverGhost && posEq(pos, hoveredPos!) ? (
                     <span
-                      className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-sm"
+                      className="pointer-events-none absolute inset-[5.5%] z-10 rounded-full border opacity-40 shadow-xs"
                       style={{
                         borderColor:
                           color === "B" ? theme.blackPieceBorder : theme.whitePieceBorder,
@@ -609,7 +609,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
 
             {/* Jump trail arrows SVG overlay */}
             <svg
-              className="pointer-events-none absolute inset-0 z-[80] h-full w-full"
+              className="pointer-events-none absolute inset-0 z-80 h-full w-full"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               aria-hidden="true"
@@ -816,7 +816,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             {/* Confirm overlay */}
             {showConfirmOverlay && forcedOrigin && (
               <span
-                className="pointer-events-none absolute z-[95] flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
+                className="pointer-events-none absolute z-95 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
                 style={{
                   left: `${pointPct(forcedOrigin.x, size)}%`,
                   top: `${pointPct(forcedOrigin.y, size)}%`,
@@ -844,7 +844,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                 }}
                 onPointerEnter={() => setUndoHovered(true)}
                 onPointerLeave={() => setUndoHovered(false)}
-                className="absolute z-[90] aspect-square -translate-x-1/2 -translate-y-1/2 bg-transparent"
+                className="absolute z-90 aspect-square -translate-x-1/2 -translate-y-1/2 bg-transparent"
                 style={{
                   left: `${pointPct(lastJump.from.x, size)}%`,
                   top: `${pointPct(lastJump.from.y, size)}%`,
@@ -857,7 +857,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             {/* Undo icon */}
             {undoHovered && lastJump && (
               <span
-                className="pointer-events-none absolute z-[95] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#deaaaa] bg-[rgba(255,247,246,0.98)] text-[#ba6561] shadow-[0_12px_20px_-14px_rgba(134,70,67,0.55)]"
+                className="pointer-events-none absolute z-95 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#deaaaa] bg-[rgba(255,247,246,0.98)] text-[#ba6561] shadow-[0_12px_20px_-14px_rgba(134,70,67,0.55)]"
                 style={{
                   left: `${pointPct(lastJump.from.x, size)}%`,
                   top: `${pointPct(lastJump.from.y, size)}%`,
@@ -877,7 +877,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             {/* Nudge ring — uses margin for centering since framer-motion overrides CSS transforms */}
             {nudge && !shakePos && !completed && (
               <motion.span
-                className="pointer-events-none absolute z-[85] rounded-full border-2 border-[#b98d49]"
+                className="pointer-events-none absolute z-85 rounded-full border-2 border-[#b98d49]"
                 style={{
                   left: `${pointPct(nudge.pos.x, size)}%`,
                   top: `${pointPct(nudge.pos.y, size)}%`,
@@ -901,7 +901,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             {/* Mobile confirm hint — larger pulsing circle on first confirm */}
             {showMobileConfirmHint && forcedOrigin && (
               <motion.span
-                className="pointer-events-none absolute z-[84] rounded-full border-[3px] border-[#56703f] bg-[#56703f]/10"
+                className="pointer-events-none absolute z-84 rounded-full border-[3px] border-[#56703f] bg-[#56703f]/10"
                 style={{
                   left: `${pointPct(forcedOrigin.x, size)}%`,
                   top: `${pointPct(forcedOrigin.y, size)}%`,
@@ -926,7 +926,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             {/* Shake animation — uses margin for centering */}
             {shakePos && (
               <motion.span
-                className="pointer-events-none absolute z-[85] rounded-full border-[2.5px] border-red-400 bg-red-500/10"
+                className="pointer-events-none absolute z-85 rounded-full border-[2.5px] border-red-400 bg-red-500/10"
                 style={{
                   left: `${pointPct(shakePos.x, size)}%`,
                   top: `${pointPct(shakePos.y, size)}%`,
@@ -960,7 +960,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                 key={`nudge-label-${nudge.pos.x}-${nudge.pos.y}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="pointer-events-none absolute z-[96] -translate-x-1/2 whitespace-nowrap rounded-full border border-[#d7c39e] bg-[#fffaf3] px-2.5 py-0.5 text-[10px] font-semibold text-[#6c543c] shadow-md"
+                className="pointer-events-none absolute z-96 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#d7c39e] bg-[#fffaf3] px-2.5 py-0.5 text-[10px] font-semibold text-[#6c543c] shadow-md"
                 style={{
                   left: `${outerLeftPct}%`,
                   top: `${outerTopPct}%`,
@@ -991,7 +991,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 350, damping: 18 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none"
+            className="absolute inset-0 z-100 flex items-center justify-center pointer-events-none"
           >
             <div className="flex h-12 w-20 items-center justify-center rounded-full bg-[#e0eef8] border-2 border-[#6ba3d6] shadow-[0_8px_24px_-6px_rgba(107,163,214,0.5)]">
               <span className="text-xl text-[#4a8ac4]">✓</span>
