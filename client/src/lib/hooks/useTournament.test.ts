@@ -72,6 +72,7 @@ function makeTournamentSnapshot(overrides?: Partial<TournamentSnapshot>): Tourna
     ],
     groups: [],
     knockoutRounds: [],
+    playerIdentities: {},
     featuredMatchId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
