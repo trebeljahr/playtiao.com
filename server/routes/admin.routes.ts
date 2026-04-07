@@ -4,6 +4,11 @@ import { requireAdmin } from "../auth/sessionHelper";
 import { escapeRegExp } from "../error-handling/escapeRegExp";
 import { handleRouteError } from "../error-handling/routeError";
 import { grantBadge, revokeBadge, grantTheme, revokeTheme } from "../game/badgeService";
+import {
+  adminGrantAchievement,
+  adminRevokeAchievement,
+  getPlayerAchievementIds,
+} from "../game/achievementService";
 
 const router = express.Router();
 
@@ -32,13 +37,16 @@ router.get("/users/search", async (req: Request, res: Response) => {
       .limit(20)
       .lean();
 
-    const users = accounts.map((account: any) => ({
-      playerId: String(account._id),
-      displayName: account.displayName,
-      badges: account.badges ?? [],
-      activeBadges: account.activeBadges ?? [],
-      unlockedThemes: account.unlockedThemes ?? [],
-    }));
+    const users = await Promise.all(
+      accounts.map(async (account: any) => ({
+        playerId: String(account._id),
+        displayName: account.displayName,
+        badges: account.badges ?? [],
+        activeBadges: account.activeBadges ?? [],
+        unlockedThemes: account.unlockedThemes ?? [],
+        achievements: await getPlayerAchievementIds(String(account._id)),
+      })),
+    );
 
     return res.status(200).json({ users });
   } catch (error) {
@@ -115,6 +123,58 @@ router.post("/themes/revoke", async (req: Request, res: Response) => {
     return res.status(200).json(await revokeTheme(playerId, themeId));
   } catch (error) {
     return handleRouteError(res, error, "Unable to revoke theme right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/achievements/grant — grant an achievement to a user
+// ---------------------------------------------------------------------------
+
+router.post("/achievements/grant", async (req: Request, res: Response) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  const { playerId, achievementId } = req.body as {
+    playerId?: string;
+    achievementId?: string;
+  };
+  if (!playerId || !achievementId) {
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "playerId and achievementId are required.",
+    });
+  }
+  try {
+    const granted = await adminGrantAchievement(playerId, achievementId);
+    const achievements = await getPlayerAchievementIds(playerId);
+    return res.status(200).json({ granted, achievements });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to grant achievement right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/achievements/revoke — revoke an achievement from a user
+// ---------------------------------------------------------------------------
+
+router.post("/achievements/revoke", async (req: Request, res: Response) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  const { playerId, achievementId } = req.body as {
+    playerId?: string;
+    achievementId?: string;
+  };
+  if (!playerId || !achievementId) {
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "playerId and achievementId are required.",
+    });
+  }
+  try {
+    const revoked = await adminRevokeAchievement(playerId, achievementId);
+    const achievements = await getPlayerAchievementIds(playerId);
+    return res.status(200).json({ revoked, achievements });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to revoke achievement right now.", req);
   }
 });
 

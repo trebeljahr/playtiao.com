@@ -679,7 +679,11 @@
     "grantTheme": "Design freischalten",
     "revokeTheme": "Design entziehen",
     "themeGranted": "Design \"{theme}\" erfolgreich freigeschaltet.",
-    "themeRevoked": "Design \"{theme}\" erfolgreich entzogen."
+    "themeRevoked": "Design \"{theme}\" erfolgreich entzogen.",
+    "achievements": "Erfolge",
+    "achievementCount": "{count} Erfolge freigeschaltet",
+    "achievementGranted": "Erfolg \"{achievement}\" erfolgreich freigeschaltet.",
+    "achievementRevoked": "Erfolg \"{achievement}\" erfolgreich entzogen."
   },
   "error": {
     "somethingWentWrong": "Etwas ist schiefgelaufen",

@@ -679,7 +679,11 @@
     "grantTheme": "Conceder tema",
     "revokeTheme": "Revocar tema",
     "themeGranted": "Tema \"{theme}\" concedido correctamente.",
-    "themeRevoked": "Tema \"{theme}\" revocado correctamente."
+    "themeRevoked": "Tema \"{theme}\" revocado correctamente.",
+    "achievements": "Logros",
+    "achievementCount": "{count} logros desbloqueados",
+    "achievementGranted": "Logro \"{achievement}\" otorgado correctamente.",
+    "achievementRevoked": "Logro \"{achievement}\" revocado correctamente."
   },
   "error": {
     "somethingWentWrong": "Algo salió mal",

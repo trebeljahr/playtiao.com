@@ -532,6 +532,7 @@ export type AdminUserResult = {
   badges: string[];
   activeBadges: string[];
   unlockedThemes: string[];
+  achievements: string[];
 };
 
 export function adminSearchUsers(query: string) {
@@ -566,6 +567,20 @@ export function adminRevokeTheme(playerId: string, themeId: string) {
     method: "POST",
     body: { playerId, themeId },
   });
+}
+
+export function adminGrantAchievement(playerId: string, achievementId: string) {
+  return request<{ granted: boolean; achievements: string[] }>(
+    "/api/player/admin/achievements/grant",
+    { method: "POST", body: { playerId, achievementId } },
+  );
+}
+
+export function adminRevokeAchievement(playerId: string, achievementId: string) {
+  return request<{ revoked: boolean; achievements: string[] }>(
+    "/api/player/admin/achievements/revoke",
+    { method: "POST", body: { playerId, achievementId } },
+  );
 }
 
 // ---------------------------------------------------------------------------

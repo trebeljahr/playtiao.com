@@ -10,6 +10,7 @@ import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { Button } from "@/components/ui/button";
 import { SkeletonCard } from "@/components/ui/skeleton";
+import { AchievementIcon } from "@/components/AchievementIcon";
 import { getMyAchievements, type PlayerAchievement } from "@/lib/api";
 import {
   ACHIEVEMENTS,
@@ -122,7 +123,7 @@ function AchievementCard({
           {isHidden ? (
             <span className="text-lg">{"\ud83d\udd12"}</span>
           ) : (
-            <TrophyIcon tier={def.tier} unlocked={unlocked} />
+            <AchievementIcon id={def.id} tier={def.tier} unlocked={unlocked} />
           )}
         </div>
 
@@ -165,28 +166,6 @@ function AchievementCard({
         )}
       </div>
     </div>
-  );
-}
-
-function TrophyIcon({ tier, unlocked }: { tier: AchievementTier; unlocked: boolean }) {
-  const color = unlocked
-    ? tier === "platinum"
-      ? "#06b6d4"
-      : tier === "gold"
-        ? "#ca8a04"
-        : tier === "silver"
-          ? "#64748b"
-          : "#92400e"
-    : "#a89a7e";
-
-  return (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
-      />
-    </svg>
   );
 }
 

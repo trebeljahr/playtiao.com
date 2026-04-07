@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import type { MultiplayerGameSummary } from "@shared";
 import { ACHIEVEMENTS, type AchievementDefinition, type AchievementTier } from "@shared";
+import { AchievementIcon } from "@/components/AchievementIcon";
 import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
@@ -446,19 +447,7 @@ const TIER_COLORS: Record<AchievementTier, string> = {
 function ProfileAchievementBadge({ def }: { def: AchievementDefinition }) {
   return (
     <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${TIER_COLORS[def.tier]}`}>
-      <svg
-        className="h-4 w-4 shrink-0"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
-        />
-      </svg>
+      <AchievementIcon id={def.id} tier={def.tier} className="h-4 w-4 shrink-0" />
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold">{def.name}</p>
       </div>

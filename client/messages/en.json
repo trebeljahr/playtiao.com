@@ -679,7 +679,11 @@
     "grantTheme": "Grant theme",
     "revokeTheme": "Revoke theme",
     "themeGranted": "Theme \"{theme}\" granted successfully.",
-    "themeRevoked": "Theme \"{theme}\" revoked successfully."
+    "themeRevoked": "Theme \"{theme}\" revoked successfully.",
+    "achievements": "Achievements",
+    "achievementCount": "{count} achievements unlocked",
+    "achievementGranted": "Achievement \"{achievement}\" granted successfully.",
+    "achievementRevoked": "Achievement \"{achievement}\" revoked successfully."
   },
   "error": {
     "somethingWentWrong": "Something went wrong",

@@ -20,10 +20,14 @@ import {
   adminRevokeBadge,
   adminGrantTheme,
   adminRevokeTheme,
+  adminGrantAchievement,
+  adminRevokeAchievement,
   type AdminUserResult,
 } from "@/lib/api";
 import { THEMES } from "@/components/game/boardThemes";
 import { toastError } from "@/lib/errors";
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from "@shared";
+import { AchievementIcon } from "@/components/AchievementIcon";
 
 export function AdminBadgesPage() {
   const t = useTranslations("adminBadges");
@@ -147,6 +151,50 @@ export function AdminBadgesPage() {
           ),
         );
         toast.success(t("themeRevoked", { theme: themeId }));
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [selectedUser, t],
+  );
+
+  const handleGrantAchievement = useCallback(
+    async (achievementId: string) => {
+      if (!selectedUser) return;
+      setBusy(`ach-${achievementId}`);
+      try {
+        const result = await adminGrantAchievement(selectedUser.playerId, achievementId);
+        setSelectedUser((prev) => (prev ? { ...prev, achievements: result.achievements } : null));
+        setSearchResults((prev) =>
+          prev.map((u) =>
+            u.playerId === selectedUser.playerId ? { ...u, achievements: result.achievements } : u,
+          ),
+        );
+        toast.success(t("achievementGranted", { achievement: achievementId }));
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [selectedUser, t],
+  );
+
+  const handleRevokeAchievement = useCallback(
+    async (achievementId: string) => {
+      if (!selectedUser) return;
+      setBusy(`ach-${achievementId}`);
+      try {
+        const result = await adminRevokeAchievement(selectedUser.playerId, achievementId);
+        setSelectedUser((prev) => (prev ? { ...prev, achievements: result.achievements } : null));
+        setSearchResults((prev) =>
+          prev.map((u) =>
+            u.playerId === selectedUser.playerId ? { ...u, achievements: result.achievements } : u,
+          ),
+        );
+        toast.success(t("achievementRevoked", { achievement: achievementId }));
       } catch (error) {
         toastError(error);
       } finally {
@@ -389,6 +437,91 @@ export function AdminBadgesPage() {
                     })}
                   </div>
                 </div>
+              </CardContent>
+            </PaperCard>
+          </AnimatedCard>
+        )}
+
+        {/* Achievement management for selected user */}
+        {selectedUser && (
+          <AnimatedCard delay={0.15}>
+            <PaperCard>
+              <CardHeader>
+                <CardTitle className="text-[#5c4a32]">{t("achievements")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Current achievements count */}
+                <p className="text-sm text-[#8b7356]">
+                  {t("achievementCount", { count: selectedUser.achievements?.length ?? 0 })}
+                </p>
+
+                {/* All achievements grouped by category */}
+                {ACHIEVEMENT_CATEGORIES.map(({ key, label }) => {
+                  const defs = ACHIEVEMENTS.filter((a) => a.category === key);
+                  if (defs.length === 0) return null;
+
+                  return (
+                    <div key={key}>
+                      <p className="mb-2 text-sm font-medium text-[#8b7356]">{label}</p>
+                      <div className="space-y-2">
+                        {defs
+                          .sort((a, b) => a.order - b.order)
+                          .map((def) => {
+                            const hasIt = selectedUser.achievements?.includes(def.id) ?? false;
+                            const busyKey = `ach-${def.id}`;
+
+                            return (
+                              <div
+                                key={def.id}
+                                className="flex items-center justify-between rounded-lg border border-[#d0bb94]/50 bg-white/40 px-4 py-2"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <AchievementIcon
+                                    id={def.id}
+                                    tier={def.tier}
+                                    unlocked={hasIt}
+                                    className="h-5 w-5"
+                                  />
+                                  <div className="min-w-0">
+                                    <span className="text-sm text-[#5c4a32]">
+                                      {def.name}
+                                      {def.secret && (
+                                        <span className="ml-1.5 text-xs text-[#a89a7e]">
+                                          (secret)
+                                        </span>
+                                      )}
+                                    </span>
+                                    <p className="text-xs text-[#8b7356] truncate">
+                                      {def.description}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={hasIt ? "danger" : "default"}
+                                  disabled={busy === busyKey}
+                                  onClick={() =>
+                                    hasIt
+                                      ? handleRevokeAchievement(def.id)
+                                      : handleGrantAchievement(def.id)
+                                  }
+                                  className={
+                                    hasIt ? "" : "bg-[#8b7356] text-white hover:bg-[#6d5a42]"
+                                  }
+                                >
+                                  {busy === busyKey
+                                    ? tCommon("loading")
+                                    : hasIt
+                                      ? t("revoke")
+                                      : t("grant")}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </PaperCard>
           </AnimatedCard>

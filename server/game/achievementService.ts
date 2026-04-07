@@ -88,6 +88,30 @@ export async function getPlayerAchievements(
   }));
 }
 
+export async function adminGrantAchievement(
+  playerId: string,
+  achievementId: string,
+): Promise<boolean> {
+  return grant(playerId, achievementId);
+}
+
+export async function adminRevokeAchievement(
+  playerId: string,
+  achievementId: string,
+): Promise<boolean> {
+  const result = await Achievement.deleteOne({ playerId, achievementId });
+  if (result.deletedCount > 0) {
+    console.log(`[achievement] Revoked "${achievementId}" from ${playerId}`);
+    return true;
+  }
+  return false;
+}
+
+export async function getPlayerAchievementIds(playerId: string): Promise<string[]> {
+  const docs = await Achievement.find({ playerId }).select("achievementId").lean();
+  return docs.map((d) => d.achievementId);
+}
+
 // ---------------------------------------------------------------------------
 // Event: Game Completed (multiplayer)
 // ---------------------------------------------------------------------------
