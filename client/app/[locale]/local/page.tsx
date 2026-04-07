@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LocalGamePage } from "@/views/LocalGamePage";
@@ -20,5 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function Page() {
-  return <LocalGamePage />;
+  return (
+    <Suspense>
+      <LocalGamePage />
+    </Suspense>
+  );
 }
