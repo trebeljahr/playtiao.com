@@ -139,31 +139,37 @@ export function ShopPage() {
       if (cancelled) return;
       const el = document.getElementById(purchasedItem!);
       if (el) {
-        // Instant scroll to center the element, then fire confetti
+        // Scroll to the element instantly
         el.scrollIntoView({ behavior: "instant", block: "center" });
 
-        // Use a generous delay to let the browser paint after instant scroll
+        // Re-query the element after a delay — React re-renders from fetchCatalog
+        // replace the DOM node, making the original `el` reference stale (zero-size).
         setTimeout(() => {
-          const rect = el.getBoundingClientRect();
+          const freshEl = document.getElementById(purchasedItem!);
+          if (!freshEl) {
+            fireConfettiBurst(0.5, 0.45);
+            setPurchasedItem(null);
+            return;
+          }
+
+          const rect = freshEl.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
           const vw = window.innerWidth;
           const vh = window.innerHeight;
 
-          // Debug: log to help diagnose position issues
-          console.log("[shop-confetti]", { cx, cy, vw, vh, x: cx / vw, y: cy / vh, rect });
-
-          // Clamp to valid range
           const x = Math.max(0.05, Math.min(0.95, cx / vw));
           const y = Math.max(0.05, Math.min(0.95, cy / vh));
 
           fireConfettiBurst(x, y);
-          el.classList.add("shop-purchase-wiggle");
-          el.addEventListener("animationend", () => el.classList.remove("shop-purchase-wiggle"), {
-            once: true,
-          });
+          freshEl.classList.add("shop-purchase-wiggle");
+          freshEl.addEventListener(
+            "animationend",
+            () => freshEl.classList.remove("shop-purchase-wiggle"),
+            { once: true },
+          );
           setPurchasedItem(null);
-        }, 100);
+        }, 500);
         return;
       }
 
