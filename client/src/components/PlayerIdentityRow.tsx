@@ -97,7 +97,7 @@ export function PlayerIdentityRow({
   const identityContent = (
     <>
       <PlayerOverviewAvatar player={player} anonymous={anonymous} className={avatarClassName} />
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-1">
         <span
           className={cn(
             "truncate text-sm font-medium leading-tight",
