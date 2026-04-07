@@ -59,10 +59,12 @@ export function ComputerGamePage() {
       autoStartRef.current = true;
       const d = Number(searchParams.get("difficulty") || 1) as AIDifficulty;
       const c = (searchParams.get("color") || "white") as PlayerColor;
+      const bs = parseInt(searchParams.get("boardSize") || "19", 10);
+      const stw = parseInt(searchParams.get("scoreToWin") || "10", 10);
       setSelectedDifficulty(d);
       setSelectedColor(c);
-      setBoardSize(19);
-      setScoreToWin(10);
+      setBoardSize(bs);
+      setScoreToWin(stw);
       setDifficulty(d);
       computer.resetLocalGame(c === "white" ? "black" : "white");
     }

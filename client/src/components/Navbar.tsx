@@ -412,8 +412,8 @@ export function Navbar({
   const accountControls =
     player?.kind === "account" ? (
       <>
-        <Button variant="secondary" size="sm" onClick={() => handleNav("/profile")}>
-          {t("profile")}
+        <Button variant="secondary" size="sm" onClick={() => handleNav("/settings")}>
+          {t("settings")}
         </Button>
         <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={onLogout}>
           {t("logout")}
@@ -507,9 +507,9 @@ export function Navbar({
               <Button
                 variant="secondary"
                 className="w-full justify-start"
-                onClick={() => handleNav("/profile")}
+                onClick={() => handleNav("/settings")}
               >
-                {t("profile")}
+                {t("settings")}
               </Button>
               <Button
                 variant="ghost"

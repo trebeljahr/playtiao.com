@@ -219,7 +219,7 @@ function LinkedAccounts({
     try {
       const { error } = await authClient.linkSocial({
         provider,
-        callbackURL: window.location.origin + "/profile",
+        callbackURL: window.location.origin + "/settings",
       });
       if (error) {
         toastError(readableError(error));
@@ -723,6 +723,10 @@ export function ProfilePage() {
       />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
+        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
+          &larr; {tCommon("back")}
+        </Button>
+
         {auth?.player.kind !== "account" ? (
           <Card className={paperCard}>
             <CardHeader>
@@ -737,9 +741,6 @@ export function ProfilePage() {
                 <Button onClick={() => onOpenAuth("signup")}>{t("createAccount")}</Button>
                 <Button variant="outline" onClick={() => onOpenAuth("login")}>
                   {tCommon("signIn")}
-                </Button>
-                <Button variant="ghost" onClick={() => router.back()}>
-                  &larr; {tCommon("back")}
                 </Button>
               </div>
             </CardContent>
@@ -976,9 +977,6 @@ export function ProfilePage() {
                     <div className="flex flex-wrap gap-3">
                       <Button type="submit" disabled={saving}>
                         {saving ? tCommon("saving") : tCommon("save")}
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => router.back()}>
-                        &larr; {tCommon("back")}
                       </Button>
                       <Button
                         type="button"

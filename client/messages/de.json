@@ -118,7 +118,12 @@
     "guestGamesRemaining": "Noch {remaining} {remaining, plural, one {Gastspiel} other {Gastspiele}} übrig",
     "tournaments": "Turniere",
     "noTournaments": "Gerade keine Turniere.",
-    "showAll": "Alle anzeigen"
+    "showAll": "Alle anzeigen",
+    "localGameTitle": "Mit einem Freund spielen",
+    "localGameDesc": "Konfiguriere deine lokalen Spieleinstellungen.",
+    "computerGameTitle": "Gegen einen Bot spielen",
+    "computerGameDesc": "Wähle deine Schwierigkeit und Einstellungen.",
+    "startGame": "Spiel starten"
   },
   "game": {
     "white": "Weiß",
@@ -619,7 +624,8 @@
     "signUp": "Registrieren",
     "logout": "Abmelden",
     "changeLanguage": "Sprache ändern",
-    "reportIssue": "Problem melden"
+    "reportIssue": "Problem melden",
+    "settings": "Einstellungen"
   },
   "badges": {
     "supporter": "Unterstützer",
@@ -666,6 +672,7 @@
     "tournamentsTitle": "Turniere",
     "tournamentsDescription": "Durchsuche und nimm an Tiao-Turnieren teil. Rundenturnier, K.O. oder Gruppenphase.",
     "profileTitle": "Dein Profil",
+    "settingsTitle": "Einstellungen",
     "profileDescription": "Verwalte dein Tiao-Konto, Anzeigenamen, Profilbild und Abzeichen.",
     "gamesTitle": "Meine Spiele",
     "gamesDescription": "Sieh dir deine aktiven Spiele und Spielhistorie auf Tiao an.",

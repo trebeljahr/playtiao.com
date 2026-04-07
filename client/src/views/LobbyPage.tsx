@@ -3,8 +3,9 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { TimeControl } from "@shared";
+import type { TimeControl, PlayerColor } from "@shared";
 import { TIME_CONTROL_PRESETS } from "@shared";
+import type { AIDifficulty } from "@/lib/computer-ai";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,6 +135,17 @@ export function LobbyPage() {
   const [createScoreToWin, setCreateScoreToWin] = useState(10);
   const [createTimeControl, setCreateTimeControl] = useState<TimeControl>(null);
 
+  const [showLocalDialog, setShowLocalDialog] = useState(false);
+  const [localBoardSize, setLocalBoardSize] = useState(19);
+  const [localScoreToWin, setLocalScoreToWin] = useState(10);
+  const [localTimeControl, setLocalTimeControl] = useState<TimeControl>(null);
+
+  const [showComputerDialog, setShowComputerDialog] = useState(false);
+  const [computerBoardSize, setComputerBoardSize] = useState(19);
+  const [computerScoreToWin, setComputerScoreToWin] = useState(10);
+  const [computerDifficulty, setComputerDifficulty] = useState<AIDifficulty>(2);
+  const [computerColor, setComputerColor] = useState<PlayerColor | "random">("random");
+
   const activeGames = multiplayerGames.active ?? [];
   const finishedGames = multiplayerGames.finished ?? [];
   const rematchGames = useMemo(() => {
@@ -203,6 +215,28 @@ export function LobbyPage() {
     } finally {
       setMultiplayerBusy(false);
     }
+  }
+
+  function handleStartLocal() {
+    setShowLocalDialog(false);
+    const params = new URLSearchParams({ autostart: "1" });
+    if (localBoardSize !== 19) params.set("boardSize", String(localBoardSize));
+    if (localScoreToWin !== 10) params.set("scoreToWin", String(localScoreToWin));
+    if (localTimeControl) {
+      params.set("tcInitial", String(localTimeControl.initialMs));
+      params.set("tcIncrement", String(localTimeControl.incrementMs));
+    }
+    router.push(`/local?${params}`);
+  }
+
+  function handleStartComputer() {
+    setShowComputerDialog(false);
+    const params = new URLSearchParams({ autostart: "1" });
+    if (computerBoardSize !== 19) params.set("boardSize", String(computerBoardSize));
+    if (computerScoreToWin !== 10) params.set("scoreToWin", String(computerScoreToWin));
+    params.set("difficulty", String(computerDifficulty));
+    if (computerColor !== "random") params.set("color", computerColor);
+    router.push(`/computer?${params}`);
   }
 
   async function handleJoinRoom() {
@@ -293,7 +327,7 @@ export function LobbyPage() {
                 <Button
                   size="lg"
                   className="w-full h-12 text-base"
-                  onClick={() => router.push("/local")}
+                  onClick={() => setShowLocalDialog(true)}
                 >
                   {t("playWithFriend")}
                 </Button>
@@ -308,7 +342,7 @@ export function LobbyPage() {
                   size="lg"
                   variant="secondary"
                   className="w-full h-12 text-base border-[#dcc7a2]"
-                  onClick={() => router.push("/computer")}
+                  onClick={() => setShowComputerDialog(true)}
                 >
                   {t("playWithBot")}
                 </Button>
@@ -780,6 +814,48 @@ export function LobbyPage() {
           submitLabel={t("createGameButton")}
           onSubmit={handleCreateRoom}
           busy={multiplayerBusy}
+        />
+      </Dialog>
+
+      <Dialog
+        open={showLocalDialog}
+        onOpenChange={setShowLocalDialog}
+        title={t("localGameTitle")}
+        description={t("localGameDesc")}
+      >
+        <GameConfigPanel
+          mode="local"
+          boardSize={localBoardSize}
+          onBoardSizeChange={setLocalBoardSize}
+          scoreToWin={localScoreToWin}
+          onScoreToWinChange={setLocalScoreToWin}
+          timeControl={localTimeControl}
+          onTimeControlChange={setLocalTimeControl}
+          submitLabel={t("startGame")}
+          onSubmit={handleStartLocal}
+        />
+      </Dialog>
+
+      <Dialog
+        open={showComputerDialog}
+        onOpenChange={setShowComputerDialog}
+        title={t("computerGameTitle")}
+        description={t("computerGameDesc")}
+      >
+        <GameConfigPanel
+          mode="computer"
+          boardSize={computerBoardSize}
+          onBoardSizeChange={setComputerBoardSize}
+          scoreToWin={computerScoreToWin}
+          onScoreToWinChange={setComputerScoreToWin}
+          timeControl={null}
+          onTimeControlChange={() => {}}
+          difficulty={computerDifficulty}
+          onDifficultyChange={setComputerDifficulty}
+          selectedColor={computerColor}
+          onColorChange={setComputerColor}
+          submitLabel={t("startGame")}
+          onSubmit={handleStartComputer}
         />
       </Dialog>
 

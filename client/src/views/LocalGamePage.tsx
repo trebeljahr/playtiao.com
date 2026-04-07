@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { TimeControl } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 export function LocalGamePage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("game");
   const tCommon = useTranslations("common");
   const tLobby = useTranslations("lobby");
@@ -32,6 +33,25 @@ export function LocalGamePage() {
   const [boardSize, setBoardSize] = useState(19);
   const [scoreToWin, setScoreToWin] = useState(10);
   const [timeControl, setTimeControl] = useState<TimeControl>(null);
+
+  // Auto-start from query params (e.g. from lobby dialog)
+  const autoStartRef = useRef(false);
+  useEffect(() => {
+    if (autoStartRef.current) return;
+    if (searchParams.has("autostart")) {
+      autoStartRef.current = true;
+      const bs = parseInt(searchParams.get("boardSize") || "19", 10);
+      const stw = parseInt(searchParams.get("scoreToWin") || "10", 10);
+      setBoardSize(bs);
+      setScoreToWin(stw);
+      const tcInitial = searchParams.get("tcInitial");
+      const tcIncrement = searchParams.get("tcIncrement");
+      if (tcInitial && tcIncrement) {
+        setTimeControl({ initialMs: Number(tcInitial), incrementMs: Number(tcIncrement) });
+      }
+      setConfiguring(false);
+    }
+  }, [searchParams]);
 
   const gameSettings = { boardSize, scoreToWin };
   const local = useLocalGame(gameSettings);

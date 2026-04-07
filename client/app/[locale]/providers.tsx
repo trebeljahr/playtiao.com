@@ -367,7 +367,7 @@ function OAuthErrorHandler() {
 
   useEffect(() => {
     // ProfilePage handles its own ?error= params for account linking
-    if (pathname?.endsWith("/profile")) return;
+    if (pathname?.endsWith("/settings")) return;
 
     const params = new URLSearchParams(window.location.search);
     const error = params.get("error");

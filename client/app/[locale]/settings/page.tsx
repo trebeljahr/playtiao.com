@@ -10,10 +10,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "og" });
 
   return {
-    title: t("profileTitle"),
+    title: t("settingsTitle"),
     description: t("profileDescription"),
     openGraph: {
-      title: t("profileTitle"),
+      title: t("settingsTitle"),
       description: t("profileDescription"),
     },
   };

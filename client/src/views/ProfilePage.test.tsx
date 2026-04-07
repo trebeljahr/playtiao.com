@@ -409,9 +409,9 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
       value: {
         ...originalLocation,
         search: "",
-        pathname: "/profile",
+        pathname: "/settings",
         origin: "http://localhost",
-        href: "http://localhost/profile",
+        href: "http://localhost/settings",
       },
     });
   });
@@ -426,9 +426,9 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
       value: {
         ...originalLocation,
         search: "?error=account_already_linked_to_different_user",
-        pathname: "/profile",
+        pathname: "/settings",
         origin: "http://localhost",
-        href: "http://localhost/profile?error=account_already_linked_to_different_user",
+        href: "http://localhost/settings?error=account_already_linked_to_different_user",
       },
     });
 
@@ -447,16 +447,16 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
       value: {
         ...originalLocation,
         search: "?error=some_error",
-        pathname: "/profile",
+        pathname: "/settings",
         origin: "http://localhost",
-        href: "http://localhost/profile?error=some_error",
+        href: "http://localhost/settings?error=some_error",
       },
     });
 
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(replaceStateSpy).toHaveBeenCalledWith({}, "", "/profile");
+      expect(replaceStateSpy).toHaveBeenCalledWith({}, "", "/settings");
     });
   });
 
@@ -466,9 +466,9 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
       value: {
         ...originalLocation,
         search: "?error=unknown_code",
-        pathname: "/profile",
+        pathname: "/settings",
         origin: "http://localhost",
-        href: "http://localhost/profile?error=unknown_code",
+        href: "http://localhost/settings?error=unknown_code",
       },
     });
 
@@ -495,7 +495,7 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
       expect(authClient.linkSocial).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: "github",
-          callbackURL: "http://localhost/profile",
+          callbackURL: "http://localhost/settings",
         }),
       );
     });
