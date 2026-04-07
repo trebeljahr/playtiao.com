@@ -381,10 +381,14 @@ export function uploadAccountProfilePicture(file: File) {
   );
 }
 
-export function setAccountPassword(password: string) {
+export function setAccountPassword(body: {
+  password: string;
+  email?: string;
+  displayName?: string;
+}) {
   return request<{ providers: string[] }>("/api/player/set-password", {
     method: "POST",
-    body: { password },
+    body,
   });
 }
 

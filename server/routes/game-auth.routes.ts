@@ -769,7 +769,7 @@ router.post("/set-password", async (req: Request, res: Response) => {
     const account = await requireAccount(req, res);
     if (!account) return;
 
-    const { password } = req.body ?? {};
+    const { password, email: newEmail, displayName } = req.body ?? {};
     if (!password || typeof password !== "string") {
       return res.status(400).json({
         code: "MISSING_PASSWORD",
@@ -792,11 +792,59 @@ router.post("/set-password", async (req: Request, res: Response) => {
       });
     }
 
+    // If displayName was provided, validate and save it
+    if (typeof displayName === "string" && displayName.trim()) {
+      const sanitized = displayName.trim().toLowerCase();
+      if (sanitized.length < 3 || sanitized.length > 32) {
+        return res.status(400).json({
+          code: sanitized.length < 3 ? "DISPLAY_NAME_TOO_SHORT" : "DISPLAY_NAME_TOO_LONG",
+          message: "Usernames must be between 3 and 32 characters.",
+        });
+      }
+      if (!/^[a-z0-9][a-z0-9_-]*$/.test(sanitized)) {
+        return res.status(400).json({
+          code: "INVALID_DISPLAY_NAME",
+          message:
+            "Usernames must be lowercase and can only contain letters, numbers, hyphens, and underscores.",
+        });
+      }
+      const existingAccount = await GameAccount.findOne({
+        displayName: sanitized,
+        _id: { $ne: account._id },
+      });
+      if (existingAccount) {
+        return res.status(409).json({
+          code: "DUPLICATE_USERNAME",
+          message: "That username is already taken.",
+        });
+      }
+      account.displayName = sanitizeDisplayName(sanitized);
+    }
+
+    const db = mongoose.connection.getClient().db();
+
+    // If email was provided, update it in better-auth's user collection
+    if (typeof newEmail === "string" && newEmail.trim()) {
+      await db
+        .collection("user")
+        .updateOne({ _id: account._id }, { $set: { email: newEmail.trim() } });
+    }
+
+    // Also sync displayName to better-auth's user collection if changed
+    if (typeof displayName === "string" && displayName.trim()) {
+      await db
+        .collection("user")
+        .updateOne(
+          { _id: account._id },
+          { $set: { name: account.displayName, displayName: account.displayName } },
+        );
+    }
+
     // Hash the password using bcrypt (same config as better-auth)
     const bcrypt = await import("bcrypt");
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get the user's email from better-auth
+    // Get the user's email from better-auth (may have just been updated above)
     const email = await getEmailForAccount(account.id);
     if (!email) {
       return res.status(400).json({
@@ -805,8 +853,9 @@ router.post("/set-password", async (req: Request, res: Response) => {
       });
     }
 
+    await account.save();
+
     // Insert a credential account entry into better-auth's account collection
-    const db = mongoose.connection.getClient().db();
     await db.collection("account").insertOne({
       userId: account.id,
       providerId: "credential",

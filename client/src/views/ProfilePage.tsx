@@ -198,13 +198,19 @@ const SOCIAL_PROVIDERS = [
 function LinkedAccounts({
   providers,
   onProvidersChange,
+  currentEmail,
+  currentDisplayName,
 }: {
   providers: string[];
   onProvidersChange: () => void;
+  currentEmail: string;
+  currentDisplayName: string;
 }) {
   const t = useTranslations("profile");
   const [busy, setBusy] = useState<string | null>(null);
   const [setPasswordOpen, setSetPasswordOpen] = useState(false);
+  const [setPasswordEmail, setSetPasswordEmail] = useState("");
+  const [setPasswordUsername, setSetPasswordUsername] = useState("");
   const [newPassword, setNewPasswordValue] = useState("");
   const [confirmPassword, setConfirmPasswordValue] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -262,10 +268,16 @@ function LinkedAccounts({
 
     setSavingPassword(true);
     try {
-      await setAccountPassword(newPassword);
+      await setAccountPassword({
+        password: newPassword,
+        email: setPasswordEmail || undefined,
+        displayName: setPasswordUsername || undefined,
+      });
       setSetPasswordOpen(false);
       setNewPasswordValue("");
       setConfirmPasswordValue("");
+      setSetPasswordEmail("");
+      setSetPasswordUsername("");
       toast.success(t("passwordSet"));
       onProvidersChange();
     } catch (error) {
@@ -357,6 +369,8 @@ function LinkedAccounts({
                     size="sm"
                     onClick={() => {
                       setPasswordError(null);
+                      setSetPasswordEmail(currentEmail);
+                      setSetPasswordUsername(currentDisplayName);
                       setNewPasswordValue("");
                       setConfirmPasswordValue("");
                       setSetPasswordOpen(true);
@@ -401,6 +415,41 @@ function LinkedAccounts({
           }}
           className="space-y-4"
         >
+          <div className="grid gap-2">
+            <label htmlFor="set-username" className="text-sm font-medium text-[#4e3d2c]">
+              {t("username")}
+            </label>
+            <Input
+              id="set-username"
+              value={setPasswordUsername}
+              onChange={(e) =>
+                setSetPasswordUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+              }
+              placeholder={t("usernamePlaceholder")}
+              autoComplete="username"
+              pattern="^[a-z0-9][a-z0-9_\-]*$"
+              minLength={3}
+              maxLength={32}
+              title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
+              required
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label htmlFor="set-email" className="text-sm font-medium text-[#4e3d2c]">
+              {t("email")}
+            </label>
+            <Input
+              id="set-email"
+              type="email"
+              value={setPasswordEmail}
+              onChange={(e) => setSetPasswordEmail(e.target.value)}
+              placeholder="name@example.com"
+              autoComplete="email"
+              required
+            />
+          </div>
+
           <div className="grid gap-2">
             <label htmlFor="set-new-password" className="text-sm font-medium text-[#4e3d2c]">
               {t("newPassword")}
@@ -1009,6 +1058,8 @@ export function ProfilePage() {
 
             <LinkedAccounts
               providers={providers}
+              currentEmail={email}
+              currentDisplayName={displayName}
               onProvidersChange={() => {
                 void (async () => {
                   try {
