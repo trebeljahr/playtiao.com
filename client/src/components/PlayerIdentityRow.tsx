@@ -147,14 +147,17 @@ export function PlayerIdentityRow({
           </div>
           {badgesToShow.length > 0 &&
             (isDevFeatureEnabled() ? (
-              <Link
-                href="/shop#badges"
-                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-              >
+              <div className="flex items-center gap-1">
                 {badgesToShow.map((id) => (
-                  <UserBadge key={id} badge={id as BadgeId} compact />
+                  <Link
+                    key={id}
+                    href={`/shop#badge-${id}`}
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <UserBadge badge={id as BadgeId} compact />
+                  </Link>
                 ))}
-              </Link>
+              </div>
             ) : (
               <div className="flex items-center gap-1">
                 {badgesToShow.map((id) => (

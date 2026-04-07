@@ -82,6 +82,22 @@ export function ShopPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Scroll to and highlight the target element from the URL hash
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    // Wait a tick for the DOM to render
+    const timer = setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("shop-item-highlight");
+      const cleanup = () => el.classList.remove("shop-item-highlight");
+      el.addEventListener("animationend", cleanup, { once: true });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
+
   async function handleBuy(item: ShopCatalogItem) {
     if (!isAccount) {
       onOpenAuth("signup");
@@ -142,10 +158,7 @@ export function ShopPage() {
 
         {/* Badges Section */}
         <AnimatedCard>
-          <PaperCard
-            id="badges"
-            className="scroll-mt-24 target:ring-2 target:ring-[#b98d49]/40 target:ring-offset-4 transition-shadow duration-700"
-          >
+          <PaperCard id="badges" className="scroll-mt-24">
             <CardHeader>
               <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c] mb-2">{t("badgesLabel")}</Badge>
               <CardTitle className="text-2xl text-[#2b1e14]">{t("badgesTitle")}</CardTitle>
@@ -171,7 +184,8 @@ export function ShopPage() {
                     return (
                       <div
                         key={item.id}
-                        className="flex flex-col justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-5 shadow-xs"
+                        id={`badge-${item.id}`}
+                        className="flex flex-col justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-5 shadow-xs shop-item scroll-mt-24"
                       >
                         <div>
                           <div className="mb-3">
@@ -210,10 +224,7 @@ export function ShopPage() {
 
         {/* Board Themes Section */}
         <AnimatedCard delay={0.05}>
-          <PaperCard
-            id="themes"
-            className="scroll-mt-24 target:ring-2 target:ring-[#7c3aed]/40 target:ring-offset-4 transition-shadow duration-700"
-          >
+          <PaperCard id="themes" className="scroll-mt-24">
             <CardHeader>
               <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">{t("themesLabel")}</Badge>
               <CardTitle className="text-2xl text-[#2b1e14]">{t("themesTitle")}</CardTitle>
@@ -238,7 +249,8 @@ export function ShopPage() {
                     return (
                       <div
                         key={item.id}
-                        className="flex flex-col justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs"
+                        id={`theme-${item.id}`}
+                        className="flex flex-col justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs shop-item scroll-mt-24"
                       >
                         <div>
                           <div className="mb-3 w-full">

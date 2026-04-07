@@ -586,11 +586,9 @@ export function Navbar({
         </div>
       </div>
 
-      {hasPreviewAccess(auth) && (
-        <div className="mt-5 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4">
-          <ThemePicker unlockedThemeIds={auth?.player.unlockedThemes} />
-        </div>
-      )}
+      <div className="mt-5 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4">
+        <ThemePicker unlockedThemeIds={auth?.player.unlockedThemes} onNavigate={onCloseNav} />
+      </div>
 
       <a
         href="https://github.com/trebeljahr/tiao/issues/new/choose"

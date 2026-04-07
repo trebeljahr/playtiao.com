@@ -203,3 +203,32 @@ layer(base);
 .animate-ping-slow {
   animation: ping-slow 2s ease-in-out infinite;
 }
+
+/* Subtle bounce + glow when an element is linked to via #hash */
+@keyframes target-attention {
+  0% {
+    box-shadow: 0 0 0 0 rgba(185, 141, 73, 0.5);
+    transform: scale(1);
+  }
+  15% {
+    box-shadow: 0 0 0 6px rgba(185, 141, 73, 0.3);
+    transform: scale(1.02);
+  }
+  30% {
+    transform: scale(0.99);
+  }
+  45% {
+    box-shadow: 0 0 0 4px rgba(185, 141, 73, 0.2);
+    transform: scale(1.01);
+  }
+  70% {
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(185, 141, 73, 0);
+    transform: scale(1);
+  }
+}
+.shop-item-highlight {
+  animation: target-attention 1s ease-out;
+}

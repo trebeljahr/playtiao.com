@@ -69,7 +69,13 @@ export function ThemeSwatch({ theme }: { theme: BoardTheme }) {
   );
 }
 
-export function ThemePicker({ unlockedThemeIds }: { unlockedThemeIds?: string[] } = {}) {
+export function ThemePicker({
+  unlockedThemeIds,
+  onNavigate,
+}: {
+  unlockedThemeIds?: string[];
+  onNavigate?: () => void;
+} = {}) {
   const [activeId, setTheme] = useSetBoardTheme();
   const isDev = isDevFeatureEnabled();
 
@@ -121,7 +127,8 @@ export function ThemePicker({ unlockedThemeIds }: { unlockedThemeIds?: string[] 
           return (
             <Link
               key={theme.id}
-              href="/shop#themes"
+              href={`/shop#theme-${theme.id}`}
+              onClick={onNavigate}
               aria-label={`Get ${theme.name} theme`}
               className="group flex flex-col items-center gap-1.5 rounded-xl p-1.5 opacity-40 grayscale transition-all hover:opacity-60 hover:grayscale-[50%]"
             >

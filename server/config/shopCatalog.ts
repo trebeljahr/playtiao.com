@@ -9,12 +9,18 @@ export type ShopItem = {
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
-  // Badges
+  // Badges — supporter tiers (including color variants) are purchasable.
+  // Contributor, Champion, and Creator are earned/granted, not sold.
   { type: "badge", id: "supporter", price: 299, currency: "usd" },
-  { type: "badge", id: "contributor", price: 299, currency: "usd" },
   { type: "badge", id: "super-supporter", price: 599, currency: "usd" },
-  { type: "badge", id: "official-champion", price: 999, currency: "usd" },
-  { type: "badge", id: "creator", price: 1499, currency: "usd" },
+  { type: "badge", id: "badge-1", price: 299, currency: "usd" },
+  { type: "badge", id: "badge-2", price: 299, currency: "usd" },
+  { type: "badge", id: "badge-3", price: 599, currency: "usd" },
+  { type: "badge", id: "badge-4", price: 599, currency: "usd" },
+  { type: "badge", id: "badge-5", price: 299, currency: "usd" },
+  { type: "badge", id: "badge-6", price: 599, currency: "usd" },
+  { type: "badge", id: "badge-7", price: 999, currency: "usd" },
+  { type: "badge", id: "badge-8", price: 599, currency: "usd" },
 
   // Board themes (classic is free/default, not in shop)
   { type: "theme", id: "night", price: 199, currency: "usd" },
