@@ -139,12 +139,12 @@ Optional:
 - `FRONTEND_URL`
 - `S3_ENDPOINT`
 - `S3_FORCE_PATH_STYLE`
-- `REDIS_URL` -- enables distributed matchmaking, locks, and rate limiting
-- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` -- GitHub OAuth
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` -- Google OAuth
-- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` -- Discord OAuth
-- `BETTER_AUTH_URL` -- custom auth base URL (falls back to `FRONTEND_URL`)
-- `BETTER_AUTH_SECRET` -- auth signing secret (falls back to `TOKEN_SECRET`)
+- `REDIS_URL` — enables distributed matchmaking, locks, and rate limiting
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — GitHub OAuth
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Discord OAuth
+- `BETTER_AUTH_URL` — custom auth base URL (falls back to `FRONTEND_URL`)
+- `BETTER_AUTH_SECRET` — auth signing secret (falls back to `TOKEN_SECRET`)
 
 Notes:
 

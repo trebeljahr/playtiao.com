@@ -644,7 +644,7 @@
   },
   "og": {
     "siteDescription": "Un hermoso juego de estrategia abstracto. Juega en línea con amigos, contra IA o en la misma pantalla.",
-    "lobbyTitle": "Tiao -- Jugar en línea",
+    "lobbyTitle": "Tiao — Jugar en línea",
     "lobbyDescription": "Entra a una partida en línea, desafía a amigos o juega contra la IA. Un juego de estrategia abstracto con estética de tablero de Go.",
     "tutorialTitle": "Aprende a jugar Tiao",
     "tutorialDescription": "Domina las reglas de Tiao en minutos. Aprende a colocar, saltar, encadenar capturas y las reglas de borde y grupo.",
@@ -664,11 +664,11 @@
     "matchmakingDescription": "Encuentra un oponente aleatorio en línea. Elige un control de tiempo y empieza a jugar.",
     "gameTitle": "Partida Tiao {gameId}",
     "gameWaiting": "{host} está esperando un oponente",
-    "gameActive": "{white} vs {black} -- partida en vivo en un tablero {boardSize}x{boardSize}",
-    "gameFinished": "{white} vs {black} -- resultado final {whiteScore}-{blackScore}",
+    "gameActive": "{white} vs {black} — partida en vivo en un tablero {boardSize}x{boardSize}",
+    "gameFinished": "{white} vs {black} — resultado final {whiteScore}-{blackScore}",
     "gameDescription": "Mira o únete a esta partida de Tiao. Tablero {boardSize}x{boardSize}, primero en {scoreToWin} capturas.",
     "gameDescriptionTimed": "Mira o únete a esta partida de Tiao. Tablero {boardSize}x{boardSize}, primero en {scoreToWin} capturas. Control de tiempo: {timeControl}.",
-    "tournamentDetail": "{name} -- Torneo Tiao",
+    "tournamentDetail": "{name} — Torneo Tiao",
     "tournamentDetailDescription": "{playerCount} jugadores compitiendo en un torneo {format} en Tiao.",
     "publicProfileTitle": "{name} en Tiao",
     "publicProfileDescription": "Ve el perfil de jugador, historial de partidas y estadísticas de {name} en Tiao."

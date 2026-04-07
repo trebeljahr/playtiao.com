@@ -657,7 +657,7 @@
   },
   "og": {
     "siteDescription": "A beautiful abstract strategy board game. Play online with friends, against AI, or over the board.",
-    "lobbyTitle": "Tiao -- Play Online",
+    "lobbyTitle": "Tiao — Play Online",
     "lobbyDescription": "Jump into a match online, challenge friends, or play against AI. A beautiful abstract strategy board game with Go-board aesthetics.",
     "tutorialTitle": "Learn to Play Tiao",
     "tutorialDescription": "Master the rules of Tiao in minutes. Learn how to place, jump, chain captures, and use the border and cluster rules.",
@@ -677,11 +677,11 @@
     "matchmakingDescription": "Find a random opponent online. Pick a time control and start playing.",
     "gameTitle": "Tiao Game {gameId}",
     "gameWaiting": "{host} is waiting for an opponent",
-    "gameActive": "{white} vs {black} -- live match on a {boardSize}x{boardSize} board",
-    "gameFinished": "{white} vs {black} -- final score {whiteScore}-{blackScore}",
+    "gameActive": "{white} vs {black} — live match on a {boardSize}x{boardSize} board",
+    "gameFinished": "{white} vs {black} — final score {whiteScore}-{blackScore}",
     "gameDescription": "Watch or join this Tiao game. {boardSize}x{boardSize} board, first to {scoreToWin} captures.",
     "gameDescriptionTimed": "Watch or join this Tiao game. {boardSize}x{boardSize} board, first to {scoreToWin} captures. Time control: {timeControl}.",
-    "tournamentDetail": "{name} -- Tiao Tournament",
+    "tournamentDetail": "{name} — Tiao Tournament",
     "tournamentDetailDescription": "{playerCount} players competing in a {format} tournament on Tiao.",
     "publicProfileTitle": "{name} on Tiao",
     "publicProfileDescription": "View {name}'s player profile, match history, and stats on Tiao."

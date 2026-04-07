@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     "Andreas is the game designer and creator of Tiao. A game developer from Germany with a passion for board games and elegant mechanics.",
   openGraph: {
-    title: "Andreas Edmeier -- Creator of Tiao",
+    title: "Andreas Edmeier — Creator of Tiao",
     description:
       "Meet the mind behind Tiao. Game designer and developer with a passion for board games and elegant mechanics.",
   },

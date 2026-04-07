@@ -116,7 +116,7 @@ If the merge fails (branch has diverged), rebase your branch onto main first. Th
 
 This project uses [Prettier](https://prettier.io/) for consistent code formatting. A pre-commit hook (via [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged)) automatically formats staged files when you commit, so you don't need to think about formatting while writing code.
 
-Everything is set up automatically after `npm install` -- no manual configuration needed.
+Everything is set up automatically after `npm install` — no manual configuration needed.
 
 ### Useful commands
 
@@ -136,26 +136,26 @@ A pre-push hook runs `tsc` on both the client and server before allowing a push.
 
 ### Shared game engine (`shared/src/tiao.ts`)
 
-All game rules live here as pure functions. If you're fixing game mechanics, this is where to start. The engine has no side effects and no I/O -- it takes a `GameState` and returns a new one (or a rule violation).
+All game rules live here as pure functions. If you're fixing game mechanics, this is where to start. The engine has no side effects and no I/O — it takes a `GameState` and returns a new one (or a rule violation).
 
 ### Server (`server/`)
 
 The server orchestrates multiplayer games, authentication, and social features. Key files:
 
-- `game/gameService.ts` -- core game service that validates moves, manages connections, and broadcasts state
-- `game/tournamentService.ts` -- tournament lifecycle (create, register, bracket management)
-- `game/gameStore.ts` -- persistence layer (MongoDB in production, in-memory for tests)
-- `routes/` -- Express route handlers (auth, games, social, tournaments, admin)
-- `auth/auth.ts` -- better-auth configuration (email/password, OAuth, anonymous)
+- `game/gameService.ts` — core game service that validates moves, manages connections, and broadcasts state
+- `game/tournamentService.ts` — tournament lifecycle (create, register, bracket management)
+- `game/gameStore.ts` — persistence layer (MongoDB in production, in-memory for tests)
+- `routes/` — Express route handlers (auth, games, social, tournaments, admin)
+- `auth/auth.ts` — better-auth configuration (email/password, OAuth, anonymous)
 
 ### Client (`client/src/`)
 
 The frontend is organized around pages and hooks:
 
-- `views/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
-- `lib/hooks/` -- state management hooks for each feature
-- `lib/api.ts` -- HTTP and WebSocket client
-- `components/` -- shared UI components
+- `views/` — one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
+- `lib/hooks/` — state management hooks for each feature
+- `lib/api.ts` — HTTP and WebSocket client
+- `components/` — shared UI components
 
 ## Testing
 
@@ -163,20 +163,20 @@ All changes should include tests where applicable. See [testing](testing) for th
 
 Quick summary:
 
-- **Game rule changes** -- add tests in `server/tests/tiaoCore*.test.ts` using the board ASCII harness
-- **API route changes** -- add tests in `server/tests/api.test.ts` or `authRoutes.test.ts`
-- **Service logic changes** -- add tests in `server/tests/gameService*.test.ts`
-- **Client hook changes** -- add tests in `client/src/lib/hooks/`
-- **User-facing flows** -- add E2E tests in `e2e/`
+- **Game rule changes** — add tests in `server/tests/tiaoCore*.test.ts` using the board ASCII harness
+- **API route changes** — add tests in `server/tests/api.test.ts` or `authRoutes.test.ts`
+- **Service logic changes** — add tests in `server/tests/gameService*.test.ts`
+- **Client hook changes** — add tests in `client/src/lib/hooks/`
+- **User-facing flows** — add E2E tests in `e2e/`
 
 ## Documentation
 
 If your change affects the API, game rules, or architecture, please update the relevant doc in `docs/`:
 
-- [api-reference/tiao-api](api-reference/tiao-api) -- REST and WebSocket reference
-- [game-rules](game-rules) -- game rules
-- [architecture](architecture) -- system design
-- [testing](testing) -- testing guide
+- [api-reference/tiao-api](api-reference/tiao-api) — REST and WebSocket reference
+- [game-rules](game-rules) — game rules
+- [architecture](architecture) — system design
+- [testing](testing) — testing guide
 
 ## Need Help?
 

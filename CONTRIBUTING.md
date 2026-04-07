@@ -113,26 +113,26 @@ If the merge fails, rebase your branch onto main first. The `merge.ff = only` co
 
 ### Shared game engine (`shared/src/tiao.ts`)
 
-All game rules live here as pure functions. If you're changing game mechanics, this is where to start. The engine has no side effects and no I/O -- it takes a `GameState` and returns a new one (or a rule violation).
+All game rules live here as pure functions. If you're changing game mechanics, this is where to start. The engine has no side effects and no I/O — it takes a `GameState` and returns a new one (or a rule violation).
 
 ### Server (`server/`)
 
 The server orchestrates multiplayer games, authentication, and social features. Key files:
 
-- `game/gameService.ts` -- core game service that validates moves, manages connections, and broadcasts state
-- `game/tournamentService.ts` -- tournament lifecycle (create, register, bracket management)
-- `game/gameStore.ts` -- persistence layer (MongoDB in production, in-memory for tests)
-- `routes/` -- Express route handlers (auth, games, social, tournaments, admin)
-- `auth/auth.ts` -- better-auth configuration (email/password, OAuth, anonymous)
+- `game/gameService.ts` — core game service that validates moves, manages connections, and broadcasts state
+- `game/tournamentService.ts` — tournament lifecycle (create, register, bracket management)
+- `game/gameStore.ts` — persistence layer (MongoDB in production, in-memory for tests)
+- `routes/` — Express route handlers (auth, games, social, tournaments, admin)
+- `auth/auth.ts` — better-auth configuration (email/password, OAuth, anonymous)
 
 ### Client (`client/src/`)
 
 The frontend is organized around pages and hooks:
 
-- `views/` -- one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
-- `lib/hooks/` -- state management hooks for each feature
-- `lib/api.ts` -- HTTP and WebSocket client
-- `components/` -- shared UI components
+- `views/` — one file per route (Lobby, Local, Computer, Multiplayer, Matchmaking, Friends, Games, Profile, PublicProfile, TournamentList, Tournament, Creator, SetUsername, Tutorial, AdminBadges)
+- `lib/hooks/` — state management hooks for each feature
+- `lib/api.ts` — HTTP and WebSocket client
+- `components/` — shared UI components
 
 ## Testing
 
@@ -140,20 +140,20 @@ All changes should include tests where applicable. See [docs/TESTING.md](docs/TE
 
 Quick summary:
 
-- **Game rule changes** -- add tests in `server/tests/tiaoCore*.test.ts` using the board ASCII harness
-- **API route changes** -- add tests in `server/tests/api.test.ts` or `authRoutes.test.ts`
-- **Service logic changes** -- add tests in `server/tests/gameService*.test.ts`
-- **Client hook changes** -- add tests in `client/src/lib/hooks/`
-- **User-facing flows** -- add E2E tests in `e2e/`
+- **Game rule changes** — add tests in `server/tests/tiaoCore*.test.ts` using the board ASCII harness
+- **API route changes** — add tests in `server/tests/api.test.ts` or `authRoutes.test.ts`
+- **Service logic changes** — add tests in `server/tests/gameService*.test.ts`
+- **Client hook changes** — add tests in `client/src/lib/hooks/`
+- **User-facing flows** — add E2E tests in `e2e/`
 
 ## Documentation
 
 If your change affects the API, game rules, or architecture, please update the relevant doc in `docs/`:
 
-- [docs/API.md](docs/API.md) -- REST and WebSocket reference
-- [docs/GAME_RULES.md](docs/GAME_RULES.md) -- game rules
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) -- system design
-- [docs/TESTING.md](docs/TESTING.md) -- testing guide
+- [docs/API.md](docs/API.md) — REST and WebSocket reference
+- [docs/GAME_RULES.md](docs/GAME_RULES.md) — game rules
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system design
+- [docs/TESTING.md](docs/TESTING.md) — testing guide
 
 ## Need Help?
 

@@ -40,8 +40,8 @@ Put one of your pieces on any empty intersection, subject to the [placement rule
 
 Jump one of your existing pieces over an adjacent enemy piece to capture it. Jumps can be:
 
-- **Orthogonal** (up, down, left, right) -- 2 squares in one direction
-- **Diagonal** -- 2 squares diagonally
+- **Orthogonal** (up, down, left, right) — 2 squares in one direction
+- **Diagonal** — 2 squares diagonally
 
 The piece you jump over is marked for capture, and your piece lands on the empty intersection beyond it.
 
@@ -90,11 +90,11 @@ You cannot place a piece on the edge of the board (row 0, row 18, column 0, or c
 Edge of board:
 
 . . .
-. W .      White at (1,1), black at (1,0) -- border placement at (1,0) is
+. W .      White at (1,1), black at (1,0) — border placement at (1,0) is
 B . .      ALLOWED because black is there and could be jumped into
 
 . . .
-. W .      No enemy nearby -- border placement at (0,0) is
+. W .      No enemy nearby — border placement at (0,0) is
 . . .      BLOCKED
 ```
 
