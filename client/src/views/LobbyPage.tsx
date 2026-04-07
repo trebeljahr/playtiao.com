@@ -134,6 +134,7 @@ export function LobbyPage() {
   const [createBoardSize, setCreateBoardSize] = useState(19);
   const [createScoreToWin, setCreateScoreToWin] = useState(10);
   const [createTimeControl, setCreateTimeControl] = useState<TimeControl>(null);
+  const [createColor, setCreateColor] = useState<PlayerColor | "random">("random");
 
   const [showLocalDialog, setShowLocalDialog] = useState(false);
   const [localBoardSize, setLocalBoardSize] = useState(19);
@@ -205,6 +206,7 @@ export function LobbyPage() {
       if (createBoardSize !== 19) settings.boardSize = createBoardSize;
       if (createScoreToWin !== 10) settings.scoreToWin = createScoreToWin;
       if (createTimeControl) settings.timeControl = createTimeControl;
+      if (createColor !== "random") settings.creatorColor = createColor;
       const response = await createMultiplayerGame(
         Object.keys(settings).length > 0 ? settings : undefined,
       );
@@ -811,6 +813,8 @@ export function LobbyPage() {
           onScoreToWinChange={setCreateScoreToWin}
           timeControl={createTimeControl}
           onTimeControlChange={setCreateTimeControl}
+          selectedColor={createColor}
+          onColorChange={setCreateColor}
           submitLabel={t("createGameButton")}
           onSubmit={handleCreateRoom}
           busy={multiplayerBusy}

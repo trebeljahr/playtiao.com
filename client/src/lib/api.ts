@@ -174,6 +174,7 @@ export function createMultiplayerGame(settings?: {
   boardSize?: number;
   scoreToWin?: number;
   timeControl?: { initialMs: number; incrementMs: number };
+  creatorColor?: "white" | "black";
 }) {
   return request<{ snapshot: MultiplayerSnapshot }>("/api/games", {
     method: "POST",

@@ -238,6 +238,7 @@ export class GameService {
       roomType?: MultiplayerRoomType;
       gameSettings?: Partial<GameSettings>;
       timeControl?: TimeControl;
+      creatorColor?: PlayerColor;
     } = {},
   ): Promise<MultiplayerSnapshot> {
     return this.withLocks([this.playerLockKey(creator.playerId)], async () => {
@@ -254,7 +255,8 @@ export class GameService {
       });
 
       // Pre-seat the creator so they are recognized as a participant immediately
-      const creatorSeat: PlayerColor = this.seatRandom() < 0.5 ? "white" : "black";
+      const creatorSeat: PlayerColor =
+        options.creatorColor ?? (this.seatRandom() < 0.5 ? "white" : "black");
       const seatedRoom = await this.saveRoom({
         ...room,
         seats: {

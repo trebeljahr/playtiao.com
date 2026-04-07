@@ -92,6 +92,7 @@ export function GameConfigPanel({
   const tGame = useTranslations("game");
   const showTimeControl = mode !== "computer";
   const showAI = mode === "computer";
+  const showColorChoice = mode === "computer" || mode === "multiplayer";
   const tcMatch = (tc: TimeControl, preset: { initialMs: number; incrementMs: number }) =>
     tc !== null && tc.initialMs === preset.initialMs && tc.incrementMs === preset.incrementMs;
 
@@ -113,7 +114,7 @@ export function GameConfigPanel({
         </OptionGroup>
       )}
 
-      {showAI && onColorChange && (
+      {showColorChoice && onColorChange && (
         <OptionGroup label={t("playAs")}>
           <div className="grid grid-cols-3 gap-2">
             <ToggleButton

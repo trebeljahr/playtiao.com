@@ -10,19 +10,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sharedDir = path.resolve(__dirname, "../shared/src");
 
 // Build version: prefer APP_VERSION env var (set by CI/Docker), then try git,
-// then fall back to the bare package version.
+// then fall back to the bare package version. Result is cached so git commands
+// only run once per process (not on every HMR config re-eval).
+let _cachedVersion;
 function getAppVersion() {
-  if (process.env.APP_VERSION) return process.env.APP_VERSION;
+  if (_cachedVersion) return _cachedVersion;
+  if (process.env.APP_VERSION) return (_cachedVersion = process.env.APP_VERSION);
   const pkgPath = path.resolve(__dirname, "../package.json");
-  if (!existsSync(pkgPath)) return "0.0.0";
+  if (!existsSync(pkgPath)) return (_cachedVersion = "0.0.0");
   const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
   try {
     const commitCount = execSync("git rev-list --count HEAD", { encoding: "utf-8" }).trim();
     const shortHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
-    return `${pkg.version}-build.${commitCount}+${shortHash}`;
+    _cachedVersion = `${pkg.version}-build.${commitCount}+${shortHash}`;
   } catch {
-    return pkg.version;
+    _cachedVersion = pkg.version;
   }
+  return _cachedVersion;
 }
 
 /** @type {import('next').NextConfig} */

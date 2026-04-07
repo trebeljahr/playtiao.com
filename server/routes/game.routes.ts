@@ -236,7 +236,7 @@ router.post("/games", async (req: Request, res: Response) => {
   if (!(await checkGuestGameLimit(player, res))) return;
 
   try {
-    const { boardSize, scoreToWin, timeControl } = req.body ?? {};
+    const { boardSize, scoreToWin, timeControl, creatorColor } = req.body ?? {};
     const gameSettings =
       boardSize != null || scoreToWin != null
         ? {
@@ -251,9 +251,12 @@ router.post("/games", async (req: Request, res: Response) => {
       typeof timeControl.incrementMs === "number"
         ? { initialMs: timeControl.initialMs, incrementMs: timeControl.incrementMs }
         : undefined;
+    const parsedCreatorColor =
+      creatorColor === "white" || creatorColor === "black" ? creatorColor : undefined;
     const snapshot = await gameService.createGame(player, {
       gameSettings,
       timeControl: parsedTimeControl,
+      creatorColor: parsedCreatorColor,
     });
     return res.status(201).json({ snapshot });
   } catch (error) {
