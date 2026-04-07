@@ -76,6 +76,15 @@ if (process.env.API_PORT) {
 
 const host = lanMode ? "0.0.0.0" : "127.0.0.1";
 
+let lanIp = "";
+if (lanMode) {
+  try {
+    lanIp = execSync("ipconfig getifaddr en0", { encoding: "utf8" }).trim();
+  } catch {
+    // fallback below
+  }
+}
+
 console.log(`\n  Mode:   ${fixedMode ? "fixed" : "random"}${lanMode ? " (LAN)" : ""}`);
 console.log(`  Client: http://localhost:${clientPort}`);
 if (includeDocs) {
@@ -83,10 +92,9 @@ if (includeDocs) {
 }
 console.log(`  Server: http://localhost:${apiPort}`);
 if (lanMode) {
-  try {
-    const lanIp = execSync("ipconfig getifaddr en0", { encoding: "utf8" }).trim();
+  if (lanIp) {
     console.log(`\n  LAN:    http://${lanIp}:${clientPort}`);
-  } catch {
+  } else {
     console.log(`\n  LAN:    (could not detect LAN IP — check ipconfig getifaddr en0)`);
   }
 }

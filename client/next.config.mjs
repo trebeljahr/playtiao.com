@@ -28,7 +28,7 @@ function getAppVersion() {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: ["192.168.1.0/24", "localhost"],
+  allowedDevOrigins: ["192.168.0.*", "192.168.1.*", "localhost"],
   outputFileTracingRoot: path.resolve(__dirname, ".."),
   env: {
     APP_VERSION: getAppVersion(),

@@ -385,14 +385,12 @@ export function TiaoBoard({
         }
       }
 
-      // Quick tap to confirm: if preview is showing at the SAME position,
-      // the position is valid, and the tap was short (< 150ms), confirm.
-      // Tapping a DIFFERENT cell moves the preview instead of confirming.
+      // Quick tap to confirm: if preview is showing, position is valid,
+      // and the tap was short and sharp (< 150ms), confirm placement
       const tapDuration = Date.now() - touchStartTimeRef.current;
       const previewValid =
         mobilePreview && state.positions[mobilePreview.y]?.[mobilePreview.x] == null;
-      const sameCell = mobilePreview && pos.x === mobilePreview.x && pos.y === mobilePreview.y;
-      if (mobilePreview && previewValid && tapDuration < 150 && sameCell) {
+      if (mobilePreview && previewValid && tapDuration < 150) {
         e.preventDefault();
         suppressClickRef.current = true;
         const confirmPos = mobilePreview;
