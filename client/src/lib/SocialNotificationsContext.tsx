@@ -418,6 +418,65 @@ export function SocialNotificationsProvider({
     }
   });
 
+  // Achievement unlock notification
+  useLobbyMessage((payload) => {
+    if (payload.type !== "achievement-unlocked") return;
+
+    const achievement = payload.achievement as
+      | {
+          id: string;
+          name: string;
+          description: string;
+          tier: string;
+          secret: boolean;
+        }
+      | undefined;
+    if (!achievement) return;
+
+    const playerId = playerIdRef.current;
+    const toastKey = `achievement:${achievement.id}`;
+    if (playerId) {
+      const toasted = getToastedIds(playerId);
+      if (toasted.has(toastKey)) return;
+      markToasted(playerId, [toastKey]);
+    }
+
+    toast(
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-400/30 to-amber-600/20">
+          <svg
+            className="h-5 w-5 text-yellow-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
+            />
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#2b1e14] truncate">
+            {achievement.secret ? "Secret Achievement!" : "Achievement Unlocked!"}
+          </p>
+          <p className="text-xs text-[#5a4632] truncate">{achievement.name}</p>
+        </div>
+      </div>,
+      {
+        id: `achievement-${achievement.id}`,
+        description: achievement.description,
+        duration: 8000,
+        action: {
+          label: "View",
+          onClick: () => window.location.assign("/achievements"),
+        },
+      },
+    );
+  });
+
   const pendingFriendRequestCount = overview.incomingFriendRequests.length;
   const incomingInvitationCount = overview.incomingInvitations.length;
   const incomingRematchCount = incomingRematchGameIds.size;

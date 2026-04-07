@@ -538,7 +538,22 @@
     "requestSent": "Request Sent",
     "alreadyFriends": "Friends",
     "acceptRequest": "Accept Request",
-    "yourProfile": "Your Profile"
+    "yourProfile": "Your Profile",
+    "achievements": "Achievements"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "progress": "{count} of {total} unlocked",
+    "signInRequired": "Sign in to track your achievements.",
+    "secretHint": "There are hidden achievements waiting to be discovered...",
+    "category_games": "Games",
+    "category_combat": "Combat",
+    "category_speed": "Speed",
+    "category_social": "Social",
+    "category_ranking": "Ranking",
+    "category_tournament": "Tournament",
+    "category_learning": "Learning",
+    "category_secret": "Secret"
   },
   "tutorial": {
     "back": "← Back",
@@ -626,6 +641,7 @@
     "tutorial": "Tutorial",
     "friends": "Friends",
     "tournaments": "Tournaments",
+    "achievements": "Achievements",
     "profile": "Profile",
     "signIn": "Sign in",
     "signUp": "Sign up",
@@ -707,6 +723,8 @@
     "gameDescriptionTimed": "Watch or join this Tiao game. {boardSize}x{boardSize} board, first to {scoreToWin} captures. Time control: {timeControl}.",
     "tournamentDetail": "{name} — Tiao Tournament",
     "tournamentDetailDescription": "{playerCount} players competing in a {format} tournament on Tiao.",
+    "achievementsTitle": "Achievements — Tiao",
+    "achievementsDescription": "Track your Tiao achievements and milestones. Earn trophies by playing games, winning tournaments, and more.",
     "publicProfileTitle": "{name} on Tiao",
     "publicProfileDescription": "View {name}'s player profile, match history, and stats on Tiao."
   },

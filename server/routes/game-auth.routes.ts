@@ -18,6 +18,7 @@ import { s3Client } from "../config/s3Client";
 import { handleRouteError } from "../error-handling/routeError";
 import { escapeRegExp } from "../error-handling/escapeRegExp";
 import { grantBadge, revokeBadge } from "../game/badgeService";
+import { onTutorialCompleted } from "../game/achievementService";
 import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
 import { authRateLimiter } from "../middleware/rateLimiter";
 
@@ -349,6 +350,9 @@ router.post("/tutorial-complete", async (req: Request, res: Response) => {
 
     account.hasSeenTutorial = true;
     await account.save();
+
+    // Achievement: tutorial completed
+    void onTutorialCompleted(account.id);
 
     const email = await getEmailForAccount(account.id);
     const player = buildPlayerIdentityFromAccount(account, email);

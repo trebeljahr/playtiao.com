@@ -538,7 +538,22 @@
     "requestSent": "Anfrage gesendet",
     "alreadyFriends": "Freunde",
     "acceptRequest": "Anfrage annehmen",
-    "yourProfile": "Dein Profil"
+    "yourProfile": "Dein Profil",
+    "achievements": "Erfolge"
+  },
+  "achievements": {
+    "title": "Erfolge",
+    "progress": "{count} von {total} freigeschaltet",
+    "signInRequired": "Melde dich an, um deine Erfolge zu verfolgen.",
+    "secretHint": "Es gibt versteckte Erfolge, die darauf warten, entdeckt zu werden...",
+    "category_games": "Spiele",
+    "category_combat": "Kampf",
+    "category_speed": "Geschwindigkeit",
+    "category_social": "Sozial",
+    "category_ranking": "Rangliste",
+    "category_tournament": "Turnier",
+    "category_learning": "Lernen",
+    "category_secret": "Geheim"
   },
   "tutorial": {
     "back": "← Zurück",
@@ -626,6 +641,7 @@
     "tutorial": "Tutorial",
     "friends": "Freunde",
     "tournaments": "Turniere",
+    "achievements": "Erfolge",
     "profile": "Profil",
     "signIn": "Anmelden",
     "signUp": "Registrieren",
@@ -707,6 +723,8 @@
     "gameDescriptionTimed": "Schau zu oder nimm an diesem Tiao-Spiel teil. {boardSize}x{boardSize} Brett, Ziel: {scoreToWin} Fänge. Zeitkontrolle: {timeControl}.",
     "tournamentDetail": "{name} — Tiao-Turnier",
     "tournamentDetailDescription": "{playerCount} Spieler im {format}-Turnier auf Tiao.",
+    "achievementsTitle": "Erfolge — Tiao",
+    "achievementsDescription": "Verfolge deine Tiao-Erfolge und Meilensteine. Verdiene Trophäen durch Spielen, Turniersiege und mehr.",
     "publicProfileTitle": "{name} auf Tiao",
     "publicProfileDescription": "Sieh dir das Spielerprofil, die Spielhistorie und Statistiken von {name} auf Tiao an."
   },

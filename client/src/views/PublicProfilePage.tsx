@@ -7,8 +7,15 @@ import { CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { Button } from "@/components/ui/button";
-import { getPublicProfile, getPlayerMatchHistory, type PublicProfile } from "@/lib/api";
+import {
+  getPublicProfile,
+  getPlayerMatchHistory,
+  getPlayerAchievements,
+  type PublicProfile,
+  type PlayerAchievement,
+} from "@/lib/api";
 import type { MultiplayerGameSummary } from "@shared";
+import { ACHIEVEMENTS, type AchievementDefinition, type AchievementTier } from "@shared";
 import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
@@ -33,6 +40,7 @@ export function PublicProfilePage() {
   const [matchHasMore, setMatchHasMore] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [playerAchievements, setPlayerAchievements] = useState<PlayerAchievement[]>([]);
   const locale = useLocale();
 
   const social = useSocialData(auth, false);
@@ -77,6 +85,9 @@ export function PublicProfilePage() {
         setMatchPlayerId(res.playerId);
         setMatchHasMore(res.hasMore);
       })
+      .catch(() => {});
+    getPlayerAchievements(decoded)
+      .then((res) => setPlayerAchievements(res.achievements))
       .catch(() => {});
   }, [params?.username]);
 
@@ -342,6 +353,39 @@ export function PublicProfilePage() {
               </AnimatedCard>
             )}
 
+            {/* Achievements */}
+            {playerAchievements.length > 0 && (
+              <AnimatedCard delay={0.12} className="w-full">
+                <PaperCard className="w-full">
+                  <CardContent className="py-6">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                        {t("achievements")}
+                      </h2>
+                      <button
+                        onClick={() => router.push(`/achievements`)}
+                        className="text-xs text-[#8b7356] hover:underline"
+                      >
+                        {tCommon("view")} &rarr;
+                      </button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {playerAchievements.slice(0, 6).map((pa) => {
+                        const def = ACHIEVEMENTS.find((a) => a.id === pa.achievementId);
+                        if (!def) return null;
+                        return <ProfileAchievementBadge key={pa.achievementId} def={def} />;
+                      })}
+                    </div>
+                    {playerAchievements.length > 6 && (
+                      <p className="mt-3 text-center text-xs text-[#a89a7e]">
+                        +{playerAchievements.length - 6} more
+                      </p>
+                    )}
+                  </CardContent>
+                </PaperCard>
+              </AnimatedCard>
+            )}
+
             {/* Match history */}
             {matchHistory.length > 0 && (matchPlayerId || auth?.player.playerId) && (
               <AnimatedCard delay={0.15} className="w-full">
@@ -384,6 +428,40 @@ export function PublicProfilePage() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Compact achievement badge for profiles
+// ---------------------------------------------------------------------------
+
+const TIER_COLORS: Record<AchievementTier, string> = {
+  bronze: "border-amber-700/30 bg-amber-800/10 text-amber-800",
+  silver: "border-slate-400/30 bg-slate-300/15 text-slate-600",
+  gold: "border-yellow-500/30 bg-yellow-400/15 text-yellow-700",
+  platinum: "border-cyan-400/30 bg-cyan-300/15 text-cyan-700",
+};
+
+function ProfileAchievementBadge({ def }: { def: AchievementDefinition }) {
+  return (
+    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${TIER_COLORS[def.tier]}`}>
+      <svg
+        className="h-4 w-4 shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
+        />
+      </svg>
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold">{def.name}</p>
+      </div>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { LockProvider, InMemoryLockProvider } from "./lockProvider";
 import { TournamentStore, StoredTournament, MongoTournamentStore } from "./tournamentStore";
 import { getWinner, getFinishReason } from "../../shared/src";
 import { getPlayerProfiles, type CachedPlayerProfile } from "../cache/playerIdentityCache";
+import { onTournamentWon } from "./achievementService";
 
 // ── Helpers ──
 
@@ -1049,6 +1050,14 @@ export class TournamentService implements TournamentGameCallback {
       if (p.status === "active") {
         p.status = "eliminated";
       }
+    }
+
+    // Achievement: tournament champion
+    const tournamentWinner = tournament.participants.find((p) => p.status === "winner");
+    if (tournamentWinner) {
+      void onTournamentWon(tournamentWinner.playerId).catch((err) => {
+        console.error("[tournament] Tournament achievement check failed:", err);
+      });
     }
   }
 

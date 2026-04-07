@@ -12,6 +12,7 @@ import type {
   TournamentSettings,
   TournamentSnapshot,
   TournamentStatus,
+  AchievementDefinition,
 } from "@shared";
 
 type JsonBody = Record<string, unknown> | undefined;
@@ -564,5 +565,36 @@ export function adminRevokeTheme(playerId: string, themeId: string) {
   return request<{ unlockedThemes: string[] }>("/api/player/admin/themes/revoke", {
     method: "POST",
     body: { playerId, themeId },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+export type PlayerAchievement = {
+  achievementId: string;
+  unlockedAt: string;
+};
+
+export type AchievementsResponse = {
+  achievements: PlayerAchievement[];
+  definitions: AchievementDefinition[];
+};
+
+export function getMyAchievements() {
+  return request<AchievementsResponse>("/api/player/achievements");
+}
+
+export function getPlayerAchievements(username: string) {
+  return request<AchievementsResponse>(
+    `/api/player/profile/${encodeURIComponent(username)}/achievements`,
+  );
+}
+
+export function reportAIWin(difficulty: 1 | 2 | 3) {
+  return request<{ ok: boolean }>("/api/player/achievements/ai-win", {
+    method: "POST",
+    body: { difficulty },
   });
 }

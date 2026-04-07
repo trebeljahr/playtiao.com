@@ -375,6 +375,27 @@ export function Navbar({
             onClick: () => handleNav("/tournaments"),
             badge: 0,
           },
+          {
+            label: t("achievements"),
+            active: pathname === "/achievements",
+            onClick: () => handleNav("/achievements"),
+            badge: 0,
+            icon: (
+              <svg
+                className="mr-1 inline-block h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
+                />
+              </svg>
+            ),
+          },
         ]
       : []),
     {
@@ -405,6 +426,7 @@ export function Navbar({
           )}
           onClick={item.active ? undefined : item.onClick}
         >
+          {"icon" in item && item.icon}
           {item.label}
           {item.badge > 0 && (
             <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">
@@ -484,6 +506,7 @@ export function Navbar({
             )}
             onClick={item.active ? undefined : item.onClick}
           >
+            {"icon" in item && item.icon}
             {item.label}
             {item.badge > 0 && (
               <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">

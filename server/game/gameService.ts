@@ -57,6 +57,12 @@ import { InMemoryLockProvider, LockProvider } from "./lockProvider";
 import { InMemoryMatchmakingStore, MatchmakingStore } from "./matchmakingStore";
 import { computeNewRatings, DEFAULT_RATING } from "./elo";
 import GameAccount from "../models/GameAccount";
+import {
+  onGameCompleted as checkGameAchievements,
+  onEloUpdated as checkEloAchievements,
+  onSpectateStarted as checkSpectateAchievement,
+  setAchievementNotifier,
+} from "./achievementService";
 import { isValidObjectId } from "mongoose";
 import type { RatingStatus } from "../models/GameRoom";
 
@@ -541,6 +547,13 @@ export class GameService {
         this.spectatorIdentities.set(room.id, roomSpectators);
       }
       roomSpectators.set(player.playerId, player);
+
+      // Achievement: spectate a game
+      if (player.kind === "account") {
+        void checkSpectateAchievement(player.playerId).catch((err) => {
+          console.error("[game] Spectate achievement check failed:", err);
+        });
+      }
     }
 
     // For timed tournament games: start the first-move timer when both players connect
@@ -1195,6 +1208,11 @@ export class GameService {
       void this.updateEloRatings(saved).catch((err) => {
         console.error("[game] Elo update failed for room", saved.id, err);
       });
+
+      // Check game-completion achievements
+      void checkGameAchievements({ room: saved }).catch((err) => {
+        console.error("[game] Achievement check failed for room", saved.id, err);
+      });
     }
 
     return saved;
@@ -1259,6 +1277,10 @@ export class GameService {
     invalidatePlayerProfile(whitePlayer.playerId);
     invalidatePlayerProfile(blackPlayer.playerId);
 
+    // Check ranking-based achievements for both players
+    void this.checkRankingAchievements(whitePlayer.playerId, newRatingA);
+    void this.checkRankingAchievements(blackPlayer.playerId, newRatingB);
+
     await this.store.saveRoom(room);
 
     console.log(
@@ -1267,6 +1289,23 @@ export class GameService {
 
     // Re-broadcast the snapshot so clients receive the rating data
     void this.broadcastSnapshot(room);
+  }
+
+  private async checkRankingAchievements(playerId: string, newElo: number): Promise<void> {
+    try {
+      const totalPlayers = await GameAccount.countDocuments({
+        "rating.overall.gamesPlayed": { $gte: 1 },
+      });
+      if (totalPlayers === 0) return;
+      const playersBelow = await GameAccount.countDocuments({
+        "rating.overall.gamesPlayed": { $gte: 1 },
+        "rating.overall.elo": { $lt: newElo },
+      });
+      const percentile = Math.round((playersBelow / totalPlayers) * 100);
+      await checkEloAchievements({ playerId, newElo, percentile });
+    } catch (err) {
+      console.error("[game] Ranking achievement check failed for", playerId, err);
+    }
   }
 
   private deriveRoomStatus(room: StoredMultiplayerRoom): StoredMultiplayerRoom {
@@ -2353,3 +2392,17 @@ function createGameService(): GameService {
 }
 
 export const gameService = createGameService();
+
+// Wire achievement notifications through the lobby WebSocket
+setAchievementNotifier((playerId, achievement) => {
+  gameService.broadcastLobby(playerId, {
+    type: "achievement-unlocked",
+    achievement: {
+      id: achievement.id,
+      name: achievement.name,
+      description: achievement.description,
+      tier: achievement.tier,
+      secret: achievement.secret,
+    },
+  });
+});

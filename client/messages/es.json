@@ -538,7 +538,22 @@
     "requestSent": "Solicitud enviada",
     "alreadyFriends": "Amigos",
     "yourProfile": "Tu perfil",
-    "acceptRequest": "Aceptar solicitud"
+    "acceptRequest": "Aceptar solicitud",
+    "achievements": "Logros"
+  },
+  "achievements": {
+    "title": "Logros",
+    "progress": "{count} de {total} desbloqueados",
+    "signInRequired": "Inicia sesión para seguir tus logros.",
+    "secretHint": "Hay logros ocultos esperando ser descubiertos...",
+    "category_games": "Partidas",
+    "category_combat": "Combate",
+    "category_speed": "Velocidad",
+    "category_social": "Social",
+    "category_ranking": "Clasificación",
+    "category_tournament": "Torneo",
+    "category_learning": "Aprendizaje",
+    "category_secret": "Secreto"
   },
   "tutorial": {
     "back": "← Volver",
@@ -626,6 +641,7 @@
     "tutorial": "Tutorial",
     "friends": "Amigos",
     "tournaments": "Torneos",
+    "achievements": "Logros",
     "profile": "Perfil",
     "signIn": "Iniciar sesión",
     "signUp": "Registrarse",
@@ -707,6 +723,8 @@
     "gameDescriptionTimed": "Mira o únete a esta partida de Tiao. Tablero {boardSize}x{boardSize}, primero en {scoreToWin} capturas. Control de tiempo: {timeControl}.",
     "tournamentDetail": "{name} — Torneo Tiao",
     "tournamentDetailDescription": "{playerCount} jugadores compitiendo en un torneo {format} en Tiao.",
+    "achievementsTitle": "Logros — Tiao",
+    "achievementsDescription": "Sigue tus logros y hitos en Tiao. Gana trofeos jugando partidas, ganando torneos y más.",
     "publicProfileTitle": "{name} en Tiao",
     "publicProfileDescription": "Ve el perfil de jugador, historial de partidas y estadísticas de {name} en Tiao."
   },

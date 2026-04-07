@@ -11,6 +11,7 @@ import socialRoutes from "./routes/social.routes";
 import adminRoutes from "./routes/admin.routes";
 import tournamentRoutes from "./routes/tournament.routes";
 import shopRoutes from "./routes/shop.routes";
+import achievementRoutes from "./routes/achievement.routes";
 const app = express();
 
 // Mount better-auth BEFORE express.json() to avoid body consumption conflicts
@@ -51,6 +52,7 @@ mountRouteVariants("/", socialRoutes);
 mountRouteVariants("/player/admin", adminRoutes);
 mountRouteVariants("/", tournamentRoutes);
 mountRouteVariants("/shop", shopRoutes);
+mountRouteVariants("/player", achievementRoutes);
 
 addErrorHandlingToApp(app);
 

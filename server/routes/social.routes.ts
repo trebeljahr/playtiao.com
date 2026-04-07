@@ -16,6 +16,7 @@ import GameAccount, { IGameAccount } from "../models/GameAccount";
 import GameInvitation from "../models/GameInvitation";
 import GameRoom from "../models/GameRoom";
 import { userSearchRateLimiter } from "../middleware/rateLimiter";
+import { onFriendAdded } from "../game/achievementService";
 
 const router = express.Router();
 
@@ -629,6 +630,10 @@ router.post(
 
       void notifyLobbyUpdate(account.id);
       void notifyLobbyUpdate(requester.id);
+
+      // Check friend-count achievements for both players
+      void onFriendAdded({ playerId: account.id, friendCount: account.friends.length });
+      void onFriendAdded({ playerId: requester.id, friendCount: requester.friends.length });
 
       return res.status(200).json({
         message: "Friend request accepted.",

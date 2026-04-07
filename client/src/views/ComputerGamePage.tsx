@@ -25,6 +25,7 @@ import { useWinConfetti } from "@/lib/useWinConfetti";
 import { useGameOverDialog } from "@/lib/hooks/useGameOverDialog";
 import { isGameOver, getWinner } from "@shared";
 import type { AIDifficulty } from "@/lib/computer-ai";
+import { reportAIWin } from "@/lib/api";
 
 export function ComputerGamePage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
@@ -87,6 +88,16 @@ export function ComputerGamePage() {
   const { open: gameOverDialogOpen, setOpen: setGameOverDialogOpen } = useGameOverDialog(gameOver);
 
   const playerWon = winner !== null && winner !== computer.computerColor;
+
+  // Report AI win for achievements
+  const reportedRef = React.useRef(false);
+  useEffect(() => {
+    if (playerWon && difficulty && auth?.player.kind === "account" && !reportedRef.current) {
+      reportedRef.current = true;
+      void reportAIWin(difficulty);
+    }
+  }, [playerWon, difficulty, auth?.player.kind]);
+
   const gameOverTitle = isDraw ? t("draw") : playerWon ? t("youWon") : t("youLost");
   const gameOverDescription = isDraw ? t("drawNoMoves") : playerWon ? t("wonDesc") : t("lostDesc");
 
