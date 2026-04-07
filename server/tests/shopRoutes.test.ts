@@ -30,38 +30,44 @@ type TestRouter = Router & {
   }>;
 };
 
+// Cast router to work around Express IRoute type not exposing `methods` and `stack`
+function asTestRouter(r: Router): TestRouter {
+  return r as unknown as TestRouter;
+}
+
 type RouteResult<T = unknown> = { status: number; body: T; headers: Map<string, string> };
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function createMockResponse<T = unknown>(): Response & { _result: RouteResult<T> } {
+function createMockResponse<T = unknown>(): { _result: RouteResult<T> } {
   const result: RouteResult<T> = { status: 200, body: {} as T, headers: new Map() };
-  const res = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res: any = {
     _result: result,
     statusCode: 200,
     status(code: number) {
       result.status = code;
-      this.statusCode = code;
-      return this;
+      res.statusCode = code;
+      return res;
     },
     json(payload: T) {
       result.body = payload;
-      return this;
+      return res;
     },
     send(payload: T) {
       result.body = payload;
-      return this;
+      return res;
     },
     setHeader(name: string, value: string) {
       result.headers.set(name.toLowerCase(), value);
-      return this;
+      return res;
     },
     getHeader(name: string) {
       return result.headers.get(name.toLowerCase());
     },
-  } as unknown as Response & { _result: RouteResult<T> };
+  };
   return res;
 }
 
@@ -83,8 +89,10 @@ async function invokeRoute<T = unknown>(
   path: string,
   options: { cookie?: string; body?: unknown } = {},
 ): Promise<RouteResult<T>> {
-  const layer = router.stack.find(
-    (l) => l.route?.path === path && l.route.methods[method.toLowerCase()],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stack = (router as any).stack as any[];
+  const layer = stack.find(
+    (l: any) => l.route?.path === path && l.route.methods[method.toLowerCase()],
   );
   if (!layer?.route) throw new Error(`Route ${method} ${path} not found`);
 
@@ -166,7 +174,7 @@ describe("Shop routes", () => {
     delete process.env.STRIPE_SECRET_KEY;
 
     const mod = await import("../routes/shop.routes");
-    router = mod.default as unknown as TestRouter;
+    router = asTestRouter(mod.default);
   });
 
   afterEach(() => {
