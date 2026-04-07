@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useToggleSound } from "@/lib/useSoundPreference";
 import { ThemePicker } from "@/components/game/ThemePicker";
-import { hasPreviewAccess, isDevFeatureEnabled } from "@/lib/featureGate";
+import { isDevFeatureEnabled } from "@/lib/featureGate";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useRouter as useIntlRouter, usePathname as useIntlPathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";

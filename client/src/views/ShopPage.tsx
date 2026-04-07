@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
@@ -10,7 +10,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from "@/component
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { Badge } from "@/components/ui/badge";
-import { SkeletonPage, SkeletonCard } from "@/components/ui/skeleton";
+import { SkeletonPage } from "@/components/ui/skeleton";
 import { Navbar } from "@/components/Navbar";
 import { BadgeSelector } from "@/components/BadgeSelector";
 import { UserBadge, BADGE_DEFINITIONS, type BadgeId } from "@/components/UserBadge";
@@ -106,10 +106,8 @@ function formatPrice(cents: number, currency: string): string {
 
 export function ShopPage() {
   const t = useTranslations("shop");
-  const tCommon = useTranslations("common");
   const tBadges = useTranslations("badges");
   const { auth, authLoading, applyAuth, onOpenAuth, onLogout } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
   const [catalog, setCatalog] = useState<ShopCatalogItem[] | null>(null);

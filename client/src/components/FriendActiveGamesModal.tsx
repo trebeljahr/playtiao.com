@@ -78,7 +78,6 @@ export function FriendActiveGamesModal({
   onOpenChange,
 }: FriendActiveGamesModalProps) {
   const t = useTranslations("friends");
-  const tCommon = useTranslations("common");
   const router = useRouter();
   const { auth } = useAuth();
   const currentPlayerId = auth?.player.playerId;

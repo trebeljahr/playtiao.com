@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AuthResponse } from "@shared";
 import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
@@ -20,7 +19,6 @@ import {
   uploadAccountProfilePicture,
   deleteAccount,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { getOAuthErrorMessage } from "@/lib/oauthErrors";
 import { setAccountPassword } from "@/lib/api";
