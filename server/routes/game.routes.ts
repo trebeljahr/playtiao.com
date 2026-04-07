@@ -43,6 +43,25 @@ async function checkGuestGameLimit(player: PlayerIdentity, res: Response): Promi
   return true;
 }
 
+async function checkGuestCustomGameGate(
+  player: PlayerIdentity,
+  gameId: string,
+  res: Response,
+): Promise<boolean> {
+  if (player.kind !== "guest") return true;
+  const room = await GameRoom.findOne({ roomId: gameId })
+    .select("roomType")
+    .lean<Pick<IGameRoom, "roomType">>();
+  if (room && room.roomType === "direct") {
+    res.status(403).json({
+      code: "GUEST_CANNOT_JOIN_CUSTOM_GAME",
+      message: "Create an account or sign in to join a custom game.",
+    });
+    return false;
+  }
+  return true;
+}
+
 const GAME_ID_PATTERN = /^[A-Z2-9]{6}$/;
 
 function isValidGameId(gameId: string): boolean {
@@ -302,6 +321,10 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
   }
 
+  if (!(await checkGuestCustomGameGate(player, req.params.gameId as string, res))) {
+    return;
+  }
+
   try {
     const snapshot = await gameService.joinGame(req.params.gameId as string, player);
 
@@ -354,6 +377,10 @@ router.post("/games/:gameId/access", async (req: Request, res: Response) => {
 
   if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
+  }
+
+  if (!(await checkGuestCustomGameGate(player, req.params.gameId as string, res))) {
+    return;
   }
 
   try {

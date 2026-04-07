@@ -4,12 +4,12 @@ import { type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 /**
  * Returns true if the current user has access to preview features (board themes, etc.).
  *
- * Preview access is granted when the player has at least one unlocked badge,
- * meaning they have been explicitly granted access in the database.
+ * Preview access is granted when the player has at least one unlocked board theme,
+ * meaning an admin has explicitly granted theme access in the database.
  */
 export function hasPreviewAccess(auth: AuthResponse | null): boolean {
   if (!auth || auth.player.kind !== "account") return false;
-  return (auth.player.badges ?? []).length > 0;
+  return (auth.player.unlockedThemes ?? []).length > 0;
 }
 
 /**

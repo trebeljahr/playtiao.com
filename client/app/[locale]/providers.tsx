@@ -405,6 +405,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
               cancelButtonStyle: {
                 background: "rgba(74, 55, 40, 0.1)",
                 color: "#6e5b48",
+                flexShrink: 0,
+              },
+              actionButtonStyle: {
+                flexShrink: 0,
               },
             }}
           />

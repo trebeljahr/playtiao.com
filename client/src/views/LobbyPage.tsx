@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
-import { isSummaryYourTurn, translatePlayerColor } from "@/components/game/GameShared";
+import { isSummaryYourTurn, translatePlayerColor, ColorDot } from "@/components/game/GameShared";
 import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { ActiveGameCard } from "@/components/game/ActiveGameCard";
@@ -118,25 +118,8 @@ export function LobbyPage() {
         });
       }
 
-      // Toast for incoming rematch requests
-      if (
-        summary.status === "finished" &&
-        summary.rematch?.requestedBy.length &&
-        summary.yourSeat &&
-        !summary.rematch.requestedBy.includes(summary.yourSeat) &&
-        !inGame
-      ) {
-        const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
-        const opponentName = summary.seats[opponentSeat]?.player.displayName || "your opponent";
-        toast(t("rematchToast", { opponent: opponentName }), {
-          id: `rematch-${summary.gameId}`,
-          description: t("game", { gameId: summary.gameId }),
-          action: {
-            label: t("viewGame"),
-            onClick: () => window.location.assign(`/game/${summary.gameId}`),
-          },
-        });
-      }
+      // Rematch toasts are handled globally by SocialNotificationsContext
+      // so they work on every page, not just the lobby.
     }
     if (payload.type === "social-update") {
       void refreshSocialOverview({ silent: true, allowInviteToast: true });
@@ -179,6 +162,15 @@ export function LobbyPage() {
   const guestGameCount = multiplayerGames.active.length + multiplayerGames.finished.length;
   const guestGamesRemaining = GUEST_GAME_LIMIT - guestGameCount;
   const [guestLimitDialogOpen, setGuestLimitDialogOpen] = useState(false);
+  const [showTutorialBanner, setShowTutorialBanner] = useState(false);
+
+  useEffect(() => {
+    const seenViaAccount = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
+    const seenViaLocal = localStorage.getItem("tiao:tutorialComplete");
+    if (!seenViaAccount && !seenViaLocal) {
+      setShowTutorialBanner(true);
+    }
+  }, [auth]);
 
   function checkGuestLimit(): boolean {
     if (auth?.player.kind === "guest" && guestGamesRemaining <= 0) {
@@ -254,10 +246,7 @@ export function LobbyPage() {
 
       <main className="mx-auto flex max-w-7xl flex-col px-4 pb-12 pt-16 sm:px-6 lg:px-8 lg:pt-20">
         {/* Banner Section — hidden for users who completed the tutorial */}
-        {!(
-          (auth?.player.kind === "account" && auth.player.hasSeenTutorial) ||
-          (typeof window !== "undefined" && localStorage.getItem("tiao:tutorialComplete"))
-        ) && (
+        {showTutorialBanner && (
           <section className="relative flex flex-col items-center justify-center py-4 text-center sm:py-12">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -525,12 +514,23 @@ export function LobbyPage() {
                           key={inv.id}
                           className="rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs hover:border-[#b98d49] transition-colors group space-y-3"
                         >
-                          <PlayerIdentityRow
-                            player={inv.sender}
-                            currentPlayerId={auth?.player.playerId}
-                            linkToProfile={false}
-                            className="gap-3"
-                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <PlayerIdentityRow
+                              player={inv.sender}
+                              currentPlayerId={auth?.player.playerId}
+                              linkToProfile={false}
+                              online={inv.sender.online}
+                              className="gap-3 min-w-0"
+                            />
+                            {inv.assignedColor && (
+                              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-2 py-1 text-xs text-[#6b5a45]">
+                                <ColorDot color={inv.assignedColor} className="h-3 w-3" />
+                                {tc("playingAs", {
+                                  color: translatePlayerColor(inv.assignedColor, tGame) ?? "",
+                                })}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-[#6b5a45]">
                             <GameConfigBadge
                               boardSize={inv.boardSize}
@@ -538,21 +538,6 @@ export function LobbyPage() {
                               timeControl={inv.timeControl}
                               roomType={inv.roomType}
                             />
-                            {inv.assignedColor && (
-                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-2 py-1">
-                                <span
-                                  className={cn(
-                                    "inline-block h-3 w-3 rounded-full border",
-                                    inv.assignedColor === "white"
-                                      ? "border-[#ddd2bf] bg-[#f4eee3]"
-                                      : "border-[#191410] bg-[#2d2622]",
-                                  )}
-                                />
-                                {tc("playingAs", {
-                                  color: translatePlayerColor(inv.assignedColor!, tGame) ?? "",
-                                })}
-                              </span>
-                            )}
                           </div>
                           <div className="flex gap-2 pt-1">
                             <Button

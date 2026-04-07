@@ -16,8 +16,11 @@ import {
   adminSearchUsers,
   adminGrantBadge,
   adminRevokeBadge,
+  adminGrantTheme,
+  adminRevokeTheme,
   type AdminUserResult,
 } from "@/lib/api";
+import { THEMES } from "@/components/game/boardThemes";
 import { toastError } from "@/lib/errors";
 
 export function AdminBadgesPage() {
@@ -99,6 +102,58 @@ export function AdminBadgesPage() {
     [selectedUser, t],
   );
 
+  const handleGrantTheme = useCallback(
+    async (themeId: string) => {
+      if (!selectedUser) return;
+      setBusy(themeId);
+      try {
+        const result = await adminGrantTheme(selectedUser.playerId, themeId);
+        setSelectedUser((prev) =>
+          prev ? { ...prev, unlockedThemes: result.unlockedThemes } : null,
+        );
+        setSearchResults((prev) =>
+          prev.map((u) =>
+            u.playerId === selectedUser.playerId
+              ? { ...u, unlockedThemes: result.unlockedThemes }
+              : u,
+          ),
+        );
+        toast.success(t("themeGranted", { theme: themeId }));
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [selectedUser, t],
+  );
+
+  const handleRevokeTheme = useCallback(
+    async (themeId: string) => {
+      if (!selectedUser) return;
+      setBusy(themeId);
+      try {
+        const result = await adminRevokeTheme(selectedUser.playerId, themeId);
+        setSelectedUser((prev) =>
+          prev ? { ...prev, unlockedThemes: result.unlockedThemes } : null,
+        );
+        setSearchResults((prev) =>
+          prev.map((u) =>
+            u.playerId === selectedUser.playerId
+              ? { ...u, unlockedThemes: result.unlockedThemes }
+              : u,
+          ),
+        );
+        toast.success(t("themeRevoked", { theme: themeId }));
+      } catch (error) {
+        toastError(error);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [selectedUser, t],
+  );
+
   // Not admin — show forbidden
   if (!isAdmin(auth)) {
     return (
@@ -141,12 +196,8 @@ export function AdminBadgesPage() {
       />
 
       <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pb-12 pt-20 sm:px-6 lg:pt-24">
-        <Button
-          variant="ghost"
-          className="self-start text-[#8b7356]"
-          onClick={() => router.push("/")}
-        >
-          &larr; {tCommon("backToLobby")}
+        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
+          &larr; {tCommon("back")}
         </Button>
 
         <h1 className="text-2xl font-bold text-[#5c4a32]">{t("title")}</h1>
@@ -256,6 +307,74 @@ export function AdminBadgesPage() {
                           className={hasIt ? "" : "bg-[#8b7356] text-white hover:bg-[#6d5a42]"}
                         >
                           {busy === badgeId ? tCommon("loading") : hasIt ? t("revoke") : t("grant")}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Board theme management for selected user */}
+        {selectedUser && (
+          <Card className={paperCard}>
+            <CardHeader>
+              <CardTitle className="text-[#5c4a32]">{t("boardThemes")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current unlocked themes */}
+              {selectedUser.unlockedThemes.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-[#8b7356]">{t("currentBadges")}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.unlockedThemes.map((themeId) => (
+                      <span
+                        key={themeId}
+                        className="rounded-md border border-[#d0bb94]/50 bg-white/60 px-2 py-1 text-xs text-[#5c4a32]"
+                      >
+                        {themeId}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All theme types */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-[#8b7356]">{t("allBadges")}</p>
+                <div className="space-y-2">
+                  {THEMES.map((theme) => {
+                    const hasIt = selectedUser.unlockedThemes.includes(theme.id);
+
+                    return (
+                      <div
+                        key={theme.id}
+                        className="flex items-center justify-between rounded-lg border border-[#d0bb94]/50 bg-white/40 px-4 py-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-[#5c4a32]">
+                            {theme.name}
+                            <span className="ml-2 text-xs text-[#8b7356]">
+                              ({theme.description})
+                            </span>
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={hasIt ? "danger" : "default"}
+                          disabled={busy === theme.id}
+                          onClick={() =>
+                            hasIt ? handleRevokeTheme(theme.id) : handleGrantTheme(theme.id)
+                          }
+                          className={hasIt ? "" : "bg-[#8b7356] text-white hover:bg-[#6d5a42]"}
+                        >
+                          {busy === theme.id
+                            ? tCommon("loading")
+                            : hasIt
+                              ? t("revokeTheme")
+                              : t("grantTheme")}
                         </Button>
                       </div>
                     );

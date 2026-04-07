@@ -1,5 +1,5 @@
 import type { MultiplayerGameSummary, PlayerColor } from "@shared";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -132,6 +132,7 @@ export function MatchHistoryCard({
 }: MatchHistoryCardProps) {
   const t = useTranslations("game");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const result = getPlayerResult(game);
   const whitePlayer = game.seats?.white?.player ?? null;
   const blackPlayer = game.seats?.black?.player ?? null;
@@ -233,7 +234,7 @@ export function MatchHistoryCard({
       {/* Footer: timestamp left, game settings pills right */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-[#6b5a45]">
-          {formatGameTimestamp(game.updatedAt)} ·{" "}
+          {formatGameTimestamp(game.updatedAt, locale)} ·{" "}
           {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
         <GameConfigBadge

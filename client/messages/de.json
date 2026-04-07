@@ -217,7 +217,7 @@
     "waitingToJoin": "Wartet auf Beitritt",
     "online": "Online",
     "offline": "Offline",
-    "lobbyShareHint": "Teile die Spiel-ID oder nutze den Link oben, um einen Freund einzuladen. Weiß beginnt. Die Farben werden zufällig zugewiesen, sobald der zweite Spieler der Lobby beitritt.",
+    "lobbyShareHint": "Teile die Spiel-ID oder nutze den Link oben, um einen Freund einzuladen. Weiß beginnt immer. Die Farben werden beim Erstellen des Spiels zufällig zugewiesen.",
     "gameOver": "Das Spiel ist vorbei.",
     "boardFullDesc": "Keine Züge mehr möglich — das Brett ist voll.",
     "youCapturedDesc": "Du hast genug Steine deines Gegners gefangen.",
@@ -640,7 +640,12 @@
     "grant": "Vergeben",
     "revoke": "Entziehen",
     "badgeGranted": "Abzeichen \"{badge}\" erfolgreich vergeben.",
-    "badgeRevoked": "Abzeichen \"{badge}\" erfolgreich entzogen."
+    "badgeRevoked": "Abzeichen \"{badge}\" erfolgreich entzogen.",
+    "boardThemes": "Spielfeld-Designs",
+    "grantTheme": "Design freischalten",
+    "revokeTheme": "Design entziehen",
+    "themeGranted": "Design \"{theme}\" erfolgreich freigeschaltet.",
+    "themeRevoked": "Design \"{theme}\" erfolgreich entzogen."
   },
   "error": {
     "somethingWentWrong": "Etwas ist schiefgelaufen",

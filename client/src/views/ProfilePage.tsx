@@ -25,7 +25,7 @@ import { isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
 import { updateActiveBadges, setAccountPassword } from "@/lib/api";
 import { toast } from "sonner";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 const PROFILE_PIC_SIZE = 512;
 const PROFILE_PIC_QUALITY = 0.85;
@@ -449,12 +449,12 @@ function LinkedAccounts({
   );
 }
 
-function formatTimestamp(value: string | undefined, justNowLabel: string) {
+function formatTimestamp(value: string | undefined, justNowLabel: string, locale?: string) {
   if (!value) {
     return justNowLabel;
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -464,6 +464,7 @@ export function ProfilePage() {
   const t = useTranslations("profile");
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
+  const locale = useLocale();
   const { auth, applyAuth: onAuthChange, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -737,8 +738,8 @@ export function ProfilePage() {
                 <Button variant="outline" onClick={() => onOpenAuth("login")}>
                   {tCommon("signIn")}
                 </Button>
-                <Button variant="ghost" onClick={() => router.push("/")}>
-                  {tCommon("backToLobby")}
+                <Button variant="ghost" onClick={() => router.back()}>
+                  &larr; {tCommon("back")}
                 </Button>
               </div>
             </CardContent>
@@ -961,10 +962,14 @@ export function ProfilePage() {
 
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
                       <p>
-                        {t("created", { date: formatTimestamp(profile?.createdAt, t("justNow")) })}
+                        {t("created", {
+                          date: formatTimestamp(profile?.createdAt, t("justNow"), locale),
+                        })}
                       </p>
                       <p>
-                        {t("updated", { date: formatTimestamp(profile?.updatedAt, t("justNow")) })}
+                        {t("updated", {
+                          date: formatTimestamp(profile?.updatedAt, t("justNow"), locale),
+                        })}
                       </p>
                     </div>
 
@@ -972,8 +977,8 @@ export function ProfilePage() {
                       <Button type="submit" disabled={saving}>
                         {saving ? tCommon("saving") : tCommon("save")}
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => router.push("/")}>
-                        {tCommon("backToLobby")}
+                      <Button type="button" variant="outline" onClick={() => router.back()}>
+                        &larr; {tCommon("back")}
                       </Button>
                       <Button
                         type="button"

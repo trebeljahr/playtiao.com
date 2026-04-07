@@ -70,6 +70,7 @@ function buildPlayerIdentityFromAccount(
     profilePicture?: string;
     badges?: string[];
     activeBadges?: string[];
+    unlockedThemes?: string[];
     isAdmin?: boolean;
     rating?: { overall: { elo: number; gamesPlayed: number } };
   },
@@ -85,6 +86,7 @@ function buildPlayerIdentityFromAccount(
     hasSeenTutorial: false,
     badges: account.badges ?? [],
     activeBadges: account.activeBadges ?? [],
+    unlockedThemes: account.unlockedThemes ?? [],
     ...(account.isAdmin ? { isAdmin: true } : {}),
     rating: account.rating?.overall?.elo,
     ...(needsUsername ? { needsUsername: true } : {}),

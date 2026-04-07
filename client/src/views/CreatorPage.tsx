@@ -83,12 +83,8 @@ export function CreatorPage({
       />
 
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 pb-12 pt-20 sm:px-6 lg:pt-24">
-        <Button
-          variant="ghost"
-          className="self-start text-[#8b7356]"
-          onClick={() => router.push("/")}
-        >
-          &larr; {tCommon("backToLobby")}
+        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
+          &larr; {tCommon("back")}
         </Button>
 
         <Card className={paperCard + " w-full"}>

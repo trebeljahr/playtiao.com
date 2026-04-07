@@ -498,6 +498,7 @@ export type AdminUserResult = {
   displayName: string;
   badges: string[];
   activeBadges: string[];
+  unlockedThemes: string[];
 };
 
 export function adminSearchUsers(query: string) {
@@ -517,5 +518,19 @@ export function adminRevokeBadge(playerId: string, badgeId: string) {
   return request<{ badges: string[]; activeBadges: string[] }>("/api/player/admin/badges/revoke", {
     method: "POST",
     body: { playerId, badgeId },
+  });
+}
+
+export function adminGrantTheme(playerId: string, themeId: string) {
+  return request<{ unlockedThemes: string[] }>("/api/player/admin/themes/grant", {
+    method: "POST",
+    body: { playerId, themeId },
+  });
+}
+
+export function adminRevokeTheme(playerId: string, themeId: string) {
+  return request<{ unlockedThemes: string[] }>("/api/player/admin/themes/revoke", {
+    method: "POST",
+    body: { playerId, themeId },
   });
 }

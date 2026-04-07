@@ -16,6 +16,8 @@ export interface IGameAccount extends Document {
   badges: string[];
   /** Which badge(s) the player chose to display (empty = hidden). */
   activeBadges: string[];
+  /** Board theme IDs the player has been granted access to. */
+  unlockedThemes: string[];
   /** Whether this account has admin privileges. */
   isAdmin: boolean;
   /** Short user-written bio for their public profile. */
@@ -69,6 +71,10 @@ const GameAccountSchema = new Schema<IGameAccount>(
       default: [],
     },
     activeBadges: {
+      type: [String],
+      default: [],
+    },
+    unlockedThemes: {
       type: [String],
       default: [],
     },

@@ -32,12 +32,13 @@ vi.mock("sonner", () => {
   return { toast: toastFn };
 });
 
-// Capture the useLobbyMessage handler so we can simulate WebSocket messages
-let lobbyMessageHandler: ((payload: Record<string, unknown>) => void) | null = null;
+// Capture useLobbyMessage handlers so we can simulate WebSocket messages.
+// The provider registers multiple handlers (social-update + game-update).
+const lobbyMessageHandlers: Array<(payload: Record<string, unknown>) => void> = [];
 
 vi.mock("./LobbySocketContext", () => ({
   useLobbyMessage: (handler: (payload: Record<string, unknown>) => void) => {
-    lobbyMessageHandler = handler;
+    lobbyMessageHandlers.push(handler);
   },
 }));
 
@@ -65,7 +66,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 function simulateLobbyMessage(payload: Record<string, unknown>) {
   act(() => {
-    lobbyMessageHandler?.(payload);
+    for (const handler of lobbyMessageHandlers) {
+      handler(payload);
+    }
   });
 }
 
@@ -74,7 +77,7 @@ function simulateLobbyMessage(payload: Record<string, unknown>) {
 describe("SocialNotificationsContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    lobbyMessageHandler = null;
+    lobbyMessageHandlers.length = 0;
     mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
   });
 

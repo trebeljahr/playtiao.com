@@ -29,6 +29,7 @@ export function ActiveGameCard({
 }: ActiveGameCardProps) {
   const tCommon = useTranslations("common");
   const tGame = useTranslations("game");
+  const tLobby = useTranslations("lobby");
 
   const isYourTurn = isSummaryYourTurn(game);
   const isWaiting = game.status === "waiting";
@@ -109,7 +110,7 @@ export function ActiveGameCard({
           {opponentOnline && (
             <span
               className="inline-block h-2 w-2 shrink-0 rounded-full bg-[#6ba34a]"
-              title={tGame("opponentOnline")}
+              title={tLobby("opponentOnline")}
             />
           )}
           <span className="ml-auto shrink-0 font-mono text-xs tabular-nums text-[#8d7760]">

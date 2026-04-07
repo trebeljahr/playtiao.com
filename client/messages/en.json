@@ -217,7 +217,7 @@
     "waitingToJoin": "Waiting to join",
     "online": "Online",
     "offline": "Offline",
-    "lobbyShareHint": "Share the Game ID or use the share link above to invite a friend. White still starts. The colors are assigned randomly the moment player two joins the lobby.",
+    "lobbyShareHint": "Share the Game ID or use the share link above to invite a friend. White always goes first. Colors are assigned randomly when the game is created.",
     "gameOver": "The game is over.",
     "boardFullDesc": "No moves remaining — the board is full.",
     "youCapturedDesc": "You captured enough of your opponent's stones.",
@@ -640,7 +640,12 @@
     "grant": "Grant",
     "revoke": "Revoke",
     "badgeGranted": "Badge \"{badge}\" granted successfully.",
-    "badgeRevoked": "Badge \"{badge}\" revoked successfully."
+    "badgeRevoked": "Badge \"{badge}\" revoked successfully.",
+    "boardThemes": "Board Themes",
+    "grantTheme": "Grant theme",
+    "revokeTheme": "Revoke theme",
+    "themeGranted": "Theme \"{theme}\" granted successfully.",
+    "themeRevoked": "Theme \"{theme}\" revoked successfully."
   },
   "error": {
     "somethingWentWrong": "Something went wrong",

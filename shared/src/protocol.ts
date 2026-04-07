@@ -26,6 +26,8 @@ export type PlayerIdentity = {
   badges?: string[];
   /** Which badge(s) the player chose to display (empty = hidden). */
   activeBadges?: string[];
+  /** Board theme IDs the player has been granted access to. */
+  unlockedThemes?: string[];
   /** True when the player has admin privileges (set server-side). */
   isAdmin?: boolean;
   rating?: number;

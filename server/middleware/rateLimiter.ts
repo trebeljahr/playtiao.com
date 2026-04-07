@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { rateLimit } from "express-rate-limit";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import { getRedisClient } from "../config/redisClient";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
 
@@ -34,7 +34,7 @@ async function perAccountKey(req: Request): Promise<string> {
   } catch {
     // Fall through to IP
   }
-  return `ip:${req.ip}`;
+  return `ip:${ipKeyGenerator(req.ip ?? "127.0.0.1")}`;
 }
 
 export const authRateLimiter = rateLimit({

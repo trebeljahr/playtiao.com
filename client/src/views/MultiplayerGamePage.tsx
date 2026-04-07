@@ -193,19 +193,33 @@ export function MultiplayerGamePage() {
   const [rulesIntroOpen, setRulesIntroOpen] = useState(false);
   const rulesIntroShownRef = useRef(false);
 
+  // Gate game join on rules intro dismissal so the player isn't joined before
+  // pressing "Got it, let's play!" (#154)
+  const [readyToJoin, setReadyToJoin] = useState(false);
+
   // Show rules intro once when the game loads and the player hasn't seen the tutorial
   useEffect(() => {
-    if (
-      multiplayerSnapshot &&
-      auth &&
+    if (!multiplayerSnapshot || !auth) return;
+
+    // Spectators always join immediately — they just watch, no intro needed
+    if (spectateOnly) {
+      setReadyToJoin(true);
+      return;
+    }
+
+    const needsIntro =
       !auth.player.hasSeenTutorial &&
       !localStorage.getItem("tiao:tutorialComplete") &&
-      !rulesIntroShownRef.current
-    ) {
+      !rulesIntroShownRef.current;
+
+    if (needsIntro) {
       rulesIntroShownRef.current = true;
       setRulesIntroOpen(true);
+      // readyToJoin stays false until the modal is dismissed
+    } else {
+      setReadyToJoin(true);
     }
-  }, [multiplayerSnapshot, auth]);
+  }, [multiplayerSnapshot, auth, spectateOnly]);
 
   // Close invite modal, scroll to board, and notify when both seats are filled
   const bothSeated = !!(multiplayerSnapshot?.seats.white && multiplayerSnapshot?.seats.black);
@@ -251,7 +265,7 @@ export function MultiplayerGamePage() {
   }
 
   useEffect(() => {
-    if (!auth || !gameId) return;
+    if (!auth || !gameId || !readyToJoin) return;
 
     let cancelled = false;
     async function loadGame() {
@@ -263,10 +277,18 @@ export function MultiplayerGamePage() {
         if (!cancelled) {
           connectToRoom(response.snapshot);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          toast.error(tCommon("failedToLoadGame"));
-          router.push("/");
+          if (
+            err instanceof Error &&
+            "code" in err &&
+            (err as { code?: string }).code === "GUEST_CANNOT_JOIN_CUSTOM_GAME"
+          ) {
+            onOpenAuth("signup");
+          } else {
+            toast.error(tCommon("failedToLoadGame"));
+            router.push("/");
+          }
         }
       } finally {
         if (!cancelled) setMultiplayerBusy(false);
@@ -280,7 +302,16 @@ export function MultiplayerGamePage() {
     return () => {
       cancelled = true;
     };
-  }, [auth, gameId, connectionState, connectToRoom, router, setMultiplayerBusy, spectateOnly]);
+  }, [
+    auth,
+    gameId,
+    connectionState,
+    connectToRoom,
+    router,
+    setMultiplayerBusy,
+    spectateOnly,
+    readyToJoin,
+  ]);
 
   useStonePlacementSound(multiplayerSnapshot?.state ?? null);
   const winner = multiplayerSnapshot
@@ -1837,6 +1868,7 @@ export function MultiplayerGamePage() {
               onClick={() => {
                 localStorage.setItem("tiao:tutorialComplete", "1");
                 setRulesIntroOpen(false);
+                setReadyToJoin(true);
               }}
             >
               {isSpectator && !isInPlayerList ? t("startSpectating") : t("gotItPlay")}

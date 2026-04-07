@@ -216,7 +216,7 @@
     "waitingToJoin": "Esperando para unirse",
     "online": "En línea",
     "offline": "Desconectado",
-    "lobbyShareHint": "Comparte el ID de la partida o usa el enlace de arriba para invitar a un amigo. Blancas siempre empiezan. Los colores se asignan al azar cuando se une el segundo jugador.",
+    "lobbyShareHint": "Comparte el ID de la partida o usa el enlace de arriba para invitar a un amigo. Blancas siempre empiezan. Los colores se asignan al azar cuando se crea la partida.",
     "gameOver": "La partida ha terminado.",
     "boardFullDesc": "No quedan jugadas — el tablero está lleno.",
     "youCapturedDesc": "Capturaste suficientes piedras de tu rival.",
@@ -627,7 +627,12 @@
     "grant": "Otorgar",
     "revoke": "Revocar",
     "badgeGranted": "Insignia \"{badge}\" otorgada correctamente.",
-    "badgeRevoked": "Insignia \"{badge}\" revocada correctamente."
+    "badgeRevoked": "Insignia \"{badge}\" revocada correctamente.",
+    "boardThemes": "Temas del tablero",
+    "grantTheme": "Conceder tema",
+    "revokeTheme": "Revocar tema",
+    "themeGranted": "Tema \"{theme}\" concedido correctamente.",
+    "themeRevoked": "Tema \"{theme}\" revocado correctamente."
   },
   "error": {
     "somethingWentWrong": "Algo salió mal",

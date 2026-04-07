@@ -204,6 +204,7 @@ export class GameService {
       userSockets?.delete(socket);
       if (userSockets?.size === 0) {
         this.lobbyConnections.delete(player.playerId);
+        void this.revokeRematchesOnDisconnect(player.playerId);
         for (const cb of this.lobbyDisconnectCallbacks) {
           try {
             cb(player.playerId);
@@ -1727,6 +1728,47 @@ export class GameService {
     }
 
     return savedRoom;
+  }
+
+  /**
+   * When a player fully disconnects from the lobby, revoke any pending rematch
+   * requests they sent on finished games. This mirrors the per-room disconnect
+   * logic but covers the case where the player leaves the site entirely (closing
+   * the lobby socket) without first disconnecting from each game room socket.
+   */
+  private async revokeRematchesOnDisconnect(playerId: string): Promise<void> {
+    try {
+      const rooms = await this.store.listRoomsForPlayer(playerId);
+      for (const room of rooms) {
+        if (room.status !== "finished" || !room.rematch?.requestedBy.length) continue;
+        const playerColor = getPlayerColorForRoom(room, playerId);
+        if (!playerColor || !room.rematch.requestedBy.includes(playerColor)) continue;
+
+        // Use the room lock to prevent races with concurrent rematch acceptance
+        const savedRoom = await this.withLock(this.roomLockKey(room.id), async () => {
+          const freshRoom = this.deriveRoomStatus(await this.getRoom(room.id));
+          if (!freshRoom.rematch?.requestedBy.length) return freshRoom;
+          const color = getPlayerColorForRoom(freshRoom, playerId);
+          if (color && freshRoom.rematch.requestedBy.includes(color)) {
+            return this.saveRoom({ ...freshRoom, rematch: null });
+          }
+          return freshRoom;
+        });
+
+        void this.broadcastSnapshot(savedRoom);
+        // Also notify lobby connections so the opponent's UI updates
+        for (const color of ["white", "black"] as const) {
+          const seat = savedRoom.seats[color];
+          if (seat) {
+            void this.toSummary(savedRoom, seat.playerId).then((summary) => {
+              this.broadcastLobby(seat.playerId, { type: "game-update", summary });
+            });
+          }
+        }
+      }
+    } catch {
+      /* best-effort — don't let revocation errors break the disconnect flow */
+    }
   }
 
   private async requestTakeback(

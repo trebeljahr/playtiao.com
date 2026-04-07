@@ -25,13 +25,18 @@ describe("hasPreviewAccess", () => {
     expect(hasPreviewAccess(auth)).toBe(false);
   });
 
-  it("returns false for account with no badges", () => {
-    const auth = makeAuth({ badges: [] });
+  it("returns false for account with no unlocked themes", () => {
+    const auth = makeAuth({ unlockedThemes: [] });
     expect(hasPreviewAccess(auth)).toBe(false);
   });
 
-  it("returns true for account with badges", () => {
+  it("returns false for account with badges but no unlocked themes", () => {
     const auth = makeAuth({ badges: ["creator"] });
+    expect(hasPreviewAccess(auth)).toBe(false);
+  });
+
+  it("returns true for account with unlocked themes", () => {
+    const auth = makeAuth({ unlockedThemes: ["night"] });
     expect(hasPreviewAccess(auth)).toBe(true);
   });
 });

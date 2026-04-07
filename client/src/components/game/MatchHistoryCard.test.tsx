@@ -8,6 +8,7 @@ vi.mock("next-intl", () => ({
     if (values) return `${key}:${JSON.stringify(values)}`;
     return key;
   },
+  useLocale: () => "en",
 }));
 
 vi.mock("@/components/PlayerIdentityRow", () => ({

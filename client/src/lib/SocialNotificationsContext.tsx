@@ -1,6 +1,7 @@
 import React from "react";
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import type { AuthResponse, SocialOverview } from "@shared";
 import { EMPTY_SOCIAL_OVERVIEW } from "@shared";
 import {
@@ -36,6 +37,7 @@ export function SocialNotificationsProvider({
   auth: AuthResponse | null;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("lobby");
   const [overview, setOverview] = useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
   const prevRequestIdsRef = useRef<Set<string>>(new Set());
   const prevInvitationIdsRef = useRef<Set<string>>(new Set());
@@ -96,13 +98,13 @@ export function SocialNotificationsProvider({
           const reqPlayerId = req.playerId;
           const reqName = req.displayName || "Someone";
           toast(
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <PlayerIdentityRow
                 player={req}
                 linkToProfile={false}
                 avatarClassName="h-6 w-6"
                 friendVariant="light"
-                nameClassName="text-sm font-medium"
+                nameClassName="text-sm font-medium truncate"
               />
             </div>,
             {
@@ -209,6 +211,38 @@ export function SocialNotificationsProvider({
     prevInvitationIdsRef.current = new Set(nextOverview.incomingInvitations.map((inv) => inv.id));
     hydratedRef.current = true;
     setOverview(nextOverview);
+  });
+
+  // Global rematch toast — fires on every page so the opponent sees the
+  // notification even after navigating away from the game or lobby.
+  useLobbyMessage((payload) => {
+    if (payload.type !== "game-update") return;
+
+    const summary = payload.summary as Record<string, any> | undefined;
+    if (!summary) return;
+
+    // Don't show the toast when the user is already on the game page —
+    // MultiplayerGamePage has its own rematch UI with accept/decline actions.
+    const inGame = typeof window !== "undefined" && window.location.pathname.startsWith("/game/");
+    if (inGame) return;
+
+    if (
+      summary.status === "finished" &&
+      summary.rematch?.requestedBy?.length &&
+      summary.yourSeat &&
+      !summary.rematch.requestedBy.includes(summary.yourSeat)
+    ) {
+      const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
+      const opponentName = summary.seats?.[opponentSeat]?.player?.displayName || "your opponent";
+      toast(t("rematchToast", { opponent: opponentName }), {
+        id: `rematch-${summary.gameId}`,
+        description: t("game", { gameId: summary.gameId }),
+        action: {
+          label: t("viewGame"),
+          onClick: () => window.location.assign(`/game/${summary.gameId}`),
+        },
+      });
+    }
   });
 
   const pendingFriendRequestCount = overview.incomingFriendRequests.length;

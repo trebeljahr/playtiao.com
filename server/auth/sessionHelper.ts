@@ -33,6 +33,7 @@ async function toPlayerIdentity(user: {
     hasSeenTutorial: account?.hasSeenTutorial ?? false,
     badges: account?.badges ?? [],
     activeBadges: account?.activeBadges ?? [],
+    unlockedThemes: account?.unlockedThemes ?? [],
     ...(account?.isAdmin ? { isAdmin: true } : {}),
     rating: account?.rating?.overall?.elo,
     ...(needsUsername ? { needsUsername: true } : {}),
