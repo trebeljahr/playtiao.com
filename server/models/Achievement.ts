@@ -48,11 +48,20 @@ function getModel(): Model<IAchievement> {
 
 // Proxy that lazily initialises the real model on first use.
 // Tests that never call Achievement methods won't trigger model compilation.
+// Tests can override individual methods (e.g. `Achievement.find = ...`) and
+// those overrides will be used instead of hitting the real Mongoose model.
+const _overrides = new Map<string | symbol, unknown>();
+
 const Achievement = new Proxy({} as Model<IAchievement>, {
-  get(_target, prop, receiver) {
+  get(_target, prop, _receiver) {
+    if (_overrides.has(prop)) return _overrides.get(prop);
     const realModel = getModel();
-    const value = Reflect.get(realModel, prop, receiver);
-    return typeof value === "function" ? value.bind(realModel) : value;
+    const value = (realModel as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === "function" ? (value as Function).bind(realModel) : value;
+  },
+  set(_target, prop, value) {
+    _overrides.set(prop, value);
+    return true;
   },
 });
 

@@ -192,6 +192,21 @@ beforeEach(async () => {
   resetTestSessions();
   await installTestSessionMock();
 
+  // Prevent achievement checks from hitting Mongoose (no DB in unit tests)
+  const achievementMod = (await import("../game/achievementService")) as Record<string, unknown>;
+  achievementMod.onGameCompleted = async () => {};
+  achievementMod.onEloUpdated = async () => {};
+  achievementMod.onSpectateStarted = async () => {};
+  achievementMod.onTournamentWon = async () => {};
+
+  // Mock GameRoom to prevent Mongoose buffering timeouts
+  const GameRoom = (await import("../models/GameRoom")).default;
+  (GameRoom as unknown as Record<string, unknown>).findOne = () => ({
+    select: () => ({ lean: () => null }),
+    lean: () => null,
+  });
+  (GameRoom as unknown as Record<string, unknown>).countDocuments = async () => 0;
+
   const [
     { GameService, gameService },
     { InMemoryGameRoomStore },

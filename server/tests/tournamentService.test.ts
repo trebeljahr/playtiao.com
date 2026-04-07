@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
-import { test, describe } from "node:test";
+import { before, test, describe } from "node:test";
 import type { PlayerIdentity, TournamentSettings } from "../../shared/src";
 import { GameService, GameServiceError } from "../game/gameService";
 import { InMemoryGameRoomStore } from "../game/gameStore";
 import { TournamentService } from "../game/tournamentService";
 import { InMemoryTournamentStore } from "../game/tournamentStore";
 import { InMemoryLockProvider } from "../game/lockProvider";
+
+// Prevent achievement checks from hitting Mongoose (no DB in unit tests)
+before(async () => {
+  const mod = (await import("../game/achievementService")) as Record<string, unknown>;
+  mod.onGameCompleted = async () => {};
+  mod.onEloUpdated = async () => {};
+  mod.onSpectateStarted = async () => {};
+  mod.onTournamentWon = async () => {};
+});
 
 function createPlayer(playerId: string, options: Partial<PlayerIdentity> = {}): PlayerIdentity {
   return {

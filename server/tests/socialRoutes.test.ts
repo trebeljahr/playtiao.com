@@ -254,6 +254,42 @@ async function installModelMocks() {
     return account ?? null;
   };
 
+  // Override requireAccount to use the full mock account from mockAccounts
+  // (the default testAuthHelper mock returns a simplified object missing fields
+  // like sentFriendRequests, receivedFriendRequests, etc.)
+  const sessionHelper = (await import("../auth/sessionHelper")) as Record<string, unknown>;
+  const { getTestSession } = await import("./testAuthHelper");
+  sessionHelper.requireAccount = async (
+    req: { headers: { cookie?: string } },
+    res: { status: (code: number) => { json: (body: unknown) => void } },
+  ) => {
+    // Replicate the router-level database readiness middleware that invokeRoute skips
+    if (mockReadyState !== 1) {
+      res.status(503).json({
+        message:
+          "Account social features are unavailable right now. You can still play as a guest.",
+      });
+      return null;
+    }
+    const player = getTestSession(req.headers.cookie);
+    if (!player) {
+      res.status(401).json({ code: "NOT_AUTHENTICATED", message: "Not authenticated." });
+      return null;
+    }
+    if (player.kind !== "account") {
+      res.status(403).json({ code: "ACCOUNT_REQUIRED", message: "Account required." });
+      return null;
+    }
+    const account = mockAccounts.get(player.playerId);
+    if (!account) {
+      res
+        .status(404)
+        .json({ code: "ACCOUNT_NOT_FOUND", message: "That account could not be found." });
+      return null;
+    }
+    return account;
+  };
+
   // Mock GameAccount.find - returns a chainable query-like object
   (GameAccount as unknown as Record<string, unknown>).find = (_filter: Record<string, unknown>) => {
     const results = Array.from(mockAccounts.values());
