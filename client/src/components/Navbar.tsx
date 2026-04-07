@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useToggleSound } from "@/lib/useSoundPreference";
 import { ThemePicker } from "@/components/game/ThemePicker";
-import { hasPreviewAccess } from "@/lib/featureGate";
+import { hasPreviewAccess, isDevFeatureEnabled } from "@/lib/featureGate";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useRouter as useIntlRouter, usePathname as useIntlPathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -375,35 +375,43 @@ export function Navbar({
             onClick: () => handleNav("/tournaments"),
             badge: 0,
           },
+          ...(isDevFeatureEnabled()
+            ? [
+                {
+                  label: t("achievements"),
+                  active: pathname === "/achievements",
+                  onClick: () => handleNav("/achievements"),
+                  badge: 0,
+                  icon: (
+                    <svg
+                      className="mr-1 inline-block h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
+                      />
+                    </svg>
+                  ),
+                },
+              ]
+            : []),
+        ]
+      : []),
+    ...(isDevFeatureEnabled()
+      ? [
           {
-            label: t("achievements"),
-            active: pathname === "/achievements",
-            onClick: () => handleNav("/achievements"),
+            label: t("shop"),
+            active: pathname === "/shop",
+            onClick: () => handleNav("/shop"),
             badge: 0,
-            icon: (
-              <svg
-                className="mr-1 inline-block h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
-                />
-              </svg>
-            ),
           },
         ]
       : []),
-    {
-      label: t("shop"),
-      active: pathname === "/shop",
-      onClick: () => handleNav("/shop"),
-      badge: 0,
-    },
     {
       label: t("tutorial"),
       active: pathname === "/tutorial",
@@ -580,7 +588,7 @@ export function Navbar({
 
       {hasPreviewAccess(auth) && (
         <div className="mt-5 rounded-3xl border border-[#b69261]/22 bg-[rgba(255,248,232,0.94)] p-4">
-          <ThemePicker />
+          <ThemePicker unlockedThemeIds={auth?.player.unlockedThemes} />
         </div>
       )}
 

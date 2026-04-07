@@ -142,7 +142,10 @@ export function ShopPage() {
 
         {/* Badges Section */}
         <AnimatedCard>
-          <PaperCard>
+          <PaperCard
+            id="badges"
+            className="scroll-mt-24 target:ring-2 target:ring-[#b98d49]/40 target:ring-offset-4 transition-shadow duration-700"
+          >
             <CardHeader>
               <Badge className="w-fit bg-[#f4e8d2] text-[#6c543c] mb-2">{t("badgesLabel")}</Badge>
               <CardTitle className="text-2xl text-[#2b1e14]">{t("badgesTitle")}</CardTitle>
@@ -207,7 +210,10 @@ export function ShopPage() {
 
         {/* Board Themes Section */}
         <AnimatedCard delay={0.05}>
-          <PaperCard>
+          <PaperCard
+            id="themes"
+            className="scroll-mt-24 target:ring-2 target:ring-[#7c3aed]/40 target:ring-offset-4 transition-shadow duration-700"
+          >
             <CardHeader>
               <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">{t("themesLabel")}</Badge>
               <CardTitle className="text-2xl text-[#2b1e14]">{t("themesTitle")}</CardTitle>

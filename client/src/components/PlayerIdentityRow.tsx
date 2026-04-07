@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PlayerOverviewAvatar, ConnectionDot } from "@/components/game/GameShared";
 import { UserBadge, type BadgeId } from "@/components/UserBadge";
-import { resolvePlayerBadges } from "@/lib/featureGate";
+import { resolvePlayerBadges, isDevFeatureEnabled } from "@/lib/featureGate";
 import { Link } from "@/i18n/navigation";
 
 export const DELETED_PLAYER_NAME = "Deleted Player";
@@ -145,16 +145,23 @@ export function PlayerIdentityRow({
               />
             )}
           </div>
-          {badgesToShow.length > 0 && (
-            <Link
-              href="/shop"
-              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-            >
-              {badgesToShow.map((id) => (
-                <UserBadge key={id} badge={id as BadgeId} compact />
-              ))}
-            </Link>
-          )}
+          {badgesToShow.length > 0 &&
+            (isDevFeatureEnabled() ? (
+              <Link
+                href="/shop#badges"
+                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+              >
+                {badgesToShow.map((id) => (
+                  <UserBadge key={id} badge={id as BadgeId} compact />
+                ))}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-1">
+                {badgesToShow.map((id) => (
+                  <UserBadge key={id} badge={id as BadgeId} compact />
+                ))}
+              </div>
+            ))}
         </div>
       </div>
 

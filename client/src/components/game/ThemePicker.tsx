@@ -1,5 +1,7 @@
-import { THEMES, type BoardTheme } from "./boardThemes";
+import { THEMES, DEFAULT_THEME_ID, type BoardTheme } from "./boardThemes";
 import { useSetBoardTheme } from "@/lib/useBoardTheme";
+import { isDevFeatureEnabled } from "@/lib/featureGate";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 /** Mini board preview rendered as a tiny visual swatch for a theme. */
@@ -67,37 +69,67 @@ export function ThemeSwatch({ theme }: { theme: BoardTheme }) {
   );
 }
 
-export function ThemePicker() {
+export function ThemePicker({ unlockedThemeIds }: { unlockedThemeIds?: string[] } = {}) {
   const [activeId, setTheme] = useSetBoardTheme();
+  const isDev = isDevFeatureEnabled();
+
+  // In production, only show owned themes. In dev, show all with locked ones greyed out.
+  const themesToShow = isDev
+    ? THEMES
+    : THEMES.filter(
+        (t) => !unlockedThemeIds || t.id === DEFAULT_THEME_ID || unlockedThemeIds.includes(t.id),
+      );
 
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-semibold text-foreground/80">Board theme</h3>
-      <div className="grid grid-cols-5 gap-2.5">
-        {THEMES.map((theme) => {
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+        {themesToShow.map((theme) => {
+          const isOwned =
+            !unlockedThemeIds ||
+            theme.id === DEFAULT_THEME_ID ||
+            unlockedThemeIds.includes(theme.id);
           const isActive = theme.id === activeId;
+
+          if (isOwned) {
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => setTheme(theme.id)}
+                className={cn(
+                  "group flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all",
+                  isActive ? "bg-primary/10 ring-2 ring-primary/60" : "hover:bg-muted/60",
+                )}
+                aria-label={`${theme.name} board theme`}
+                aria-pressed={isActive}
+              >
+                <ThemeSwatch theme={theme} />
+                <span
+                  className={cn(
+                    "text-[11px] font-medium leading-tight",
+                    isActive ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  {theme.name}
+                </span>
+              </button>
+            );
+          }
+
+          // Locked theme (dev only) — greyed out swatch linking to shop
           return (
-            <button
+            <Link
               key={theme.id}
-              type="button"
-              onClick={() => setTheme(theme.id)}
-              className={cn(
-                "group flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all",
-                isActive ? "bg-primary/10 ring-2 ring-primary/60" : "hover:bg-muted/60",
-              )}
-              aria-label={`${theme.name} board theme`}
-              aria-pressed={isActive}
+              href="/shop#themes"
+              aria-label={`Get ${theme.name} theme`}
+              className="group flex flex-col items-center gap-1.5 rounded-xl p-1.5 opacity-40 grayscale transition-all hover:opacity-60 hover:grayscale-[50%]"
             >
               <ThemeSwatch theme={theme} />
-              <span
-                className={cn(
-                  "text-[11px] font-medium leading-tight",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
+              <span className="text-[11px] font-medium leading-tight text-muted-foreground">
                 {theme.name}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>

@@ -24,6 +24,14 @@ export function isAdmin(auth: AuthResponse | null): boolean {
 }
 
 /**
+ * Returns true if dev-only features (shop, achievements) should be visible.
+ * Hidden in production builds, shown in development.
+ */
+export function isDevFeatureEnabled(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
  * Resolves the badge(s) to display for a given player.
  *
  * Uses `player.activeBadges` from the server (populated from DB).

@@ -1,5 +1,4 @@
 import express, { Request, Response } from "express";
-import Stripe from "stripe";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
 import GameAccount from "../models/GameAccount";
 import { grantBadge, grantTheme } from "../game/badgeService";
@@ -9,9 +8,11 @@ import { FRONTEND_URL } from "../config/envVars";
 
 const router = express.Router();
 
-function getStripe(): Stripe | null {
+function getStripe(): any {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Stripe = require("stripe");
   return new Stripe(key);
 }
 
@@ -97,7 +98,9 @@ router.post("/checkout", async (req: Request, res: Response) => {
       }
     }
 
-    const origin = FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+    // In dev, the frontend runs on a different port than the backend.
+    // Use localhost (not 127.0.0.1) to match Next.js dev server origin.
+    const origin = FRONTEND_URL || "http://localhost:3000";
     const itemLabel = `${item.type === "badge" ? "Badge" : "Theme"}: ${item.id}`;
 
     const session = await stripe.checkout.sessions.create({
@@ -147,16 +150,16 @@ router.post(
         return res.status(400).json({ message: "Missing signature or webhook secret." });
       }
 
-      let event: Stripe.Event;
+      let event: any;
       try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
       } catch (err) {
         console.warn("[shop] Webhook signature verification failed:", err);
         return res.status(400).json({ message: "Invalid signature." });
       }
 
       if (event.type === "checkout.session.completed") {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object;
         const { playerId, itemType, itemId } = session.metadata ?? {};
 
         if (!playerId || !itemType || !itemId) {

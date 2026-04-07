@@ -19,5 +19,12 @@ export const configureApp = (app: Express): void => {
 
   const isProduction = process.env.NODE_ENV === "production";
   app.use(logger(isProduction ? "combined" : "dev"));
-  app.use(express.json({ limit: "100kb" }));
+  // Skip JSON body parsing for Stripe webhook (needs raw body for signature verification)
+  app.use((req, res, next) => {
+    if (req.path.endsWith("/shop/webhook")) {
+      next();
+    } else {
+      express.json({ limit: "100kb" })(req, res, next);
+    }
+  });
 };
