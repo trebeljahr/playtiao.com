@@ -19,9 +19,19 @@ function createPlayer(playerId: string, options: Partial<PlayerIdentity> = {}): 
 class FakeSocket {
   readyState = WebSocket.OPEN;
   messages: string[] = [];
+  private listeners: Record<string, Array<(...args: any[]) => void>> = {};
 
   send(message: string) {
     this.messages.push(message);
+  }
+
+  on(event: string, handler: (...args: any[]) => void) {
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event].push(handler);
+  }
+
+  emit(event: string, ...args: any[]) {
+    for (const handler of this.listeners[event] ?? []) handler(...args);
   }
 
   get parsedMessages(): ServerToClientMessage[] {
@@ -380,5 +390,122 @@ test("cannot request rematch on a waiting game", async () => {
         type: "request-rematch",
       }),
     (error) => isGameServiceError(error, "GAME_NOT_FINISHED"),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// pushPendingRematches on lobby connect
+// ---------------------------------------------------------------------------
+
+test("pushes pending incoming rematch game-update to newly connected lobby socket", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice requests rematch (bob has NOT requested)
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+
+  // Bob connects to lobby — should receive the pending rematch
+  const bobLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(bob, bobLobbySocket);
+
+  // Give async push time to execute
+  await new Promise((r) => setTimeout(r, 50));
+
+  const messages = (bobLobbySocket as unknown as FakeSocket).parsedMessages;
+  const gameUpdates = messages.filter((m) => (m as any).type === "game-update");
+  assert.ok(gameUpdates.length >= 1, "bob should receive at least one game-update on connect");
+
+  const rematchUpdate = gameUpdates.find(
+    (m) => (m as any).summary?.gameId === created.gameId,
+  ) as any;
+  assert.ok(rematchUpdate, "game-update should contain the game with pending rematch");
+  assert.equal(rematchUpdate.summary.status, "finished");
+  assert.ok(rematchUpdate.summary.rematch?.requestedBy?.length > 0, "rematch should be pending");
+});
+
+test("does not push own outgoing rematch requests on lobby connect", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice requests rematch
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+
+  // Wait for the fire-and-forget lobby broadcasts from applyAction to settle
+  await new Promise((r) => setTimeout(r, 50));
+
+  // Alice connects to lobby — should NOT receive her own outgoing rematch
+  const aliceLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(alice, aliceLobbySocket);
+
+  await new Promise((r) => setTimeout(r, 50));
+
+  const messages = (aliceLobbySocket as unknown as FakeSocket).parsedMessages;
+  const gameUpdates = messages.filter(
+    (m) => (m as any).type === "game-update" && (m as any).summary?.gameId === created.gameId,
+  );
+  assert.equal(
+    gameUpdates.length,
+    0,
+    "alice should NOT receive game-update for her own outgoing rematch",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// cancelRematchViaRest
+// ---------------------------------------------------------------------------
+
+test("cancelRematchViaRest cancels a pending rematch request", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice requests rematch
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+
+  // Verify rematch is pending
+  let snapshot = await service.getSnapshot(created.gameId);
+  assert.ok(snapshot.rematch?.requestedBy.length, "rematch should be pending");
+
+  // Cancel via REST
+  await service.cancelRematchViaRest(created.gameId, alice);
+
+  // Verify rematch is cleared
+  snapshot = await service.getSnapshot(created.gameId);
+  assert.equal(snapshot.rematch, null, "rematch should be null after cancel");
+});
+
+test("cancelRematchViaRest rejects when player is not in game", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+  const charlie = createPlayer("charlie");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+
+  await assert.rejects(
+    () => service.cancelRematchViaRest(created.gameId, charlie),
+    (error) => isGameServiceError(error, "NOT_IN_GAME"),
   );
 });

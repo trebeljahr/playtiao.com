@@ -24,7 +24,12 @@ import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { createMultiplayerGame, joinMultiplayerGame, cancelMultiplayerGame } from "@/lib/api";
+import {
+  createMultiplayerGame,
+  joinMultiplayerGame,
+  cancelMultiplayerGame,
+  cancelRematchRequest,
+} from "@/lib/api";
 import { toastError } from "@/lib/errors";
 
 function LobbySectionSkeleton() {
@@ -129,6 +134,7 @@ export function LobbyPage() {
   });
 
   const [navOpen, setNavOpen] = useState(false);
+  const [cancellingRematchId, setCancellingRematchId] = useState<string | null>(null);
   const [joinGameId, setJoinGameId] = useState("");
   const [multiplayerBusy, setMultiplayerBusy] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -151,10 +157,7 @@ export function LobbyPage() {
   const activeGames = multiplayerGames.active ?? [];
   const finishedGames = multiplayerGames.finished ?? [];
   const rematchGames = useMemo(() => {
-    return finishedGames.filter(
-      (g) =>
-        g.rematch?.requestedBy.length && g.yourSeat && !g.rematch.requestedBy.includes(g.yourSeat),
-    );
+    return finishedGames.filter((g) => g.rematch?.requestedBy.length && g.yourSeat);
   }, [finishedGames]);
   const sortedActiveGames = useMemo(() => {
     const combined = [...activeGames, ...rematchGames];
@@ -564,6 +567,18 @@ export function LobbyPage() {
                               toastError(err);
                             }
                           }}
+                          onCancelRematch={async () => {
+                            setCancellingRematchId(game.gameId);
+                            try {
+                              await cancelRematchRequest(game.gameId);
+                              void refreshMultiplayerGames({ silent: true });
+                            } catch (err) {
+                              toastError(err);
+                            } finally {
+                              setCancellingRematchId(null);
+                            }
+                          }}
+                          cancellingRematch={cancellingRematchId === game.gameId}
                         />
                       ))}
                       {sortedActiveGames.length === 0 && (

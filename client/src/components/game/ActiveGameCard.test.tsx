@@ -162,7 +162,18 @@ describe("ActiveGameCard", () => {
     expect(screen.getByText("view")).toBeInTheDocument();
   });
 
-  it("shows rematchRequested badge for games with rematch request", () => {
+  it("shows rematchRequested badge for incoming rematch request", () => {
+    const rematchGame: MultiplayerGameSummary = {
+      ...baseGame,
+      status: "finished",
+      winner: "white",
+      rematch: { requestedBy: ["black"] },
+    };
+    render(<ActiveGameCard game={rematchGame} onResume={vi.fn()} />);
+    expect(screen.getByText("rematchRequested")).toBeInTheDocument();
+  });
+
+  it("shows rematchSent badge for outgoing rematch request", () => {
     const rematchGame: MultiplayerGameSummary = {
       ...baseGame,
       status: "finished",
@@ -170,7 +181,35 @@ describe("ActiveGameCard", () => {
       rematch: { requestedBy: ["white"] },
     };
     render(<ActiveGameCard game={rematchGame} onResume={vi.fn()} />);
-    expect(screen.getByText("rematchRequested")).toBeInTheDocument();
+    expect(screen.getByText("rematchSent")).toBeInTheDocument();
+  });
+
+  it("shows cancel button when you sent a rematch and onCancelRematch is provided", () => {
+    const rematchGame: MultiplayerGameSummary = {
+      ...baseGame,
+      status: "finished",
+      winner: "white",
+      rematch: { requestedBy: ["white"] },
+    };
+    const onCancelRematch = vi.fn();
+    render(
+      <ActiveGameCard game={rematchGame} onResume={vi.fn()} onCancelRematch={onCancelRematch} />,
+    );
+    const cancelButton = screen.getByText("cancel");
+    expect(cancelButton).toBeInTheDocument();
+    fireEvent.click(cancelButton);
+    expect(onCancelRematch).toHaveBeenCalled();
+  });
+
+  it("does not show cancel button for incoming rematch request", () => {
+    const rematchGame: MultiplayerGameSummary = {
+      ...baseGame,
+      status: "finished",
+      winner: "white",
+      rematch: { requestedBy: ["black"] },
+    };
+    render(<ActiveGameCard game={rematchGame} onResume={vi.fn()} onCancelRematch={vi.fn()} />);
+    expect(screen.queryByText("cancel")).not.toBeInTheDocument();
   });
 
   it("applies data-testid prop", () => {

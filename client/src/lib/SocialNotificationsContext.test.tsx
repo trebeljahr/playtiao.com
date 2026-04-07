@@ -78,6 +78,7 @@ describe("SocialNotificationsContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     lobbyMessageHandlers.length = 0;
+    sessionStorage.clear();
     mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
   });
 
@@ -289,6 +290,199 @@ describe("SocialNotificationsContext", () => {
         description: "invited you to a game (19×19, Unlimited, first to 10)",
       }),
     );
+  });
+
+  it("shows toasts for pending friend requests on fresh session (empty sessionStorage)", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "pending-1", displayName: "PendingAlice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: "friend-request:pending-1",
+          description: "sent you a friend request",
+        }),
+      );
+    });
+  });
+
+  it("does not re-toast friend requests on page refresh (IDs in sessionStorage)", async () => {
+    // Pre-populate sessionStorage with already-toasted IDs
+    sessionStorage.setItem(
+      "tiao:toasted-notifs:my-player",
+      JSON.stringify(["friend-request:alice-id"]),
+    );
+
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "alice-id", displayName: "Alice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    // Toast should NOT have been called for alice since she's already in sessionStorage
+    expect(toast).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "friend-request:alice-id" }),
+    );
+  });
+
+  it("shows toasts for pending game invitations on fresh session", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingInvitations: [
+        {
+          id: "inv-fresh",
+          gameId: "game-fresh",
+          roomType: "direct",
+          createdAt: "2026-01-01T00:00:00Z",
+          expiresAt: "2026-01-02T00:00:00Z",
+          sender: { playerId: "carol-id", displayName: "Carol" },
+          recipient: { playerId: "my-player", displayName: "Me" },
+        },
+      ],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: "game-invitation:inv-fresh",
+        }),
+      );
+    });
+  });
+
+  it("tracks incomingRematchCount from game-update messages", async () => {
+    mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    // Simulate a game-update with an incoming rematch
+    simulateLobbyMessage({
+      type: "game-update",
+      summary: {
+        gameId: "rematch-game-1",
+        status: "finished",
+        rematch: { requestedBy: ["black"] },
+        yourSeat: "white",
+        seats: {
+          white: { player: { displayName: "Me" } },
+          black: { player: { displayName: "Opponent" } },
+        },
+      },
+    });
+
+    expect(result.current.incomingRematchCount).toBe(1);
+  });
+
+  it("removes from rematch count when rematch is cancelled", async () => {
+    mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    // Incoming rematch
+    simulateLobbyMessage({
+      type: "game-update",
+      summary: {
+        gameId: "rematch-game-2",
+        status: "finished",
+        rematch: { requestedBy: ["black"] },
+        yourSeat: "white",
+        seats: {
+          white: { player: { displayName: "Me" } },
+          black: { player: { displayName: "Opponent" } },
+        },
+      },
+    });
+
+    expect(result.current.incomingRematchCount).toBe(1);
+
+    // Rematch cancelled
+    simulateLobbyMessage({
+      type: "game-update",
+      summary: {
+        gameId: "rematch-game-2",
+        status: "finished",
+        rematch: null,
+        yourSeat: "white",
+        seats: {
+          white: { player: { displayName: "Me" } },
+          black: { player: { displayName: "Opponent" } },
+        },
+      },
+    });
+
+    expect(result.current.incomingRematchCount).toBe(0);
+  });
+
+  it("does not count outgoing rematch requests in incomingRematchCount", async () => {
+    mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    // Outgoing rematch (YOU requested)
+    simulateLobbyMessage({
+      type: "game-update",
+      summary: {
+        gameId: "rematch-game-3",
+        status: "finished",
+        rematch: { requestedBy: ["white"] },
+        yourSeat: "white",
+        seats: {
+          white: { player: { displayName: "Me" } },
+          black: { player: { displayName: "Opponent" } },
+        },
+      },
+    });
+
+    expect(result.current.incomingRematchCount).toBe(0);
+  });
+
+  it("populates sessionStorage with toasted notification IDs", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "req-1", displayName: "Alice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    // Verify sessionStorage was set with toasted IDs
+    const stored = sessionStorage.getItem("tiao:toasted-notifs:my-player");
+    expect(stored).not.toBeNull();
+    const ids = JSON.parse(stored!) as string[];
+    expect(ids).toContain("friend-request:req-1");
   });
 
   it("includes game config details in invitation toast", async () => {

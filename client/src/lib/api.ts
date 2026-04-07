@@ -188,6 +188,12 @@ export function cancelMultiplayerGame(gameId: string) {
   });
 }
 
+export function cancelRematchRequest(gameId: string) {
+  return request<{ message: string }>(`/api/games/${gameId}/cancel-rematch`, {
+    method: "POST",
+  });
+}
+
 export function joinMultiplayerGame(gameId: string) {
   return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}/join`, {
     method: "POST",

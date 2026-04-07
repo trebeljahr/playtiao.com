@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@/test/navigation-mock";
 import { LobbyPage } from "./LobbyPage";
 import type { AuthResponse, MultiplayerGameSummary } from "@shared";
@@ -191,7 +191,7 @@ describe("LobbyPage", () => {
     expect(screen.queryByTestId("lobby-game-FIN001")).not.toBeInTheDocument();
   });
 
-  it("does not show finished game in lobby when we already requested rematch", async () => {
+  it("shows finished game in lobby when we already requested rematch (so we can cancel)", async () => {
     const finishedGame = makeGameSummary({
       gameId: "REM002",
       status: "finished",
@@ -203,8 +203,10 @@ describe("LobbyPage", () => {
 
     render(<LobbyPage />);
 
-    // Should NOT show - we already requested, only show opponent's request
-    expect(screen.queryByTestId("lobby-game-REM002")).not.toBeInTheDocument();
+    // Should show — outgoing rematches are visible so the player can cancel
+    await waitFor(() => {
+      expect(screen.getByTestId("lobby-game-REM002")).toBeInTheDocument();
+    });
   });
 
   it("shows toast error and blocks navigation when spectating own active game", async () => {

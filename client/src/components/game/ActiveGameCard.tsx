@@ -17,6 +17,8 @@ type ActiveGameCardProps = {
   onResume: () => void;
   onDelete?: () => void;
   deleting?: boolean;
+  onCancelRematch?: () => void;
+  cancellingRematch?: boolean;
   "data-testid"?: string;
 };
 
@@ -25,6 +27,8 @@ export function ActiveGameCard({
   onResume,
   onDelete,
   deleting,
+  onCancelRematch,
+  cancellingRematch,
   "data-testid": testId,
 }: ActiveGameCardProps) {
   const tCommon = useTranslations("common");
@@ -34,6 +38,9 @@ export function ActiveGameCard({
   const isYourTurn = isSummaryYourTurn(game);
   const isWaiting = game.status === "waiting";
   const hasRematchRequest = game.status === "finished" && !!game.rematch?.requestedBy.length;
+  const youRequestedRematch =
+    hasRematchRequest && game.yourSeat != null && game.rematch!.requestedBy.includes(game.yourSeat);
+  const incomingRematch = hasRematchRequest && !youRequestedRematch;
   const opponent = game.yourSeat === "white" ? game.seats.black?.player : game.seats.white?.player;
   const opponentSeat = game.yourSeat === "white" ? "black" : "white";
   const opponentOnline = game.seats[opponentSeat]?.online ?? false;
@@ -74,6 +81,17 @@ export function ActiveGameCard({
               disabled={deleting}
             >
               {deleting ? "…" : tCommon("cancel")}
+            </Button>
+          )}
+          {youRequestedRematch && onCancelRematch && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[#a0887a] hover:text-[#8b3a2a] hover:bg-red-50"
+              onClick={onCancelRematch}
+              disabled={cancellingRematch}
+            >
+              {cancellingRematch ? "…" : tCommon("cancel")}
             </Button>
           )}
           <Button size="sm" onClick={onResume}>
@@ -128,14 +146,20 @@ export function ActiveGameCard({
         <Badge
           className={cn(
             "text-[10px]",
-            hasRematchRequest
+            incomingRematch
               ? "bg-[#f5ead4] text-[#8d6a2f] animate-pulse"
-              : isYourTurn
-                ? "bg-[#e8f2d8] text-[#4b6537] animate-pulse"
-                : "bg-[#f3e7d5] text-[#6b563e]",
+              : youRequestedRematch
+                ? "bg-[#f5ead4] text-[#8d6a2f]"
+                : isYourTurn
+                  ? "bg-[#e8f2d8] text-[#4b6537] animate-pulse"
+                  : "bg-[#f3e7d5] text-[#6b563e]",
           )}
         >
-          {hasRematchRequest ? tGame("rematchRequested") : getSummaryStatusLabel(game, tGame)}
+          {incomingRematch
+            ? tGame("rematchRequested")
+            : youRequestedRematch
+              ? tGame("rematchSent")
+              : getSummaryStatusLabel(game, tGame)}
         </Badge>
         <span className="text-xs text-[#8d7760]">
           {tCommon("moves", { count: game.historyLength })}

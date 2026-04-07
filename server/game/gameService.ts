@@ -214,6 +214,34 @@ export class GameService {
         }
       }
     });
+
+    // Push pending incoming rematch requests so the player sees a toast on login
+    void this.pushPendingRematches(player.playerId, socket);
+  }
+
+  /**
+   * On lobby connect, send game-update messages for any finished games where the
+   * opponent has requested a rematch. This ensures the player sees a notification
+   * toast even if the rematch was requested while they were offline.
+   */
+  private async pushPendingRematches(playerId: string, socket: WebSocket): Promise<void> {
+    try {
+      const rooms = await this.store.listRoomsForPlayer(playerId);
+      for (const room of rooms) {
+        if (room.status !== "finished" || !room.rematch?.requestedBy.length) continue;
+        const derived = this.deriveRoomStatus(room);
+        const playerColor = getPlayerColorForRoom(derived, playerId);
+        // Only push if the OTHER player requested (incoming rematch)
+        if (!playerColor || derived.rematch?.requestedBy.includes(playerColor)) continue;
+
+        const summary = await this.toSummary(derived, playerId);
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "game-update", summary }));
+        }
+      }
+    } catch {
+      /* best-effort — don't let push errors break the connect flow */
+    }
   }
 
   broadcastLobby(playerId: string, payload: Record<string, unknown>): void {
@@ -629,6 +657,21 @@ export class GameService {
         this.startAbandonTimer(roomId, disconnectedPlayerId);
       }
     }
+  }
+
+  /**
+   * Cancel a pending rematch request via REST (for use outside the game page).
+   */
+  async cancelRematchViaRest(gameId: string, player: PlayerIdentity): Promise<void> {
+    await this.withLock(this.roomLockKey(gameId), async () => {
+      const room = await this.getRoom(gameId);
+      const playerColor = getPlayerColorForRoom(room, player.playerId);
+      if (!playerColor) {
+        throw new GameServiceError(403, "NOT_IN_GAME", "You are not seated in this game.");
+      }
+      const savedRoom = await this.cancelRematch(room, playerColor);
+      void this.broadcastSnapshot(savedRoom);
+    });
   }
 
   async applyAction(

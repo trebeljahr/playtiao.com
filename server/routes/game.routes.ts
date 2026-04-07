@@ -705,6 +705,23 @@ router.delete("/matchmaking", async (req: Request, res: Response) => {
  *       500:
  *         description: Failed to finish game
  */
+router.post("/games/:gameId/cancel-rematch", async (req: Request, res: Response) => {
+  const player = await getAuthenticatedPlayer(req, res);
+  if (!player) return;
+
+  const gameId = (req.params.gameId as string)?.trim().toUpperCase();
+  if (!gameId || !isValidGameId(gameId)) {
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
+  }
+
+  try {
+    await gameService.cancelRematchViaRest(gameId, player);
+    return res.status(200).json({ message: "Rematch request cancelled." });
+  } catch (error) {
+    return respondWithGameServiceError(res, error, "Unable to cancel rematch request.");
+  }
+});
+
 router.post("/games/:gameId/test-finish", async (req: Request, res: Response) => {
   if (process.env.NODE_ENV !== "test") {
     return res

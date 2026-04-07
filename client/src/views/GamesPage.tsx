@@ -10,7 +10,7 @@ import { isSummaryYourTurn } from "@/components/game/GameShared";
 import { Navbar } from "@/components/Navbar";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
-import { cancelMultiplayerGame } from "@/lib/api";
+import { cancelMultiplayerGame, cancelRematchRequest } from "@/lib/api";
 import { useTranslations } from "next-intl";
 
 export function GamesPage() {
@@ -30,6 +30,7 @@ export function GamesPage() {
   });
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancellingRematchId, setCancellingRematchId] = useState<string | null>(null);
 
   const handleDeleteGame = useCallback(
     async (gameId: string) => {
@@ -41,6 +42,21 @@ export function GamesPage() {
         // best-effort
       } finally {
         setDeletingId(null);
+      }
+    },
+    [refreshMultiplayerGames],
+  );
+
+  const handleCancelRematch = useCallback(
+    async (gameId: string) => {
+      setCancellingRematchId(gameId);
+      try {
+        await cancelRematchRequest(gameId);
+        void refreshMultiplayerGames({ silent: true });
+      } catch {
+        // best-effort
+      } finally {
+        setCancellingRematchId(null);
       }
     },
     [refreshMultiplayerGames],
@@ -102,6 +118,8 @@ export function GamesPage() {
                         onResume={() => router.push(`/game/${game.gameId}`)}
                         onDelete={() => handleDeleteGame(game.gameId)}
                         deleting={deletingId === game.gameId}
+                        onCancelRematch={() => handleCancelRematch(game.gameId)}
+                        cancellingRematch={cancellingRematchId === game.gameId}
                       />
                     ))}
                   {multiplayerGames.active.length === 0 && (

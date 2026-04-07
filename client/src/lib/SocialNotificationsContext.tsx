@@ -14,15 +14,57 @@ import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 
+// ---------------------------------------------------------------------------
+// sessionStorage helpers — track which notification IDs have been toasted so
+// we show them on fresh login but skip them on page refresh.
+// ---------------------------------------------------------------------------
+
+const TOASTED_KEY_PREFIX = "tiao:toasted-notifs:";
+
+function getToastedIds(playerId: string): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(`${TOASTED_KEY_PREFIX}${playerId}`);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function markToasted(playerId: string, ids: string[]): void {
+  if (ids.length === 0) return;
+  try {
+    const existing = getToastedIds(playerId);
+    for (const id of ids) existing.add(id);
+    sessionStorage.setItem(`${TOASTED_KEY_PREFIX}${playerId}`, JSON.stringify([...existing]));
+  } catch {
+    /* sessionStorage may be full or unavailable */
+  }
+}
+
+function clearToastedIds(playerId: string): void {
+  try {
+    sessionStorage.removeItem(`${TOASTED_KEY_PREFIX}${playerId}`);
+  } catch {
+    /* best-effort */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
 type SocialNotificationsContextValue = {
   pendingFriendRequestCount: number;
   incomingInvitationCount: number;
+  incomingRematchCount: number;
   refreshNotifications: () => void;
 };
 
 const SocialNotificationsContext = createContext<SocialNotificationsContextValue>({
   pendingFriendRequestCount: 0,
   incomingInvitationCount: 0,
+  incomingRematchCount: 0,
   refreshNotifications: () => {},
 });
 
@@ -41,29 +83,176 @@ export function SocialNotificationsProvider({
   const [overview, setOverview] = useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
   const prevRequestIdsRef = useRef<Set<string>>(new Set());
   const prevInvitationIdsRef = useRef<Set<string>>(new Set());
-  const hydratedRef = useRef(false);
+  const initialFetchDoneRef = useRef(false);
+  const playerIdRef = useRef<string | null>(null);
+
+  // Track incoming rematch game IDs for the badge count
+  const [incomingRematchGameIds, setIncomingRematchGameIds] = useState<Set<string>>(new Set());
+
+  // ---------------------------------------------------------------------------
+  // Toast helpers (shared between initial fetch and WebSocket updates)
+  // ---------------------------------------------------------------------------
+
+  const showFriendRequestToast = useCallback(
+    (req: SocialOverview["incomingFriendRequests"][number]) => {
+      const reqPlayerId = req.playerId;
+      const reqName = req.displayName || "Someone";
+      toast(
+        <div className="flex min-w-0 items-center gap-2">
+          <PlayerIdentityRow
+            player={req}
+            linkToProfile={false}
+            avatarClassName="h-6 w-6"
+            friendVariant="light"
+            nameClassName="text-sm font-medium truncate"
+          />
+        </div>,
+        {
+          id: `friend-request:${reqPlayerId}`,
+          description: "sent you a friend request",
+          duration: 15000,
+          action: {
+            label: "Accept",
+            onClick: () => {
+              void (async () => {
+                try {
+                  await acceptFriendRequest(reqPlayerId);
+                  toast.success(`You are now friends with ${reqName}`);
+                } catch (e) {
+                  toastError(e);
+                }
+              })();
+            },
+          },
+          cancel: {
+            label: "Decline",
+            onClick: () => {
+              void (async () => {
+                try {
+                  await declineFriendRequest(reqPlayerId);
+                } catch (e) {
+                  toastError(e);
+                }
+              })();
+            },
+          },
+        },
+      );
+    },
+    [],
+  );
+
+  const showGameInvitationToast = useCallback(
+    (inv: SocialOverview["incomingInvitations"][number], onFetch: () => void) => {
+      const invGameId = inv.gameId;
+      const invId = inv.id;
+      const sender = inv.sender;
+      const senderName = (typeof sender === "object" ? sender?.displayName : null) || "Someone";
+
+      // Build contextual toast message with game details
+      const details: string[] = [];
+      const board = inv.boardSize ?? 19;
+      details.push(`${board}×${board}`);
+      if (inv.timeControl) {
+        const mins = Math.round(inv.timeControl.initialMs / 60_000);
+        const inc = Math.round(inv.timeControl.incrementMs / 1_000);
+        details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
+      } else {
+        details.push("Unlimited");
+      }
+      const score = inv.scoreToWin ?? 10;
+      details.push(`first to ${score}`);
+      const suffix = ` (${details.join(", ")})`;
+
+      toast(
+        <div className="flex items-center gap-2">
+          <PlayerIdentityRow
+            player={typeof sender === "object" ? sender : { displayName: senderName }}
+            linkToProfile={false}
+            avatarClassName="h-6 w-6"
+            friendVariant="light"
+            nameClassName="text-sm font-medium"
+          />
+        </div>,
+        {
+          id: `game-invitation:${invId}`,
+          description: `invited you to a game${suffix}`,
+          duration: 15000,
+          action: {
+            label: "Join",
+            onClick: () => {
+              window.location.assign(`/game/${invGameId}`);
+            },
+          },
+          cancel: {
+            label: "Decline",
+            onClick: () => {
+              void declineGameInvitation(invId).then(onFetch);
+            },
+          },
+        },
+      );
+    },
+    [],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Initial fetch — shows toasts for pending items not yet in sessionStorage
+  // ---------------------------------------------------------------------------
 
   const fetchOverview = useCallback(async () => {
     if (!auth || auth.player.kind !== "account") {
+      const prevPlayerId = playerIdRef.current;
+      if (prevPlayerId) clearToastedIds(prevPlayerId);
       setOverview(EMPTY_SOCIAL_OVERVIEW);
       prevRequestIdsRef.current.clear();
-      hydratedRef.current = false;
+      prevInvitationIdsRef.current.clear();
+      initialFetchDoneRef.current = false;
+      playerIdRef.current = null;
+      setIncomingRematchGameIds(new Set());
       return;
     }
+
+    const playerId = auth.player.playerId;
+    playerIdRef.current = playerId;
 
     try {
       const res = await getSocialOverview();
       const nextOverview = res.overview;
+
+      // Show toasts for pending notifications not yet seen in this session
+      const toasted = getToastedIds(playerId);
+      const newlyToasted: string[] = [];
+
+      for (const req of nextOverview.incomingFriendRequests) {
+        const key = `friend-request:${req.playerId}`;
+        if (!toasted.has(key)) {
+          showFriendRequestToast(req);
+          newlyToasted.push(key);
+        }
+      }
+
+      for (const inv of nextOverview.incomingInvitations) {
+        const key = `game-invitation:${inv.id}`;
+        if (!toasted.has(key)) {
+          showGameInvitationToast(inv, fetchOverview);
+          newlyToasted.push(key);
+        }
+      }
+
+      markToasted(playerId, newlyToasted);
+
       prevRequestIdsRef.current = new Set(
         nextOverview.incomingFriendRequests.map((r) => r.playerId),
       );
       prevInvitationIdsRef.current = new Set(nextOverview.incomingInvitations.map((inv) => inv.id));
-      hydratedRef.current = true;
+      initialFetchDoneRef.current = true;
       setOverview(nextOverview);
     } catch {
       // Silently fail - notifications are best-effort
     }
-  }, [auth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, showFriendRequestToast, showGameInvitationToast]);
 
   // Initial fetch
   useEffect(() => {
@@ -81,9 +270,10 @@ export function SocialNotificationsProvider({
     }
 
     const nextOverview = payload.overview as SocialOverview;
+    const playerId = playerIdRef.current;
 
-    // Show toast for new friend requests
-    if (hydratedRef.current) {
+    // Show toast for new friend requests (only after initial fetch is done)
+    if (initialFetchDoneRef.current) {
       const nextRequestIds = new Set(nextOverview.incomingFriendRequests.map((r) => r.playerId));
 
       // Dismiss toasts for friend requests that are no longer pending
@@ -93,57 +283,18 @@ export function SocialNotificationsProvider({
         }
       }
 
+      const newlyToasted: string[] = [];
       for (const req of nextOverview.incomingFriendRequests) {
         if (!prevRequestIdsRef.current.has(req.playerId)) {
-          const reqPlayerId = req.playerId;
-          const reqName = req.displayName || "Someone";
-          toast(
-            <div className="flex min-w-0 items-center gap-2">
-              <PlayerIdentityRow
-                player={req}
-                linkToProfile={false}
-                avatarClassName="h-6 w-6"
-                friendVariant="light"
-                nameClassName="text-sm font-medium truncate"
-              />
-            </div>,
-            {
-              id: `friend-request:${reqPlayerId}`,
-              description: "sent you a friend request",
-              duration: 15000,
-              action: {
-                label: "Accept",
-                onClick: () => {
-                  void (async () => {
-                    try {
-                      await acceptFriendRequest(reqPlayerId);
-                      toast.success(`You are now friends with ${reqName}`);
-                    } catch (e) {
-                      toastError(e);
-                    }
-                  })();
-                },
-              },
-              cancel: {
-                label: "Decline",
-                onClick: () => {
-                  void (async () => {
-                    try {
-                      await declineFriendRequest(reqPlayerId);
-                    } catch (e) {
-                      toastError(e);
-                    }
-                  })();
-                },
-              },
-            },
-          );
+          showFriendRequestToast(req);
+          newlyToasted.push(`friend-request:${req.playerId}`);
         }
       }
+      if (playerId) markToasted(playerId, newlyToasted);
     }
 
     // Show toast for new game invitations
-    if (hydratedRef.current) {
+    if (initialFetchDoneRef.current) {
       const nextInvitationIds = new Set(nextOverview.incomingInvitations.map((inv) => inv.id));
 
       // Dismiss toasts for game invitations that are no longer pending
@@ -153,63 +304,19 @@ export function SocialNotificationsProvider({
         }
       }
 
+      const newlyToasted: string[] = [];
       for (const inv of nextOverview.incomingInvitations) {
         if (!prevInvitationIdsRef.current.has(inv.id)) {
-          const invGameId = inv.gameId;
-          const invId = inv.id;
-          const sender = inv.sender;
-          const senderName = (typeof sender === "object" ? sender?.displayName : null) || "Someone";
-
-          // Build contextual toast message with game details
-          const details: string[] = [];
-          const board = inv.boardSize ?? 19;
-          details.push(`${board}×${board}`);
-          if (inv.timeControl) {
-            const mins = Math.round(inv.timeControl.initialMs / 60_000);
-            const inc = Math.round(inv.timeControl.incrementMs / 1_000);
-            details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
-          } else {
-            details.push("Unlimited");
-          }
-          const score = inv.scoreToWin ?? 10;
-          details.push(`first to ${score}`);
-          const suffix = ` (${details.join(", ")})`;
-
-          toast(
-            <div className="flex items-center gap-2">
-              <PlayerIdentityRow
-                player={typeof sender === "object" ? sender : { displayName: senderName }}
-                linkToProfile={false}
-                avatarClassName="h-6 w-6"
-                friendVariant="light"
-                nameClassName="text-sm font-medium"
-              />
-            </div>,
-            {
-              id: `game-invitation:${invId}`,
-              description: `invited you to a game${suffix}`,
-              duration: 15000,
-              action: {
-                label: "Join",
-                onClick: () => {
-                  window.location.assign(`/game/${invGameId}`);
-                },
-              },
-              cancel: {
-                label: "Decline",
-                onClick: () => {
-                  void declineGameInvitation(invId).then(() => fetchOverview());
-                },
-              },
-            },
-          );
+          showGameInvitationToast(inv, fetchOverview);
+          newlyToasted.push(`game-invitation:${inv.id}`);
         }
       }
+      if (playerId) markToasted(playerId, newlyToasted);
     }
 
     prevRequestIdsRef.current = new Set(nextOverview.incomingFriendRequests.map((r) => r.playerId));
     prevInvitationIdsRef.current = new Set(nextOverview.incomingInvitations.map((inv) => inv.id));
-    hydratedRef.current = true;
+    initialFetchDoneRef.current = true;
     setOverview(nextOverview);
   });
 
@@ -220,6 +327,29 @@ export function SocialNotificationsProvider({
 
     const summary = payload.summary as Record<string, any> | undefined;
     if (!summary) return;
+
+    const playerId = playerIdRef.current;
+
+    // Update incoming rematch tracking for badge count
+    setIncomingRematchGameIds((prev) => {
+      const isIncomingRematch =
+        summary.status === "finished" &&
+        summary.rematch?.requestedBy?.length &&
+        summary.yourSeat &&
+        !summary.rematch.requestedBy.includes(summary.yourSeat);
+
+      if (isIncomingRematch) {
+        if (prev.has(summary.gameId)) return prev;
+        const next = new Set(prev);
+        next.add(summary.gameId);
+        return next;
+      } else {
+        if (!prev.has(summary.gameId)) return prev;
+        const next = new Set(prev);
+        next.delete(summary.gameId);
+        return next;
+      }
+    });
 
     // Don't show the toast when the user is already on the game page —
     // MultiplayerGamePage has its own rematch UI with accept/decline actions.
@@ -232,6 +362,14 @@ export function SocialNotificationsProvider({
       summary.yourSeat &&
       !summary.rematch.requestedBy.includes(summary.yourSeat)
     ) {
+      // Check sessionStorage to avoid re-toasting on page refresh
+      const toastKey = `rematch:${summary.gameId}`;
+      if (playerId) {
+        const toasted = getToastedIds(playerId);
+        if (toasted.has(toastKey)) return;
+        markToasted(playerId, [toastKey]);
+      }
+
       const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
       const opponentName = summary.seats?.[opponentSeat]?.player?.displayName || "your opponent";
       toast(t("rematchToast", { opponent: opponentName }), {
@@ -242,17 +380,34 @@ export function SocialNotificationsProvider({
           onClick: () => window.location.assign(`/game/${summary.gameId}`),
         },
       });
+    } else if (playerId) {
+      // Rematch was cancelled/declined — remove from sessionStorage so a future
+      // rematch on the same game can toast again
+      const toasted = getToastedIds(playerId);
+      const toastKey = `rematch:${summary.gameId}`;
+      if (toasted.has(toastKey)) {
+        toasted.delete(toastKey);
+        try {
+          sessionStorage.setItem(`${TOASTED_KEY_PREFIX}${playerId}`, JSON.stringify([...toasted]));
+        } catch {
+          /* best-effort */
+        }
+      }
+      // Dismiss any visible rematch toast for this game
+      toast.dismiss(`rematch-${summary.gameId}`);
     }
   });
 
   const pendingFriendRequestCount = overview.incomingFriendRequests.length;
   const incomingInvitationCount = overview.incomingInvitations.length;
+  const incomingRematchCount = incomingRematchGameIds.size;
 
   return (
     <SocialNotificationsContext.Provider
       value={{
         pendingFriendRequestCount,
         incomingInvitationCount,
+        incomingRematchCount,
         refreshNotifications: fetchOverview,
       }}
     >
