@@ -107,6 +107,7 @@
     "yourTurnDesc": "Es tu turno contra {opponent}.",
     "joinGame": "Unirse a la partida",
     "rematchToast": "¡{opponent} quiere la revancha!",
+    "rematchToastDesc": "¡quiere la revancha!",
     "viewGame": "Ver partida",
     "game": "Partida {gameId}",
     "inviteSent": "¡Partida creada e invitación enviada!",

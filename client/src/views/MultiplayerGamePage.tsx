@@ -51,6 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { accessMultiplayerGame, getMultiplayerGame } from "@/lib/api";
 import { InviteFriendsModal } from "@/components/InviteFriendsModal";
+import { SkeletonGamePage } from "@/components/ui/skeleton";
 
 function AnimatedEllipsis() {
   const [dots, setDots] = useState(0);
@@ -286,7 +287,7 @@ export function MultiplayerGamePage() {
             "code" in err &&
             (err as { code?: string }).code === "GUEST_CANNOT_JOIN_CUSTOM_GAME"
           ) {
-            onOpenAuth("signup");
+            onOpenAuth("signup", { forced: true });
           } else {
             toast.error(tCommon("failedToLoadGame"));
             router.push("/");
@@ -871,6 +872,10 @@ export function MultiplayerGamePage() {
   const boardWrapStyle = {
     aspectRatio: "1/1",
   };
+
+  if (multiplayerBusy && !multiplayerSnapshot) {
+    return <SkeletonGamePage />;
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden">

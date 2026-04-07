@@ -12,6 +12,7 @@ import { createTournament } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useTranslations } from "next-intl";
+import { SkeletonCard } from "@/components/ui/skeleton";
 
 function formatLabel(format: string, t: (key: string) => string): string {
   switch (format) {
@@ -108,7 +109,7 @@ export function TournamentListPage() {
         )}
 
         {loading && displayList.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("loadingTournaments")}</p>
+          <SkeletonCard rows={2} />
         ) : displayList.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">

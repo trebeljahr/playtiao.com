@@ -11,6 +11,7 @@ import { Navbar } from "@/components/Navbar";
 import { HourglassSpinner } from "@/components/game/GameShared";
 import { useMatchmakingData } from "@/lib/hooks/useMatchmakingData";
 import { useTranslations } from "next-intl";
+import { SkeletonPage } from "@/components/ui/skeleton";
 
 export function MatchmakingPage() {
   const t = useTranslations("matchmaking");
@@ -53,6 +54,10 @@ export function MatchmakingPage() {
     }
   }, [auth, matchmaking.status, matchmakingBusy, handleEnterMatchmaking, locationTimeControl]);
 
+  if (authLoading) {
+    return <SkeletonPage />;
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
@@ -75,11 +80,7 @@ export function MatchmakingPage() {
               <CardDescription className="text-[#6e5b48]">{t("description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 flex flex-col items-center py-8">
-              {authLoading ? (
-                <div className="flex flex-col items-center gap-4 py-8">
-                  <HourglassSpinner className="h-12 w-12 text-[#a6824d]" />
-                </div>
-              ) : matchmaking.status === "searching" || matchmakingBusy ? (
+              {matchmaking.status === "searching" || matchmakingBusy ? (
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
                     <HourglassSpinner className="h-16 w-16 text-[#a6824d]" />

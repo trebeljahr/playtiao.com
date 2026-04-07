@@ -107,6 +107,7 @@
     "yourTurnDesc": "It's your turn against {opponent}.",
     "joinGame": "Join Game",
     "rematchToast": "{opponent} wants a rematch!",
+    "rematchToastDesc": "wants a rematch!",
     "viewGame": "View Game",
     "game": "Game {gameId}",
     "inviteSent": "Game created & invitation sent!",

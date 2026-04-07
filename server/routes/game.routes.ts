@@ -686,7 +686,7 @@ router.post("/games/:gameId/cancel-rematch", async (req: Request, res: Response)
     await gameService.cancelRematchViaRest(gameId, player);
     return res.status(200).json({ message: "Rematch request cancelled." });
   } catch (error) {
-    return respondWithGameServiceError(res, error, "Unable to cancel rematch request.");
+    return handleRouteError(res, error, "Unable to cancel rematch request.", req);
   }
 });
 

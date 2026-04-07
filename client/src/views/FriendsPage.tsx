@@ -9,14 +9,13 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from "@/component
 import { PaperCard } from "@/components/ui/paper-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { FriendActiveGamesModal } from "@/components/FriendActiveGamesModal";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
-import { GameConfigPanel } from "@/components/game/GameConfigPanel";
-import type { TimeControl } from "@shared";
+import { GameConfigDialog } from "@/components/game/GameConfigDialog";
+import { useGameConfig } from "@/lib/hooks/useGameConfig";
 import { createMultiplayerGame } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 import { useTranslations } from "next-intl";
@@ -33,9 +32,7 @@ export function FriendsPage() {
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
   const [inviteDialogFriendId, setInviteDialogFriendId] = useState<string | null>(null);
   const [activeGamesFriendId, setActiveGamesFriendId] = useState<string | null>(null);
-  const [inviteBoardSize, setInviteBoardSize] = useState(19);
-  const [inviteScoreToWin, setInviteScoreToWin] = useState(10);
-  const [inviteTimeControl, setInviteTimeControl] = useState<TimeControl>(null);
+  const inviteConfig = useGameConfig("multiplayer");
 
   const inviteDialogFriend = inviteDialogFriendId
     ? social.socialOverview.friends.find((f) => f.playerId === inviteDialogFriendId)
@@ -47,26 +44,14 @@ export function FriendsPage() {
 
   function openInviteDialog(friendId: string) {
     setInviteDialogFriendId(friendId);
-    setInviteBoardSize(19);
-    setInviteScoreToWin(10);
-    setInviteTimeControl(null);
+    inviteConfig.reset();
   }
 
   async function handleInviteToGame() {
     if (!inviteDialogFriendId) return;
     setInviteBusy(inviteDialogFriendId);
     try {
-      const settings: {
-        boardSize?: number;
-        scoreToWin?: number;
-        timeControl?: { initialMs: number; incrementMs: number };
-      } = {};
-      if (inviteBoardSize !== 19) settings.boardSize = inviteBoardSize;
-      if (inviteScoreToWin !== 10) settings.scoreToWin = inviteScoreToWin;
-      if (inviteTimeControl) settings.timeControl = inviteTimeControl;
-      const response = await createMultiplayerGame(
-        Object.keys(settings).length > 0 ? settings : undefined,
-      );
+      const response = await createMultiplayerGame(inviteConfig.buildMultiplayerSettings());
       const gameId = response.snapshot.gameId;
       await social.handleSendGameInvitation(gameId, inviteDialogFriendId, 60);
       toast.success(tLobby("inviteSent"));
@@ -283,7 +268,7 @@ export function FriendsPage() {
             </div>
           </main>
 
-          <Dialog
+          <GameConfigDialog
             open={!!inviteDialogFriendId}
             onOpenChange={(open) => {
               if (!open) setInviteDialogFriendId(null);
@@ -294,20 +279,11 @@ export function FriendsPage() {
                 ? t("inviteDialogDesc", { name: inviteDialogFriend.displayName })
                 : undefined
             }
-          >
-            <GameConfigPanel
-              mode="multiplayer"
-              boardSize={inviteBoardSize}
-              onBoardSizeChange={setInviteBoardSize}
-              scoreToWin={inviteScoreToWin}
-              onScoreToWinChange={setInviteScoreToWin}
-              timeControl={inviteTimeControl}
-              onTimeControlChange={setInviteTimeControl}
-              submitLabel={t("createAndInvite")}
-              onSubmit={handleInviteToGame}
-              busy={inviteBusy === inviteDialogFriendId}
-            />
-          </Dialog>
+            config={inviteConfig}
+            submitLabel={t("createAndInvite")}
+            onSubmit={handleInviteToGame}
+            busy={inviteBusy === inviteDialogFriendId}
+          />
 
           <FriendActiveGamesModal
             friend={activeGamesFriend}

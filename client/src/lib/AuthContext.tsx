@@ -34,7 +34,8 @@ export interface AuthContextValue {
   setSignupPassword: (password: string) => void;
   setSignupConfirmPassword: (password: string) => void;
   applyAuth: (nextAuth: AuthResponse) => void;
-  onOpenAuth: (mode: AuthDialogMode) => void;
+  authDialogForced: boolean;
+  onOpenAuth: (mode: AuthDialogMode, options?: { forced?: boolean }) => void;
   handleLoginSubmit: () => Promise<void>;
   handleSignupSubmit: () => Promise<void>;
   handleForgotPassword: (email: string) => Promise<boolean>;
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appError, setAppError] = useState<string | null>(null);
 
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogForced, setAuthDialogForced] = useState(false);
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode>("login");
   const [authBusy, setAuthBusy] = useState(false);
   const [authDialogError, setAuthDialogError] = useState<string | null>(null);
@@ -157,9 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthDialogError(null);
   }, []);
 
-  const onOpenAuth = useCallback((mode: AuthDialogMode) => {
+  const onOpenAuth = useCallback((mode: AuthDialogMode, options?: { forced?: boolean }) => {
     setAuthDialogMode(mode);
     setAuthDialogError(null);
+    setAuthDialogForced(options?.forced ?? false);
     setAuthDialogOpen(true);
   }, []);
 
@@ -302,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authLoading,
     appError,
     authDialogOpen,
+    authDialogForced,
     authDialogMode,
     authBusy,
     authDialogError,

@@ -26,6 +26,7 @@ import { isAdmin } from "@/lib/featureGate";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
 import { updateActiveBadges, setAccountPassword } from "@/lib/api";
 import { toast } from "sonner";
+import { SkeletonPage } from "@/components/ui/skeleton";
 import { useLocale, useTranslations } from "next-intl";
 
 const PROFILE_PIC_SIZE = 512;
@@ -515,7 +516,7 @@ export function ProfilePage() {
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
   const locale = useLocale();
-  const { auth, applyAuth: onAuthChange, onOpenAuth, onLogout } = useAuth();
+  const { auth, authLoading, applyAuth: onAuthChange, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [profile, setProfile] = useState<AccountProfile | null>(null);
@@ -755,6 +756,10 @@ export function ProfilePage() {
   }, [handleImageFile]);
 
   const profileImage = previewUrl || profile?.profilePicture || auth?.player.profilePicture;
+
+  if (authLoading) {
+    return <SkeletonPage />;
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden">

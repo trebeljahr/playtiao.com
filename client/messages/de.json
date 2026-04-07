@@ -107,6 +107,7 @@
     "yourTurnDesc": "Du bist am Zug gegen {opponent}.",
     "joinGame": "Spiel beitreten",
     "rematchToast": "{opponent} will eine Revanche!",
+    "rematchToastDesc": "will eine Revanche!",
     "viewGame": "Spiel ansehen",
     "game": "Spiel {gameId}",
     "inviteSent": "Spiel erstellt & Einladung gesendet!",

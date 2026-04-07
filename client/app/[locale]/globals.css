@@ -151,3 +151,11 @@ layer(base);
     transform: scale(1);
   }
 }
+
+/* Sonner toast overrides */
+[data-sonner-toast] [data-content] {
+  min-width: 0;
+}
+[data-sonner-toast] {
+  cursor: default;
+}

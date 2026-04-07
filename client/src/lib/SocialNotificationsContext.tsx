@@ -13,6 +13,7 @@ import {
 import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
+import { translatePlayerColor } from "@/components/game/GameShared";
 
 // ---------------------------------------------------------------------------
 // sessionStorage helpers — track which notification IDs have been toasted so
@@ -80,6 +81,8 @@ export function SocialNotificationsProvider({
   children: React.ReactNode;
 }) {
   const t = useTranslations("lobby");
+  const tGame = useTranslations("game");
+  const tCommon = useTranslations("common");
   const [overview, setOverview] = useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
   const prevRequestIdsRef = useRef<Set<string>>(new Set());
   const prevInvitationIdsRef = useRef<Set<string>>(new Set());
@@ -98,19 +101,20 @@ export function SocialNotificationsProvider({
       const reqPlayerId = req.playerId;
       const reqName = req.displayName || "Someone";
       toast(
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0">
           <PlayerIdentityRow
             player={req}
             linkToProfile={false}
-            avatarClassName="h-6 w-6"
+            avatarClassName="h-6 w-6 shrink-0"
             friendVariant="light"
-            nameClassName="text-sm font-medium truncate"
+            nameClassName="text-sm font-medium"
           />
         </div>,
         {
           id: `friend-request:${reqPlayerId}`,
           description: "sent you a friend request",
           duration: 15000,
+
           action: {
             label: "Accept",
             onClick: () => {
@@ -162,14 +166,18 @@ export function SocialNotificationsProvider({
       }
       const score = inv.scoreToWin ?? 10;
       details.push(`first to ${score}`);
+      if (inv.assignedColor) {
+        const colorName = translatePlayerColor(inv.assignedColor, tGame);
+        if (colorName) details.push(tCommon("playingAs", { color: colorName }));
+      }
       const suffix = ` (${details.join(", ")})`;
 
       toast(
-        <div className="flex items-center gap-2">
+        <div className="min-w-0">
           <PlayerIdentityRow
             player={typeof sender === "object" ? sender : { displayName: senderName }}
             linkToProfile={false}
-            avatarClassName="h-6 w-6"
+            avatarClassName="h-6 w-6 shrink-0"
             friendVariant="light"
             nameClassName="text-sm font-medium"
           />
@@ -178,6 +186,7 @@ export function SocialNotificationsProvider({
           id: `game-invitation:${invId}`,
           description: `invited you to a game${suffix}`,
           duration: 15000,
+
           action: {
             label: "Join",
             onClick: () => {
@@ -371,15 +380,26 @@ export function SocialNotificationsProvider({
       }
 
       const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
-      const opponentName = summary.seats?.[opponentSeat]?.player?.displayName || "your opponent";
-      toast(t("rematchToast", { opponent: opponentName }), {
-        id: `rematch-${summary.gameId}`,
-        description: t("game", { gameId: summary.gameId }),
-        action: {
-          label: t("viewGame"),
-          onClick: () => window.location.assign(`/game/${summary.gameId}`),
+      const opponentPlayer = summary.seats?.[opponentSeat]?.player;
+      toast(
+        <div className="min-w-0">
+          <PlayerIdentityRow
+            player={opponentPlayer ?? { displayName: "your opponent" }}
+            linkToProfile={false}
+            avatarClassName="h-6 w-6 shrink-0"
+            friendVariant="light"
+            nameClassName="text-sm font-medium"
+          />
+        </div>,
+        {
+          id: `rematch-${summary.gameId}`,
+          description: t("rematchToastDesc"),
+          action: {
+            label: t("viewGame"),
+            onClick: () => window.location.assign(`/game/${summary.gameId}`),
+          },
         },
-      });
+      );
     } else if (playerId) {
       // Rematch was cancelled/declined — remove from sessionStorage so a future
       // rematch on the same game can toast again

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { BracketVisualization } from "@/components/tournament/BracketVisualization";
 import { StandingsTable } from "@/components/tournament/StandingsTable";
 import { MatchCard } from "@/components/tournament/MatchCard";
+import { SkeletonPage } from "@/components/ui/skeleton";
 import { useTournament } from "@/lib/hooks/useTournament";
 import {
   accessTournament,
@@ -90,22 +91,7 @@ export function TournamentPage() {
   }, [inviteCodeFromUrl, tournamentId, isAccount, playerId, refresh]);
 
   if (loading && !tournament) {
-    return (
-      <>
-        <Navbar
-          mode="lobby"
-          auth={auth}
-          navOpen={navOpen}
-          onToggleNav={() => setNavOpen(!navOpen)}
-          onCloseNav={() => setNavOpen(false)}
-          onOpenAuth={onOpenAuth}
-          onLogout={onLogout}
-        />
-        <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
-          <p className="text-muted-foreground">{t("loadingTournament")}</p>
-        </div>
-      </>
-    );
+    return <SkeletonPage />;
   }
 
   if (error || !tournament) {

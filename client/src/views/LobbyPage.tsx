@@ -31,32 +31,7 @@ import {
   cancelRematchRequest,
 } from "@/lib/api";
 import { toastError } from "@/lib/errors";
-
-function LobbySectionSkeleton() {
-  return (
-    <div className="flex flex-col animate-pulse">
-      <PaperCard className="overflow-hidden shadow-lg flex-1">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
-          <div className="h-7 w-32 rounded-lg bg-[#e8dcc8]" />
-        </CardHeader>
-        <CardContent className="space-y-3 pt-6">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4"
-            >
-              <div className="flex flex-col gap-2">
-                <div className="h-5 w-24 rounded-sm bg-[#e8dcc8]" />
-                <div className="h-3.5 w-40 rounded-sm bg-[#ede3d2]" />
-              </div>
-              <div className="h-8 w-16 rounded-lg bg-[#e8dcc8]" />
-            </div>
-          ))}
-        </CardContent>
-      </PaperCard>
-    </div>
-  );
-}
+import { SkeletonCard } from "@/components/ui/skeleton";
 
 export function LobbyPage() {
   const { auth, authLoading, onOpenAuth, onLogout } = useAuth();
@@ -497,8 +472,8 @@ export function LobbyPage() {
           <section className="grid grid-cols-1 gap-6 md:mt-8 md:grid-cols-2">
             {authLoading ? (
               <>
-                <LobbySectionSkeleton />
-                <LobbySectionSkeleton />
+                <SkeletonCard />
+                <SkeletonCard />
               </>
             ) : (
               <>
@@ -701,7 +676,7 @@ export function LobbyPage() {
 
           {(auth || authLoading) &&
             (authLoading ? (
-              <LobbySectionSkeleton />
+              <SkeletonCard />
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
