@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -92,8 +92,8 @@ export function ShopPage() {
 
   const isAccount = auth?.player.kind === "account";
 
-  const fetchCatalog = useCallback(async () => {
-    setLoading(true);
+  const fetchCatalog = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await getShopCatalog();
       setCatalog(res.catalog);
@@ -104,8 +104,11 @@ export function ShopPage() {
     }
   }, []);
 
+  const hasFetchedRef = useRef(false);
   useEffect(() => {
-    void fetchCatalog();
+    // First fetch shows loading skeleton; subsequent (auth change) fetches are silent
+    void fetchCatalog(hasFetchedRef.current);
+    hasFetchedRef.current = true;
   }, [fetchCatalog, auth]);
 
   // Handle Stripe redirect — track the purchased item for confetti after load
@@ -119,7 +122,7 @@ export function ShopPage() {
     if (success === "true") {
       toast.success(t("purchaseSuccess", { item: item ?? "" }));
       if (item) setPurchasedItem(item);
-      void fetchCatalog();
+      void fetchCatalog(true);
       window.history.replaceState({}, "", window.location.pathname);
     } else if (cancelled === "true") {
       toast(t("purchaseCancelled"));

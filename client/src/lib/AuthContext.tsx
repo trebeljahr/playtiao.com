@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { AuthResponse, PlayerIdentity } from "@shared";
 import type { AuthDialogMode } from "@/components/Navbar";
 import { authClient } from "@/lib/auth-client";
@@ -74,12 +74,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
 
+  // Track whether sessionStorage had cached auth at mount time.
+  // Used to suppress the loading skeleton during bootstrap refresh.
+  const hadCachedAuthRef = useRef(false);
+
   // Hydrate from sessionStorage cache on mount (client-only) to avoid
   // flash of skeleton when returning from external redirects like Stripe.
   const [cacheHydrated, setCacheHydrated] = useState(false);
   useEffect(() => {
     const cached = getCachedAuth();
     if (cached) {
+      hadCachedAuthRef.current = true;
       setAuth(cached);
       setAuthLoading(false);
     }
@@ -127,8 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      // Only show loading spinner if we don't have cached auth
-      if (!auth) setAuthLoading(true);
+      // Only show loading spinner if we had no cached auth
+      if (!hadCachedAuthRef.current) setAuthLoading(true);
       setAppError(null);
 
       try {
