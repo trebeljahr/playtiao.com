@@ -20,6 +20,7 @@ vi.mock("@/components/UserBadge", () => ({
 // Mock featureGate
 vi.mock("@/lib/featureGate", () => ({
   resolvePlayerBadges: (player: { activeBadges?: string[] }) => player?.activeBadges ?? [],
+  isDevFeatureEnabled: () => false,
 }));
 
 describe("PlayerIdentityRow (#94)", () => {
@@ -70,7 +71,7 @@ describe("PlayerIdentityRow (#94)", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("renders badges outside the Link element", () => {
+  it("renders badges separately from the profile link", () => {
     render(
       <PlayerIdentityRow
         player={{ playerId: "p1", displayName: "alice", activeBadges: ["early-adopter"] }}
@@ -81,7 +82,8 @@ describe("PlayerIdentityRow (#94)", () => {
     const link = screen.getByRole("link");
     const badge = screen.getByTestId("user-badge");
 
-    // Badge should be inside the link (fix from #94)
-    expect(link.contains(badge)).toBe(true);
+    // Badge is rendered outside the profile link (in its own container)
+    expect(link.contains(badge)).toBe(false);
+    expect(badge).toBeInTheDocument();
   });
 });
