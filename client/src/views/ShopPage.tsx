@@ -43,58 +43,62 @@ const PURCHASE_CONFETTI_COLORS = [
   "#ff9f43",
 ];
 
-function firePurchaseConfetti(elementId: string) {
-  // Wait a tick for the catalog to re-render with "Owned" state
+function fireConfettiBurst(x: number, y: number) {
+  // Burst 1: fast outward spray
+  confetti({
+    particleCount: 80,
+    spread: 360,
+    startVelocity: 30,
+    origin: { x, y },
+    colors: PURCHASE_CONFETTI_COLORS,
+    scalar: 1.0,
+    gravity: 0.8,
+    ticks: 160,
+    shapes: ["circle", "square"],
+  });
+
+  // Burst 2: slower sparkle follow-up
   setTimeout(() => {
+    confetti({
+      particleCount: 50,
+      spread: 280,
+      startVelocity: 20,
+      origin: { x, y },
+      colors: PURCHASE_CONFETTI_COLORS,
+      scalar: 0.8,
+      gravity: 0.6,
+      ticks: 200,
+      shapes: ["circle"],
+    });
+  }, 150);
+}
+
+function firePurchaseConfetti(elementId: string) {
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  function tryFire() {
     const el = document.getElementById(elementId);
-    if (!el) {
-      // Fallback: fire from center
-      confetti({
-        particleCount: 100,
-        spread: 360,
-        startVelocity: 40,
-        origin: { x: 0.5, y: 0.5 },
-        colors: PURCHASE_CONFETTI_COLORS,
-        scalar: 1.1,
-        gravity: 0.7,
-        ticks: 180,
-        shapes: ["circle", "square"],
-      });
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      fireConfettiBurst(x, y);
       return;
     }
 
-    const rect = el.getBoundingClientRect();
-    const x = (rect.left + rect.width / 2) / window.innerWidth;
-    const y = (rect.top + rect.height / 2) / window.innerHeight;
+    attempts++;
+    if (attempts < maxAttempts) {
+      // Retry — catalog may still be loading
+      setTimeout(tryFire, 300);
+    } else {
+      // Fallback: fire from center
+      fireConfettiBurst(0.5, 0.45);
+    }
+  }
 
-    // Burst 1: fast outward spray
-    confetti({
-      particleCount: 80,
-      spread: 360,
-      startVelocity: 30,
-      origin: { x, y },
-      colors: PURCHASE_CONFETTI_COLORS,
-      scalar: 1.0,
-      gravity: 0.8,
-      ticks: 160,
-      shapes: ["circle", "square"],
-    });
-
-    // Burst 2: slower sparkle follow-up
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        spread: 280,
-        startVelocity: 20,
-        origin: { x, y },
-        colors: PURCHASE_CONFETTI_COLORS,
-        scalar: 0.8,
-        gravity: 0.6,
-        ticks: 200,
-        shapes: ["circle"],
-      });
-    }, 150);
-  }, 300);
+  // Start trying after a short delay for initial render
+  setTimeout(tryFire, 200);
 }
 
 function formatPrice(cents: number, currency: string): string {
@@ -140,9 +144,9 @@ export function ShopPage() {
 
     if (success === "true") {
       toast.success(t("purchaseSuccess", { item: item ?? "" }));
-      void fetchCatalog().then(() => {
-        if (item) firePurchaseConfetti(item);
-      });
+      // Fire confetti immediately — don't wait for catalog refetch
+      if (item) firePurchaseConfetti(item);
+      void fetchCatalog();
       window.history.replaceState({}, "", window.location.pathname);
     } else if (cancelled === "true") {
       toast(t("purchaseCancelled"));
