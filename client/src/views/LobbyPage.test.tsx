@@ -330,7 +330,7 @@ describe("LobbyPage", () => {
     render(<LobbyPage />);
 
     const gameCard = screen.getByTestId("lobby-game-WAIT03");
-    expect(gameCard).toHaveTextContent("Cancel");
+    expect(gameCard).toHaveTextContent("Delete");
   });
 
   it("renders active game card with testid", async () => {

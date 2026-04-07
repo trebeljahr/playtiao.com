@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
@@ -122,25 +123,27 @@ export function LocalGamePage() {
       <main className="mx-auto flex max-w-416 flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
         {configuring ? (
           <section className="flex items-center justify-center py-12">
-            <PaperCard className="w-full max-w-md">
-              <CardHeader>
-                <GamePanelBrand />
-                <CardTitle className="text-[#2b1e14]">{t("gameSetup")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GameConfigPanel
-                  mode="local"
-                  boardSize={boardSize}
-                  onBoardSizeChange={setBoardSize}
-                  scoreToWin={scoreToWin}
-                  onScoreToWinChange={setScoreToWin}
-                  timeControl={timeControl}
-                  onTimeControlChange={setTimeControl}
-                  submitLabel={t("startGame")}
-                  onSubmit={handleStartGame}
-                />
-              </CardContent>
-            </PaperCard>
+            <AnimatedCard delay={0}>
+              <PaperCard className="w-full max-w-md">
+                <CardHeader>
+                  <GamePanelBrand />
+                  <CardTitle className="text-[#2b1e14]">{t("gameSetup")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <GameConfigPanel
+                    mode="local"
+                    boardSize={boardSize}
+                    onBoardSizeChange={setBoardSize}
+                    scoreToWin={scoreToWin}
+                    onScoreToWinChange={setScoreToWin}
+                    timeControl={timeControl}
+                    onTimeControlChange={setTimeControl}
+                    submitLabel={t("startGame")}
+                    onSubmit={handleStartGame}
+                  />
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
           </section>
         ) : (
           <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">

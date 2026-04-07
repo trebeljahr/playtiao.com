@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { Navbar } from "@/components/Navbar";
 import { HourglassSpinner } from "@/components/game/GameShared";
 import { useMatchmakingData } from "@/lib/hooks/useMatchmakingData";
@@ -73,7 +74,7 @@ export function MatchmakingPage() {
       />
 
       <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pb-5 pt-20 sm:px-6 lg:px-8 lg:pb-6 lg:pt-20">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        <AnimatedCard>
           <PaperCard>
             <CardHeader className="text-center">
               <CardTitle className="text-4xl text-[#2b1e14]">{t("title")}</CardTitle>
@@ -123,7 +124,7 @@ export function MatchmakingPage() {
               )}
             </CardContent>
           </PaperCard>
-        </motion.div>
+        </AnimatedCard>
       </main>
     </div>
   );

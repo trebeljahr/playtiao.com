@@ -8,6 +8,8 @@ import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaperCard } from "@/components/ui/paper-card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { BracketVisualization } from "@/components/tournament/BracketVisualization";
@@ -247,60 +249,64 @@ export function TournamentPage() {
 
         {/* Featured / active matches */}
         {activeMatches.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("currentMatches")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {activeMatches.map((match) => (
-                  <MatchCard
-                    key={match.matchId}
-                    match={match}
-                    currentPlayerId={playerId}
-                    featured={match.matchId === tournament.featuredMatchId}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <AnimatedCard delay={0}>
+            <PaperCard>
+              <CardHeader>
+                <CardTitle>{t("currentMatches")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {activeMatches.map((match) => (
+                    <MatchCard
+                      key={match.matchId}
+                      match={match}
+                      currentPlayerId={playerId}
+                      featured={match.matchId === tournament.featuredMatchId}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </PaperCard>
+          </AnimatedCard>
         )}
 
         {/* Registration phase: participant list */}
         {tournament.status === "registration" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("participants")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {tournament.participants.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("noParticipants")}</p>
-              ) : (
-                <div className="space-y-1">
-                  {tournament.participants
-                    .sort((a, b) => a.seed - b.seed)
-                    .map((p) => (
-                      <div
-                        key={p.playerId}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                          p.playerId === playerId ? "bg-amber-50/60 font-medium" : ""
-                        }`}
-                      >
-                        <span className="w-6 text-right text-xs text-muted-foreground">
-                          #{p.seed}
-                        </span>
-                        <PlayerIdentityRow
-                          player={p}
-                          currentPlayerId={playerId}
-                          avatarClassName="h-6 w-6"
-                          nameClassName="text-sm"
-                        />
-                      </div>
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AnimatedCard delay={0.05}>
+            <PaperCard>
+              <CardHeader>
+                <CardTitle>{t("participants")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tournament.participants.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("noParticipants")}</p>
+                ) : (
+                  <div className="space-y-1">
+                    {tournament.participants
+                      .sort((a, b) => a.seed - b.seed)
+                      .map((p) => (
+                        <div
+                          key={p.playerId}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                            p.playerId === playerId ? "bg-amber-50/60 font-medium" : ""
+                          }`}
+                        >
+                          <span className="w-6 text-right text-xs text-muted-foreground">
+                            #{p.seed}
+                          </span>
+                          <PlayerIdentityRow
+                            player={p}
+                            currentPlayerId={playerId}
+                            avatarClassName="h-6 w-6"
+                            nameClassName="text-sm"
+                          />
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </PaperCard>
+          </AnimatedCard>
         )}
 
         {/* Active/Finished: Bracket or Standings */}
@@ -310,7 +316,7 @@ export function TournamentPage() {
             {tournament.settings.format === "round-robin" &&
               tournament.rounds.length > 0 &&
               tournament.rounds.map((round) => (
-                <Card key={round.roundIndex}>
+                <PaperCard key={round.roundIndex}>
                   <CardHeader>
                     <CardTitle className="text-lg">{round.label}</CardTitle>
                   </CardHeader>
@@ -321,31 +327,33 @@ export function TournamentPage() {
                       ))}
                     </div>
                   </CardContent>
-                </Card>
+                </PaperCard>
               ))}
 
             {/* Single Elimination Bracket */}
             {tournament.settings.format === "single-elimination" &&
               tournament.rounds.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t("bracket")}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <BracketVisualization
-                      rounds={tournament.rounds}
-                      currentPlayerId={playerId}
-                      featuredMatchId={tournament.featuredMatchId}
-                    />
-                  </CardContent>
-                </Card>
+                <AnimatedCard delay={0.1}>
+                  <PaperCard>
+                    <CardHeader>
+                      <CardTitle>{t("bracket")}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <BracketVisualization
+                        rounds={tournament.rounds}
+                        currentPlayerId={playerId}
+                        featuredMatchId={tournament.featuredMatchId}
+                      />
+                    </CardContent>
+                  </PaperCard>
+                </AnimatedCard>
               )}
 
             {/* Groups + Knockout */}
             {tournament.settings.format === "groups-knockout" && (
               <>
                 {tournament.groups.map((group) => (
-                  <Card key={group.groupId}>
+                  <PaperCard key={group.groupId}>
                     <CardHeader>
                       <CardTitle>{group.label}</CardTitle>
                     </CardHeader>
@@ -368,21 +376,23 @@ export function TournamentPage() {
                           </div>
                         ))}
                     </CardContent>
-                  </Card>
+                  </PaperCard>
                 ))}
                 {tournament.knockoutRounds.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t("knockoutStage")}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <BracketVisualization
-                        rounds={tournament.knockoutRounds}
-                        currentPlayerId={playerId}
-                        featuredMatchId={tournament.featuredMatchId}
-                      />
-                    </CardContent>
-                  </Card>
+                  <AnimatedCard delay={0.15}>
+                    <PaperCard>
+                      <CardHeader>
+                        <CardTitle>{t("knockoutStage")}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <BracketVisualization
+                          rounds={tournament.knockoutRounds}
+                          currentPlayerId={playerId}
+                          featuredMatchId={tournament.featuredMatchId}
+                        />
+                      </CardContent>
+                    </PaperCard>
+                  </AnimatedCard>
                 )}
               </>
             )}

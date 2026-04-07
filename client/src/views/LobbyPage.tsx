@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
@@ -252,11 +253,7 @@ export function LobbyPage() {
 
         <section className="mt-6 columns-1 gap-6 md:mt-8 md:columns-2 xl:columns-none xl:grid xl:grid-cols-3 *:mb-6 xl:*:mb-0">
           {/* Local — Over the Board */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="break-inside-avoid xl:flex xl:flex-col"
-          >
+          <AnimatedCard className="break-inside-avoid xl:flex xl:flex-col">
             <PaperCard className="overflow-hidden shadow-xl xl:flex-1">
               <div className="h-2 bg-[linear-gradient(90deg,#4b3726,#b98d49)]" />
               <CardHeader className="pb-6">
@@ -291,15 +288,10 @@ export function LobbyPage() {
                 </Button>
               </CardContent>
             </PaperCard>
-          </motion.div>
+          </AnimatedCard>
 
           {/* Online — Play Against Someone Specific */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="break-inside-avoid xl:flex xl:flex-col"
-          >
+          <AnimatedCard delay={0.05} className="break-inside-avoid xl:flex xl:flex-col">
             <PaperCard className="overflow-hidden shadow-xl xl:flex-1">
               <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
               <CardHeader className="pb-6">
@@ -395,15 +387,10 @@ export function LobbyPage() {
                 )}
               </CardContent>
             </PaperCard>
-          </motion.div>
+          </AnimatedCard>
 
           {/* Online — Matchmaking */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="break-inside-avoid"
-          >
+          <AnimatedCard delay={0.1} className="break-inside-avoid">
             <PaperCard className="overflow-hidden shadow-xl">
               <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
               <CardHeader className="pb-6">
@@ -465,7 +452,7 @@ export function LobbyPage() {
                 </div>
               </CardContent>
             </PaperCard>
-          </motion.div>
+          </AnimatedCard>
         </section>
 
         {(auth || authLoading) && (
@@ -477,11 +464,7 @@ export function LobbyPage() {
               </>
             ) : (
               <>
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col"
-                >
+                <AnimatedCard className="flex flex-col">
                   <PaperCard className="overflow-hidden shadow-lg flex-1">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
                       <CardTitle className="text-2xl text-[#2b1e14]">{t("activeGames")}</CardTitle>
@@ -531,13 +514,9 @@ export function LobbyPage() {
                       )}
                     </CardContent>
                   </PaperCard>
-                </motion.div>
+                </AnimatedCard>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col"
-                >
+                <AnimatedCard delay={0.05} className="flex flex-col">
                   <PaperCard className="overflow-hidden shadow-lg flex-1">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
                       <CardTitle className="text-2xl text-[#2b1e14]">{t("invitations")}</CardTitle>
@@ -599,19 +578,14 @@ export function LobbyPage() {
                       )}
                     </CardContent>
                   </PaperCard>
-                </motion.div>
+                </AnimatedCard>
               </>
             )}
           </section>
         )}
 
         <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col"
-          >
+          <AnimatedCard delay={0.2} className="flex flex-col">
             <PaperCard className="overflow-hidden shadow-lg flex-1">
               <CardHeader className="pb-3">
                 <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">{t("spectate")}</Badge>
@@ -672,18 +646,13 @@ export function LobbyPage() {
                 </form>
               </CardContent>
             </PaperCard>
-          </motion.div>
+          </AnimatedCard>
 
           {(auth || authLoading) &&
             (authLoading ? (
               <SkeletonCard />
             ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="flex flex-col"
-              >
+              <AnimatedCard delay={0.25} className="flex flex-col">
                 <PaperCard className="overflow-hidden shadow-lg flex-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-black/5 bg-black/2 py-4">
                     <CardTitle className="text-2xl text-[#2b1e14]">{t("tournaments")}</CardTitle>
@@ -747,7 +716,7 @@ export function LobbyPage() {
                     ))}
                   </CardContent>
                 </PaperCard>
-              </motion.div>
+              </AnimatedCard>
             ))}
         </section>
       </main>

@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -112,82 +113,84 @@ function BadgeSelector({
   };
 
   return (
-    <Card className="border-[#dcc7a3]/60 bg-[linear-gradient(180deg,rgba(255,250,235,0.98),rgba(248,238,215,0.98))] shadow-[0_32px_72px_-28px_rgba(80,52,18,0.26)]">
-      <CardHeader>
-        <CardTitle>{t("badge")}</CardTitle>
-        <CardDescription>{t("badgeDesc")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2">
-          {/* "None" option */}
-          <button
-            type="button"
-            onClick={hideAll}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
-              activeBadges.length === 0
-                ? "border-[#8c7a5e] bg-[#f5ecd8] text-[#4e3d2c] shadow-xs"
-                : "border-[#dcc7a3] text-[#9a8670] hover:border-[#b69a6e]",
-            )}
-          >
-            {t("badgeHidden")}
-          </button>
+    <AnimatedCard delay={0.15}>
+      <PaperCard>
+        <CardHeader>
+          <CardTitle>{t("badge")}</CardTitle>
+          <CardDescription>{t("badgeDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {/* "None" option */}
+            <button
+              type="button"
+              onClick={hideAll}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                activeBadges.length === 0
+                  ? "border-[#8c7a5e] bg-[#f5ecd8] text-[#4e3d2c] shadow-xs"
+                  : "border-[#dcc7a3] text-[#9a8670] hover:border-[#b69a6e]",
+              )}
+            >
+              {t("badgeHidden")}
+            </button>
 
-          {badges.map((badgeId) => {
-            const def = BADGE_DEFINITIONS[badgeId];
-            if (!def) return null;
-            const isActive = activeBadges.includes(badgeId);
+            {badges.map((badgeId) => {
+              const def = BADGE_DEFINITIONS[badgeId];
+              if (!def) return null;
+              const isActive = activeBadges.includes(badgeId);
 
-            return (
-              <button
-                key={badgeId}
-                type="button"
-                onClick={() => selectBadge(badgeId)}
-                className={cn(
-                  "rounded-xl border p-2 transition-all",
-                  isActive
-                    ? "border-[#8c7a5e] bg-[#f5ecd8] shadow-xs"
-                    : "border-transparent hover:border-[#dcc7a3]",
-                )}
-              >
-                <UserBadge badge={badgeId} />
-              </button>
-            );
-          })}
-        </div>
-
-        {activeBadges.length > 0 && (
-          <p className="mt-3 text-xs text-[#9a8670]">
-            {t("badgeActive", {
-              badge: activeBadges
-                .map((id) => BADGE_DEFINITIONS[id as BadgeId]?.label)
-                .filter(Boolean)
-                .join(", "),
+              return (
+                <button
+                  key={badgeId}
+                  type="button"
+                  onClick={() => selectBadge(badgeId)}
+                  className={cn(
+                    "rounded-xl border p-2 transition-all",
+                    isActive
+                      ? "border-[#8c7a5e] bg-[#f5ecd8] shadow-xs"
+                      : "border-transparent hover:border-[#dcc7a3]",
+                  )}
+                >
+                  <UserBadge badge={badgeId} />
+                </button>
+              );
             })}
-          </p>
-        )}
-
-        {/* Dev preview: show all badges at all sizes for testing */}
-        {isAdmin(auth) && (
-          <div className="mt-5 rounded-xl border border-dashed border-[#c4a978]/50 p-3">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#b09a78]">
-              {t("devPreviewBadges")}
-            </p>
-            <div className="flex flex-col gap-3">
-              {ALL_BADGE_IDS.map((id) => (
-                <div key={id} className="flex items-center gap-3">
-                  <UserBadge badge={id} />
-                  <UserBadge badge={id} compact />
-                  <span className="text-[11px] text-[#9a8670]">
-                    {t("badgeTier", { tier: BADGE_DEFINITIONS[id].tier, id })}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {activeBadges.length > 0 && (
+            <p className="mt-3 text-xs text-[#9a8670]">
+              {t("badgeActive", {
+                badge: activeBadges
+                  .map((id) => BADGE_DEFINITIONS[id as BadgeId]?.label)
+                  .filter(Boolean)
+                  .join(", "),
+              })}
+            </p>
+          )}
+
+          {/* Dev preview: show all badges at all sizes for testing */}
+          {isAdmin(auth) && (
+            <div className="mt-5 rounded-xl border border-dashed border-[#c4a978]/50 p-3">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#b09a78]">
+                {t("devPreviewBadges")}
+              </p>
+              <div className="flex flex-col gap-3">
+                {ALL_BADGE_IDS.map((id) => (
+                  <div key={id} className="flex items-center gap-3">
+                    <UserBadge badge={id} />
+                    <UserBadge badge={id} compact />
+                    <span className="text-[11px] text-[#9a8670]">
+                      {t("badgeTier", { tier: BADGE_DEFINITIONS[id].tier, id })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </PaperCard>
+    </AnimatedCard>
   );
 }
 
@@ -291,118 +294,120 @@ function LinkedAccounts({
 
   return (
     <>
-      <Card className="border-[#dcc7a3]/60 bg-[linear-gradient(180deg,rgba(255,250,235,0.98),rgba(248,238,215,0.98))] shadow-[0_32px_72px_-28px_rgba(80,52,18,0.26)]">
-        <CardHeader>
-          <CardTitle>{t("linkedAccounts")}</CardTitle>
-          <CardDescription>{t("linkedAccountsDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Password/credential provider */}
-          {hasCredential && (
-            <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5">
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
-                {t("passwordLogin")}
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                  {t("connected")}
+      <AnimatedCard delay={0.1}>
+        <PaperCard>
+          <CardHeader>
+            <CardTitle>{t("linkedAccounts")}</CardTitle>
+            <CardDescription>{t("linkedAccountsDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Password/credential provider */}
+            {hasCredential && (
+              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
+                  {t("passwordLogin")}
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                    {t("connected")}
+                  </span>
                 </span>
-              </span>
-              {unlinkableProviders && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={busy === "credential"}
-                  onClick={() => void handleUnlink("credential")}
-                  className="text-xs text-[#9a8670] hover:text-red-600"
-                >
-                  {busy === "credential" ? t("unlinking") : t("unlink")}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Currently linked SSO providers */}
-          {linkedProviders.length > 0 && (
-            <div className="space-y-2">
-              {linkedProviders.map((providerId) => {
-                const meta = SOCIAL_PROVIDERS.find((p) => p.id === providerId);
-                const Icon = meta?.icon;
-                return (
-                  <div
-                    key={providerId}
-                    className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5"
-                  >
-                    <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
-                      {Icon && <Icon className="h-4 w-4" />}
-                      {meta?.label ?? providerId}
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                        {t("connected")}
-                      </span>
-                    </span>
-                    {unlinkableProviders && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy === providerId}
-                        onClick={() => void handleUnlink(providerId)}
-                        className="text-xs text-[#9a8670] hover:text-red-600"
-                      >
-                        {busy === providerId ? t("unlinking") : t("unlink")}
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Link new providers */}
-          {(SOCIAL_PROVIDERS.some((p) => !providers.includes(p.id)) || !hasCredential) && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
-                {t("linkNewAccount")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {!hasCredential && (
+                {unlinkableProviders && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setPasswordError(null);
-                      setSetPasswordEmail(currentEmail);
-                      setSetPasswordUsername(currentDisplayName);
-                      setNewPasswordValue("");
-                      setConfirmPasswordValue("");
-                      setSetPasswordOpen(true);
-                    }}
-                    className="gap-2"
+                    disabled={busy === "credential"}
+                    onClick={() => void handleUnlink("credential")}
+                    className="text-xs text-[#9a8670] hover:text-red-600"
                   >
-                    {t("addPasswordLogin")}
+                    {busy === "credential" ? t("unlinking") : t("unlink")}
                   </Button>
                 )}
-                {SOCIAL_PROVIDERS.filter((p) => !providers.includes(p.id)).map(
-                  ({ id, label, icon: Icon }) => (
+              </div>
+            )}
+
+            {/* Currently linked SSO providers */}
+            {linkedProviders.length > 0 && (
+              <div className="space-y-2">
+                {linkedProviders.map((providerId) => {
+                  const meta = SOCIAL_PROVIDERS.find((p) => p.id === providerId);
+                  const Icon = meta?.icon;
+                  return (
+                    <div
+                      key={providerId}
+                      className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-2.5"
+                    >
+                      <span className="inline-flex items-center gap-2 text-sm font-medium text-[#4e3d2c]">
+                        {Icon && <Icon className="h-4 w-4" />}
+                        {meta?.label ?? providerId}
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          {t("connected")}
+                        </span>
+                      </span>
+                      {unlinkableProviders && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy === providerId}
+                          onClick={() => void handleUnlink(providerId)}
+                          className="text-xs text-[#9a8670] hover:text-red-600"
+                        >
+                          {busy === providerId ? t("unlinking") : t("unlink")}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Link new providers */}
+            {(SOCIAL_PROVIDERS.some((p) => !providers.includes(p.id)) || !hasCredential) && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]">
+                  {t("linkNewAccount")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {!hasCredential && (
                     <Button
-                      key={id}
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={busy === id}
-                      onClick={() => void handleLink(id)}
+                      onClick={() => {
+                        setPasswordError(null);
+                        setSetPasswordEmail(currentEmail);
+                        setSetPasswordUsername(currentDisplayName);
+                        setNewPasswordValue("");
+                        setConfirmPasswordValue("");
+                        setSetPasswordOpen(true);
+                      }}
                       className="gap-2"
                     >
-                      <Icon className="h-4 w-4" />
-                      {busy === id ? t("linking") : label}
+                      {t("addPasswordLogin")}
                     </Button>
-                  ),
-                )}
+                  )}
+                  {SOCIAL_PROVIDERS.filter((p) => !providers.includes(p.id)).map(
+                    ({ id, label, icon: Icon }) => (
+                      <Button
+                        key={id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy === id}
+                        onClick={() => void handleLink(id)}
+                        className="gap-2"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {busy === id ? t("linking") : label}
+                      </Button>
+                    ),
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </PaperCard>
+      </AnimatedCard>
 
       <Dialog
         open={setPasswordOpen}
@@ -781,284 +786,293 @@ export function ProfilePage() {
         </Button>
 
         {auth?.player.kind !== "account" ? (
-          <PaperCard>
-            <CardHeader>
-              <CardTitle>{t("title")}</CardTitle>
-              <CardDescription>{t("description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                {t("guestNotice")}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => onOpenAuth("signup")}>{t("createAccount")}</Button>
-                <Button variant="outline" onClick={() => onOpenAuth("login")}>
-                  {tCommon("signIn")}
-                </Button>
-              </div>
-            </CardContent>
-          </PaperCard>
+          <AnimatedCard delay={0}>
+            <PaperCard>
+              <CardHeader>
+                <CardTitle>{t("title")}</CardTitle>
+                <CardDescription>{t("description")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
+                  {t("guestNotice")}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => onOpenAuth("signup")}>{t("createAccount")}</Button>
+                  <Button variant="outline" onClick={() => onOpenAuth("login")}>
+                    {tCommon("signIn")}
+                  </Button>
+                </div>
+              </CardContent>
+            </PaperCard>
+          </AnimatedCard>
         ) : null}
 
         {auth?.player.kind === "account" ? (
           <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <PaperCard>
-              <CardHeader>
-                <CardTitle>{t("picture")}</CardTitle>
-                <CardDescription>{t("pictureDesc")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div
-                  ref={dropZoneRef}
-                  role="button"
-                  tabIndex={0}
-                  className={`group relative mx-auto flex h-56 w-56 cursor-pointer items-center justify-center overflow-hidden rounded-4xl border-2 border-dashed transition-all ${
-                    dragging
-                      ? "border-[#b08440] bg-[linear-gradient(180deg,#fff6e2,#f0d9a8)] scale-[1.03] shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
-                      : "border-[#d4bd94] bg-[linear-gradient(180deg,#fbf2de,#ead5aa)] shadow-[0_24px_60px_-38px_rgba(58,35,16,0.6)] hover:border-[#c4a46e] hover:shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
-                  }`}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
+            <AnimatedCard delay={0}>
+              <PaperCard>
+                <CardHeader>
+                  <CardTitle>{t("picture")}</CardTitle>
+                  <CardDescription>{t("pictureDesc")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    ref={dropZoneRef}
+                    role="button"
+                    tabIndex={0}
+                    className={`group relative mx-auto flex h-56 w-56 cursor-pointer items-center justify-center overflow-hidden rounded-4xl border-2 border-dashed transition-all ${
+                      dragging
+                        ? "border-[#b08440] bg-[linear-gradient(180deg,#fff6e2,#f0d9a8)] scale-[1.03] shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
+                        : "border-[#d4bd94] bg-[linear-gradient(180deg,#fbf2de,#ead5aa)] shadow-[0_24px_60px_-38px_rgba(58,35,16,0.6)] hover:border-[#c4a46e] hover:shadow-[0_24px_60px_-30px_rgba(58,35,16,0.7)]"
+                    }`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    onDragOver={(e) => {
                       e.preventDefault();
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragging(true);
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragging(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (
-                      dropZoneRef.current &&
-                      !dropZoneRef.current.contains(e.relatedTarget as Node)
-                    ) {
+                      e.stopPropagation();
+                      setDragging(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (
+                        dropZoneRef.current &&
+                        !dropZoneRef.current.contains(e.relatedTarget as Node)
+                      ) {
+                        setDragging(false);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setDragging(false);
-                    }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragging(false);
-                    const file = e.dataTransfer.files[0];
-                    if (file) void handleImageFile(file);
-                  }}
-                >
-                  {uploading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[rgba(251,242,222,0.85)]">
-                      <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#d4bd94] border-t-[#8b6914]" />
-                    </div>
-                  )}
-                  {profileImage ? (
-                    <>
-                      <img
-                        src={profileImage}
-                        alt={displayName || auth.player.displayName}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.4)] opacity-0 transition-opacity group-hover:opacity-100">
-                        <span className="text-sm font-medium text-white">{t("changePhoto")}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 px-4 text-center">
-                      <span className="font-display text-5xl text-[#2d2016]/30">
-                        {(displayName || auth.player.displayName).slice(0, 1).toUpperCase()}
-                      </span>
-                      <span className="text-xs text-[#8b7659]">
-                        {dragging ? t("dropImage") : t("clickDragPaste")}
-                      </span>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
+                      const file = e.dataTransfer.files[0];
                       if (file) void handleImageFile(file);
-                      e.target.value = "";
                     }}
-                  />
-                </div>
-
-                <p className="text-center text-xs text-[#8b7659]">{t("pictureHint")}</p>
-              </CardContent>
-            </PaperCard>
-
-            <PaperCard>
-              <CardHeader>
-                <CardTitle>{t("basicInfo")}</CardTitle>
-                <CardDescription>{t("basicInfoDesc")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loading ? (
-                  <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                    {t("loadingProfile")}
-                  </div>
-                ) : (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void handleSaveProfile();
-                    }}
-                    className="space-y-4"
                   >
-                    <div className="grid gap-2">
-                      <label
-                        htmlFor="profile-display-name"
-                        className="text-sm font-medium text-[#4e3d2c]"
-                      >
-                        {t("username")}
-                      </label>
-                      <Input
-                        id="profile-display-name"
-                        name="name"
-                        value={displayName}
-                        onChange={(event) =>
-                          setDisplayName(
-                            event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
-                          )
-                        }
-                        placeholder={t("usernamePlaceholder")}
-                        autoComplete="username"
-                        pattern="^[a-z0-9][a-z0-9_\-]*$"
-                        minLength={3}
-                        maxLength={32}
-                        title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
-                        required
-                      />
-                      <p className="text-xs text-[#8d7760]">{t("usernameHint")}</p>
-                    </div>
+                    {uploading && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-[rgba(251,242,222,0.85)]">
+                        <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#d4bd94] border-t-[#8b6914]" />
+                      </div>
+                    )}
+                    {profileImage ? (
+                      <>
+                        <img
+                          src={profileImage}
+                          alt={displayName || auth.player.displayName}
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.4)] opacity-0 transition-opacity group-hover:opacity-100">
+                          <span className="text-sm font-medium text-white">{t("changePhoto")}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 px-4 text-center">
+                        <span className="font-display text-5xl text-[#2d2016]/30">
+                          {(displayName || auth.player.displayName).slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="text-xs text-[#8b7659]">
+                          {dragging ? t("dropImage") : t("clickDragPaste")}
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleImageFile(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
 
-                    <div className="grid gap-2">
-                      <label htmlFor="profile-bio" className="text-sm font-medium text-[#4e3d2c]">
-                        {t("bio")}
-                      </label>
-                      <textarea
-                        id="profile-bio"
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value.slice(0, 500))}
-                        placeholder={t("bioPlaceholder")}
-                        rows={3}
-                        maxLength={500}
-                        className="flex w-full rounded-xl border border-[#dcc7a3] bg-[#fffdf8] px-3 py-2 text-sm text-[#2b1e14] shadow-xs placeholder:text-[#b8a68e] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#b08440] disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                      <p className="text-xs text-[#8d7760]">
-                        {t("bioHint", { count: bio.length, max: 500 })}
-                      </p>
-                    </div>
+                  <p className="text-center text-xs text-[#8b7659]">{t("pictureHint")}</p>
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
 
-                    <div className="grid gap-2">
-                      <label htmlFor="profile-email" className="text-sm font-medium text-[#4e3d2c]">
-                        {t("emailOptional")}
-                      </label>
-                      <Input
-                        id="profile-email"
-                        name="email"
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        placeholder="name@example.com"
-                        autoComplete="email"
-                        readOnly={hasOAuthProvider && !hasCredentialProvider}
-                      />
-                      {hasOAuthProvider && !hasCredentialProvider && (
+            <AnimatedCard delay={0.05}>
+              <PaperCard>
+                <CardHeader>
+                  <CardTitle>{t("basicInfo")}</CardTitle>
+                  <CardDescription>{t("basicInfoDesc")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {loading ? (
+                    <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
+                      {t("loadingProfile")}
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleSaveProfile();
+                      }}
+                      className="space-y-4"
+                    >
+                      <div className="grid gap-2">
+                        <label
+                          htmlFor="profile-display-name"
+                          className="text-sm font-medium text-[#4e3d2c]"
+                        >
+                          {t("username")}
+                        </label>
+                        <Input
+                          id="profile-display-name"
+                          name="name"
+                          value={displayName}
+                          onChange={(event) =>
+                            setDisplayName(
+                              event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
+                            )
+                          }
+                          placeholder={t("usernamePlaceholder")}
+                          autoComplete="username"
+                          pattern="^[a-z0-9][a-z0-9_\-]*$"
+                          minLength={3}
+                          maxLength={32}
+                          title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
+                          required
+                        />
+                        <p className="text-xs text-[#8d7760]">{t("usernameHint")}</p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <label htmlFor="profile-bio" className="text-sm font-medium text-[#4e3d2c]">
+                          {t("bio")}
+                        </label>
+                        <textarea
+                          id="profile-bio"
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value.slice(0, 500))}
+                          placeholder={t("bioPlaceholder")}
+                          rows={3}
+                          maxLength={500}
+                          className="flex w-full rounded-xl border border-[#dcc7a3] bg-[#fffdf8] px-3 py-2 text-sm text-[#2b1e14] shadow-xs placeholder:text-[#b8a68e] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#b08440] disabled:cursor-not-allowed disabled:opacity-50"
+                        />
                         <p className="text-xs text-[#8d7760]">
-                          {t("emailManagedByProvider", { provider: oauthProviderLabel })}
+                          {t("bioHint", { count: bio.length, max: 500 })}
                         </p>
-                      )}
-                    </div>
+                      </div>
 
-                    {hasCredentialProvider && (
-                      <div>
+                      <div className="grid gap-2">
+                        <label
+                          htmlFor="profile-email"
+                          className="text-sm font-medium text-[#4e3d2c]"
+                        >
+                          {t("emailOptional")}
+                        </label>
+                        <Input
+                          id="profile-email"
+                          name="email"
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="name@example.com"
+                          autoComplete="email"
+                          readOnly={hasOAuthProvider && !hasCredentialProvider}
+                        />
+                        {hasOAuthProvider && !hasCredentialProvider && (
+                          <p className="text-xs text-[#8d7760]">
+                            {t("emailManagedByProvider", { provider: oauthProviderLabel })}
+                          </p>
+                        )}
+                      </div>
+
+                      {hasCredentialProvider && (
+                        <div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setPasswordError(null);
+                              setCurrentPassword("");
+                              setNewPassword("");
+                              setConfirmPassword("");
+                              setPasswordModalOpen(true);
+                            }}
+                          >
+                            {t("changePassword")}
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
+                        <div className="flex items-baseline justify-between">
+                          <span className="font-medium text-[#4e3d2c]">{t("rating")}</span>
+                          <span className="font-display text-lg font-bold text-[#2b1e14]">
+                            {profile?.rating ?? 1500}
+                          </span>
+                        </div>
+                        {(profile?.gamesPlayed ?? 0) > 0 && profile?.ratingPercentile != null && (
+                          <p className="text-xs text-[#8d7760]">
+                            {t("ratingPercentile", { percentile: 100 - profile.ratingPercentile })}
+                          </p>
+                        )}
+                        {(profile?.gamesPlayed ?? 0) === 0 && (
+                          <p className="text-xs text-[#8d7760]">{t("ratingProvisional")}</p>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
+                        <p>
+                          {t("created", {
+                            date: formatTimestamp(profile?.createdAt, t("justNow"), locale),
+                          })}
+                        </p>
+                        <p>
+                          {t("updated", {
+                            date: formatTimestamp(profile?.updatedAt, t("justNow"), locale),
+                          })}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <Button type="submit" disabled={saving}>
+                          {saving ? tCommon("saving") : tCommon("save")}
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
-                            setPasswordError(null);
-                            setCurrentPassword("");
-                            setNewPassword("");
-                            setConfirmPassword("");
-                            setPasswordModalOpen(true);
+                          onClick={async () => {
+                            try {
+                              const url = `${window.location.origin}/profile/${encodeURIComponent(displayName)}`;
+                              await navigator.clipboard.writeText(url);
+                              toast.success(t("copiedProfileLink"));
+                              setCopyLinkFeedback(true);
+                              setTimeout(() => setCopyLinkFeedback(false), 2000);
+                            } catch {
+                              toast.error(tCommon("failedToCopy"));
+                            }
                           }}
                         >
-                          {t("changePassword")}
+                          {copyLinkFeedback ? tCommon("copied") : t("copyProfileLink")}
                         </Button>
                       </div>
-                    )}
+                    </form>
+                  )}
 
-                    <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                      <div className="flex items-baseline justify-between">
-                        <span className="font-medium text-[#4e3d2c]">{t("rating")}</span>
-                        <span className="font-display text-lg font-bold text-[#2b1e14]">
-                          {profile?.rating ?? 1500}
-                        </span>
-                      </div>
-                      {(profile?.gamesPlayed ?? 0) > 0 && profile?.ratingPercentile != null && (
-                        <p className="text-xs text-[#8d7760]">
-                          {t("ratingPercentile", { percentile: 100 - profile.ratingPercentile })}
-                        </p>
-                      )}
-                      {(profile?.gamesPlayed ?? 0) === 0 && (
-                        <p className="text-xs text-[#8d7760]">{t("ratingProvisional")}</p>
-                      )}
-                    </div>
-
-                    <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                      <p>
-                        {t("created", {
-                          date: formatTimestamp(profile?.createdAt, t("justNow"), locale),
-                        })}
-                      </p>
-                      <p>
-                        {t("updated", {
-                          date: formatTimestamp(profile?.updatedAt, t("justNow"), locale),
-                        })}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3">
-                      <Button type="submit" disabled={saving}>
-                        {saving ? tCommon("saving") : tCommon("save")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const url = `${window.location.origin}/profile/${encodeURIComponent(displayName)}`;
-                            await navigator.clipboard.writeText(url);
-                            toast.success(t("copiedProfileLink"));
-                            setCopyLinkFeedback(true);
-                            setTimeout(() => setCopyLinkFeedback(false), 2000);
-                          } catch {
-                            toast.error(tCommon("failedToCopy"));
-                          }
-                        }}
-                      >
-                        {copyLinkFeedback ? tCommon("copied") : t("copyProfileLink")}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-
-                {successMessage ? (
-                  <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    {successMessage}
-                  </p>
-                ) : null}
-              </CardContent>
-            </PaperCard>
+                  {successMessage ? (
+                    <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {successMessage}
+                    </p>
+                  ) : null}
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
 
             <LinkedAccounts
               providers={providers}
