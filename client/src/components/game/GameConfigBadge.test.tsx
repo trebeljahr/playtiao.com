@@ -63,10 +63,15 @@ describe("GameConfigBadge", () => {
 
   it("renders roomType for matchmaking", () => {
     render(<GameConfigBadge roomType="matchmaking" showAll boardSize={19} />);
-    expect(screen.getByText(/matchmaking/)).toBeInTheDocument();
+    expect(screen.getByText(/matchmakingGame/)).toBeInTheDocument();
   });
 
-  it("joins multiple parts with separator", () => {
+  it("renders roomType for direct (custom game)", () => {
+    render(<GameConfigBadge roomType="direct" showAll boardSize={19} />);
+    expect(screen.getByText(/customGame/)).toBeInTheDocument();
+  });
+
+  it("joins multiple parts with pipe separator", () => {
     render(
       <GameConfigBadge
         boardSize={9}
@@ -76,6 +81,6 @@ describe("GameConfigBadge", () => {
       />,
     );
     const text = screen.getByText(/9x9/).textContent!;
-    expect(text).toContain("·");
+    expect(text).toContain("|");
   });
 });

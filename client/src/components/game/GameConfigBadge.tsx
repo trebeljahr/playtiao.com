@@ -31,7 +31,10 @@ export function GameConfigBadge({
         parts.push(tTournament("title"));
         break;
       case "matchmaking":
-        parts.push(tLobby("matchmaking"));
+        parts.push(tLobby("matchmakingGame"));
+        break;
+      case "direct":
+        parts.push(tLobby("customGame"));
         break;
     }
   }
@@ -55,5 +58,5 @@ export function GameConfigBadge({
 
   if (parts.length === 0) return null;
 
-  return <span className="text-xs text-[#8d7760]">{parts.join(" · ")}</span>;
+  return <span className="text-xs text-[#8d7760]">{parts.join(" | ")}</span>;
 }

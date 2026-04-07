@@ -77,6 +77,8 @@
     "createGame": "Create a game",
     "orJoinOne": "or join one",
     "matchmaking": "Matchmaking",
+    "matchmakingGame": "Matchmaking Game",
+    "customGame": "Custom Game",
     "matchmakingDesc": "Jump into a game against a random opponent. Pick a time control or play without one.",
     "unlimitedTimeGame": "Unlimited time game",
     "timeFormat": "Format: {format}",

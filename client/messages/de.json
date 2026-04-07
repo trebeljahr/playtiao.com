@@ -77,6 +77,8 @@
     "createGame": "Spiel erstellen",
     "orJoinOne": "oder einem beitreten",
     "matchmaking": "Matchmaking",
+    "matchmakingGame": "Matchmaking-Spiel",
+    "customGame": "Eigenes Spiel",
     "matchmakingDesc": "Spring direkt in ein Spiel gegen einen zufälligen Gegner. Wähl eine Bedenkzeit oder spiel ohne.",
     "unlimitedTimeGame": "Spiel ohne Zeitlimit",
     "timeFormat": "Format: {format}",

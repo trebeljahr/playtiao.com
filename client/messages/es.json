@@ -77,6 +77,8 @@
     "createGame": "Crear una partida",
     "orJoinOne": "o únete a una",
     "matchmaking": "Buscar rival",
+    "matchmakingGame": "Partida aleatoria",
+    "customGame": "Partida personalizada",
     "matchmakingDesc": "Salta a una partida contra un rival al azar. Elige un control de tiempo o juega sin límite.",
     "unlimitedTimeGame": "Partida sin límite de tiempo",
     "timeFormat": "Formato: {format}",

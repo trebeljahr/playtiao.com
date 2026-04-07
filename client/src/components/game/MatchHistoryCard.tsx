@@ -56,7 +56,7 @@ function PlayerRow({
   anonymous?: boolean;
 }) {
   const gameStats = (
-    <div className="ml-auto flex shrink-0 items-center gap-1.5">
+    <div className="ml-auto flex shrink-0 items-center gap-2.5">
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
           {winnerLabel}
@@ -78,7 +78,19 @@ function PlayerRow({
         </span>
       )}
       {clockMs != null && (
-        <span className="font-mono text-xs tabular-nums text-[#6b5a45]">
+        <span className="flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b5a45]">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            className="h-3 w-3 opacity-50"
+          >
+            <path
+              fillRule="evenodd"
+              d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8Zm7.75-4.25a.75.75 0 0 0-1.5 0V8c0 .414.336.75.75.75h3.25a.75.75 0 0 0 0-1.5h-2.5v-3.5Z"
+              clipRule="evenodd"
+            />
+          </svg>
           {formatClockTime(clockMs)}
         </span>
       )}
@@ -234,7 +246,7 @@ export function MatchHistoryCard({
       {/* Footer: timestamp left, game settings pills right */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-[#6b5a45]">
-          {formatGameTimestamp(game.updatedAt, locale)} ·{" "}
+          {formatGameTimestamp(game.updatedAt, locale)} |{" "}
           {tCommon("moves", { count: game.historyLength ?? 0 })}
         </span>
         <GameConfigBadge
