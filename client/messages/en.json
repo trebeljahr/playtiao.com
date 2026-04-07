@@ -622,6 +622,7 @@
     "unmuteSounds": "Unmute sounds",
     "lobby": "Lobby",
     "myGames": "My Games",
+    "shop": "Shop",
     "tutorial": "Tutorial",
     "friends": "Friends",
     "tournaments": "Tournaments",
@@ -638,7 +639,12 @@
     "contributor": "Contributor",
     "superSupporter": "Super Supporter",
     "champion": "Champion",
-    "creator": "Creator"
+    "creator": "Creator",
+    "supporterDesc": "Show your support for Tiao with this golden badge.",
+    "contributorDesc": "For players who contribute to the Tiao community.",
+    "superSupporterDesc": "An animated golden badge for dedicated supporters.",
+    "championDesc": "A prestigious purple badge for tournament champions.",
+    "creatorDesc": "The rainbow creator badge — for those who helped build Tiao."
   },
   "adminBadges": {
     "title": "Badge Management",
@@ -713,5 +719,21 @@
     "saving": "Saving...",
     "continue": "Continue",
     "profilePictureHint": "Click to add a profile picture"
+  },
+  "shop": {
+    "title": "Shop",
+    "description": "Browse and purchase badges and board themes.",
+    "badgesLabel": "Badges",
+    "badgesTitle": "Player Badges",
+    "badgesDesc": "Stand out with a unique badge next to your name.",
+    "themesLabel": "Themes",
+    "themesTitle": "Board Themes",
+    "themesDesc": "Customize your game board with premium themes.",
+    "buy": "Buy",
+    "owned": "Owned",
+    "processing": "Processing...",
+    "purchaseSuccess": "Purchase complete! Your {item} has been unlocked.",
+    "purchaseCancelled": "Purchase cancelled.",
+    "adminPanel": "Admin Panel"
   }
 }

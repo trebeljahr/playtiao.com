@@ -10,10 +10,19 @@ import indexRoutes from "./routes/index.routes";
 import socialRoutes from "./routes/social.routes";
 import adminRoutes from "./routes/admin.routes";
 import tournamentRoutes from "./routes/tournament.routes";
+import shopRoutes from "./routes/shop.routes";
 const app = express();
 
 // Mount better-auth BEFORE express.json() to avoid body consumption conflicts
 app.all("/api/auth/*splat", toNodeHandler(auth));
+
+// Mount Stripe webhook BEFORE express.json() — it needs the raw body for signature verification
+app.post("/shop/webhook", express.raw({ type: "application/json" }), (req, res, next) => {
+  shopRoutes.handle(req, res, next);
+});
+app.post("/api/shop/webhook", express.raw({ type: "application/json" }), (req, res, next) => {
+  shopRoutes.handle(req, res, next);
+});
 
 configureApp(app);
 
@@ -41,6 +50,7 @@ mountRouteVariants("/", gameRoutes);
 mountRouteVariants("/", socialRoutes);
 mountRouteVariants("/player/admin", adminRoutes);
 mountRouteVariants("/", tournamentRoutes);
+mountRouteVariants("/shop", shopRoutes);
 
 addErrorHandlingToApp(app);
 

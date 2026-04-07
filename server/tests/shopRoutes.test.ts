@@ -1,0 +1,290 @@
+process.env.TOKEN_SECRET = "test-secret";
+process.env.MONGODB_URI = "mongodb://127.0.0.1:27017/tiao-test";
+process.env.S3_BUCKET_NAME = "tiao-test-assets";
+process.env.S3_PUBLIC_URL = "https://assets.test.local";
+process.env.NODE_ENV = "test";
+
+import { describe, test, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import type { Router, Request, Response } from "express";
+import {
+  createTestAccount,
+  createTestGuest,
+  resetTestSessions,
+  installTestSessionMock,
+} from "./testAuthHelper";
+import GameAccount from "../models/GameAccount";
+import mongoose from "mongoose";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type TestRouter = Router & {
+  stack: Array<{
+    route?: {
+      path: string;
+      methods: Record<string, boolean>;
+      stack: Array<{ handle: (req: Request, res: Response, next: () => void) => void }>;
+    };
+  }>;
+};
+
+type RouteResult<T = unknown> = { status: number; body: T; headers: Map<string, string> };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function createMockResponse<T = unknown>(): Response & { _result: RouteResult<T> } {
+  const result: RouteResult<T> = { status: 200, body: {} as T, headers: new Map() };
+  const res = {
+    _result: result,
+    statusCode: 200,
+    status(code: number) {
+      result.status = code;
+      this.statusCode = code;
+      return this;
+    },
+    json(payload: T) {
+      result.body = payload;
+      return this;
+    },
+    send(payload: T) {
+      result.body = payload;
+      return this;
+    },
+    setHeader(name: string, value: string) {
+      result.headers.set(name.toLowerCase(), value);
+      return this;
+    },
+    getHeader(name: string) {
+      return result.headers.get(name.toLowerCase());
+    },
+  } as unknown as Response & { _result: RouteResult<T> };
+  return res;
+}
+
+async function runHandler(handler: Function, req: unknown, res: unknown) {
+  return new Promise<void>((resolve, reject) => {
+    const result = handler(req, res, (err?: unknown) => {
+      if (err) reject(err);
+      else resolve();
+    });
+    if (result && typeof result.then === "function") {
+      result.then(resolve, reject);
+    }
+  });
+}
+
+async function invokeRoute<T = unknown>(
+  router: TestRouter,
+  method: string,
+  path: string,
+  options: { cookie?: string; body?: unknown } = {},
+): Promise<RouteResult<T>> {
+  const layer = router.stack.find(
+    (l) => l.route?.path === path && l.route.methods[method.toLowerCase()],
+  );
+  if (!layer?.route) throw new Error(`Route ${method} ${path} not found`);
+
+  const req = {
+    method: method.toUpperCase(),
+    path,
+    url: path,
+    params: {},
+    query: {},
+    body: options.body ?? {},
+    headers: {
+      cookie: options.cookie ?? "",
+      host: "localhost:5005",
+    },
+    get(name: string) {
+      if (name === "host") return "localhost:5005";
+      return undefined;
+    },
+    protocol: "http",
+  } as unknown as Request;
+
+  const res = createMockResponse<T>();
+
+  for (const handler of layer.route.stack) {
+    await runHandler(handler.handle, req, res);
+  }
+
+  return res._result;
+}
+
+// ---------------------------------------------------------------------------
+// Mock setup
+// ---------------------------------------------------------------------------
+
+const mockAccounts = new Map<string, Record<string, unknown>>();
+
+function createMockAccount(
+  id: string,
+  displayName: string,
+  badges: string[] = [],
+  themes: string[] = [],
+) {
+  const doc = {
+    _id: id,
+    id,
+    displayName,
+    badges,
+    activeBadges: [],
+    unlockedThemes: themes,
+    save: async () => {},
+  };
+  mockAccounts.set(id, doc);
+  return doc;
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("Shop routes", () => {
+  let router: TestRouter;
+
+  beforeEach(async () => {
+    resetTestSessions();
+    await installTestSessionMock();
+    mockAccounts.clear();
+
+    // Patch GameAccount
+    (GameAccount as unknown as Record<string, unknown>).findById = async (id: string) =>
+      mockAccounts.get(id) ?? null;
+
+    // Patch mongoose readyState
+    Object.defineProperty(mongoose.connection, "readyState", {
+      get: () => 1,
+      configurable: true,
+    });
+
+    // Delete Stripe env so getStripe() returns null by default
+    delete process.env.STRIPE_SECRET_KEY;
+
+    const mod = await import("../routes/shop.routes");
+    router = mod.default as unknown as TestRouter;
+  });
+
+  afterEach(() => {
+    resetTestSessions();
+  });
+
+  // ── GET /catalog ──
+
+  describe("GET /catalog", () => {
+    test("returns catalog without auth (guest browsing)", async () => {
+      const result = await invokeRoute(router, "GET", "/catalog");
+      assert.equal(result.status, 200);
+      assert.ok(Array.isArray((result.body as { catalog: unknown[] }).catalog));
+      const catalog = (result.body as { catalog: { type: string; id: string; owned: boolean }[] })
+        .catalog;
+      assert.ok(catalog.length > 0);
+      // All items should be unowned for unauthenticated user
+      assert.ok(catalog.every((item) => item.owned === false));
+    });
+
+    test("returns catalog with owned items for account user", async () => {
+      const account = createTestAccount("shopuser", "shop@test.com");
+      createMockAccount(account.player.playerId, "shopuser", ["supporter"], ["night"]);
+
+      const result = await invokeRoute(router, "GET", "/catalog", {
+        cookie: account.cookie,
+      });
+      assert.equal(result.status, 200);
+      const catalog = (result.body as { catalog: { type: string; id: string; owned: boolean }[] })
+        .catalog;
+
+      const supporterBadge = catalog.find((i) => i.type === "badge" && i.id === "supporter");
+      assert.ok(supporterBadge?.owned, "supporter badge should be owned");
+
+      const nightTheme = catalog.find((i) => i.type === "theme" && i.id === "night");
+      assert.ok(nightTheme?.owned, "night theme should be owned");
+
+      const contributorBadge = catalog.find((i) => i.type === "badge" && i.id === "contributor");
+      assert.ok(!contributorBadge?.owned, "contributor badge should not be owned");
+    });
+
+    test("returns catalog for guest user (browsing)", async () => {
+      const guest = createTestGuest("Guest");
+      const result = await invokeRoute(router, "GET", "/catalog", {
+        cookie: guest.cookie,
+      });
+      assert.equal(result.status, 200);
+      const catalog = (result.body as { catalog: { owned: boolean }[] }).catalog;
+      assert.ok(catalog.every((item) => item.owned === false));
+    });
+  });
+
+  // ── POST /checkout ──
+
+  describe("POST /checkout", () => {
+    test("returns 401 without auth", async () => {
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        body: { itemType: "badge", itemId: "supporter" },
+      });
+      assert.equal(result.status, 401);
+    });
+
+    test("returns 401 for guest user", async () => {
+      const guest = createTestGuest("Guest");
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        cookie: guest.cookie,
+        body: { itemType: "badge", itemId: "supporter" },
+      });
+      assert.equal(result.status, 401);
+    });
+
+    test("returns 503 when Stripe is not configured", async () => {
+      const account = createTestAccount("buyer", "buyer@test.com");
+      createMockAccount(account.player.playerId, "buyer");
+
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        cookie: account.cookie,
+        body: { itemType: "badge", itemId: "supporter" },
+      });
+      assert.equal(result.status, 503);
+      assert.equal((result.body as { code: string }).code, "STRIPE_NOT_CONFIGURED");
+    });
+
+    test("returns 400 for missing itemType/itemId", async () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+      const account = createTestAccount("buyer", "buyer@test.com");
+      createMockAccount(account.player.playerId, "buyer");
+
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        cookie: account.cookie,
+        body: {},
+      });
+      assert.equal(result.status, 400);
+    });
+
+    test("returns 404 for non-existent item", async () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+      const account = createTestAccount("buyer", "buyer@test.com");
+      createMockAccount(account.player.playerId, "buyer");
+
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        cookie: account.cookie,
+        body: { itemType: "badge", itemId: "nonexistent" },
+      });
+      assert.equal(result.status, 404);
+    });
+
+    test("returns 409 for already owned item", async () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+      const account = createTestAccount("buyer", "buyer@test.com");
+      createMockAccount(account.player.playerId, "buyer", ["supporter"]);
+
+      const result = await invokeRoute(router, "POST", "/checkout", {
+        cookie: account.cookie,
+        body: { itemType: "badge", itemId: "supporter" },
+      });
+      assert.equal(result.status, 409);
+      assert.equal((result.body as { code: string }).code, "ALREADY_OWNED");
+    });
+  });
+});

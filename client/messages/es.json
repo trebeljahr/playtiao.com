@@ -622,6 +622,7 @@
     "unmuteSounds": "Activar sonidos",
     "lobby": "Sala",
     "myGames": "Mis partidas",
+    "shop": "Tienda",
     "tutorial": "Tutorial",
     "friends": "Amigos",
     "tournaments": "Torneos",
@@ -638,7 +639,12 @@
     "contributor": "Contribuyente",
     "superSupporter": "Gran colaborador",
     "champion": "Campeón",
-    "creator": "Creador"
+    "creator": "Creador",
+    "supporterDesc": "Muestra tu apoyo a Tiao con esta insignia dorada.",
+    "contributorDesc": "Para jugadores que contribuyen a la comunidad de Tiao.",
+    "superSupporterDesc": "Una insignia dorada animada para colaboradores dedicados.",
+    "championDesc": "Una prestigiosa insignia púrpura para campeones de torneos.",
+    "creatorDesc": "La insignia arcoíris de creador — para quienes ayudaron a construir Tiao."
   },
   "adminBadges": {
     "title": "Gestión de insignias",
@@ -713,5 +719,21 @@
     "saving": "Guardando...",
     "continue": "Continuar",
     "profilePictureHint": "Haz clic para agregar una foto de perfil"
+  },
+  "shop": {
+    "title": "Tienda",
+    "description": "Explora y compra insignias y temas para el tablero.",
+    "badgesLabel": "Insignias",
+    "badgesTitle": "Insignias de jugador",
+    "badgesDesc": "Destácate con una insignia única junto a tu nombre.",
+    "themesLabel": "Temas",
+    "themesTitle": "Temas de tablero",
+    "themesDesc": "Personaliza tu tablero con temas premium.",
+    "buy": "Comprar",
+    "owned": "Adquirido",
+    "processing": "Procesando...",
+    "purchaseSuccess": "¡Compra completada! Tu {item} ha sido desbloqueado.",
+    "purchaseCancelled": "Compra cancelada.",
+    "adminPanel": "Panel de admin"
   }
 }

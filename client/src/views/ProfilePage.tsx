@@ -23,11 +23,10 @@ import {
 import { cn } from "@/lib/utils";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { getOAuthErrorMessage } from "@/lib/oauthErrors";
-import { isAdmin } from "@/lib/featureGate";
-import { UserBadge, type BadgeId, BADGE_DEFINITIONS, ALL_BADGE_IDS } from "@/components/UserBadge";
-import { updateActiveBadges, setAccountPassword } from "@/lib/api";
+import { setAccountPassword } from "@/lib/api";
 import { toast } from "sonner";
 import { SkeletonPage } from "@/components/ui/skeleton";
+import { BadgeSelector } from "@/components/BadgeSelector";
 import { useLocale, useTranslations } from "next-intl";
 
 const PROFILE_PIC_SIZE = 512;
@@ -75,123 +74,6 @@ function resizeImage(
 
     img.src = url;
   });
-}
-
-function BadgeSelector({
-  auth,
-  onAuthChange,
-}: {
-  auth: AuthResponse | null;
-  onAuthChange: (auth: AuthResponse) => void;
-}) {
-  const t = useTranslations("profile");
-  const badges = (auth?.player.badges ?? []) as BadgeId[];
-  const activeBadges = (auth?.player.activeBadges ?? []) as string[];
-
-  if (badges.length === 0) return null;
-
-  const updateBadges = (next: BadgeId[]) => {
-    // Update auth state instantly (navbar re-renders immediately)
-    if (auth) {
-      onAuthChange({ ...auth, player: { ...auth.player, activeBadges: next } });
-    }
-    // Sync to server (also triggers lobby WS notification for friends)
-    void updateActiveBadges(next).then(() => {
-      const badgeName = next.length > 0 ? BADGE_DEFINITIONS[next[0]]?.label : null;
-      toast.success(badgeName ? t("badgeUpdated", { badge: badgeName }) : t("badgeHiddenToast"));
-    });
-  };
-
-  const selectBadge = (badgeId: BadgeId) => {
-    // Single-select: clicking the already-active badge deselects it
-    const next = activeBadges.includes(badgeId) ? [] : [badgeId];
-    updateBadges(next as BadgeId[]);
-  };
-
-  const hideAll = () => {
-    updateBadges([]);
-  };
-
-  return (
-    <AnimatedCard delay={0.15}>
-      <PaperCard>
-        <CardHeader>
-          <CardTitle>{t("badge")}</CardTitle>
-          <CardDescription>{t("badgeDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {/* "None" option */}
-            <button
-              type="button"
-              onClick={hideAll}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
-                activeBadges.length === 0
-                  ? "border-[#8c7a5e] bg-[#f5ecd8] text-[#4e3d2c] shadow-xs"
-                  : "border-[#dcc7a3] text-[#9a8670] hover:border-[#b69a6e]",
-              )}
-            >
-              {t("badgeHidden")}
-            </button>
-
-            {badges.map((badgeId) => {
-              const def = BADGE_DEFINITIONS[badgeId];
-              if (!def) return null;
-              const isActive = activeBadges.includes(badgeId);
-
-              return (
-                <button
-                  key={badgeId}
-                  type="button"
-                  onClick={() => selectBadge(badgeId)}
-                  className={cn(
-                    "rounded-xl border p-2 transition-all",
-                    isActive
-                      ? "border-[#8c7a5e] bg-[#f5ecd8] shadow-xs"
-                      : "border-transparent hover:border-[#dcc7a3]",
-                  )}
-                >
-                  <UserBadge badge={badgeId} />
-                </button>
-              );
-            })}
-          </div>
-
-          {activeBadges.length > 0 && (
-            <p className="mt-3 text-xs text-[#9a8670]">
-              {t("badgeActive", {
-                badge: activeBadges
-                  .map((id) => BADGE_DEFINITIONS[id as BadgeId]?.label)
-                  .filter(Boolean)
-                  .join(", "),
-              })}
-            </p>
-          )}
-
-          {/* Dev preview: show all badges at all sizes for testing */}
-          {isAdmin(auth) && (
-            <div className="mt-5 rounded-xl border border-dashed border-[#c4a978]/50 p-3">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#b09a78]">
-                {t("devPreviewBadges")}
-              </p>
-              <div className="flex flex-col gap-3">
-                {ALL_BADGE_IDS.map((id) => (
-                  <div key={id} className="flex items-center gap-3">
-                    <UserBadge badge={id} />
-                    <UserBadge badge={id} compact />
-                    <span className="text-[11px] text-[#9a8670]">
-                      {t("badgeTier", { tier: BADGE_DEFINITIONS[id].tier, id })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </PaperCard>
-    </AnimatedCard>
-  );
 }
 
 const SOCIAL_PROVIDERS = [
@@ -1090,7 +972,7 @@ export function ProfilePage() {
               }}
             />
 
-            <BadgeSelector auth={auth} onAuthChange={onAuthChange} />
+            <BadgeSelector auth={auth} onAuthChange={onAuthChange} delay={0.15} />
 
             <Card className="border-red-300 bg-red-50/50">
               <CardHeader>

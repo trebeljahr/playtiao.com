@@ -622,6 +622,7 @@
     "unmuteSounds": "Ton an",
     "lobby": "Lobby",
     "myGames": "Meine Spiele",
+    "shop": "Shop",
     "tutorial": "Tutorial",
     "friends": "Freunde",
     "tournaments": "Turniere",
@@ -638,7 +639,12 @@
     "contributor": "Mitwirkender",
     "superSupporter": "Super-Unterstützer",
     "champion": "Champion",
-    "creator": "Erfinder"
+    "creator": "Erfinder",
+    "supporterDesc": "Zeige deine Unterstützung für Tiao mit diesem goldenen Abzeichen.",
+    "contributorDesc": "Für Spieler, die zur Tiao-Community beitragen.",
+    "superSupporterDesc": "Ein animiertes goldenes Abzeichen für engagierte Unterstützer.",
+    "championDesc": "Ein prestigeträchtiges lila Abzeichen für Turnier-Champions.",
+    "creatorDesc": "Das Regenbogen-Erfinder-Abzeichen — für die Erbauer von Tiao."
   },
   "adminBadges": {
     "title": "Abzeichen-Verwaltung",
@@ -713,5 +719,21 @@
     "saving": "Speichern...",
     "continue": "Weiter",
     "profilePictureHint": "Klicke, um ein Profilbild hinzuzufügen"
+  },
+  "shop": {
+    "title": "Shop",
+    "description": "Abzeichen und Brettdesigns kaufen.",
+    "badgesLabel": "Abzeichen",
+    "badgesTitle": "Spieler-Abzeichen",
+    "badgesDesc": "Hebe dich mit einem einzigartigen Abzeichen neben deinem Namen hervor.",
+    "themesLabel": "Designs",
+    "themesTitle": "Brettdesigns",
+    "themesDesc": "Passe dein Spielbrett mit Premium-Designs an.",
+    "buy": "Kaufen",
+    "owned": "Besitzt du",
+    "processing": "Wird verarbeitet...",
+    "purchaseSuccess": "Kauf abgeschlossen! Dein {item} wurde freigeschaltet.",
+    "purchaseCancelled": "Kauf abgebrochen.",
+    "adminPanel": "Admin-Panel"
   }
 }

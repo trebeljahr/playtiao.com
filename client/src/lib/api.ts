@@ -406,6 +406,27 @@ export function updateActiveBadges(activeBadges: string[]) {
   });
 }
 
+// ── Shop API ──
+
+export type ShopCatalogItem = {
+  type: "badge" | "theme";
+  id: string;
+  price: number;
+  currency: string;
+  owned: boolean;
+};
+
+export function getShopCatalog() {
+  return request<{ catalog: ShopCatalogItem[] }>("/api/shop/catalog");
+}
+
+export function createCheckoutSession(itemType: string, itemId: string) {
+  return request<{ url: string }>("/api/shop/checkout", {
+    method: "POST",
+    body: { itemType, itemId },
+  });
+}
+
 // ── Tournament API ──
 
 export function listPublicTournaments(status?: TournamentStatus) {

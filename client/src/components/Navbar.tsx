@@ -378,6 +378,12 @@ export function Navbar({
         ]
       : []),
     {
+      label: t("shop"),
+      active: pathname === "/shop",
+      onClick: () => handleNav("/shop"),
+      badge: 0,
+    },
+    {
       label: t("tutorial"),
       active: pathname === "/tutorial",
       onClick: () => handleNav("/tutorial"),
