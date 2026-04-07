@@ -135,58 +135,48 @@ export function ShopPage() {
     let attempts = 0;
     const maxAttempts = 30; // 30 × 200ms = 6s max wait
 
-    function tryScrollAndConfetti() {
+    let checks = 0;
+
+    function poll() {
       if (cancelled) return;
+      checks++;
+
+      // Re-query every time — React may replace DOM nodes during re-renders
       const el = document.getElementById(purchasedItem!);
-      if (el) {
-        // Re-query after a delay — fetchCatalog re-renders and replaces DOM nodes.
-        // The fresh element will have correct dimensions.
-        setTimeout(() => {
-          const freshEl = document.getElementById(purchasedItem!);
-          if (!freshEl) {
-            fireConfettiBurst(0.5, 0.45);
-            setPurchasedItem(null);
-            return;
-          }
+      const rect = el?.getBoundingClientRect();
+      const hasSize = rect && rect.width > 0 && rect.height > 0;
 
-          // Scroll the fresh element into view
-          freshEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el && hasSize) {
+        // Scroll into view with instant behavior for speed
+        el.scrollIntoView({ behavior: "instant", block: "center" });
 
-          // Wait for scroll to settle, then fire confetti
-          setTimeout(() => {
-            const rect = freshEl.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
+        // Read position after instant scroll (no delay needed)
+        requestAnimationFrame(() => {
+          const r = el.getBoundingClientRect();
+          const x = Math.max(0.05, Math.min(0.95, (r.left + r.width / 2) / window.innerWidth));
+          const y = Math.max(0.05, Math.min(0.95, (r.top + r.height / 2) / window.innerHeight));
 
-            const x = Math.max(0.05, Math.min(0.95, cx / vw));
-            const y = Math.max(0.05, Math.min(0.95, cy / vh));
-
-            fireConfettiBurst(x, y);
-            freshEl.classList.add("shop-purchase-wiggle");
-            freshEl.addEventListener(
-              "animationend",
-              () => freshEl.classList.remove("shop-purchase-wiggle"),
-              { once: true },
-            );
-            setPurchasedItem(null);
-          }, 600);
-        }, 500);
+          fireConfettiBurst(x, y);
+          el.classList.add("shop-purchase-wiggle");
+          el.addEventListener("animationend", () => el.classList.remove("shop-purchase-wiggle"), {
+            once: true,
+          });
+          setPurchasedItem(null);
+        });
         return;
       }
 
-      attempts++;
-      if (attempts >= maxAttempts) {
-        // Give up finding element — fire from center
+      if (checks > 50) {
+        // Give up — fire from center
         fireConfettiBurst(0.5, 0.45);
         setPurchasedItem(null);
       } else {
-        setTimeout(tryScrollAndConfetti, 200);
+        // Element not ready yet — keep polling
+        setTimeout(poll, 100);
       }
     }
 
-    tryScrollAndConfetti();
+    poll();
     return () => {
       cancelled = true;
     };

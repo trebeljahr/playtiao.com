@@ -70,9 +70,21 @@ function setCachedAuth(auth: AuthResponse | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<AuthResponse | null>(() => getCachedAuth());
-  const [authLoading, setAuthLoading] = useState(() => getCachedAuth() === null);
+  const [auth, setAuth] = useState<AuthResponse | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
+
+  // Hydrate from sessionStorage cache on mount (client-only) to avoid
+  // flash of skeleton when returning from external redirects like Stripe.
+  const [cacheHydrated, setCacheHydrated] = useState(false);
+  useEffect(() => {
+    const cached = getCachedAuth();
+    if (cached) {
+      setAuth(cached);
+      setAuthLoading(false);
+    }
+    setCacheHydrated(true);
+  }, []);
 
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogForced, setAuthDialogForced] = useState(false);
@@ -108,12 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Bootstrap: check better-auth session → if none, create anonymous guest
+  // Bootstrap: check better-auth session → if none, create anonymous guest.
+  // If we have cached auth, skip showing the loading state (background refresh).
   useEffect(() => {
+    if (!cacheHydrated) return;
     let cancelled = false;
 
     async function bootstrap() {
-      setAuthLoading(true);
+      // Only show loading spinner if we don't have cached auth
+      if (!auth) setAuthLoading(true);
       setAppError(null);
 
       try {
@@ -179,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [cacheHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wrap setAuth to also persist to sessionStorage
   const updateAuth = useCallback((nextAuth: AuthResponse | null) => {
