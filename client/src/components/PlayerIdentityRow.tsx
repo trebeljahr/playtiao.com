@@ -98,13 +98,6 @@ export function PlayerIdentityRow({
     <>
       <PlayerOverviewAvatar player={player} anonymous={anonymous} className={avatarClassName} />
       <div className="flex min-w-0 flex-col gap-0.5">
-        {badgesToShow.length > 0 && (
-          <div className="flex items-center gap-1">
-            {badgesToShow.map((id) => (
-              <UserBadge key={id} badge={id as BadgeId} compact />
-            ))}
-          </div>
-        )}
         <span
           className={cn(
             "truncate text-sm font-medium leading-tight",
@@ -136,6 +129,13 @@ export function PlayerIdentityRow({
             />
           )}
         </span>
+        {badgesToShow.length > 0 && (
+          <div className="flex items-center gap-1">
+            {badgesToShow.map((id) => (
+              <UserBadge key={id} badge={id as BadgeId} compact />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
