@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
@@ -82,8 +82,10 @@ function formatPrice(cents: number, currency: string): string {
 
 export function ShopPage() {
   const t = useTranslations("shop");
+  const tCommon = useTranslations("common");
   const tBadges = useTranslations("badges");
   const { auth, authLoading, applyAuth, onOpenAuth, onLogout } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
   const [catalog, setCatalog] = useState<ShopCatalogItem[] | null>(null);
@@ -245,6 +247,9 @@ export function ShopPage() {
       />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 pb-12 pt-20 sm:px-6 lg:px-8">
+        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
+          &larr; {tCommon("back")}
+        </Button>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-4xl text-[#2b1e14]">{t("title")}</h1>
