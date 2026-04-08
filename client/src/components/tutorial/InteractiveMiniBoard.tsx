@@ -103,7 +103,6 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
   const [completed, setCompleted] = useState(false);
   const [showOverlay, setShowOverlay] = useState(!!overlayHint);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [confirmHovered, setConfirmHovered] = useState(false);
   const [undoHovered, setUndoHovered] = useState(false);
   const [shakePos, setShakePos] = useState<Pos | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -130,7 +129,6 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     setPendingCaptures([]);
     setCompleted(false);
     setHoveredKey(null);
-    setConfirmHovered(false);
     setUndoHovered(false);
     setShakePos(null);
     setErrorMsg(null);
@@ -189,14 +187,14 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
 
     // Guided jump interactions
     if (interaction.type === "guided-jump") {
+      if (forcedOrigin && posEq(pos, forcedOrigin)) {
+        confirmJump();
+        return;
+      }
       if (!selected && posEq(pos, interaction.selectPiece)) {
         setSelected(pos);
       } else if (selected && posEq(pos, interaction.jumpTo)) {
         executeJump(selected, pos);
-        // Auto-confirm after delay
-        setTimeout(() => {
-          confirmJump();
-        }, 500);
       }
       return;
     }
@@ -352,7 +350,9 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     if (completed || completedRef.current) return null;
 
     if (interaction.type === "guided-jump") {
-      if (hasPending) return null; // Jump executed, waiting for auto-confirm
+      if (hasPending && forcedOrigin) {
+        return { pos: forcedOrigin, label: t("_clickPieceToConfirm") };
+      }
       if (!selected) return { pos: interaction.selectPiece, label: t("_selectPiece") };
       return { pos: interaction.jumpTo, label: t("_jumpHere") };
     }
@@ -377,6 +377,11 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
         return { pos: interaction.firstSelect, label: t("_selectPiece") };
       }
       if (hasPending && forcedOrigin) {
+        // While more jumps are available, point at the next jump target.
+        // Only show the confirm hint once the chain has nowhere left to go.
+        if (jumpTargetPositions.length > 0) {
+          return { pos: jumpTargetPositions[0], label: t("_jumpHere") };
+        }
         return { pos: forcedOrigin, label: t("_clickPieceToConfirm") };
       }
     }
@@ -417,9 +422,6 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
       return () => clearTimeout(timer);
     }
   }, [showMobileConfirmHint]);
-
-  // Show confirm affordance when hovering forced origin
-  const showConfirmOverlay = !!forcedOrigin && hasPending && confirmHovered && !completed;
 
   // --- Rendering ---
   const gs = gridStart(size);
@@ -538,11 +540,9 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                   onPointerEnter={() => {
                     if (!active || completed) return;
                     setHoveredKey(key);
-                    if (showConfirmAffordance) setConfirmHovered(true);
                   }}
                   onPointerLeave={() => {
                     if (hoveredKey === key) setHoveredKey(null);
-                    if (showConfirmAffordance) setConfirmHovered(false);
                     setUndoHovered(false);
                   }}
                   className={cn(
@@ -806,38 +806,6 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                 })()}
             </svg>
 
-            {/* Confirm overlay + label */}
-            {showConfirmOverlay && forcedOrigin && (
-              <>
-                <span
-                  className="pointer-events-none absolute z-95 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
-                  style={{
-                    left: `${pointPct(forcedOrigin.x, size)}%`,
-                    top: `${pointPct(forcedOrigin.y, size)}%`,
-                  }}
-                >
-                  <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5" fill="none">
-                    <path
-                      d="M3.5 8.25L6.6 11.35L12.5 5.45"
-                      stroke="currentColor"
-                      strokeWidth="2.1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <span
-                  className="pointer-events-none absolute z-95 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#a7c191]/80 bg-[rgba(247,253,243,0.96)] px-2 py-0.5 text-[10px] font-semibold text-[#5e7b4e] shadow-sm"
-                  style={{
-                    left: `${pointPct(forcedOrigin.x, size)}%`,
-                    top: `calc(${pointPct(forcedOrigin.y, size)}% + 18px)`,
-                  }}
-                >
-                  {IS_TOUCH_DEVICE ? t("_tapToConfirm") : t("_clickPieceToConfirm")}
-                </span>
-              </>
-            )}
-
             {/* Undo button */}
             {hasPending && lastJump && !completed && active && (
               <button
@@ -1008,8 +976,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
         )}
 
         {/* Step-by-step overlay instruction — dismisses on first interaction.
-            Extends slightly past the board bounds so nudge labels that translate
-            outside the board (via -translate-x-1/2) are also covered. */}
+            Sized to exactly cover the board container. */}
         <AnimatePresence>
           {showOverlay && overlayHint && !completed && (
             <motion.div
@@ -1017,7 +984,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="absolute -inset-8 z-100 flex items-center justify-center rounded-3xl bg-black/45 backdrop-blur-[2px]"
+              className="absolute inset-0 z-100 flex items-center justify-center rounded-[1.2rem] bg-black/45 backdrop-blur-[2px]"
               onClick={() => setShowOverlay(false)}
             >
               <div className="flex flex-col items-center gap-3 px-4 text-center">
