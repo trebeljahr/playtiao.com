@@ -26,9 +26,14 @@ vi.mock("sonner", () => {
   const toastFn = vi.fn() as ReturnType<typeof vi.fn> & {
     dismiss: ReturnType<typeof vi.fn>;
     success: ReturnType<typeof vi.fn>;
+    custom: ReturnType<typeof vi.fn>;
   };
   toastFn.dismiss = vi.fn();
   toastFn.success = vi.fn();
+  // `toast.custom` is used by the rematch toast path. Mock it so tests that
+  // simulate game-update messages don't crash on `toast.custom is not a
+  // function`.
+  toastFn.custom = vi.fn();
   return { toast: toastFn };
 });
 
@@ -437,6 +442,73 @@ describe("SocialNotificationsContext", () => {
     });
 
     expect(result.current.incomingRematchCount).toBe(0);
+  });
+
+  it("clearRematchNotification drops the gameId from incomingRematchCount immediately", async () => {
+    // Accepting a rematch from the game page sends a socket message but the
+    // server may not re-broadcast the old game's finished snapshot, so the
+    // lobby bubble would stay lit. clearRematchNotification gives callers a
+    // way to drop a single rematch from the client state without waiting.
+    mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetSocialOverview).toHaveBeenCalled();
+    });
+
+    simulateLobbyMessage({
+      type: "game-update",
+      summary: {
+        gameId: "rematch-accept-1",
+        status: "finished",
+        rematch: { requestedBy: ["black"] },
+        yourSeat: "white",
+        seats: {
+          white: { player: { displayName: "Me" } },
+          black: { player: { displayName: "Opponent" } },
+        },
+      },
+    });
+
+    expect(result.current.incomingRematchCount).toBe(1);
+    expect(result.current.unacknowledgedRematchCount).toBe(1);
+
+    act(() => {
+      result.current.clearRematchNotification("rematch-accept-1");
+    });
+
+    expect(result.current.incomingRematchCount).toBe(0);
+    expect(result.current.unacknowledgedRematchCount).toBe(0);
+  });
+
+  it("clearFriendRequestNotification drops the request from unacknowledgedFriendRequestCount", async () => {
+    // Accepting a friend request anywhere (lobby button, in-game toast)
+    // should clear the bubble immediately. The underlying overview list
+    // still contains the entry until the server confirms and broadcasts,
+    // but we want the badge count to drop right away.
+    const overviewWithRequest: SocialOverview = {
+      friends: [],
+      incomingFriendRequests: [{ playerId: "friend-1", displayName: "Friend One" } as never],
+      outgoingFriendRequests: [],
+      incomingInvitations: [],
+      outgoingInvitations: [],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview: overviewWithRequest });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(1);
+    });
+
+    act(() => {
+      result.current.clearFriendRequestNotification("friend-1");
+    });
+
+    expect(result.current.unacknowledgedFriendRequestCount).toBe(0);
+    // The overview itself still has the entry — only the unack count drops.
+    expect(result.current.pendingFriendRequestCount).toBe(1);
   });
 
   it("does not count outgoing rematch requests in incomingRematchCount", async () => {

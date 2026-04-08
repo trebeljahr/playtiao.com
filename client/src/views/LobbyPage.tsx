@@ -131,8 +131,12 @@ export function LobbyPage() {
   const [joinGameId, setJoinGameId] = useState("");
   const [multiplayerBusy, setMultiplayerBusy] = useState(false);
   const [rematchBusyGameId, setRematchBusyGameId] = useState<string | null>(null);
-  const { acknowledgeInvitations, isInvitationAcknowledged, isRematchAcknowledged } =
-    useSocialNotifications();
+  const {
+    acknowledgeInvitations,
+    isInvitationAcknowledged,
+    isRematchAcknowledged,
+    clearRematchNotification,
+  } = useSocialNotifications();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const multiplayerConfig = useGameConfig("multiplayer");
 
@@ -291,6 +295,9 @@ export function LobbyPage() {
 
   async function handleAcceptRematch(gameId: string) {
     setRematchBusyGameId(gameId);
+    // Clear from lobby bubble immediately so the badge drops the instant
+    // the user clicks accept, without waiting for the server broadcast.
+    clearRematchNotification(gameId);
     try {
       const { newGameId } = await requestRematchRest(gameId);
       router.push(`/game/${newGameId}`);

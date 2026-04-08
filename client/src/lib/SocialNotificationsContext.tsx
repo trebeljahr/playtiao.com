@@ -107,6 +107,13 @@ type SocialNotificationsContextValue = {
   isRematchAcknowledged: (gameId: string) => boolean;
   acknowledgeInvitations: () => void;
   acknowledgeFriendRequests: () => void;
+  /** Clear a single rematch from the lobby bubble immediately (used when the
+   *  user accepts a rematch from anywhere — game page, toast, lobby button —
+   *  so the badge drops without waiting for the server broadcast). */
+  clearRematchNotification: (gameId: string) => void;
+  /** Same idea for friend requests: mark as acknowledged locally so the
+   *  bubble updates the instant the user accepts. */
+  clearFriendRequestNotification: (playerId: string) => void;
   refreshNotifications: () => void;
 };
 
@@ -122,6 +129,8 @@ const SocialNotificationsContext = createContext<SocialNotificationsContextValue
   isRematchAcknowledged: () => true,
   acknowledgeInvitations: () => {},
   acknowledgeFriendRequests: () => {},
+  clearRematchNotification: () => {},
+  clearFriendRequestNotification: () => {},
   refreshNotifications: () => {},
 });
 
@@ -155,6 +164,13 @@ export function SocialNotificationsProvider({
   // items the user already saw this session.
   const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
 
+  // Refs to the granular clear-on-accept callbacks. The toast-building
+  // useCallbacks below capture these via ref so we don't need to thread the
+  // clear functions through their dependency arrays (which would force every
+  // toast to re-render whenever acknowledgedIds changes).
+  const clearRematchNotificationRef = useRef<(gameId: string) => void>(() => {});
+  const clearFriendRequestNotificationRef = useRef<(playerId: string) => void>(() => {});
+
   // ---------------------------------------------------------------------------
   // Toast helpers (shared between initial fetch and WebSocket updates)
   // ---------------------------------------------------------------------------
@@ -183,6 +199,9 @@ export function SocialNotificationsProvider({
           action: {
             label: "Accept",
             onClick: () => {
+              // Clear from bubble immediately so the badge drops even if
+              // the server broadcast is slow.
+              clearFriendRequestNotificationRef.current(reqPlayerId);
               void (async () => {
                 try {
                   await acceptFriendRequest(reqPlayerId);
@@ -498,6 +517,10 @@ export function SocialNotificationsProvider({
             roomType={summary.roomType}
             onAccept={() => {
               toast.dismiss(toastId);
+              // Drop from lobby bubble immediately; server broadcast will
+              // eventually confirm but we don't want the user to see a
+              // stale badge while the rematch navigation is in flight.
+              clearRematchNotificationRef.current(rematchGameId);
               void (async () => {
                 try {
                   const { newGameId } = await requestRematchRest(rematchGameId);
@@ -670,6 +693,44 @@ export function SocialNotificationsProvider({
     });
   }, [overview.incomingFriendRequests]);
 
+  // Granular clear-on-accept: drop a single rematch or friend request from
+  // the lobby bubble the instant the user acts, without waiting for the
+  // server's social-update / game-update broadcast to round-trip.
+  const clearRematchNotification = useCallback((gameId: string) => {
+    setIncomingRematchGameIds((prev) => {
+      if (!prev.has(gameId)) return prev;
+      const next = new Set(prev);
+      next.delete(gameId);
+      return next;
+    });
+    const playerId = playerIdRef.current;
+    if (!playerId) return;
+    setAcknowledgedIds((prev) => {
+      const key = `rematch:${gameId}`;
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      persistAckedIds(playerId, next);
+      return next;
+    });
+  }, []);
+
+  const clearFriendRequestNotification = useCallback((playerId: string) => {
+    const currentPlayerId = playerIdRef.current;
+    if (!currentPlayerId) return;
+    setAcknowledgedIds((prev) => {
+      const key = `friend-request:${playerId}`;
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      persistAckedIds(currentPlayerId, next);
+      return next;
+    });
+  }, []);
+
+  clearRematchNotificationRef.current = clearRematchNotification;
+  clearFriendRequestNotificationRef.current = clearFriendRequestNotification;
+
   const isFriendRequestAcknowledged = useCallback(
     (playerId: string) => acknowledgedIds.has(`friend-request:${playerId}`),
     [acknowledgedIds],
@@ -697,6 +758,8 @@ export function SocialNotificationsProvider({
         isRematchAcknowledged,
         acknowledgeInvitations,
         acknowledgeFriendRequests,
+        clearRematchNotification,
+        clearFriendRequestNotification,
         refreshNotifications: fetchOverview,
       }}
     >

@@ -26,6 +26,7 @@ import {
 } from "@/components/game/GameShared";
 import { useMultiplayerGame } from "@/lib/hooks/useMultiplayerGame";
 import { useSocialData } from "@/lib/hooks/useSocialData";
+import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { TournamentContextBar } from "@/components/tournament/TournamentContextBar";
@@ -187,6 +188,7 @@ export function MultiplayerGamePage() {
 
   const social = useSocialData(auth, false);
   const liveSocialOverview = social.socialOverview;
+  const { clearRematchNotification } = useSocialNotifications();
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [forfeitDialogOpen, setForfeitDialogOpen] = useState(false);
@@ -1601,6 +1603,11 @@ export function MultiplayerGamePage() {
                                     });
                                     if (multiplayerSnapshot.rematch?.requestedBy.length) {
                                       toast.dismiss(`rematch-${multiplayerSnapshot.gameId}`);
+                                      // Accepting an incoming rematch — drop
+                                      // it from the lobby bubble now so the
+                                      // badge clears even if we navigate
+                                      // before the server broadcast lands.
+                                      clearRematchNotification(multiplayerSnapshot.gameId);
                                     } else {
                                       toast.success(t("rematchSent"));
                                     }

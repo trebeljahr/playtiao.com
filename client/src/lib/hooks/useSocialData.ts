@@ -48,7 +48,7 @@ function patchSocialSummary(
 }
 
 export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites: boolean) {
-  const { refreshNotifications } = useSocialNotifications();
+  const { refreshNotifications, clearFriendRequestNotification } = useSocialNotifications();
   const [socialOverview, setSocialOverview] = useState<SocialOverview>(EMPTY_SOCIAL_OVERVIEW);
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialLoaded, setSocialLoaded] = useState(false);
@@ -173,6 +173,9 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
       }
 
       setSocialActionBusyKey(`friend-accept:${accountId}`);
+      // Drop from the lobby bubble immediately so the badge clears the
+      // instant the user clicks accept.
+      clearFriendRequestNotification(accountId);
 
       try {
         await acceptFriendRequest(accountId);
@@ -184,7 +187,7 @@ export function useSocialData(auth: AuthResponse | null, canToastIncomingInvites
         setSocialActionBusyKey(null);
       }
     },
-    [auth, refreshSocialOverview, runFriendSearch],
+    [auth, refreshSocialOverview, runFriendSearch, clearFriendRequestNotification],
   );
 
   const handleDeclineFriendRequest = useCallback(
