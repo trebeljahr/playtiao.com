@@ -240,7 +240,7 @@ export function FriendsPage() {
                           {social.socialOverview.friends.map((friend) => (
                             <div
                               key={friend.playerId}
-                              className="flex items-center justify-between gap-3 rounded-xl bg-white/40 p-3"
+                              className="flex flex-col gap-2 rounded-xl bg-white/40 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                             >
                               <PlayerIdentityRow
                                 player={friend}
@@ -249,7 +249,7 @@ export function FriendsPage() {
                                 linkToProfile
                                 className="min-w-0"
                               />
-                              <div className="flex shrink-0 items-center gap-2">
+                              <div className="flex shrink-0 flex-wrap items-center gap-2">
                                 <Button
                                   size="sm"
                                   variant="outline"

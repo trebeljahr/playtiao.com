@@ -56,7 +56,7 @@ function PlayerRow({
   anonymous?: boolean;
 }) {
   const gameStats = (
-    <div className="ml-auto flex shrink-0 items-center gap-2.5">
+    <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5">
       {isWinner && (
         <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
           {winnerLabel}
@@ -177,9 +177,9 @@ export function MatchHistoryCard({
   })();
 
   return (
-    <div className={cn("rounded-2xl border p-4 space-y-3", resultBg)}>
+    <div className={cn("rounded-2xl border p-3 space-y-3 sm:p-4", resultBg)}>
       {/* Header: result badge + reason + actions */}
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {result && (
             <Badge
