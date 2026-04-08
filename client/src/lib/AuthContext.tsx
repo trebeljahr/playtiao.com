@@ -326,15 +326,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const onLogout = useCallback(async () => {
-    // Order matters: we do the server-side signout + new-guest-session
-    // dance FIRST while React state is still "logged in", then navigate
-    // via a full page load, and only the fresh page sees the guest
-    // session. If we flipped `auth` to null up front, any page that
-    // requires an account (/friends, /games, /settings, etc.) would
-    // flash its logged-out state (or redirect to the lobby) before the
-    // navigation landed — a visible glitch. Full-page navigation to "/"
-    // also naturally resets React tree + in-memory caches so there's no
-    // need to clear them manually beforehand.
+    // Clear persistent per-browser flags that belong to the departing
+    // account *first*, before anything else. The tutorial-seen flag is
+    // stored in localStorage so the next guest shouldn't inherit it, and
+    // clearing it early (before signOut / signIn.anonymous / navigation)
+    // means the lobby LobbyPage's banner state initializer — which reads
+    // localStorage synchronously on mount — sees the cleared state from
+    // the very first render on the new page. No "jump in" of the tutorial
+    // banner after the page paints.
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("tiao:knowsHowToPlay");
+    }
+
+    // Order matters for the rest: do the server-side signout + new-guest
+    // session dance while React state is still "logged in", then navigate
+    // via a full page load. Only the fresh page sees the guest session.
+    // If we flipped `auth` to null up front, any page that requires an
+    // account (/friends, /games, /settings, /admin) would flash its
+    // logged-out state (or redirect to the lobby) before the navigation
+    // landed — a visible glitch. The full page load also naturally resets
+    // the React tree + in-memory caches so there's no need to manually
+    // clear them beforehand.
     try {
       await authClient.signOut();
       // Create a new anonymous guest session after logout so the reloaded
@@ -349,12 +361,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Clear persistent per-browser flags that belong to the departing
-    // account — the tutorial-seen flag is stored in localStorage so the
-    // next guest shouldn't inherit it.
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("tiao:knowsHowToPlay");
-    }
     setCachedAuth(null);
 
     // Navigate to the lobby via a full page load — rebuilds the React
