@@ -626,8 +626,12 @@ export function ShopPage() {
                         <div className="mb-3 w-full">
                           <ThemeSwatch theme={theme} />
                         </div>
-                        <h3 className="text-sm font-semibold text-[#2b1e14]">{theme.name}</h3>
-                        <p className="text-xs text-[#6e5b48] mt-0.5">{theme.description}</p>
+                        <h3 className="text-sm font-semibold text-[#2b1e14]">
+                          {t(`themes.${theme.id}.name`)}
+                        </h3>
+                        <p className="text-xs text-[#6e5b48] mt-0.5">
+                          {t(`themes.${theme.id}.description`)}
+                        </p>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <span className="font-display text-base font-bold text-[#2b1e14]">

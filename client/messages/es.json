@@ -868,6 +868,28 @@
     "themesLabel": "Temas",
     "themesTitle": "Temas de tablero",
     "themesDesc": "Personaliza tu tablero con temas premium.",
+    "themes": {
+      "classic": {
+        "name": "Clásico",
+        "description": "Tablero de madera tradicional"
+      },
+      "night": {
+        "name": "Noche",
+        "description": "Tablero de pizarra oscura para poca luz"
+      },
+      "sakura": {
+        "name": "Sakura",
+        "description": "Rosa suave de flor de cerezo"
+      },
+      "ocean": {
+        "name": "Océano",
+        "description": "Tablero marino azul verdoso"
+      },
+      "marble": {
+        "name": "Mármol",
+        "description": "Tablero de piedra gris fría"
+      }
+    },
     "buy": "Comprar",
     "owned": "Adquirido",
     "processing": "Procesando...",

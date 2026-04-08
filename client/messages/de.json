@@ -868,6 +868,28 @@
     "themesLabel": "Designs",
     "themesTitle": "Brettdesigns",
     "themesDesc": "Passe dein Spielbrett mit Premium-Designs an.",
+    "themes": {
+      "classic": {
+        "name": "Klassisch",
+        "description": "Traditionelles Holzbrett"
+      },
+      "night": {
+        "name": "Nacht",
+        "description": "Dunkles Schieferbrett für schwaches Licht"
+      },
+      "sakura": {
+        "name": "Sakura",
+        "description": "Sanftes Kirschblüten-Rosa"
+      },
+      "ocean": {
+        "name": "Ozean",
+        "description": "Tiefblau-grünes Meeresbrett"
+      },
+      "marble": {
+        "name": "Marmor",
+        "description": "Kühles graues Steinbrett"
+      }
+    },
     "buy": "Kaufen",
     "owned": "Gekauft",
     "processing": "Wird verarbeitet...",

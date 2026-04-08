@@ -868,6 +868,28 @@
     "themesLabel": "Themes",
     "themesTitle": "Board Themes",
     "themesDesc": "Customize your game board with premium themes.",
+    "themes": {
+      "classic": {
+        "name": "Classic",
+        "description": "Traditional wooden board"
+      },
+      "night": {
+        "name": "Night",
+        "description": "Dark slate board for low-light play"
+      },
+      "sakura": {
+        "name": "Sakura",
+        "description": "Soft cherry-blossom pink"
+      },
+      "ocean": {
+        "name": "Ocean",
+        "description": "Deep blue-green sea board"
+      },
+      "marble": {
+        "name": "Marble",
+        "description": "Cool grey stone board"
+      }
+    },
     "buy": "Buy",
     "owned": "Owned",
     "processing": "Processing...",
