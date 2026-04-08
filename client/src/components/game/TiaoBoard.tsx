@@ -708,8 +708,17 @@ export function TiaoBoard({
                 <span
                   className="pointer-events-none absolute inset-[6.5%] rounded-full border-[2.5px]"
                   style={{
-                    borderColor: theme.selectedBorder,
-                    boxShadow: `0 0 0 4px ${theme.selectedBorder}33`,
+                    // When the selected piece can jump, use a subtle green
+                    // outline that visually ties the selection to the green
+                    // jump-preview arrows.  Otherwise fall back to the
+                    // default selection color (e.g. multiplayer where a
+                    // non-jumpable piece can still be selected).
+                    borderColor: isSelectableOrigin
+                      ? `${theme.jumpArrowGreenFill}b3`
+                      : theme.selectedBorder,
+                    boxShadow: isSelectableOrigin
+                      ? `0 0 0 3px ${theme.jumpArrowGreenFill}2e`
+                      : `0 0 0 4px ${theme.selectedBorder}33`,
                   }}
                 />
               ) : isLastMove && piece ? (
@@ -761,7 +770,7 @@ export function TiaoBoard({
                       piece === "black" ? theme.blackPieceBorder : theme.whitePieceBorder,
                     background: piece === "black" ? theme.blackPieceBg : theme.whitePieceBg,
                     boxShadow:
-                      isSelectableOrigin && !disabled && (hasPendingJump || isSelected)
+                      isSelectableOrigin && !disabled && hasPendingJump
                         ? theme.selectableGlow
                         : theme.pieceShadow,
                   }}
