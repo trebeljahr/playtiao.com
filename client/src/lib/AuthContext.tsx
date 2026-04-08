@@ -326,6 +326,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetBoardTheme();
     resetActiveBadges();
 
+    // The tutorial-seen flag is stored per-browser in localStorage so
+    // signed-out guests don't get the rules intro on every visit. On logout
+    // we're handing the browser back to a fresh anonymous guest, so that
+    // flag has to be cleared — otherwise the next guest inherits the
+    // previous account's "already saw the tutorial" state and the
+    // rules intro / lobby tutorial banner never appears for them.
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("tiao:tutorialComplete");
+    }
+
     try {
       await authClient.signOut();
 
