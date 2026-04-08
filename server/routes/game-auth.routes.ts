@@ -14,7 +14,8 @@ import { auth } from "../auth/auth";
 import { getPlayerFromRequest, requireAccount, requireAdmin } from "../auth/sessionHelper";
 import { sanitizeDisplayName } from "../game/playerTokens";
 import { isValidUsername } from "../../shared/src";
-import { BUCKET_NAME, CLOUDFRONT_URL } from "../config/envVars";
+import { BUCKET_NAME, CLOUDFRONT_URL, FRONTEND_URL, PORT } from "../config/envVars";
+import { sendEmailChangeVerification } from "../auth/email";
 import { s3Client } from "../config/s3Client";
 import { handleRouteError } from "../error-handling/routeError";
 import { escapeRegExp } from "../error-handling/escapeRegExp";
@@ -38,6 +39,22 @@ function isDatabaseReady(): boolean {
  */
 function baIdFilter(id: string): { $in: [string, ObjectId] } {
   return { $in: [id, new ObjectId(id)] };
+}
+
+/**
+ * Verify that the given plain-text password matches the user's stored credential.
+ * Returns true if valid, false otherwise. Returns false if the user has no credential
+ * account (SSO-only).
+ */
+async function verifyPassword(accountId: string, password: string): Promise<boolean> {
+  const db = mongoose.connection.getClient().db();
+  const cred = await db.collection("account").findOne({
+    userId: baIdFilter(accountId),
+    providerId: "credential",
+  } as any);
+  if (!cred?.password) return false;
+  const bcrypt = await import("bcrypt");
+  return bcrypt.compare(password, cred.password as string);
 }
 
 /** Look up a user's email from better-auth's user collection. */
@@ -143,6 +160,16 @@ async function getProvidersForAccount(accountId: string): Promise<string[]> {
     .collection("account")
     .find({ userId: baIdFilter(accountId) } as any)
     .toArray();
+
+  // Migrate any account docs that have string userId to ObjectId so that
+  // Better Auth's own APIs (changePassword, unlinkAccount) can find them.
+  const oid = new ObjectId(accountId);
+  for (const acc of accounts) {
+    if (typeof acc.userId === "string") {
+      await db.collection("account").updateOne({ _id: acc._id }, { $set: { userId: oid } });
+    }
+  }
+
   return accounts.map((a) => a.providerId as string);
 }
 
@@ -685,6 +712,25 @@ router.put("/profile", async (req: Request, res: Response) => {
         });
       }
 
+      // If the user has a credential provider, require their current password
+      // to confirm the username change.
+      const providers = await getProvidersForAccount(account.id);
+      if (providers.includes("credential")) {
+        if (!currentPassword) {
+          return res.status(400).json({
+            code: "CURRENT_PASSWORD_REQUIRED",
+            message: "Current password is required to change your username.",
+          });
+        }
+        const ok = await verifyPassword(account.id, currentPassword);
+        if (!ok) {
+          return res.status(401).json({
+            code: "INVALID_PASSWORD",
+            message: "Current password is incorrect.",
+          });
+        }
+      }
+
       const existingAccountByDisplayName = await GameAccount.findOne({
         displayName: sanitizedDisplayName,
         _id: { $ne: account._id },
@@ -875,6 +921,143 @@ router.post("/set-password", async (req: Request, res: Response) => {
     return res.status(200).json({ providers: updatedProviders });
   } catch (error) {
     return handleRouteError(res, error, "Unable to set password right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Email change (with password confirmation + verification of new address)
+// ---------------------------------------------------------------------------
+
+const EMAIL_CHANGE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+router.post("/request-email-change", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    const { newEmail, currentPassword } = req.body as {
+      newEmail?: string;
+      currentPassword?: string;
+    };
+
+    if (!newEmail || typeof newEmail !== "string" || !newEmail.includes("@")) {
+      return res.status(400).json({
+        code: "INVALID_EMAIL",
+        message: "Provide a valid email address.",
+      });
+    }
+
+    const trimmedEmail = newEmail.trim().toLowerCase();
+
+    if (!currentPassword || typeof currentPassword !== "string") {
+      return res.status(400).json({
+        code: "CURRENT_PASSWORD_REQUIRED",
+        message: "Current password is required to change your email.",
+      });
+    }
+
+    // Verify the password
+    const ok = await verifyPassword(account.id, currentPassword);
+    if (!ok) {
+      return res.status(401).json({
+        code: "INVALID_PASSWORD",
+        message: "Current password is incorrect.",
+      });
+    }
+
+    // Check the new email isn't already in use by another account
+    const db = mongoose.connection.getClient().db();
+    const existing = await db.collection("user").findOne({
+      email: trimmedEmail,
+      _id: { $ne: new ObjectId(account.id) },
+    } as any);
+    if (existing) {
+      return res.status(409).json({
+        code: "EMAIL_IN_USE",
+        message: "That email address is already in use by another account.",
+      });
+    }
+
+    // Reuse Better Auth's verification collection. Identifier is namespaced
+    // to avoid clashing with other verification flows.
+    const token = randomUUID();
+    const identifier = `email-change:${account.id}`;
+    const expiresAt = new Date(Date.now() + EMAIL_CHANGE_TOKEN_TTL_MS);
+
+    // Remove any prior pending email-change tokens for this user
+    await db.collection("verification").deleteMany({ identifier } as any);
+
+    await db.collection("verification").insertOne({
+      identifier,
+      value: JSON.stringify({ newEmail: trimmedEmail, token }),
+      expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const baseUrl = FRONTEND_URL || `http://localhost:${PORT}`;
+    const confirmUrl = `${baseUrl}/api/player/confirm-email-change?token=${encodeURIComponent(
+      token,
+    )}&uid=${encodeURIComponent(account.id)}`;
+
+    await sendEmailChangeVerification(trimmedEmail, confirmUrl);
+
+    return res.status(200).json({ status: "sent" });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to send verification email right now.", req);
+  }
+});
+
+router.get("/confirm-email-change", async (req: Request, res: Response) => {
+  try {
+    const token = req.query.token as string | undefined;
+    const uid = req.query.uid as string | undefined;
+    const baseUrl = FRONTEND_URL || `http://localhost:${PORT}`;
+
+    if (!token || !uid) {
+      return res.redirect(`${baseUrl}/settings?emailChange=invalid`);
+    }
+
+    const db = mongoose.connection.getClient().db();
+    const identifier = `email-change:${uid}`;
+    const record = await db.collection("verification").findOne({ identifier } as any);
+
+    if (!record) {
+      return res.redirect(`${baseUrl}/settings?emailChange=invalid`);
+    }
+
+    if (record.expiresAt && new Date(record.expiresAt as Date) < new Date()) {
+      await db.collection("verification").deleteOne({ _id: record._id });
+      return res.redirect(`${baseUrl}/settings?emailChange=expired`);
+    }
+
+    let payload: { newEmail: string; token: string };
+    try {
+      payload = JSON.parse(record.value as string);
+    } catch {
+      return res.redirect(`${baseUrl}/settings?emailChange=invalid`);
+    }
+
+    if (payload.token !== token) {
+      return res.redirect(`${baseUrl}/settings?emailChange=invalid`);
+    }
+
+    // Apply the email change in BA's user collection
+    await db
+      .collection("user")
+      .updateOne(
+        { _id: baIdFilter(uid) as any },
+        { $set: { email: payload.newEmail, emailVerified: true } },
+      );
+
+    // Clean up the token
+    await db.collection("verification").deleteOne({ _id: record._id });
+
+    return res.redirect(`${baseUrl}/settings?emailChange=success`);
+  } catch (error) {
+    const baseUrl = FRONTEND_URL || `http://localhost:${PORT}`;
+    console.error("[email-change] Confirmation failed:", error);
+    return res.redirect(`${baseUrl}/settings?emailChange=error`);
   }
 });
 

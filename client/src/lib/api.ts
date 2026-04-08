@@ -393,6 +393,13 @@ export function setAccountPassword(body: {
   });
 }
 
+export function requestEmailChange(body: { newEmail: string; currentPassword: string }) {
+  return request<{ status: "sent" }>("/api/player/request-email-change", {
+    method: "POST",
+    body,
+  });
+}
+
 export function deleteAccount(displayName: string) {
   return request<{ message: string }>("/api/player/account", {
     method: "DELETE",

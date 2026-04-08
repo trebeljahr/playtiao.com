@@ -22,9 +22,9 @@ import {
 } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { getOAuthErrorMessage } from "@/lib/oauthErrors";
-import { setAccountPassword } from "@/lib/api";
+import { setAccountPassword, requestEmailChange } from "@/lib/api";
 import { toast } from "sonner";
-import { SkeletonPage } from "@/components/ui/skeleton";
+import { SkeletonBlock, SkeletonPage } from "@/components/ui/skeleton";
 import { BadgeSelector } from "@/components/BadgeSelector";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -415,7 +415,6 @@ export function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -428,6 +427,22 @@ export function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [savingPassword, setSavingPassword] = useState(false);
+  // Username change modal
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameModalPassword, setUsernameModalPassword] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [savingUsername, setSavingUsername] = useState(false);
+  // Email change modal
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [newEmailValue, setNewEmailValue] = useState("");
+  const [emailModalPassword, setEmailModalPassword] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [requestingEmailChange, setRequestingEmailChange] = useState(false);
+  const [emailChangeSent, setEmailChangeSent] = useState(false);
+  // Bio auto-save state
+  const [bioSaving, setBioSaving] = useState(false);
+  const [bioSaved, setBioSaved] = useState(false);
   const [, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -482,16 +497,36 @@ export function ProfilePage() {
     };
   }, [auth]);
 
-  // Show toast for OAuth linking errors returned via ?error= query param
+  // Show toast for OAuth linking errors returned via ?error= query param,
+  // and for ?emailChange=success|expired|invalid|error from the email change flow.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const error = params.get("error");
-    if (!error) return;
+    const emailChange = params.get("emailChange");
 
-    toastError(getOAuthErrorMessage(error, tCommon));
+    if (error) {
+      toastError(getOAuthErrorMessage(error, tCommon));
+    }
 
-    // Clean the URL so the error doesn't re-appear on refresh
-    window.history.replaceState({}, "", window.location.pathname);
+    if (emailChange === "success") {
+      toast.success(t("emailChangeSuccess"));
+      // Refresh the profile so the new email shows up
+      void getAccountProfile().then((response) => {
+        setProfile(response.profile);
+        setEmail(response.profile.email || "");
+      });
+    } else if (emailChange === "expired") {
+      toastError(t("emailChangeExpired"));
+    } else if (emailChange === "invalid") {
+      toastError(t("emailChangeInvalid"));
+    } else if (emailChange === "error") {
+      toastError(t("emailChangeError"));
+    }
+
+    if (error || emailChange) {
+      // Clean the URL so the message doesn't re-appear on refresh
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const providers = profile?.providers ?? [];
@@ -528,37 +563,149 @@ export function ProfilePage() {
     setPageError(null);
   }, [pageError]);
 
-  async function handleSaveProfile() {
-    if (!auth || auth.player.kind !== "account") {
+  async function handleChangeUsername() {
+    setUsernameError(null);
+
+    const trimmed = newUsername.trim().toLowerCase();
+    if (trimmed.length < 3 || trimmed.length > 32) {
+      setUsernameError(t("usernameLengthError"));
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(trimmed)) {
+      setUsernameError(t("usernameFormatError"));
+      return;
+    }
+    if (hasCredentialProvider && !usernameModalPassword) {
+      setUsernameError(t("currentPasswordRequired"));
       return;
     }
 
-    setSaving(true);
-    setPageError(null);
-
+    setSavingUsername(true);
     try {
-      const body: { displayName?: string; email?: string; bio?: string } = { displayName, bio };
-      // Only send email if the user has a credential provider (OAuth emails are managed by the provider)
-      if (hasCredentialProvider || !hasOAuthProvider) {
-        body.email = email || undefined;
-      }
-      const response = await updateAccountProfile(body);
+      const response = await updateAccountProfile({
+        displayName: trimmed,
+        currentPassword: hasCredentialProvider ? usernameModalPassword : undefined,
+      });
       onAuthChange(response.auth);
       setProfile(response.profile);
       setDisplayName(response.profile.displayName);
-      setBio(response.profile.bio ?? "");
-      setEmail(response.profile.email || "");
-      setSuccessMessage(t("profileSaved"));
+      setUsernameModalOpen(false);
+      setNewUsername("");
+      setUsernameModalPassword("");
+      toast.success(t("usernameUpdated"));
     } catch (error) {
       if (isNetworkError(error)) {
         toastError(error);
       } else {
-        setPageError(readableError(error));
+        setUsernameError(readableError(error));
       }
     } finally {
-      setSaving(false);
+      setSavingUsername(false);
     }
   }
+
+  async function handleRequestEmailChange() {
+    setEmailError(null);
+
+    const trimmed = newEmailValue.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes("@")) {
+      setEmailError(t("emailInvalid"));
+      return;
+    }
+    if (!emailModalPassword) {
+      setEmailError(t("currentPasswordRequired"));
+      return;
+    }
+
+    setRequestingEmailChange(true);
+    try {
+      await requestEmailChange({
+        newEmail: trimmed,
+        currentPassword: emailModalPassword,
+      });
+      setEmailChangeSent(true);
+      setEmailModalPassword("");
+      toast.success(t("emailVerificationSent", { email: trimmed }));
+    } catch (error) {
+      if (isNetworkError(error)) {
+        toastError(error);
+      } else {
+        setEmailError(readableError(error));
+      }
+    } finally {
+      setRequestingEmailChange(false);
+    }
+  }
+
+  // Optimistic bio auto-save: update locally on every keystroke,
+  // but only POST to the server after the user has been idle for 1500ms.
+  // Also flush immediately on blur so leaving the field never loses pending changes.
+  const bioSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedBioRef = useRef<string>("");
+  const inFlightBioRef = useRef<string | null>(null);
+
+  // Track the current saved bio so flushBio can compare against it without stale closures.
+  useEffect(() => {
+    lastSavedBioRef.current = profile?.bio ?? "";
+  }, [profile?.bio]);
+
+  const flushBio = useCallback(
+    async (value: string) => {
+      if (!auth || auth.player.kind !== "account") return;
+      // Skip if nothing changed since the last save, or this exact value is already in flight.
+      if (value === lastSavedBioRef.current) return;
+      if (value === inFlightBioRef.current) return;
+
+      if (bioSaveTimerRef.current) {
+        clearTimeout(bioSaveTimerRef.current);
+        bioSaveTimerRef.current = null;
+      }
+
+      inFlightBioRef.current = value;
+      setBioSaving(true);
+      try {
+        const response = await updateAccountProfile({ bio: value });
+        onAuthChange(response.auth);
+        setProfile(response.profile);
+        lastSavedBioRef.current = response.profile.bio ?? "";
+        setBioSaved(true);
+        setTimeout(() => setBioSaved(false), 2000);
+      } catch (error) {
+        if (isNetworkError(error)) {
+          toastError(error);
+        } else {
+          setPageError(readableError(error));
+        }
+      } finally {
+        inFlightBioRef.current = null;
+        setBioSaving(false);
+      }
+    },
+    [auth, onAuthChange],
+  );
+
+  // Schedule a debounced save whenever bio changes (after the initial load).
+  useEffect(() => {
+    if (loading) return;
+    if (bio === lastSavedBioRef.current) return;
+
+    if (bioSaveTimerRef.current) clearTimeout(bioSaveTimerRef.current);
+    bioSaveTimerRef.current = setTimeout(() => {
+      void flushBio(bio);
+    }, 1500);
+
+    return () => {
+      if (bioSaveTimerRef.current) clearTimeout(bioSaveTimerRef.current);
+    };
+  }, [bio, loading, flushBio]);
+
+  // Cleanup on unmount: flush any pending changes synchronously is not possible,
+  // but we can at least cancel the timer so we don't try to call setState after unmount.
+  useEffect(() => {
+    return () => {
+      if (bioSaveTimerRef.current) clearTimeout(bioSaveTimerRef.current);
+    };
+  }, []);
 
   async function handleChangePassword() {
     setPasswordError(null);
@@ -788,52 +935,150 @@ export function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {loading ? (
-                  <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
-                    {t("loadingProfile")}
+                  <div className="animate-pulse space-y-4">
+                    {/* Username skeleton */}
+                    <div className="grid gap-2">
+                      <SkeletonBlock className="h-4 w-20" />
+                      <SkeletonBlock className="h-9 w-full rounded-xl" />
+                      <SkeletonBlock className="h-3 w-48 bg-[#ede3d2]" />
+                    </div>
+                    {/* Bio skeleton */}
+                    <div className="grid gap-2">
+                      <SkeletonBlock className="h-4 w-10" />
+                      <SkeletonBlock className="h-20 w-full rounded-xl" />
+                      <SkeletonBlock className="h-3 w-24 bg-[#ede3d2]" />
+                    </div>
+                    {/* Email skeleton */}
+                    <div className="grid gap-2">
+                      <SkeletonBlock className="h-4 w-32" />
+                      <SkeletonBlock className="h-9 w-full rounded-xl" />
+                    </div>
+                    {/* Rating info skeleton */}
+                    <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3">
+                      <div className="flex items-baseline justify-between">
+                        <SkeletonBlock className="h-4 w-14" />
+                        <SkeletonBlock className="h-6 w-12" />
+                      </div>
+                      <SkeletonBlock className="mt-2 h-3 w-20 bg-[#ede3d2]" />
+                    </div>
+                    {/* Timestamps skeleton */}
+                    <div className="space-y-2 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3">
+                      <SkeletonBlock className="h-4 w-56" />
+                      <SkeletonBlock className="h-4 w-56" />
+                    </div>
+                    {/* Buttons skeleton */}
+                    <div className="flex flex-wrap gap-3">
+                      <SkeletonBlock className="h-9 w-32 rounded-xl" />
+                      <SkeletonBlock className="h-9 w-36 rounded-xl" />
+                    </div>
                   </div>
                 ) : (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void handleSaveProfile();
-                    }}
-                    className="space-y-4"
-                  >
-                    <div className="grid gap-2">
-                      <label
-                        htmlFor="profile-display-name"
-                        className="text-sm font-medium text-[#4e3d2c]"
+                  <div className="space-y-4">
+                    {/* Username row */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium uppercase tracking-wide text-[#8d7760]">
+                          {t("username")}
+                        </div>
+                        <div className="truncate text-sm font-medium text-[#2b1e14]">
+                          {displayName}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={t("changeUsernameTitle")}
+                        onClick={() => {
+                          setUsernameError(null);
+                          setNewUsername(displayName);
+                          setUsernameModalPassword("");
+                          setUsernameModalOpen(true);
+                        }}
                       >
-                        {t("username")}
-                      </label>
-                      <Input
-                        id="profile-display-name"
-                        name="username"
-                        value={displayName}
-                        onChange={(event) =>
-                          setDisplayName(
-                            event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
-                          )
-                        }
-                        placeholder={t("usernamePlaceholder")}
-                        autoComplete="username"
-                        pattern="^[a-z0-9][a-z0-9_\-]*$"
-                        minLength={3}
-                        maxLength={32}
-                        title="Lowercase letters, numbers, hyphens, and underscores only (3-32 chars)"
-                        required
-                      />
-                      <p className="text-xs text-[#8d7760]">{t("usernameHint")}</p>
+                        {tCommon("edit")}
+                      </Button>
                     </div>
 
+                    {/* Email row */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium uppercase tracking-wide text-[#8d7760]">
+                          {t("email")}
+                        </div>
+                        <div className="truncate text-sm font-medium text-[#2b1e14]">
+                          {email || <span className="text-[#8d7760]">{t("noEmailSet")}</span>}
+                        </div>
+                        {hasOAuthProvider && !hasCredentialProvider && (
+                          <p className="mt-1 text-xs text-[#8d7760]">
+                            {t("emailManagedByProvider", { provider: oauthProviderLabel })}
+                          </p>
+                        )}
+                      </div>
+                      {hasCredentialProvider && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={t("changeEmailTitle")}
+                          onClick={() => {
+                            setEmailError(null);
+                            setEmailChangeSent(false);
+                            setNewEmailValue(email);
+                            setEmailModalPassword("");
+                            setEmailModalOpen(true);
+                          }}
+                        >
+                          {tCommon("edit")}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Password row */}
+                    {hasCredentialProvider && (
+                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-medium uppercase tracking-wide text-[#8d7760]">
+                            {t("password")}
+                          </div>
+                          <div className="text-sm font-medium text-[#2b1e14]">••••••••••••</div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={t("changePassword")}
+                          onClick={() => {
+                            setPasswordError(null);
+                            setCurrentPassword("");
+                            setNewPassword("");
+                            setConfirmPassword("");
+                            setPasswordModalOpen(true);
+                          }}
+                        >
+                          {tCommon("edit")}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Bio (auto-saving textarea) */}
                     <div className="grid gap-2">
-                      <label htmlFor="profile-bio" className="text-sm font-medium text-[#4e3d2c]">
-                        {t("bio")}
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="profile-bio" className="text-sm font-medium text-[#4e3d2c]">
+                          {t("bio")}
+                        </label>
+                        {bioSaving && (
+                          <span className="text-xs text-[#8d7760]">{tCommon("saving")}…</span>
+                        )}
+                        {bioSaved && !bioSaving && (
+                          <span className="text-xs text-emerald-700">✓ {tCommon("saved")}</span>
+                        )}
+                      </div>
                       <textarea
                         id="profile-bio"
                         value={bio}
                         onChange={(e) => setBio(e.target.value.slice(0, 500))}
+                        onBlur={() => void flushBio(bio)}
                         placeholder={t("bioPlaceholder")}
                         rows={3}
                         maxLength={500}
@@ -844,45 +1089,7 @@ export function ProfilePage() {
                       </p>
                     </div>
 
-                    <div className="grid gap-2">
-                      <label htmlFor="profile-email" className="text-sm font-medium text-[#4e3d2c]">
-                        {t("emailOptional")}
-                      </label>
-                      <Input
-                        id="profile-email"
-                        name="email"
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        placeholder="name@example.com"
-                        autoComplete="email"
-                        readOnly={hasOAuthProvider && !hasCredentialProvider}
-                      />
-                      {hasOAuthProvider && !hasCredentialProvider && (
-                        <p className="text-xs text-[#8d7760]">
-                          {t("emailManagedByProvider", { provider: oauthProviderLabel })}
-                        </p>
-                      )}
-                    </div>
-
-                    {hasCredentialProvider && (
-                      <div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setPasswordError(null);
-                            setCurrentPassword("");
-                            setNewPassword("");
-                            setConfirmPassword("");
-                            setPasswordModalOpen(true);
-                          }}
-                        >
-                          {t("changePassword")}
-                        </Button>
-                      </div>
-                    )}
-
+                    {/* Rating info */}
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
                       <div className="flex items-baseline justify-between">
                         <span className="font-medium text-[#4e3d2c]">{t("rating")}</span>
@@ -900,6 +1107,7 @@ export function ProfilePage() {
                       )}
                     </div>
 
+                    {/* Timestamps */}
                     <div className="grid gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3 text-sm text-[#6f5a45]">
                       <p>
                         {t("created", {
@@ -913,10 +1121,8 @@ export function ProfilePage() {
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button type="submit" disabled={saving}>
-                        {saving ? tCommon("saving") : tCommon("save")}
-                      </Button>
+                    {/* Copy profile link */}
+                    <div>
                       <Button
                         type="button"
                         variant="outline"
@@ -935,7 +1141,7 @@ export function ProfilePage() {
                         {copyLinkFeedback ? tCommon("copied") : t("copyProfileLink")}
                       </Button>
                     </div>
-                  </form>
+                  </div>
                 )}
 
                 {successMessage ? (
@@ -1109,6 +1315,158 @@ export function ProfilePage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Change Username Modal */}
+      <Dialog
+        open={usernameModalOpen}
+        onOpenChange={setUsernameModalOpen}
+        title={t("changeUsernameTitle")}
+        description={t("changeUsernameDesc")}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleChangeUsername();
+          }}
+          className="space-y-4"
+        >
+          <div className="grid gap-2">
+            <label htmlFor="new-username" className="text-sm font-medium text-[#4e3d2c]">
+              {t("newUsername")}
+            </label>
+            <Input
+              id="new-username"
+              value={newUsername}
+              onChange={(e) =>
+                setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+              }
+              placeholder={t("usernamePlaceholder")}
+              autoComplete="username"
+              pattern="^[a-z0-9][a-z0-9_\-]*$"
+              minLength={3}
+              maxLength={32}
+              required
+            />
+            <p className="text-xs text-[#8d7760]">{t("usernameHint")}</p>
+          </div>
+
+          {hasCredentialProvider && (
+            <div className="grid gap-2">
+              <label
+                htmlFor="username-confirm-password"
+                className="text-sm font-medium text-[#4e3d2c]"
+              >
+                {t("currentPassword")}
+              </label>
+              <PasswordInput
+                id="username-confirm-password"
+                value={usernameModalPassword}
+                onChange={(e) => setUsernameModalPassword(e.target.value)}
+                placeholder="••••••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+          )}
+
+          {usernameError ? (
+            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {usernameError}
+            </p>
+          ) : null}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" disabled={savingUsername}>
+              {savingUsername ? tCommon("saving") : t("updateUsername")}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setUsernameModalOpen(false)}>
+              {tCommon("cancel")}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Change Email Modal */}
+      <Dialog
+        open={emailModalOpen}
+        onOpenChange={(open) => {
+          setEmailModalOpen(open);
+          if (!open) {
+            setEmailChangeSent(false);
+            setEmailError(null);
+          }
+        }}
+        title={t("changeEmailTitle")}
+        description={t("changeEmailDesc")}
+      >
+        {emailChangeSent ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {t("emailVerificationSentLong", { email: newEmailValue })}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" onClick={() => setEmailModalOpen(false)}>
+                {tCommon("close")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleRequestEmailChange();
+            }}
+            className="space-y-4"
+          >
+            <div className="grid gap-2">
+              <label htmlFor="new-email-input" className="text-sm font-medium text-[#4e3d2c]">
+                {t("newEmail")}
+              </label>
+              <Input
+                id="new-email-input"
+                type="email"
+                value={newEmailValue}
+                onChange={(e) => setNewEmailValue(e.target.value)}
+                placeholder="name@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label
+                htmlFor="email-confirm-password"
+                className="text-sm font-medium text-[#4e3d2c]"
+              >
+                {t("currentPassword")}
+              </label>
+              <PasswordInput
+                id="email-confirm-password"
+                value={emailModalPassword}
+                onChange={(e) => setEmailModalPassword(e.target.value)}
+                placeholder="••••••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+
+            {emailError ? (
+              <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {emailError}
+              </p>
+            ) : null}
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={requestingEmailChange}>
+                {requestingEmailChange ? tCommon("saving") : t("sendVerificationLink")}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setEmailModalOpen(false)}>
+                {tCommon("cancel")}
+              </Button>
+            </div>
+          </form>
+        )}
       </Dialog>
     </PageLayout>
   );
