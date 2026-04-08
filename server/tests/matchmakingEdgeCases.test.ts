@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { test } from "node:test";
-import type { PlayerIdentity } from "../../shared/src";
+import type { LobbyClientMessage, PlayerIdentity } from "../../shared/src";
 import { GameService } from "../game/gameService";
 import { InMemoryGameRoomStore } from "../game/gameStore";
 
@@ -14,6 +15,34 @@ function createPlayer(playerId: string, options: Partial<PlayerIdentity> = {}): 
   };
 }
 
+// Minimal `ws.WebSocket`-shaped mock used for exercising the lobby-socket
+// matchmaking flow. We only need the bits `GameService.connectLobby` and its
+// message/close handlers touch: `on`, `send`, `readyState`, and the ability to
+// synthesise inbound messages + a close event.
+class MockSocket extends EventEmitter {
+  readyState = 1; // WebSocket.OPEN
+  sent: string[] = [];
+  send(payload: string): void {
+    this.sent.push(payload);
+  }
+  simulateMessage(message: LobbyClientMessage): void {
+    this.emit("message", Buffer.from(JSON.stringify(message)));
+  }
+  simulateClose(): void {
+    this.readyState = 3; // WebSocket.CLOSED
+    this.emit("close");
+  }
+  received(): Array<Record<string, unknown>> {
+    return this.sent.map((raw) => JSON.parse(raw) as Record<string, unknown>);
+  }
+}
+
+// Wait a microtask so that the message handler (which runs async work via
+// `void this.handleLobbyMessage(...)`) has a chance to settle.
+async function flushAsync(): Promise<void> {
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
 test("entering matchmaking twice returns searching status", async () => {
   const store = new InMemoryGameRoomStore();
@@ -232,4 +261,164 @@ test("matched timed game has correct clock state", async () => {
     assert.equal(clock!.black, TC_30_0.initialMs);
     assert.ok(clock!.lastMoveAt);
   }
+});
+
+// --- Lobby-socket matchmaking tests ---
+//
+// These cover the bug where closing the matchmaking tab left ghost queue
+// entries that got paired with real players. Lifetime is now tied to the
+// socket that issued `matchmaking:enter`: closing that socket clears the
+// queue entry, regardless of whether the player has other lobby tabs open.
+
+test("closing the matchmaking socket removes the queue entry", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+
+  const socket = new MockSocket();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, socket as any);
+
+  socket.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+
+  const searching = await service.getMatchmakingState(alice);
+  assert.equal(searching.status, "searching");
+
+  socket.simulateClose();
+  await flushAsync();
+
+  const idle = await service.getMatchmakingState(alice);
+  assert.equal(idle.status, "idle");
+});
+
+test("a second matchmaking tab evicts the first", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+
+  const socketA = new MockSocket();
+  const socketB = new MockSocket();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, socketA as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, socketB as any);
+
+  socketA.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+  socketB.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+
+  // Socket A should have received a `matchmaking:state { idle }` eviction
+  // before socket B took over the session.
+  const aEviction = socketA
+    .received()
+    .find(
+      (m) =>
+        m.type === "matchmaking:state" &&
+        (m.state as { status: string } | undefined)?.status === "idle",
+    );
+  assert.ok(aEviction, "socket A should have received an idle eviction");
+
+  // Socket B should own the session now; its latest state message should be searching.
+  const bStates = socketB.received().filter((m) => m.type === "matchmaking:state");
+  const bLatest = bStates[bStates.length - 1] as { state: { status: string } } | undefined;
+  assert.equal(bLatest?.state.status, "searching");
+
+  // Closing socket A must NOT clear the queue entry (B owns it now).
+  socketA.simulateClose();
+  await flushAsync();
+  const stillSearching = await service.getMatchmakingState(alice);
+  assert.equal(stillSearching.status, "searching");
+
+  // Closing socket B clears the entry.
+  socketB.simulateClose();
+  await flushAsync();
+  const idle = await service.getMatchmakingState(alice);
+  assert.equal(idle.status, "idle");
+});
+
+test("immediate match via socket notifies both players with matching gameId", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const aliceSocket = new MockSocket();
+  const bobSocket = new MockSocket();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, aliceSocket as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(bob, bobSocket as any);
+
+  aliceSocket.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+  bobSocket.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+
+  // Alice (waiting) gets pushed a `matchmaking:matched` because her queue
+  // entry was resolved asynchronously.
+  const aliceMatched = aliceSocket.received().find((m) => m.type === "matchmaking:matched") as
+    | { snapshot: { gameId: string } }
+    | undefined;
+  assert.ok(aliceMatched, "alice should receive matchmaking:matched");
+
+  // Bob (initiator) receives the result as a `matchmaking:state` reply with
+  // status `matched` — the direct response to his `matchmaking:enter`.
+  const bobMatchedState = bobSocket
+    .received()
+    .find(
+      (m) =>
+        m.type === "matchmaking:state" &&
+        (m.state as { status: string } | undefined)?.status === "matched",
+    ) as { state: { status: "matched"; snapshot: { gameId: string } } } | undefined;
+  assert.ok(bobMatchedState, "bob should receive matchmaking:state { matched }");
+
+  assert.equal(aliceMatched.snapshot.gameId, bobMatchedState.state.snapshot.gameId);
+});
+
+test("closing a non-matchmaking lobby socket does NOT touch the queue", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+
+  const matchmakingTab = new MockSocket();
+  const profileTab = new MockSocket();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, matchmakingTab as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, profileTab as any);
+
+  matchmakingTab.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+
+  // Close the *other* tab (e.g. user closes their profile tab). Queue entry
+  // must survive because the matchmaking socket is still open.
+  profileTab.simulateClose();
+  await flushAsync();
+
+  const state = await service.getMatchmakingState(alice);
+  assert.equal(state.status, "searching");
+});
+
+test("explicit matchmaking:leave clears the entry without closing the socket", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+
+  const socket = new MockSocket();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await service.connectLobby(alice, socket as any);
+
+  socket.simulateMessage({ type: "matchmaking:enter", timeControl: null });
+  await flushAsync();
+  assert.equal((await service.getMatchmakingState(alice)).status, "searching");
+
+  socket.simulateMessage({ type: "matchmaking:leave" });
+  await flushAsync();
+  assert.equal((await service.getMatchmakingState(alice)).status, "idle");
+
+  // The socket stays open, so closing it afterwards must not double-fire cleanup.
+  socket.simulateClose();
+  await flushAsync();
 });

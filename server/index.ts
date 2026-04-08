@@ -87,12 +87,15 @@ websocketServer.on("connection", (socket, request) => {
 
     if (url.pathname === "/api/ws/lobby") {
       const player = await getPlayerFromUpgradeRequest(request);
-      if (!player || player.kind !== "account") {
+      if (!player) {
         console.warn(`[ws] unauthorized lobby connection attempt`);
         socket.close();
         return;
       }
 
+      // Guests are allowed on the lobby socket so that matchmaking can use
+      // socket lifetime for queue cleanup. They receive game-updates for their
+      // own games and no-op social updates.
       await gameService.connectLobby(player, socket);
       return;
     }

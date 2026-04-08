@@ -5,8 +5,12 @@ import { LobbySocketProvider, useLobbyMessage } from "./LobbySocketContext";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+  static OPEN = 1;
+  static CLOSED = 3;
 
   url: string;
+  readyState = 1;
+  sent: string[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   onclose: (() => void) | null = null;
@@ -17,8 +21,17 @@ class MockWebSocket {
     MockWebSocket.instances.push(this);
   }
 
+  send(data: string) {
+    this.sent.push(data);
+  }
+
   close() {
+    this.readyState = 3;
     this.onclose?.();
+  }
+
+  simulateOpen() {
+    this.onopen?.();
   }
 
   simulateMessage(data: unknown) {
@@ -72,13 +85,14 @@ describe("LobbySocketProvider", () => {
     expect(MockWebSocket.instances[0].url).toContain("/api/ws/lobby");
   });
 
-  it("does not connect for guest players", () => {
+  it("connects for guest players so matchmaking can use socket lifetime", () => {
     const handler = vi.fn();
     renderHook(() => useLobbyMessage(handler), {
       wrapper: createWrapper(mockGuestAuth),
     });
 
-    expect(MockWebSocket.instances).toHaveLength(0);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.instances[0].url).toContain("/api/ws/lobby");
   });
 
   it("does not connect when auth is null", () => {

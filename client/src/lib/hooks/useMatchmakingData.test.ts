@@ -1,16 +1,27 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useMatchmakingData } from "./useMatchmakingData";
-import type { AuthResponse, MultiplayerSnapshot } from "@shared";
+import type { AuthResponse, LobbyClientMessage, MultiplayerSnapshot } from "@shared";
 
-const mockEnterMatchmaking = vi.fn();
-const mockLeaveMatchmaking = vi.fn();
-const mockGetMatchmakingState = vi.fn();
+// Shared handles + state used by the mock below. The mock of
+// ./../LobbySocketContext is hoisted by vitest, so we reach into these refs
+// from inside tests to drive inbound messages and inspect outbound sends.
+const sendMessageMock = vi.fn<(message: LobbyClientMessage) => void>();
+let lobbyHandler: ((payload: Record<string, unknown>) => void) | null = null;
 
-vi.mock("../api", () => ({
-  enterMatchmaking: (...args: unknown[]) => mockEnterMatchmaking(...args),
-  leaveMatchmaking: (...args: unknown[]) => mockLeaveMatchmaking(...args),
-  getMatchmakingState: (...args: unknown[]) => mockGetMatchmakingState(...args),
+vi.mock("../LobbySocketContext", () => ({
+  useLobbySocket: () => ({
+    sendMessage: sendMessageMock,
+    subscribe: (handler: (payload: Record<string, unknown>) => void) => {
+      lobbyHandler = handler;
+      return () => {
+        lobbyHandler = null;
+      };
+    },
+  }),
+  useLobbyMessage: (handler: (payload: Record<string, unknown>) => void) => {
+    lobbyHandler = handler;
+  },
 }));
 
 vi.mock("../errors", () => ({
@@ -39,16 +50,14 @@ const mockSnapshot = {
   updatedAt: new Date().toISOString(),
 } as unknown as MultiplayerSnapshot;
 
-describe("useMatchmakingData", () => {
-  beforeEach(() => {
-    mockEnterMatchmaking.mockReset();
-    mockLeaveMatchmaking.mockReset();
-    mockGetMatchmakingState.mockReset();
-    vi.useFakeTimers();
-  });
+function pushMessage(payload: Record<string, unknown>) {
+  if (lobbyHandler) lobbyHandler(payload);
+}
 
-  afterEach(() => {
-    vi.useRealTimers();
+describe("useMatchmakingData (lobby socket)", () => {
+  beforeEach(() => {
+    sendMessageMock.mockReset();
+    lobbyHandler = null;
   });
 
   it("initializes with idle status", () => {
@@ -58,28 +67,46 @@ describe("useMatchmakingData", () => {
     expect(result.current.matchmakingBusy).toBe(false);
   });
 
-  it("enters matchmaking and sets searching status", async () => {
-    mockEnterMatchmaking.mockResolvedValue({
-      matchmaking: { status: "searching", queuedAt: new Date().toISOString() },
-    });
-
+  it("sends matchmaking:enter when entering and updates state on ack", async () => {
     const onMatched = vi.fn();
     const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
 
     await act(async () => {
       await result.current.handleEnterMatchmaking();
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      type: "matchmaking:enter",
+      timeControl: null,
+    });
+
+    act(() => {
+      pushMessage({
+        type: "matchmaking:state",
+        state: { status: "searching", queuedAt: new Date().toISOString() },
+      });
     });
 
     expect(result.current.matchmaking.status).toBe("searching");
-    expect(mockEnterMatchmaking).toHaveBeenCalledTimes(1);
+    expect(result.current.matchmakingBusy).toBe(false);
   });
 
-  it("calls onMatched when immediately matched", async () => {
-    mockEnterMatchmaking.mockResolvedValue({
-      matchmaking: { status: "matched", snapshot: mockSnapshot },
-    });
-    mockLeaveMatchmaking.mockResolvedValue(undefined);
+  it("forwards timeControl in matchmaking:enter", async () => {
+    const onMatched = vi.fn();
+    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+    const tc = { initialMs: 300_000, incrementMs: 3_000 };
 
+    await act(async () => {
+      await result.current.handleEnterMatchmaking(tc);
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      type: "matchmaking:enter",
+      timeControl: tc,
+    });
+  });
+
+  it("calls onMatched when matchmaking:matched arrives", async () => {
     const onMatched = vi.fn();
     const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
 
@@ -87,10 +114,102 @@ describe("useMatchmakingData", () => {
       await result.current.handleEnterMatchmaking();
     });
 
+    act(() => {
+      pushMessage({ type: "matchmaking:matched", snapshot: mockSnapshot });
+    });
+
     expect(onMatched).toHaveBeenCalledWith(mockSnapshot);
+    expect(result.current.matchmaking.status).toBe("matched");
   });
 
-  it("does not enter matchmaking when auth is null", async () => {
+  it("cancel sends matchmaking:leave and flips to idle optimistically", async () => {
+    const onMatched = vi.fn();
+    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+
+    await act(async () => {
+      await result.current.handleEnterMatchmaking();
+    });
+    act(() => {
+      pushMessage({
+        type: "matchmaking:state",
+        state: { status: "searching", queuedAt: new Date().toISOString() },
+      });
+    });
+
+    sendMessageMock.mockClear();
+
+    await act(async () => {
+      await result.current.handleCancelMatchmaking();
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledWith({ type: "matchmaking:leave" });
+    expect(result.current.matchmaking.status).toBe("idle");
+  });
+
+  it("unmount while searching sends matchmaking:leave", async () => {
+    const onMatched = vi.fn();
+    const { result, unmount } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+
+    await act(async () => {
+      await result.current.handleEnterMatchmaking();
+    });
+    act(() => {
+      pushMessage({
+        type: "matchmaking:state",
+        state: { status: "searching", queuedAt: new Date().toISOString() },
+      });
+    });
+
+    sendMessageMock.mockClear();
+    unmount();
+
+    expect(sendMessageMock).toHaveBeenCalledWith({ type: "matchmaking:leave" });
+  });
+
+  it("unmount after matched does NOT send matchmaking:leave", async () => {
+    const onMatched = vi.fn();
+    const { result, unmount } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+
+    await act(async () => {
+      await result.current.handleEnterMatchmaking();
+    });
+    act(() => {
+      pushMessage({ type: "matchmaking:matched", snapshot: mockSnapshot });
+    });
+
+    sendMessageMock.mockClear();
+    unmount();
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("unmount while idle does not send anything", () => {
+    const onMatched = vi.fn();
+    const { unmount } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+    unmount();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("matchmaking:error pops a toast and resets to idle", async () => {
+    const onMatched = vi.fn();
+    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
+
+    await act(async () => {
+      await result.current.handleEnterMatchmaking();
+    });
+    act(() => {
+      pushMessage({
+        type: "matchmaking:error",
+        code: "ERR",
+        message: "Something broke",
+      });
+    });
+
+    expect(result.current.matchmaking.status).toBe("idle");
+    expect(result.current.matchmakingBusy).toBe(false);
+  });
+
+  it("does nothing when auth is null", async () => {
     const onMatched = vi.fn();
     const { result } = renderHook(() => useMatchmakingData(null, onMatched));
 
@@ -98,74 +217,6 @@ describe("useMatchmakingData", () => {
       await result.current.handleEnterMatchmaking();
     });
 
-    expect(mockEnterMatchmaking).not.toHaveBeenCalled();
-  });
-
-  it("cancels matchmaking and returns to idle", async () => {
-    mockEnterMatchmaking.mockResolvedValue({
-      matchmaking: { status: "searching", queuedAt: new Date().toISOString() },
-    });
-    mockLeaveMatchmaking.mockResolvedValue(undefined);
-
-    const onMatched = vi.fn();
-    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
-
-    await act(async () => {
-      await result.current.handleEnterMatchmaking();
-    });
-    expect(result.current.matchmaking.status).toBe("searching");
-
-    await act(async () => {
-      await result.current.handleCancelMatchmaking();
-    });
-
-    expect(result.current.matchmaking.status).toBe("idle");
-    expect(mockLeaveMatchmaking).toHaveBeenCalled();
-  });
-
-  it("polls for matchmaking status when searching", async () => {
-    mockEnterMatchmaking.mockResolvedValue({
-      matchmaking: { status: "searching", queuedAt: new Date().toISOString() },
-    });
-    mockGetMatchmakingState.mockResolvedValue({
-      matchmaking: { status: "searching", queuedAt: new Date().toISOString() },
-    });
-
-    const onMatched = vi.fn();
-    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
-
-    await act(async () => {
-      await result.current.handleEnterMatchmaking();
-    });
-
-    // Advance past one poll interval (2000ms)
-    await act(async () => {
-      vi.advanceTimersByTime(2100);
-    });
-
-    expect(mockGetMatchmakingState).toHaveBeenCalled();
-  });
-
-  it("stops polling and calls onMatched when match found via poll", async () => {
-    mockEnterMatchmaking.mockResolvedValue({
-      matchmaking: { status: "searching", queuedAt: new Date().toISOString() },
-    });
-    mockGetMatchmakingState.mockResolvedValue({
-      matchmaking: { status: "matched", snapshot: mockSnapshot },
-    });
-
-    const onMatched = vi.fn();
-    const { result } = renderHook(() => useMatchmakingData(mockAuth, onMatched));
-
-    await act(async () => {
-      await result.current.handleEnterMatchmaking();
-    });
-
-    // Advance to trigger poll
-    await act(async () => {
-      vi.advanceTimersByTime(2100);
-    });
-
-    expect(onMatched).toHaveBeenCalledWith(mockSnapshot);
+    expect(sendMessageMock).not.toHaveBeenCalled();
   });
 });

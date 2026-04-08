@@ -290,3 +290,26 @@ export type ServerToClientMessage =
 export type AuthResponse = {
   player: PlayerIdentity;
 };
+
+/**
+ * Lobby WebSocket protocol.
+ *
+ * The lobby socket (`/api/ws/lobby`) is a bidirectional per-player channel used for
+ * push notifications (game updates, social updates, achievements) and for the
+ * matchmaking flow. Matchmaking lives on the lobby socket so that the queue entry
+ * is tied to the socket lifetime: when the page unmounts or the tab closes, the
+ * socket `close` event on the server removes the player from the queue, preventing
+ * "ghost" matches against players who already left.
+ */
+export type LobbyClientMessage =
+  | { type: "matchmaking:enter"; timeControl: TimeControl }
+  | { type: "matchmaking:leave" };
+
+export type LobbyServerMessage =
+  | { type: "matchmaking:state"; state: MatchmakingState }
+  | { type: "matchmaking:matched"; snapshot: MultiplayerSnapshot }
+  | { type: "matchmaking:error"; code: string; message: string }
+  | { type: "game-update"; summary: MultiplayerGameSummary }
+  | { type: "social-update"; overview?: SocialOverview }
+  | { type: "achievement-unlocked" }
+  | { type: "achievement-changed" };

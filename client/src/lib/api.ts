@@ -1,7 +1,6 @@
 import type {
   AuthResponse,
   FriendActiveGameSummary,
-  MatchmakingState,
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
   MultiplayerSnapshot,
@@ -227,24 +226,9 @@ export function listMultiplayerGames() {
   return request<{ games: MultiplayerGamesIndex }>("/api/games");
 }
 
-export function enterMatchmaking(options?: {
-  timeControl?: { initialMs: number; incrementMs: number } | null;
-}) {
-  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking", {
-    method: "POST",
-    body: options?.timeControl ? { timeControl: options.timeControl } : undefined,
-  });
-}
-
-export function getMatchmakingState() {
-  return request<{ matchmaking: MatchmakingState }>("/api/matchmaking");
-}
-
-export function leaveMatchmaking() {
-  return request<void>("/api/matchmaking", {
-    method: "DELETE",
-  });
-}
+// Matchmaking moved to the lobby WebSocket — see `useMatchmakingData` and
+// `LobbyClientMessage` in @shared. The REST endpoints were removed because
+// they could not detect page-unloads, which left ghost queue entries.
 
 export function getSocialOverview() {
   return request<{ overview: SocialOverview }>("/api/player/social/overview");

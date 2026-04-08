@@ -6,7 +6,7 @@ import {
   removeTestSession,
   installTestSessionMock,
 } from "./testAuthHelper";
-import type { AuthResponse, MatchmakingState, MultiplayerSnapshot } from "../../shared/src";
+import type { AuthResponse, MultiplayerSnapshot } from "../../shared/src";
 
 process.env.TOKEN_SECRET ??= "test-token-secret";
 process.env.MONGODB_URI ??= "mongodb://127.0.0.1:27017/tiao-test";
@@ -372,63 +372,9 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
   assert.equal(spectated.body.snapshot.spectators.length, 0);
 });
 
-test("matchmaking API pairs the next two players into a matchmaking room", async () => {
-  const alice = await createGuest("Alice");
-  const bob = await createGuest("Bob");
-
-  const first = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
-    method: "post",
-    path: "/matchmaking",
-    cookie: alice.cookie,
-  });
-  assert.equal(first.status, 200);
-  assert.equal(first.body.matchmaking.status, "searching");
-
-  const second = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
-    method: "post",
-    path: "/matchmaking",
-    cookie: bob.cookie,
-  });
-  assert.equal(second.status, 200);
-  assert.equal(second.body.matchmaking.status, "matched");
-  if (second.body.matchmaking.status !== "matched") {
-    return;
-  }
-
-  assert.equal(second.body.matchmaking.snapshot.roomType, "matchmaking");
-  assert.equal(second.body.matchmaking.snapshot.status, "active");
-
-  const aliceState = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
-    method: "get",
-    path: "/matchmaking",
-    cookie: alice.cookie,
-  });
-  assert.equal(aliceState.status, 200);
-  assert.equal(aliceState.body.matchmaking.status, "matched");
-  if (aliceState.body.matchmaking.status !== "matched") {
-    return;
-  }
-
-  assert.equal(
-    aliceState.body.matchmaking.snapshot.gameId,
-    second.body.matchmaking.snapshot.gameId,
-  );
-
-  const left = await invokeRoute<undefined>(gameRoutes, {
-    method: "delete",
-    path: "/matchmaking",
-    cookie: alice.cookie,
-  });
-  assert.equal(left.status, 204);
-
-  const cleared = await invokeRoute<{ matchmaking: MatchmakingState }>(gameRoutes, {
-    method: "get",
-    path: "/matchmaking",
-    cookie: alice.cookie,
-  });
-  assert.equal(cleared.status, 200);
-  assert.equal(cleared.body.matchmaking.status, "idle");
-});
+// Matchmaking now lives on the lobby WebSocket. Service-layer behavior is
+// covered by matchmakingEdgeCases.test.ts; the REST route this test exercised
+// was removed to eliminate ghost queue entries.
 
 test("multiplayer routes reject unauthenticated callers", async () => {
   const response = await invokeRoute<{ message: string }>(gameRoutes, {

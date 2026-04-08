@@ -3,6 +3,7 @@ import {
   ClientToServerMessage,
   FinishReason,
   FriendActiveGameSummary,
+  LobbyClientMessage,
   MatchmakingState,
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
@@ -89,6 +90,12 @@ export interface TournamentGameCallback {
 export class GameService {
   private readonly connections = new Map<string, RoomConnections>();
   private readonly lobbyConnections = new Map<string, Set<WebSocket>>();
+  /**
+   * The single socket that owns each player's current matchmaking session.
+   * Tied to socket identity (not playerId) so that closing the matchmaking tab
+   * removes the queue entry even if the player has other lobby tabs open.
+   */
+  private readonly matchmakingSocketByPlayer = new Map<string, WebSocket>();
   private readonly socketRooms = new Map<WebSocket, string>();
   /** In-memory spectator identities: roomId -> (playerId -> PlayerIdentity) */
   private readonly spectatorIdentities = new Map<string, Map<string, PlayerIdentity>>();
@@ -208,8 +215,25 @@ export class GameService {
     }
     userSockets.add(socket);
 
+    socket.on("message", (raw) => {
+      void this.handleLobbyMessage(player, socket, raw);
+    });
+
     socket.on("close", () => {
       userSockets?.delete(socket);
+
+      // If this socket owned the player's matchmaking session, clear the queue
+      // entry regardless of whether other lobby tabs remain open. This is the
+      // core fix for "ghost" matches: closing the matchmaking tab (or any
+      // disconnect event on that specific socket) removes the player from the
+      // queue before the sweep can pair them with a real opponent.
+      if (this.matchmakingSocketByPlayer.get(player.playerId) === socket) {
+        this.matchmakingSocketByPlayer.delete(player.playerId);
+        void this.leaveMatchmaking(player).catch((err) => {
+          console.error("[lobby] failed to clear matchmaking on disconnect", err);
+        });
+      }
+
       if (userSockets?.size === 0) {
         this.lobbyConnections.delete(player.playerId);
         void this.revokeRematchesOnDisconnect(player.playerId);
@@ -225,6 +249,51 @@ export class GameService {
 
     // Push pending incoming rematch requests so the player sees a toast on login
     void this.pushPendingRematches(player.playerId, socket);
+  }
+
+  private async handleLobbyMessage(
+    player: PlayerIdentity,
+    socket: WebSocket,
+    raw: WebSocket.RawData,
+  ): Promise<void> {
+    let parsed: LobbyClientMessage;
+    try {
+      parsed = JSON.parse(raw.toString()) as LobbyClientMessage;
+    } catch {
+      return;
+    }
+
+    if (!parsed || typeof parsed !== "object" || typeof parsed.type !== "string") {
+      return;
+    }
+
+    if (parsed.type === "matchmaking:enter") {
+      try {
+        const state = await this.enterMatchmakingViaSocket(player, parsed.timeControl, socket);
+        this.sendLobbyMessage(socket, { type: "matchmaking:state", state });
+      } catch (error) {
+        const code = error instanceof GameServiceError ? error.code : "MATCHMAKING_ERROR";
+        const message =
+          error instanceof Error ? error.message : "Unable to enter matchmaking right now.";
+        this.sendLobbyMessage(socket, { type: "matchmaking:error", code, message });
+      }
+      return;
+    }
+
+    if (parsed.type === "matchmaking:leave") {
+      try {
+        await this.leaveMatchmakingViaSocket(player, socket);
+      } catch (error) {
+        console.error("[lobby] matchmaking:leave failed", error);
+      }
+      this.sendLobbyMessage(socket, { type: "matchmaking:state", state: { status: "idle" } });
+    }
+  }
+
+  private sendLobbyMessage(socket: WebSocket, payload: Record<string, unknown>): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
+    }
   }
 
   /**
@@ -1018,6 +1087,18 @@ export class GameService {
           },
         );
 
+        // Push `matchmaking:matched` to the waiting opponent. The caller
+        // (`player`) gets the snapshot via the `matched` return value, so
+        // they don't need the push — we only need to wake up the player
+        // whose queue entry was resolved by this call. We broadcast by
+        // playerId (from the opponent queue entry) rather than digging into
+        // `snapshot.seats`, which isn't reliably enriched for guests.
+        this.matchmakingSocketByPlayer.delete(opponentEntry.player.playerId);
+        this.broadcastLobby(opponentEntry.player.playerId, {
+          type: "matchmaking:matched",
+          snapshot,
+        });
+
         return {
           status: "matched",
           snapshot,
@@ -1071,6 +1152,52 @@ export class GameService {
     });
   }
 
+  /**
+   * Enter matchmaking through a specific lobby socket. Tracks the socket as the
+   * owner of the player's matchmaking session so that closing the tab clears
+   * the queue entry. If the player already has an active session on a
+   * *different* socket (e.g. second matchmaking tab), the old session is
+   * evicted first: the old socket is notified with `matchmaking:state { idle }`
+   * and its queue entry is removed before the new one is created.
+   */
+  async enterMatchmakingViaSocket(
+    player: PlayerIdentity,
+    timeControl: TimeControl,
+    socket: WebSocket,
+  ): Promise<MatchmakingState> {
+    const existingSocket = this.matchmakingSocketByPlayer.get(player.playerId);
+    if (existingSocket && existingSocket !== socket) {
+      this.matchmakingSocketByPlayer.delete(player.playerId);
+      await this.leaveMatchmaking(player);
+      this.sendLobbyMessage(existingSocket, {
+        type: "matchmaking:state",
+        state: { status: "idle" },
+      });
+    }
+
+    const state = await this.enterMatchmaking(player, timeControl);
+
+    if (state.status === "searching") {
+      this.matchmakingSocketByPlayer.set(player.playerId, socket);
+    } else if (state.status === "matched") {
+      // `enterMatchmaking` already pushed `matchmaking:matched` to the
+      // waiting opponent. The initiator (this socket) receives the result
+      // via the caller's `matchmaking:state` reply in `handleLobbyMessage`.
+      this.matchmakingSocketByPlayer.delete(player.playerId);
+    }
+
+    return state;
+  }
+
+  async leaveMatchmakingViaSocket(player: PlayerIdentity, socket: WebSocket): Promise<void> {
+    // Only act if this is the socket that owns the session. A stray leave from
+    // a socket that isn't the session owner is silently ignored to avoid
+    // clobbering a queue entry owned by a different tab.
+    if (this.matchmakingSocketByPlayer.get(player.playerId) !== socket) return;
+    this.matchmakingSocketByPlayer.delete(player.playerId);
+    await this.leaveMatchmaking(player);
+  }
+
   /** Periodically re-check the queue for players whose Elo windows have expanded enough to match. */
   startMatchmakingSweep(intervalMs = 5_000): void {
     if (this.matchmakingSweepTimer) return;
@@ -1088,6 +1215,8 @@ export class GameService {
   }
 
   private async sweepMatchmakingQueue(): Promise<void> {
+    const matchedPairs: Array<{ room: StoredMultiplayerRoom; playerIds: [string, string] }> = [];
+
     await this.withLock(this.matchmakingLockKey(), async () => {
       const entries = await this.matchmaking.getAllEntries();
       if (entries.length < 2) return;
@@ -1108,7 +1237,7 @@ export class GameService {
         await this.matchmaking.removeFromQueue(entry.player.playerId);
 
         // Create game
-        await this.withLocks(
+        const room = await this.withLocks(
           [this.playerLockKey(entry.player.playerId), this.playerLockKey(opponent.player.playerId)],
           async () => {
             const slim1: StoredPlayerIdentity = {
@@ -1121,19 +1250,37 @@ export class GameService {
               displayName: opponent.player.displayName,
               kind: opponent.player.kind,
             };
-            const room = await this.createRoomRecord({
+            const createdRoom = await this.createRoomRecord({
               roomType: "matchmaking",
               assignSeats: true,
               seats: this.assignSeats(slim1, slim2),
               timeControl: entry.timeControl,
             });
 
-            await this.matchmaking.setMatch(entry.player.playerId, room.id);
-            await this.matchmaking.setMatch(opponent.player.playerId, room.id);
+            await this.matchmaking.setMatch(entry.player.playerId, createdRoom.id);
+            await this.matchmaking.setMatch(opponent.player.playerId, createdRoom.id);
+
+            return createdRoom;
           },
         );
+
+        matchedPairs.push({
+          room,
+          playerIds: [entry.player.playerId, opponent.player.playerId],
+        });
       }
     });
+
+    // Push `matchmaking:matched` to both players for every pair created in this
+    // sweep. Doing this outside the lock keeps broadcasts off the hot path and
+    // matches the pattern used by other broadcastLobby call sites.
+    for (const { room, playerIds } of matchedPairs) {
+      const snapshot = await this.toSnapshot(room);
+      for (const playerId of playerIds) {
+        this.matchmakingSocketByPlayer.delete(playerId);
+        this.broadcastLobby(playerId, { type: "matchmaking:matched", snapshot });
+      }
+    }
   }
 
   async testForceFinishGame(gameId: string, winner: PlayerColor): Promise<void> {

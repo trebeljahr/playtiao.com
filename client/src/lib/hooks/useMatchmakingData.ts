@@ -1,98 +1,106 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { AuthResponse, MatchmakingState, MultiplayerSnapshot, TimeControl } from "@shared";
-import { enterMatchmaking, leaveMatchmaking, getMatchmakingState } from "../api";
+import type {
+  AuthResponse,
+  LobbyServerMessage,
+  MatchmakingState,
+  MultiplayerSnapshot,
+  TimeControl,
+} from "@shared";
+import { useLobbyMessage, useLobbySocket } from "../LobbySocketContext";
 import { toastError } from "../errors";
 
+/**
+ * Matchmaking hook backed by the lobby WebSocket.
+ *
+ * The queue entry's lifetime is tied to the socket that sent
+ * `matchmaking:enter` — closing the tab / navigating away / crashing all fire
+ * the server-side `close` handler, which clears the entry before the sweep
+ * can pair a ghost with a real player. We still send `matchmaking:leave` on
+ * unmount so that navigating *within* the SPA (socket stays open) also frees
+ * the slot immediately.
+ */
 export function useMatchmakingData(
   auth: AuthResponse | null,
   onMatched: (snapshot: MultiplayerSnapshot) => void,
 ) {
-  const [matchmaking, setMatchmaking] = useState<MatchmakingState>({
-    status: "idle",
-  });
+  const [matchmaking, setMatchmaking] = useState<MatchmakingState>({ status: "idle" });
   const [matchmakingBusy, setMatchmakingBusy] = useState(false);
-  const pollTimerRef = useRef<number | null>(null);
+  const { sendMessage } = useLobbySocket();
 
-  const stopMatchmaking = useCallback(async (options: { silent?: boolean } = {}) => {
-    if (pollTimerRef.current !== null) {
-      window.clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-    try {
-      await leaveMatchmaking();
-      setMatchmaking({ status: "idle" });
-    } catch (error) {
-      if (!options.silent) {
-        toastError(error);
-      }
-    }
-  }, []);
+  // Refs so the unmount effect can read the latest state without re-running.
+  const statusRef = useRef(matchmaking.status);
+  useEffect(() => {
+    statusRef.current = matchmaking.status;
+  }, [matchmaking.status]);
 
-  const pollMatchmakingStatus = useCallback(async () => {
-    try {
-      const response = await getMatchmakingState();
-      setMatchmaking(response.matchmaking);
+  const sendMessageRef = useRef(sendMessage);
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
-      if (response.matchmaking.status === "matched") {
-        if (pollTimerRef.current !== null) {
-          window.clearInterval(pollTimerRef.current);
-          pollTimerRef.current = null;
-        }
-        onMatched(response.matchmaking.snapshot);
-      }
-    } catch {
-      // Silent error for polling
-    }
+  const onMatchedRef = useRef(onMatched);
+  useEffect(() => {
+    onMatchedRef.current = onMatched;
   }, [onMatched]);
 
-  const startPolling = useCallback(() => {
-    if (pollTimerRef.current !== null) {
-      window.clearInterval(pollTimerRef.current);
+  useLobbyMessage((payload: Record<string, unknown>) => {
+    const msg = payload as LobbyServerMessage;
+    if (msg.type === "matchmaking:state") {
+      setMatchmaking(msg.state);
+      setMatchmakingBusy(false);
+      // An immediate match (second player to enter the queue) comes back as
+      // `matchmaking:state { status: "matched", snapshot }` in direct reply
+      // to the initiator. Trigger the same routing path as the
+      // `matchmaking:matched` push the waiting opponent receives.
+      if (msg.state.status === "matched") {
+        onMatchedRef.current(msg.state.snapshot);
+      }
+      return;
     }
-    pollTimerRef.current = window.setInterval(pollMatchmakingStatus, 2000);
-  }, [pollMatchmakingStatus]);
+    if (msg.type === "matchmaking:matched") {
+      setMatchmaking({ status: "matched", snapshot: msg.snapshot });
+      setMatchmakingBusy(false);
+      onMatchedRef.current(msg.snapshot);
+      return;
+    }
+    if (msg.type === "matchmaking:error") {
+      toastError(new Error(msg.message));
+      setMatchmaking({ status: "idle" });
+      setMatchmakingBusy(false);
+      return;
+    }
+  });
 
   const handleEnterMatchmaking = useCallback(
     async (timeControl?: TimeControl) => {
-      if (!auth) {
-        return;
-      }
-
+      if (!auth) return;
       setMatchmakingBusy(true);
-
-      try {
-        const response = await enterMatchmaking(timeControl ? { timeControl } : undefined);
-        setMatchmaking(response.matchmaking);
-
-        if (response.matchmaking.status === "matched") {
-          onMatched(response.matchmaking.snapshot);
-        } else if (response.matchmaking.status === "searching") {
-          startPolling();
-        }
-      } catch (error) {
-        toastError(error);
-        setMatchmaking({ status: "idle" } as MatchmakingState);
-        throw error; // Re-throw so callers can catch
-      } finally {
-        setMatchmakingBusy(false);
-      }
+      sendMessageRef.current({
+        type: "matchmaking:enter",
+        timeControl: timeControl ?? null,
+      });
     },
-    [auth, onMatched, stopMatchmaking, startPolling],
+    [auth],
   );
 
   const handleCancelMatchmaking = useCallback(async () => {
     setMatchmakingBusy(true);
-    try {
-      await stopMatchmaking({ silent: false });
-    } finally {
-      setMatchmakingBusy(false);
-    }
-  }, [stopMatchmaking]);
+    sendMessageRef.current({ type: "matchmaking:leave" });
+    // Optimistic: the server will confirm with `matchmaking:state { idle }`,
+    // but the UI should flip immediately so the cancel button doesn't spin.
+    setMatchmaking({ status: "idle" });
+    setMatchmakingBusy(false);
+  }, []);
 
+  // Unmount cleanup for SPA navigation: the socket stays open when we route
+  // to another page inside the app, so the server's close handler won't fire.
+  // Send an explicit leave iff we were still searching. Matched players skip
+  // this — sending leave would make the server call deleteMatch and clobber
+  // the freshly created room as the router pushes to /game/:id.
   useEffect(() => {
     return () => {
-      if (pollTimerRef.current !== null) {
-        window.clearInterval(pollTimerRef.current);
+      if (statusRef.current === "searching") {
+        sendMessageRef.current({ type: "matchmaking:leave" });
       }
     };
   }, []);
@@ -103,6 +111,5 @@ export function useMatchmakingData(
     matchmakingBusy,
     handleEnterMatchmaking,
     handleCancelMatchmaking,
-    stopMatchmaking,
   };
 }

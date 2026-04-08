@@ -1,16 +1,23 @@
 import { createContext, useContext, useEffect, useRef, useCallback } from "react";
-import type { AuthResponse } from "@shared";
+import type { AuthResponse, LobbyClientMessage } from "@shared";
 import { buildWebSocketUrl } from "./api";
 import { createReconnectScheduler } from "./reconnect";
 
+// The server sends a zoo of loosely-typed messages on this channel
+// (game-update, social-update, achievement-*, tournament-*,
+// player-identity-update, matchmaking:*). Consumers narrow by `type` at runtime
+// rather than sharing a discriminated union — see `LobbyServerMessage` in
+// shared/src/protocol.ts for the subset that is formally typed.
 type LobbyMessageHandler = (payload: Record<string, unknown>) => void;
 
 type LobbySocketContextValue = {
   subscribe: (handler: LobbyMessageHandler) => () => void;
+  sendMessage: (message: LobbyClientMessage) => void;
 };
 
 const LobbySocketContext = createContext<LobbySocketContextValue>({
   subscribe: () => () => {},
+  sendMessage: () => {},
 });
 
 export function useLobbyMessage(handler: LobbyMessageHandler) {
@@ -23,6 +30,10 @@ export function useLobbyMessage(handler: LobbyMessageHandler) {
   }, [subscribe]);
 }
 
+export function useLobbySocket() {
+  return useContext(LobbySocketContext);
+}
+
 export function LobbySocketProvider({
   auth,
   children,
@@ -31,6 +42,11 @@ export function LobbySocketProvider({
   children: React.ReactNode;
 }) {
   const subscribersRef = useRef<Set<LobbyMessageHandler>>(new Set());
+  const socketRef = useRef<WebSocket | null>(null);
+  // Queue of outbound messages sent while the socket is closed/reconnecting.
+  // Flushed on the next `open` event so a matchmaking page that mounts during
+  // a reconnect doesn't silently drop its `matchmaking:enter`.
+  const pendingRef = useRef<LobbyClientMessage[]>([]);
 
   const subscribe = useCallback((handler: LobbyMessageHandler) => {
     subscribersRef.current.add(handler);
@@ -39,10 +55,19 @@ export function LobbySocketProvider({
     };
   }, []);
 
-  useEffect(() => {
-    if (!auth || auth.player.kind !== "account") return;
+  const sendMessage = useCallback((message: LobbyClientMessage) => {
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    } else {
+      pendingRef.current.push(message);
+    }
+  }, []);
 
-    let socket: WebSocket | null = null;
+  useEffect(() => {
+    // Lobby socket now supports both accounts and guests: matchmaking relies on
+    // socket lifetime for queue cleanup, so guests need a channel too.
+    if (!auth) return;
 
     const reconnect = createReconnectScheduler(connect, {
       baseDelayMs: 1500,
@@ -54,10 +79,17 @@ export function LobbySocketProvider({
       url.pathname = "/api/ws/lobby";
       url.searchParams.delete("gameId");
 
-      socket = new WebSocket(url.toString());
+      const socket = new WebSocket(url.toString());
+      socketRef.current = socket;
 
       socket.onopen = () => {
         reconnect.reset();
+        // Flush any messages that were enqueued while the socket was down.
+        const pending = pendingRef.current;
+        pendingRef.current = [];
+        for (const message of pending) {
+          socket.send(JSON.stringify(message));
+        }
       };
 
       socket.onmessage = (event) => {
@@ -73,12 +105,12 @@ export function LobbySocketProvider({
       };
 
       socket.onclose = () => {
-        socket = null;
+        if (socketRef.current === socket) socketRef.current = null;
         reconnect.schedule();
       };
 
       socket.onerror = () => {
-        socket?.close();
+        socket.close();
       };
     }
 
@@ -86,11 +118,15 @@ export function LobbySocketProvider({
 
     return () => {
       reconnect.clear();
-      socket?.close();
+      socketRef.current?.close();
+      socketRef.current = null;
+      pendingRef.current = [];
     };
   }, [auth]);
 
   return (
-    <LobbySocketContext.Provider value={{ subscribe }}>{children}</LobbySocketContext.Provider>
+    <LobbySocketContext.Provider value={{ subscribe, sendMessage }}>
+      {children}
+    </LobbySocketContext.Provider>
   );
 }

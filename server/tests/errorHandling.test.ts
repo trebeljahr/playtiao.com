@@ -341,22 +341,10 @@ describe("game route error handling", () => {
     assert.ok(response.body.message);
   });
 
-  test("POST /matchmaking recovers from service error", async () => {
-    const guest = await createGuest("MatchErrorGuest");
-
-    singletonGameService!.enterMatchmaking = () => {
-      throw new Error("matchmaking broken");
-    };
-
-    const response = await invokeRoute<{ message: string }>(gameRoutes, {
-      method: "post",
-      path: "/matchmaking",
-      cookie: guest.cookie,
-    });
-
-    assert.equal(response.status, 500);
-    assert.ok(response.body.message);
-  });
+  // POST /matchmaking recovery test removed — matchmaking is now delivered
+  // over the lobby WebSocket, not a REST route. Error handling for the WS
+  // path is covered by the `matchmaking:error` message in
+  // matchmakingEdgeCases.test.ts.
 });
 
 describe("MongoDB duplicate key error surfaces as 409", () => {
