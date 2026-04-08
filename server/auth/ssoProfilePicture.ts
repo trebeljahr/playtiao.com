@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 
 /**
  * For a list of player IDs, look up SSO profile pictures from
@@ -12,7 +13,10 @@ export async function fetchSsoProfilePictures(playerIds: string[]): Promise<Map<
     const db = mongoose.connection.getClient().db();
     const baUsers = await db
       .collection("user")
-      .find({ _id: { $in: playerIds } as any, image: { $ne: null } })
+      .find({
+        _id: { $in: playerIds.flatMap((id) => [id, new ObjectId(id)]) } as any,
+        image: { $ne: null },
+      })
       .project({ _id: 1, image: 1 })
       .toArray();
     return new Map(baUsers.filter((u) => u.image).map((u) => [String(u._id), u.image as string]));

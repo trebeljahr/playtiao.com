@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import express, { Request, Response } from "express";
 import { Jimp } from "jimp";
 import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 import GameAccount from "../models/GameAccount";
 import GameInvitation from "../models/GameInvitation";
 import GameRoom from "../models/GameRoom";
@@ -29,10 +30,20 @@ function isDatabaseReady(): boolean {
   return mongoose.connection.readyState === 1;
 }
 
+/**
+ * Build a MongoDB $in filter that matches both string and ObjectId forms of an ID.
+ * Better Auth's MongoDB adapter stores _id/userId as ObjectId, but some older
+ * records (e.g. credential accounts created via the custom set-password flow)
+ * may store them as plain strings.
+ */
+function baIdFilter(id: string): { $in: [string, ObjectId] } {
+  return { $in: [id, new ObjectId(id)] };
+}
+
 /** Look up a user's email from better-auth's user collection. */
 async function getEmailForAccount(accountId: string): Promise<string | undefined> {
   const db = mongoose.connection.getClient().db();
-  const baUser = await db.collection("user").findOne({ _id: accountId as any });
+  const baUser = await db.collection("user").findOne({ _id: baIdFilter(accountId) as any });
   return baUser?.email ?? undefined;
 }
 
@@ -42,7 +53,7 @@ async function getSsoImageForAccount(accountId: string): Promise<string | undefi
     const db = mongoose.connection.getClient().db();
     const baUser = await db
       .collection("user")
-      .findOne({ _id: accountId as any }, { projection: { image: 1 } });
+      .findOne({ _id: baIdFilter(accountId) as any }, { projection: { image: 1 } });
     return (baUser?.image as string) || undefined;
   } catch {
     return undefined;
@@ -130,7 +141,7 @@ async function getProvidersForAccount(accountId: string): Promise<string[]> {
   const db = mongoose.connection.getClient().db();
   const accounts = await db
     .collection("account")
-    .find({ userId: accountId } as any)
+    .find({ userId: baIdFilter(accountId) } as any)
     .toArray();
   return accounts.map((a) => a.providerId as string);
 }
@@ -181,7 +192,9 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
       }
       // Look up the email from better-auth's user collection
       const db = mongoose.connection.getClient().db();
-      const baUser = await db.collection("user").findOne({ _id: account._id as any });
+      const baUser = await db
+        .collection("user")
+        .findOne({ _id: baIdFilter(String(account._id)) as any });
       if (!baUser?.email) {
         return res.status(401).json({
           code: "INVALID_CREDENTIALS",
@@ -423,7 +436,7 @@ router.get("/profile/:username", async (req: Request, res: Response) => {
     if (!profilePicture) {
       try {
         const db = mongoose.connection.getClient().db();
-        const baUser = await db.collection("user").findOne({ _id: account.id as any });
+        const baUser = await db.collection("user").findOne({ _id: baIdFilter(account.id) as any });
         profilePicture = (baUser?.image as string) || undefined;
       } catch {
         // Non-critical
@@ -691,7 +704,7 @@ router.put("/profile", async (req: Request, res: Response) => {
       await db
         .collection("user")
         .updateOne(
-          { _id: account.id as any },
+          { _id: baIdFilter(account.id) as any },
           { $set: { name: account.displayName, displayName: account.displayName } },
         );
     }
@@ -813,11 +826,11 @@ router.post("/set-password", async (req: Request, res: Response) => {
     const db = mongoose.connection.getClient().db();
 
     // If email was provided, update it in better-auth's user collection.
-    // Use account.id (string) to match better-auth's stored _id format.
+    const baUserIdFilter = baIdFilter(account.id);
     if (typeof newEmail === "string" && newEmail.trim()) {
       await db
         .collection("user")
-        .updateOne({ _id: account.id as any }, { $set: { email: newEmail.trim() } });
+        .updateOne({ _id: baUserIdFilter as any }, { $set: { email: newEmail.trim() } });
     }
 
     // Also sync displayName to better-auth's user collection if changed
@@ -825,7 +838,7 @@ router.post("/set-password", async (req: Request, res: Response) => {
       await db
         .collection("user")
         .updateOne(
-          { _id: account.id as any },
+          { _id: baUserIdFilter as any },
           { $set: { name: account.displayName, displayName: account.displayName } },
         );
     }
@@ -847,9 +860,10 @@ router.post("/set-password", async (req: Request, res: Response) => {
 
     await account.save();
 
-    // Insert a credential account entry into better-auth's account collection
+    // Insert a credential account entry into better-auth's account collection.
+    // Use ObjectId for userId to match BA's own format.
     await db.collection("account").insertOne({
-      userId: account.id,
+      userId: new ObjectId(account.id),
       providerId: "credential",
       accountId: account.id,
       password: hashedPassword,
@@ -1172,11 +1186,12 @@ router.delete("/account", async (req: Request, res: Response) => {
 
     // (h) Delete better-auth data (user, session, account, verification collections)
     const db = mongoose.connection.getClient().db();
-    const userDoc = await db.collection("user").findOne({ _id: accountId as any });
+    const idFilter = baIdFilter(accountId);
+    const userDoc = await db.collection("user").findOne({ _id: idFilter as any });
     await Promise.all([
-      db.collection("user").deleteOne({ _id: accountId as any }),
-      db.collection("session").deleteMany({ userId: accountId } as any),
-      db.collection("account").deleteMany({ userId: accountId } as any),
+      db.collection("user").deleteOne({ _id: idFilter as any }),
+      db.collection("session").deleteMany({ userId: idFilter } as any),
+      db.collection("account").deleteMany({ userId: idFilter } as any),
       db.collection("verification").deleteMany({ identifier: userDoc?.email } as any),
     ]);
 
