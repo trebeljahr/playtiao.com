@@ -240,7 +240,7 @@ export function FriendsPage() {
                           {social.socialOverview.friends.map((friend) => (
                             <div
                               key={friend.playerId}
-                              className="flex flex-col gap-2 rounded-xl bg-white/40 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                              className="flex flex-col gap-3 rounded-xl bg-white/40 p-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <PlayerIdentityRow
                                 player={friend}
