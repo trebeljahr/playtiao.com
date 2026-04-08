@@ -164,9 +164,26 @@ describe("Shop routes", () => {
     (GameAccount as unknown as Record<string, unknown>).findById = async (id: string) =>
       mockAccounts.get(id) ?? null;
 
-    // Patch mongoose readyState
+    // Patch mongoose readyState AND db — without a db stub, any Mongoose
+    // model compiled AFTER readyState flips to 1 crashes because the
+    // Collection constructor sees "connected" and calls
+    // `this.conn.db.collection(this.name)` on an undefined `db`. The
+    // subsequent `await import("../routes/shop.routes")` transitively
+    // loads server/models/GameRoom.ts, whose top-level
+    // `mongoose.model("GameRoom", schema)` call triggers the crash.
     Object.defineProperty(mongoose.connection, "readyState", {
       get: () => 1,
+      configurable: true,
+    });
+    Object.defineProperty(mongoose.connection, "db", {
+      get: () => ({
+        collection: (name: string) => ({
+          name,
+          collectionName: name,
+          createIndex: async () => undefined,
+          createIndexes: async () => undefined,
+        }),
+      }),
       configurable: true,
     });
 

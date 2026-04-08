@@ -363,9 +363,31 @@ async function installModelMocks() {
   // Mock GameInvitation.create
   (GameInvitation as unknown as Record<string, unknown>).create = async () => ({});
 
-  // Patch mongoose.connection.readyState
+  // Patch mongoose.connection.readyState so route-level "is DB ready?"
+  // middleware in social.routes.ts sees a live connection without us
+  // actually opening one.
   Object.defineProperty(mongoose.connection, "readyState", {
     get: () => mockReadyState,
+    configurable: true,
+  });
+  // And patch `db` too: without it, any model compiled AFTER readyState flips
+  // to 1 crashes because Mongoose's Collection constructor sees the fake
+  // "connected" state and calls `this.conn.db.collection(this.name)` —
+  // where `db` is undefined on a never-really-connected connection. This
+  // surfaces when beforeEach later does `await import("../routes/social.routes")`,
+  // which transitively loads server/models/GameRoom.ts, triggering its
+  // eager `mongoose.model("GameRoom", schema)` call.
+  Object.defineProperty(mongoose.connection, "db", {
+    get: () => ({
+      collection: (name: string) => ({
+        name,
+        collectionName: name,
+        // Stubs for the handful of methods mongoose may invoke during
+        // model init on the fake collection; all return empty promises.
+        createIndex: async () => undefined,
+        createIndexes: async () => undefined,
+      }),
+    }),
     configurable: true,
   });
 }
