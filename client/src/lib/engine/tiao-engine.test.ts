@@ -10,16 +10,23 @@ import {
   AI_DIFFICULTY_LABELS,
 } from "./tiao-engine";
 
+/** Create a board with specific pieces. Uses 7x7 by default for fast tests. */
 function setupBoard(
   pieces: Array<{ x: number; y: number; color: "black" | "white" }>,
   currentTurn: "black" | "white" = "black",
+  boardSize = 7,
 ): GameState {
-  const state = createInitialGameState();
+  const state = createInitialGameState({ boardSize });
   for (const p of pieces) {
     state.positions[p.y][p.x] = p.color;
   }
   state.currentTurn = currentTurn;
   return state;
+}
+
+/** Small empty board for search tests — 7x7 has 49 positions vs 361 on 19x19. */
+function emptySmallBoard(turn: "black" | "white" = "black"): GameState {
+  return createInitialGameState({ boardSize: 7 });
 }
 
 describe("Move Generation", () => {
@@ -31,10 +38,14 @@ describe("Move Generation", () => {
   });
 
   it("generates jump moves when captures are available", () => {
-    const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
-    ]);
+    const state = setupBoard(
+      [
+        { x: 9, y: 9, color: "black" },
+        { x: 10, y: 9, color: "white" },
+      ],
+      "black",
+      19,
+    );
     const moves = generateMoves(state);
     const jumpMoves = moves.filter((m) => m.type === "jump");
     expect(jumpMoves.length).toBeGreaterThan(0);
@@ -42,11 +53,15 @@ describe("Move Generation", () => {
 
   it("generates multi-hop jump chains", () => {
     // Black at (6,9), white at (7,9) and (9,9), empty at (8,9) and (10,9)
-    const state = setupBoard([
-      { x: 6, y: 9, color: "black" },
-      { x: 7, y: 9, color: "white" },
-      { x: 9, y: 9, color: "white" },
-    ]);
+    const state = setupBoard(
+      [
+        { x: 6, y: 9, color: "black" },
+        { x: 7, y: 9, color: "white" },
+        { x: 9, y: 9, color: "white" },
+      ],
+      "black",
+      19,
+    );
     const moves = generateMoves(state);
     const jumpMoves = moves.filter((m) => m.type === "jump");
     // Should only generate maximal chains (length-2 double capture, no partial length-1)
@@ -74,11 +89,15 @@ describe("Move Application", () => {
   });
 
   it("applies jump chain correctly", () => {
-    const state = setupBoard([
-      { x: 6, y: 9, color: "black" },
-      { x: 7, y: 9, color: "white" },
-      { x: 9, y: 9, color: "white" },
-    ]);
+    const state = setupBoard(
+      [
+        { x: 6, y: 9, color: "black" },
+        { x: 7, y: 9, color: "white" },
+        { x: 9, y: 9, color: "white" },
+      ],
+      "black",
+      19,
+    );
     const move: EngineMove = {
       type: "jump",
       from: { x: 6, y: 9 },
@@ -124,8 +143,8 @@ describe("Evaluation", () => {
   });
 
   it("values center positions", () => {
-    const centerState = setupBoard([{ x: 9, y: 9, color: "black" }], "black");
-    const cornerState = setupBoard([{ x: 1, y: 1, color: "black" }], "black");
+    const centerState = setupBoard([{ x: 9, y: 9, color: "black" }], "black", 19);
+    const cornerState = setupBoard([{ x: 1, y: 1, color: "black" }], "black", 19);
     const centerScore = evaluate(centerState);
     const cornerScore = evaluate(cornerState);
     expect(centerScore).toBeGreaterThan(cornerScore);
@@ -135,7 +154,7 @@ describe("Evaluation", () => {
 describe("Zobrist Hashing", () => {
   it("produces same hash for same position", () => {
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
+      { x: 3, y: 3, color: "black" },
       { x: 5, y: 5, color: "white" },
     ]);
     const hash1 = computeZobristHash(state);
@@ -156,21 +175,17 @@ describe("Zobrist Hashing", () => {
   });
 
   it("produces different hash for different turn", () => {
-    const state1 = setupBoard([{ x: 9, y: 9, color: "black" }], "black");
-    const state2 = setupBoard([{ x: 9, y: 9, color: "black" }], "white");
+    const state1 = setupBoard([{ x: 9, y: 9, color: "black" }], "black", 19);
+    const state2 = setupBoard([{ x: 9, y: 9, color: "black" }], "white", 19);
     expect(computeZobristHash(state1)).not.toBe(computeZobristHash(state2));
   });
 });
 
-// These engine tests run the AI search and can take 30s–2min.
-// Skip by default; run with RUN_ENGINE_TESTS=1 vitest run
-const skipEngine = !process.env.RUN_ENGINE_TESTS;
-
-describe.skipIf(skipEngine)("Search", { timeout: 30_000 }, () => {
+describe("Search", { timeout: 10_000 }, () => {
   it("finds immediate capture", () => {
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
+      { x: 3, y: 3, color: "black" },
+      { x: 4, y: 3, color: "white" },
     ]);
     const result = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
     expect(result).not.toBeNull();
@@ -178,43 +193,36 @@ describe.skipIf(skipEngine)("Search", { timeout: 30_000 }, () => {
   });
 
   it("prefers multi-capture chains over single captures", () => {
-    // Black can either single-capture or double-capture
     const state = setupBoard([
-      { x: 6, y: 9, color: "black" },
-      { x: 7, y: 9, color: "white" },
-      { x: 9, y: 9, color: "white" },
-      // Also place a separate single capture option
-      { x: 3, y: 3, color: "black" },
+      { x: 1, y: 3, color: "black" },
+      { x: 2, y: 3, color: "white" },
       { x: 4, y: 3, color: "white" },
+      { x: 1, y: 1, color: "black" },
+      { x: 2, y: 1, color: "white" },
     ]);
     const result = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
     expect(result).not.toBeNull();
     if (result!.move.type === "jump") {
-      // Should prefer the double capture chain
       expect(result!.move.path.length).toBe(2);
     }
   });
 
   it("returns null for game-over state", () => {
-    const state = createInitialGameState();
+    const state = emptySmallBoard();
     state.score.white = 10;
     const result = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
     expect(result).toBeNull();
   });
 
   it("respects abort signal", () => {
-    const state = createInitialGameState();
-    state.currentTurn = "black";
+    const state = emptySmallBoard();
     const abort = { aborted: true };
     findBestMove(state, { level: 3, color: "black" }, abort);
-    // Should still return something from depth 1 if it manages to start
-    // but importantly should not hang
-    expect(true).toBe(true); // just ensure it completes
+    expect(true).toBe(true);
   });
 
   it("chooses a placement when no captures available", () => {
-    const state = createInitialGameState();
-    state.currentTurn = "black";
+    const state = emptySmallBoard();
     const result = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
     expect(result).not.toBeNull();
     expect(result!.move.type).toBe("place");
@@ -222,8 +230,8 @@ describe.skipIf(skipEngine)("Search", { timeout: 30_000 }, () => {
 
   it("produces valid state after applying result", () => {
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
+      { x: 3, y: 3, color: "black" },
+      { x: 4, y: 3, color: "white" },
     ]);
     const result = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
     expect(result).not.toBeNull();
@@ -232,23 +240,21 @@ describe.skipIf(skipEngine)("Search", { timeout: 30_000 }, () => {
   });
 });
 
-describe.skipIf(skipEngine)("Difficulty Levels", { timeout: 30_000 }, () => {
+describe("Difficulty Levels", { timeout: 10_000 }, () => {
   it("level 1 completes within its time budget", () => {
-    const state = createInitialGameState();
-    state.currentTurn = "black";
+    const state = emptySmallBoard();
     const start = performance.now();
     findBestMove(state, { level: 1, color: "black" }, { aborted: false });
     const elapsed = performance.now() - start;
-    // Level 1 (Easy) has a 3s budget; allow some overhead
-    expect(elapsed).toBeLessThan(10000);
+    expect(elapsed).toBeLessThan(5000);
   });
 
   it("higher levels search deeper", () => {
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
-      { x: 5, y: 5, color: "white" },
-      { x: 6, y: 6, color: "black" },
+      { x: 3, y: 3, color: "black" },
+      { x: 4, y: 3, color: "white" },
+      { x: 2, y: 2, color: "white" },
+      { x: 3, y: 1, color: "black" },
     ]);
     const result1 = findBestMove(state, { level: 1, color: "black" }, { aborted: false });
     const result4 = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
@@ -258,7 +264,7 @@ describe.skipIf(skipEngine)("Difficulty Levels", { timeout: 30_000 }, () => {
   });
 });
 
-describe.skipIf(skipEngine)("AI Difficulty Presets (#66)", { timeout: 120_000 }, () => {
+describe("AI Difficulty Presets (#66)", { timeout: 30_000 }, () => {
   it("has three difficulty labels: Easy, Intermediate, Hard", () => {
     expect(AI_DIFFICULTY_LABELS[1]).toBe("Easy");
     expect(AI_DIFFICULTY_LABELS[2]).toBe("Intermediate");
@@ -266,53 +272,16 @@ describe.skipIf(skipEngine)("AI Difficulty Presets (#66)", { timeout: 120_000 },
   });
 
   it("intermediate level (2) produces a valid move", () => {
-    const state = createInitialGameState();
-    state.currentTurn = "black";
+    const state = emptySmallBoard();
     const result = findBestMove(state, { level: 2, color: "black" }, { aborted: false });
     expect(result).not.toBeNull();
     expect(result!.move.type).toBe("place");
   });
 
-  it("intermediate level searches deeper than easy level", () => {
+  it("difficulty ordering: easy <= intermediate <= hard (by search depth)", () => {
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
-      { x: 5, y: 5, color: "white" },
-      { x: 6, y: 6, color: "black" },
-    ]);
-    const resultEasy = findBestMove(state, { level: 1, color: "black" }, { aborted: false });
-    const resultIntermediate = findBestMove(
-      state,
-      { level: 2, color: "black" },
-      { aborted: false },
-    );
-    expect(resultEasy).not.toBeNull();
-    expect(resultIntermediate).not.toBeNull();
-    expect(resultIntermediate!.depth).toBeGreaterThanOrEqual(resultEasy!.depth);
-  });
-
-  it("hard level searches at least as deep as intermediate", () => {
-    const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
-      { x: 5, y: 5, color: "white" },
-      { x: 6, y: 6, color: "black" },
-    ]);
-    const resultIntermediate = findBestMove(
-      state,
-      { level: 2, color: "black" },
-      { aborted: false },
-    );
-    const resultHard = findBestMove(state, { level: 3, color: "black" }, { aborted: false });
-    expect(resultIntermediate).not.toBeNull();
-    expect(resultHard).not.toBeNull();
-    expect(resultHard!.depth).toBeGreaterThanOrEqual(resultIntermediate!.depth);
-  });
-
-  it("difficulty ordering: easy is weakest, hard is strongest (by search depth)", () => {
-    const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
+      { x: 3, y: 3, color: "black" },
+      { x: 4, y: 3, color: "white" },
     ]);
     const easy = findBestMove(state, { level: 1, color: "black" }, { aborted: false });
     const intermediate = findBestMove(state, { level: 2, color: "black" }, { aborted: false });
@@ -322,46 +291,38 @@ describe.skipIf(skipEngine)("AI Difficulty Presets (#66)", { timeout: 120_000 },
     expect(intermediate).not.toBeNull();
     expect(hard).not.toBeNull();
 
-    // Depths should be ordered: easy <= intermediate <= hard
     expect(intermediate!.depth).toBeGreaterThanOrEqual(easy!.depth);
     expect(hard!.depth).toBeGreaterThanOrEqual(intermediate!.depth);
   });
 
   it("intermediate and hard AI always take an obvious jump when available", () => {
-    // Black at (9,9), white at (10,9) — black can jump to (11,9)
     const state = setupBoard([
-      { x: 9, y: 9, color: "black" },
-      { x: 10, y: 9, color: "white" },
+      { x: 3, y: 3, color: "black" },
+      { x: 4, y: 3, color: "white" },
     ]);
 
-    // Easy (level 1) has skipProb and high noise — intentionally weak.
-    // Intermediate and hard must always take obvious captures.
+    // 3 runs instead of 10 — still validates consistency, much faster
     for (const level of [2, 3] as const) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 3; i++) {
         const result = findBestMove(state, { level, color: "black" }, { aborted: false });
         expect(result, `level ${level} run ${i}: should return a result`).not.toBeNull();
-        expect(
-          result!.move.type,
-          `level ${level} run ${i}: should jump, not place (score=${result!.score} depth=${result!.depth})`,
-        ).toBe("jump");
+        expect(result!.move.type, `level ${level} run ${i}: should jump`).toBe("jump");
       }
     }
   });
 
   it("intermediate AI does not place adjacent to opponent piece (giving free capture)", () => {
-    // Human (white) placed at center. AI (black) should not place adjacent
-    // because white could jump over it on the next move.
-    const state = setupBoard([{ x: 9, y: 9, color: "white" }], "black");
+    const state = setupBoard([{ x: 3, y: 3, color: "white" }], "black");
 
-    // Run multiple times to account for evalNoise randomness
-    for (let i = 0; i < 10; i++) {
+    // 3 runs instead of 10
+    for (let i = 0; i < 3; i++) {
       const result = findBestMove(state, { level: 2, color: "black" }, { aborted: false });
       expect(result).not.toBeNull();
       expect(result!.move.type).toBe("place");
 
       if (result!.move.type === "place") {
         const { x, y } = result!.move.position;
-        const isAdjacent = (Math.abs(x - 9) === 1 && y === 9) || (Math.abs(y - 9) === 1 && x === 9);
+        const isAdjacent = (Math.abs(x - 3) === 1 && y === 3) || (Math.abs(y - 3) === 1 && x === 3);
         expect(isAdjacent).toBe(false);
       }
     }
