@@ -297,6 +297,12 @@ html [data-sonner-toast][data-styled="true"] [data-button]:active {
 .shop-item-highlight {
   animation: target-attention 1.2s ease-out both;
 }
+/* Same bounce + glow used when a navbar notification badge scrolls the
+ * user to the element it refers to (incoming friend requests, lobby
+ * invitations, etc.). Toggled by JS via classList.add/remove. */
+.notification-target-wiggle {
+  animation: target-attention 1.2s ease-out both;
+}
 @keyframes purchase-wiggle {
   0% {
     transform: scale(1) rotate(0deg);

@@ -56,10 +56,11 @@ function clearToastedIds(playerId: string): void {
 }
 
 // Acknowledged-notification IDs: the user has seen these (e.g. by clicking
-// the red notification bubble in Navbar, which scrolls to the invitations
-// section). Stored keys are `invitation:{invId}` and `rematch:{gameId}`.
-// Used to drive an "unacknowledged count" so the bubble clears after view
-// but reappears when a new, not-yet-seen item arrives.
+// the red notification bubble in Navbar, which scrolls to the relevant
+// section). Stored keys are `invitation:{invId}`, `rematch:{gameId}`, and
+// `friend-request:{playerId}`. Used to drive "unacknowledged count" badges
+// so the bubble clears after view but reappears when a new, not-yet-seen
+// item arrives.
 function getAckedIds(playerId: string): Set<string> {
   try {
     const raw = sessionStorage.getItem(`${ACKED_KEY_PREFIX}${playerId}`);
@@ -92,21 +93,25 @@ function clearAckedIds(playerId: string): void {
 
 type SocialNotificationsContextValue = {
   pendingFriendRequestCount: number;
+  unacknowledgedFriendRequestCount: number;
   incomingInvitationCount: number;
   incomingRematchCount: number;
   unacknowledgedInvitationCount: number;
   unacknowledgedRematchCount: number;
   acknowledgeInvitations: () => void;
+  acknowledgeFriendRequests: () => void;
   refreshNotifications: () => void;
 };
 
 const SocialNotificationsContext = createContext<SocialNotificationsContextValue>({
   pendingFriendRequestCount: 0,
+  unacknowledgedFriendRequestCount: 0,
   incomingInvitationCount: 0,
   incomingRematchCount: 0,
   unacknowledgedInvitationCount: 0,
   unacknowledgedRematchCount: 0,
   acknowledgeInvitations: () => {},
+  acknowledgeFriendRequests: () => {},
   refreshNotifications: () => {},
 });
 
@@ -592,7 +597,8 @@ export function SocialNotificationsProvider({
 
   // Prune acknowledgedIds whenever the current set of incoming items changes,
   // so IDs that no longer exist (invitation accepted/declined elsewhere, game
-  // archived, etc.) stop taking up space and don't mask a future re-add.
+  // archived, friend request acted on, etc.) stop taking up space and don't
+  // mask a future re-add.
   useEffect(() => {
     const playerId = playerIdRef.current;
     if (!playerId) return;
@@ -601,6 +607,8 @@ export function SocialNotificationsProvider({
       const liveIds = new Set<string>();
       for (const inv of overview.incomingInvitations) liveIds.add(`invitation:${inv.id}`);
       for (const gameId of incomingRematchGameIds) liveIds.add(`rematch:${gameId}`);
+      for (const req of overview.incomingFriendRequests)
+        liveIds.add(`friend-request:${req.playerId}`);
       let changed = false;
       const next = new Set<string>();
       for (const id of prev) {
@@ -611,7 +619,7 @@ export function SocialNotificationsProvider({
       persistAckedIds(playerId, next);
       return next;
     });
-  }, [overview.incomingInvitations, incomingRematchGameIds]);
+  }, [overview.incomingInvitations, overview.incomingFriendRequests, incomingRematchGameIds]);
 
   const unacknowledgedInvitationCount = overview.incomingInvitations.reduce(
     (count, inv) => (acknowledgedIds.has(`invitation:${inv.id}`) ? count : count + 1),
@@ -621,6 +629,10 @@ export function SocialNotificationsProvider({
   for (const gameId of incomingRematchGameIds) {
     if (!acknowledgedIds.has(`rematch:${gameId}`)) unacknowledgedRematchCount += 1;
   }
+  const unacknowledgedFriendRequestCount = overview.incomingFriendRequests.reduce(
+    (count, req) => (acknowledgedIds.has(`friend-request:${req.playerId}`) ? count : count + 1),
+    0,
+  );
 
   const acknowledgeInvitations = useCallback(() => {
     const playerId = playerIdRef.current;
@@ -635,15 +647,29 @@ export function SocialNotificationsProvider({
     });
   }, [overview.incomingInvitations, incomingRematchGameIds]);
 
+  const acknowledgeFriendRequests = useCallback(() => {
+    const playerId = playerIdRef.current;
+    if (!playerId) return;
+    setAcknowledgedIds((prev) => {
+      const next = new Set(prev);
+      for (const req of overview.incomingFriendRequests) next.add(`friend-request:${req.playerId}`);
+      if (next.size === prev.size) return prev;
+      persistAckedIds(playerId, next);
+      return next;
+    });
+  }, [overview.incomingFriendRequests]);
+
   return (
     <SocialNotificationsContext.Provider
       value={{
         pendingFriendRequestCount,
+        unacknowledgedFriendRequestCount,
         incomingInvitationCount,
         incomingRematchCount,
         unacknowledgedInvitationCount,
         unacknowledgedRematchCount,
         acknowledgeInvitations,
+        acknowledgeFriendRequests,
         refreshNotifications: fetchOverview,
       }}
     >

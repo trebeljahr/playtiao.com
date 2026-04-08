@@ -486,6 +486,137 @@ describe("SocialNotificationsContext", () => {
     expect(ids).toContain("friend-request:req-1");
   });
 
+  it("counts unacknowledged friend requests separately from total", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [
+        { playerId: "alice-id", displayName: "Alice" },
+        { playerId: "bob-id", displayName: "Bob" },
+      ],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.pendingFriendRequestCount).toBe(2);
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(2);
+    });
+  });
+
+  it("acknowledgeFriendRequests clears unacknowledged count without removing items", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [
+        { playerId: "alice-id", displayName: "Alice" },
+        { playerId: "bob-id", displayName: "Bob" },
+      ],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(2);
+    });
+
+    act(() => {
+      result.current.acknowledgeFriendRequests();
+    });
+
+    expect(result.current.unacknowledgedFriendRequestCount).toBe(0);
+    // The total still reflects the items themselves — only the badge clears.
+    expect(result.current.pendingFriendRequestCount).toBe(2);
+  });
+
+  it("persists acknowledged friend request IDs to sessionStorage", async () => {
+    const overview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "alice-id", displayName: "Alice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(1);
+    });
+
+    act(() => {
+      result.current.acknowledgeFriendRequests();
+    });
+
+    const stored = sessionStorage.getItem("tiao:acked-notifs:my-player");
+    expect(stored).not.toBeNull();
+    const ids = JSON.parse(stored!) as string[];
+    expect(ids).toContain("friend-request:alice-id");
+  });
+
+  it("re-shows badge when a new friend request arrives after ack", async () => {
+    const initialOverview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "alice-id", displayName: "Alice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview: initialOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(1);
+    });
+
+    act(() => {
+      result.current.acknowledgeFriendRequests();
+    });
+    expect(result.current.unacknowledgedFriendRequestCount).toBe(0);
+
+    // A new request arrives via socket — should bump the unack count even
+    // though Alice's request is still in the acknowledged set.
+    simulateLobbyMessage({
+      type: "social-update",
+      overview: {
+        ...emptyOverview,
+        incomingFriendRequests: [
+          { playerId: "alice-id", displayName: "Alice" },
+          { playerId: "carol-id", displayName: "Carol" },
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(1);
+    });
+  });
+
+  it("prunes acknowledged friend request IDs when the request disappears", async () => {
+    sessionStorage.setItem(
+      "tiao:acked-notifs:my-player",
+      JSON.stringify(["friend-request:alice-id"]),
+    );
+    const initialOverview: SocialOverview = {
+      ...emptyOverview,
+      incomingFriendRequests: [{ playerId: "alice-id", displayName: "Alice" }],
+    };
+    mockGetSocialOverview.mockResolvedValue({ overview: initialOverview });
+
+    const { result } = renderHook(() => useSocialNotifications(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.unacknowledgedFriendRequestCount).toBe(0);
+    });
+
+    // Alice accepts/declines elsewhere — the request disappears. The
+    // acknowledged ID should be pruned so a future request from Alice will
+    // count again.
+    simulateLobbyMessage({ type: "social-update", overview: emptyOverview });
+
+    await waitFor(() => {
+      const stored = sessionStorage.getItem("tiao:acked-notifs:my-player");
+      const ids = stored ? (JSON.parse(stored) as string[]) : [];
+      expect(ids).not.toContain("friend-request:alice-id");
+    });
+  });
+
   it("includes game config details in invitation toast", async () => {
     mockGetSocialOverview.mockResolvedValue({ overview: emptyOverview });
 

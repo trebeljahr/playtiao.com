@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RequireAccount } from "@/components/RequireAccount";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -31,6 +32,7 @@ export function FriendsPage() {
   const [navOpen, setNavOpen] = useState(false);
 
   const social = useSocialData(auth, false);
+  const { acknowledgeFriendRequests } = useSocialNotifications();
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
   const [inviteDialogFriendId, setInviteDialogFriendId] = useState<string | null>(null);
   const [activeGamesFriendId, setActiveGamesFriendId] = useState<string | null>(null);
@@ -72,6 +74,33 @@ export function FriendsPage() {
       void social.runFriendSearch();
     }
   });
+
+  // Scroll to (and wiggle) the incoming-friend-requests section when the
+  // user clicks the red badge in the navbar — that sets the URL hash to
+  // #incoming-friend-requests, which we listen for here. Mirrors the
+  // matching logic in LobbyPage for #invitations.
+  useEffect(() => {
+    if (!social.socialLoaded) return;
+    if (typeof window === "undefined") return;
+
+    const handleHash = () => {
+      if (window.location.hash !== "#incoming-friend-requests") return;
+      const el = document.getElementById("incoming-friend-requests");
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      acknowledgeFriendRequests();
+      el.classList.remove("notification-target-wiggle");
+      // Force reflow so re-clicks restart the keyframe.
+      void el.offsetWidth;
+      el.classList.add("notification-target-wiggle");
+      window.setTimeout(() => el.classList.remove("notification-target-wiggle"), 1400);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    };
+
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, [social.socialLoaded, acknowledgeFriendRequests]);
 
   return (
     <RequireAccount>
@@ -160,7 +189,7 @@ export function FriendsPage() {
                           <CardTitle>{t("pending")}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="space-y-2">
+                          <div id="incoming-friend-requests" className="space-y-2 rounded-2xl">
                             <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
                               {t("incomingRequests")}
                             </h4>

@@ -676,7 +676,8 @@
     "logout": "Abmelden",
     "changeLanguage": "Sprache ändern",
     "reportIssue": "Problem melden",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "notificationBadgeAria": "{label}: {count} neue – ansehen"
   },
   "badges": {
     "supporter": "Unterstützer",

@@ -270,6 +270,14 @@ export function LobbyPage() {
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "start" });
       acknowledgeInvitations();
+      // Wiggle the section so it's clear what the badge was pointing at.
+      // Re-applying the class requires a tick of removal first so re-clicks
+      // restart the animation instead of being a no-op.
+      el.classList.remove("notification-target-wiggle");
+      // Force reflow so removing + re-adding triggers the keyframe again.
+      void el.offsetWidth;
+      el.classList.add("notification-target-wiggle");
+      window.setTimeout(() => el.classList.remove("notification-target-wiggle"), 1400);
       // Remove the hash so revisiting the lobby doesn't re-scroll and
       // re-acknowledge without a fresh notification click.
       history.replaceState(null, "", window.location.pathname + window.location.search);

@@ -676,7 +676,8 @@
     "logout": "Cerrar sesión",
     "changeLanguage": "Cambiar idioma",
     "reportIssue": "Reportar un problema",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "notificationBadgeAria": "{label}: {count} nuevos — ver"
   },
   "badges": {
     "supporter": "Colaborador",

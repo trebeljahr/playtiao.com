@@ -332,8 +332,11 @@ export function Navbar({
   const t = useTranslations("nav");
   const intlRouter = useIntlRouter();
   const pathname = useIntlPathname();
-  const { pendingFriendRequestCount, unacknowledgedInvitationCount, unacknowledgedRematchCount } =
-    useSocialNotifications();
+  const {
+    unacknowledgedFriendRequestCount,
+    unacknowledgedInvitationCount,
+    unacknowledgedRematchCount,
+  } = useSocialNotifications();
   const player = auth?.player;
   const isAccount = player?.kind === "account";
   const isAnonymous = player?.kind !== "account";
@@ -359,18 +362,25 @@ export function Navbar({
   } as const;
   const pathProps = { strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-  const navItems = [
+  // Click handler for the red notification badge: scrolls the destination
+  // page to the relevant section, wiggles it, and marks the items as
+  // acknowledged. Implemented in LobbyPage / FriendsPage via a hashchange
+  // listener; here we just navigate with the right URL hash.
+  type NavItem = {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    badge: number;
+    badgeTarget?: string;
+    icon: React.ReactNode;
+  };
+  const navItems: NavItem[] = [
     {
       label: t("lobby"),
       active: pathname === "/",
-      // When there are unacknowledged invitations/rematches, jump straight to
-      // the invitations section (LobbyPage reads #invitations and scrolls +
-      // acknowledges). Otherwise land on the lobby top as before.
-      onClick: () =>
-        handleNav(
-          unacknowledgedInvitationCount + unacknowledgedRematchCount > 0 ? "/#invitations" : "/",
-        ),
+      onClick: () => handleNav("/"),
       badge: unacknowledgedInvitationCount + unacknowledgedRematchCount,
+      badgeTarget: "/#invitations",
       icon: (
         <svg {...iconProps}>
           <path {...pathProps} d="M3 12l9-8 9 8" />
@@ -384,7 +394,8 @@ export function Navbar({
             label: t("friends"),
             active: pathname === "/friends",
             onClick: () => handleNav("/friends"),
-            badge: pendingFriendRequestCount,
+            badge: unacknowledgedFriendRequestCount,
+            badgeTarget: "/friends#incoming-friend-requests",
             icon: (
               <svg {...iconProps}>
                 <circle {...pathProps} cx="9" cy="7" r="3" />
@@ -468,6 +479,49 @@ export function Navbar({
     },
   ];
 
+  const handleBadgeClick = (
+    event: React.MouseEvent | React.KeyboardEvent,
+    target: string | undefined,
+  ) => {
+    if (!target) return;
+    event.stopPropagation();
+    // Strip the hash so handleNav routes through next-intl, then re-apply
+    // it via window.location so the hashchange listener on the destination
+    // page picks it up even when we're already on that route.
+    const [path, hash] = target.split("#");
+    onCloseNav();
+    if (pathname === path) {
+      // Already on the destination page — set the hash so the page's
+      // hashchange listener fires and scrolls + wiggles + acknowledges.
+      // Replace any existing hash first so re-clicks still trigger.
+      if (typeof window !== "undefined") {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        window.location.hash = `#${hash}`;
+      }
+    } else {
+      intlRouter.push(`${path}#${hash}`);
+    }
+  };
+
+  const renderBadge = (item: NavItem) =>
+    item.badge > 0 ? (
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={t("notificationBadgeAria", { label: item.label, count: item.badge })}
+        onClick={(e) => handleBadgeClick(e, item.badgeTarget)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleBadgeClick(e, item.badgeTarget);
+          }
+        }}
+        className="pointer-events-auto ml-1.5 inline-flex h-5 min-w-5 cursor-pointer items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white shadow-sm hover:bg-[#a8431f] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c0542e]/40"
+      >
+        {item.badge}
+      </span>
+    ) : null;
+
   const desktopNav = (
     <div className="hidden items-center gap-1 md:flex">
       {navItems.map((item) => (
@@ -484,11 +538,7 @@ export function Navbar({
         >
           {item.icon}
           {item.label}
-          {item.badge > 0 && (
-            <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">
-              {item.badge}
-            </span>
-          )}
+          {renderBadge(item)}
         </Button>
       ))}
     </div>
@@ -583,11 +633,7 @@ export function Navbar({
           >
             {item.icon}
             {item.label}
-            {item.badge > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">
-                {item.badge}
-              </span>
-            )}
+            {renderBadge(item)}
           </Button>
         ))}
       </div>
