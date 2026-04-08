@@ -485,10 +485,7 @@ export function TiaoBoard({
 
   return (
     <div
-      className={cn(
-        "relative z-0 overflow-hidden rounded-4xl border p-3",
-        disabled && "cursor-not-allowed",
-      )}
+      className={cn("relative z-0 overflow-hidden rounded-4xl border p-3")}
       style={{
         borderColor: theme.boardBorder,
         background: theme.boardBg,
@@ -678,7 +675,7 @@ export function TiaoBoard({
                 "group absolute aspect-square -translate-x-1/2 -translate-y-1/2 transition-transform duration-150",
                 isMarkedForCapture ? "z-0" : isForcedOrigin || isSelected ? "z-20" : "z-10",
                 disabled
-                  ? "cursor-not-allowed"
+                  ? "cursor-default"
                   : showConfirmAffordance
                     ? "cursor-pointer hover:scale-[1.12]"
                     : "hover:scale-[1.02]",
