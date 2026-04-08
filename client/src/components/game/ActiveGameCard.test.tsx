@@ -262,10 +262,14 @@ describe("ActiveGameCard", () => {
     expect(screen.getByText("2:00")).toBeInTheDocument();
   });
 
-  it("hides clock pills on an untimed game (clockMs == null)", () => {
-    // baseGame has clockMs: null — no pill should render.
+  it("renders an infinity symbol on untimed games instead of hiding the clock pill", () => {
+    // Previously the clock pill was omitted when clockMs was null, but we now
+    // always render the pill so timed and untimed games share the same layout.
+    // For untimed games the value is "∞" (matching MatchHistoryCard).
     render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
     expect(screen.queryByText(/^\d+:\d{2}$/)).not.toBeInTheDocument();
+    // One pill per player row: your row + opponent row.
+    expect(screen.getAllByText("∞")).toHaveLength(2);
   });
 
   it("player-row stats cell wraps to its own row on mobile via CSS grid", () => {

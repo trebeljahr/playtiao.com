@@ -118,17 +118,22 @@ function PlayerRow({
   );
 
   const gameStats = (
-    <div className="ml-auto flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2.5">
-      {(badgeEl || eloEl) && (
-        <div className="order-2 flex items-center gap-1.5 sm:order-1 sm:gap-2.5">
-          {badgeEl}
-          {eloEl}
-        </div>
-      )}
-      <div className="order-1 flex items-center gap-1.5 sm:order-2 sm:gap-2.5">
+    <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
         {clockEl}
         {scoreEl}
       </div>
+      {(badgeEl || eloEl) && (
+        <>
+          <span aria-hidden className="text-[#6b5a45]/40">
+            |
+          </span>
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {badgeEl}
+            {eloEl}
+          </div>
+        </>
+      )}
     </div>
   );
 

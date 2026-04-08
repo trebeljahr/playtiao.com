@@ -15,8 +15,9 @@ import { CopyGameIdButton } from "./CopyGameIdButton";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { cn } from "@/lib/utils";
 
-/** Small clock badge (icon + mm:ss) matching MatchHistoryCard's gameStats row. */
-function ClockPill({ clockMs, muted = false }: { clockMs: number; muted?: boolean }) {
+/** Small clock badge (icon + mm:ss) matching MatchHistoryCard's gameStats row.
+ *  When clockMs is null (unlimited games), renders an infinity symbol. */
+function ClockPill({ clockMs, muted = false }: { clockMs: number | null; muted?: boolean }) {
   return (
     <span
       className={cn(
@@ -37,7 +38,7 @@ function ClockPill({ clockMs, muted = false }: { clockMs: number; muted?: boolea
           clipRule="evenodd"
         />
       </svg>
-      {formatClockTime(clockMs)}
+      {clockMs != null ? formatClockTime(clockMs) : "∞"}
     </span>
   );
 }
@@ -165,7 +166,7 @@ export function ActiveGameCard({
             <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
           </div>
           <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
-            {yourClockMs != null && <ClockPill clockMs={yourClockMs} />}
+            <ClockPill clockMs={yourClockMs} />
             <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b563e]">
               <ScoreTargetIcon className="opacity-50" />
               {yourScore}
@@ -198,7 +199,7 @@ export function ActiveGameCard({
             )}
           </div>
           <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
-            {opponentClockMs != null && <ClockPill clockMs={opponentClockMs} muted />}
+            <ClockPill clockMs={opponentClockMs} muted />
             <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-[#8d7760]">
               <ScoreTargetIcon className="opacity-50" />
               {opponentScore}

@@ -217,23 +217,31 @@ describe("MatchHistoryCard", () => {
     expect(screen.getAllByText("∞")).toHaveLength(2);
   });
 
-  it("splits player stats into two visual rows on mobile (badge+elo / clock+score)", () => {
-    // Regression: on mobile we want row 1 to be clock+score and row 2 to be
-    // winner/loser+elo, instead of everything cramming into one right-aligned
-    // row. The container uses flex-col on mobile, sm:flex-row at sm+, and the
-    // inner groups use order-{1,2} to get the mobile ordering.
+  it("renders player stats as a single row with clock+score | badge+elo on both mobile and desktop", () => {
+    // Clock+score and winner/loser+elo now share a single row separated by a
+    // "|" character on every viewport. Previously the groups stacked on mobile.
     const ratedGame: MultiplayerGameSummary = {
       ...baseGame,
       ratingBefore: { white: 1000, black: 1000 },
       ratingAfter: { white: 1020, black: 980 },
     };
     const { container } = render(<MatchHistoryCard {...defaultProps} game={ratedGame} />);
-    const statsContainers = container.querySelectorAll(".ml-auto.flex.flex-col");
+    const statsContainers = container.querySelectorAll(".ml-auto.flex.shrink-0");
     expect(statsContainers.length).toBe(2);
     statsContainers.forEach((el) => {
-      expect(el.className).toContain("flex-col");
-      expect(el.className).toContain("sm:flex-row");
+      // Single flex row — no flex-col / sm:flex-row toggling anymore.
+      expect(el.className).not.toContain("flex-col");
+      // "|" separator sits as a direct text child between the two groups.
+      expect(el.textContent).toContain("|");
     });
+    // Both groups (clock+score and badge+elo) and the separator live on the
+    // same row: each stats container should have exactly 3 element children.
+    statsContainers.forEach((el) => {
+      expect(el.children).toHaveLength(3);
+    });
+    // The elo change is still rendered alongside the badge.
+    expect(screen.getByText("+20")).toBeInTheDocument();
+    expect(screen.getByText("-20")).toBeInTheDocument();
   });
 
   it("stacks header action buttons and result badge on mobile, inlines at sm+", () => {
