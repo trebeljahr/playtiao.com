@@ -41,8 +41,21 @@ export function MatchmakingPage() {
     useMatchmakingData(auth, onMatched);
 
   useEffect(() => {
+    if (!auth) return;
+    // Gate entry on tutorial completion. The lobby buttons already open a
+    // modal that leads here after the user confirms they know the rules, but
+    // if someone lands on /matchmaking directly (back button, deep link) we
+    // still need to enforce the gate so no un-tutored player ever ends up in
+    // the queue.
+    const seenViaAccount = auth.player.kind === "account" && auth.player.hasSeenTutorial;
+    const seenViaLocal =
+      typeof window !== "undefined" && localStorage.getItem("tiao:knowsHowToPlay");
+    if (!seenViaAccount && !seenViaLocal) {
+      const next = `/matchmaking${typeof window !== "undefined" ? window.location.search : ""}`;
+      router.replace(`/tutorial?from=matchmaking&next=${encodeURIComponent(next)}`);
+      return;
+    }
     if (
-      auth &&
       matchmaking.status === "idle" &&
       !matchmakingBusy &&
       !cancelledRef.current &&
@@ -52,7 +65,14 @@ export function MatchmakingPage() {
         failedRef.current = true;
       });
     }
-  }, [auth, matchmaking.status, matchmakingBusy, handleEnterMatchmaking, locationTimeControl]);
+  }, [
+    auth,
+    matchmaking.status,
+    matchmakingBusy,
+    handleEnterMatchmaking,
+    locationTimeControl,
+    router,
+  ]);
 
   if (authLoading) {
     return <SkeletonPage />;

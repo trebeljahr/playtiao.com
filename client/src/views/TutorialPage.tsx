@@ -96,6 +96,8 @@ function TutorialPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromGame = searchParams?.get("from") === "game";
+  const fromMatchmaking = searchParams?.get("from") === "matchmaking";
+  const nextUrl = searchParams?.get("next") ?? null;
 
   const steps = useMemo(() => getTutorialSteps(t), [t]);
 
@@ -192,8 +194,21 @@ function TutorialPageInner() {
     router.back();
   }
 
+  function handleGoToMatchmaking() {
+    completeTutorial();
+    router.push(nextUrl ?? "/matchmaking");
+  }
+
   function handleSkip() {
     completeTutorial();
+    if (fromGame) {
+      router.back();
+      return;
+    }
+    if (fromMatchmaking) {
+      router.push(nextUrl ?? "/matchmaking");
+      return;
+    }
     router.push("/");
   }
 
@@ -228,7 +243,7 @@ function TutorialPageInner() {
   // Interactive steps when revisiting (back-navigation): show Next button.
   const showNextButton = !isInteractive || (isInteractive && isRevisiting);
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-8">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-3 py-8 sm:px-4">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
 
       <Navbar
@@ -264,7 +279,7 @@ function TutorialPageInner() {
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
             >
-              <div className="rounded-3xl border border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.97),rgba(244,231,207,0.95))] p-5 sm:p-7 shadow-xl">
+              <div className="rounded-3xl border border-[#d0bb94]/75 bg-[linear-gradient(180deg,rgba(255,250,242,0.97),rgba(244,231,207,0.95))] p-4 sm:p-7 shadow-xl">
                 <h2 className="mb-4 text-center font-display text-3xl tracking-tight text-[#2b1e14]">
                   {step.title}
                 </h2>
@@ -331,6 +346,15 @@ function TutorialPageInner() {
                   disabled={completing}
                 >
                   {t("returnToGame")}
+                </Button>
+              ) : fromMatchmaking ? (
+                <Button
+                  size="lg"
+                  className="min-w-[180px] h-14 text-lg shadow-lg bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-xl transition-all"
+                  onClick={handleGoToMatchmaking}
+                  disabled={completing}
+                >
+                  {t("goToMatchmaking")}
                 </Button>
               ) : (
                 <div className="flex flex-col items-center gap-2">

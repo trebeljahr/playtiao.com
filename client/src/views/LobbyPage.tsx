@@ -178,14 +178,43 @@ export function LobbyPage() {
   const guestGamesRemaining = GUEST_GAME_LIMIT - guestGameCount;
   const [guestLimitDialogOpen, setGuestLimitDialogOpen] = useState(false);
   const [showTutorialBanner, setShowTutorialBanner] = useState(false);
+  const [needsTutorial, setNeedsTutorial] = useState(false);
+  const [matchmakingGateOpen, setMatchmakingGateOpen] = useState(false);
+  const [pendingMatchmakingNav, setPendingMatchmakingNav] = useState<string | null>(null);
 
   useEffect(() => {
     const seenViaAccount = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
     const seenViaLocal = localStorage.getItem("tiao:knowsHowToPlay");
-    if (!seenViaAccount && !seenViaLocal) {
-      setShowTutorialBanner(true);
-    }
+    const completed = Boolean(seenViaAccount || seenViaLocal);
+    setShowTutorialBanner(!completed);
+    setNeedsTutorial(!completed);
   }, [auth]);
+
+  function handleMatchmakingClick(nav: string) {
+    if (needsTutorial) {
+      setPendingMatchmakingNav(nav);
+      setMatchmakingGateOpen(true);
+      return;
+    }
+    router.push(nav);
+  }
+
+  function handleMatchmakingKnowHowToPlay() {
+    localStorage.setItem("tiao:knowsHowToPlay", "1");
+    setNeedsTutorial(false);
+    setShowTutorialBanner(false);
+    setMatchmakingGateOpen(false);
+    if (pendingMatchmakingNav) {
+      router.push(pendingMatchmakingNav);
+      setPendingMatchmakingNav(null);
+    }
+  }
+
+  function handleMatchmakingLearn() {
+    const next = pendingMatchmakingNav ?? "/matchmaking";
+    setMatchmakingGateOpen(false);
+    router.push(`/tutorial?from=matchmaking&next=${encodeURIComponent(next)}`);
+  }
 
   function checkGuestLimit(): boolean {
     if (auth?.player.kind === "guest" && guestGamesRemaining <= 0) {
@@ -502,8 +531,9 @@ export function LobbyPage() {
               <CardContent className="space-y-4 pb-6">
                 <Button
                   size="lg"
-                  className="w-full h-12 text-base"
-                  onClick={() => router.push("/matchmaking")}
+                  className={cn("w-full h-12 text-base", needsTutorial && "opacity-60")}
+                  onClick={() => handleMatchmakingClick("/matchmaking")}
+                  title={needsTutorial ? t("tutorialGateTitle") : undefined}
                 >
                   {t("unlimitedTimeGame")}
                 </Button>
@@ -526,10 +556,13 @@ export function LobbyPage() {
                         <Button
                           key={preset.label}
                           variant="secondary"
-                          title={tooltip}
-                          className="flex flex-col items-center gap-0.5 h-auto py-2.5 border-[#dcc7a2] hover:border-[#b98d49] hover:bg-[#fff8ee] transition-all"
+                          title={needsTutorial ? t("tutorialGateTitle") : tooltip}
+                          className={cn(
+                            "flex flex-col items-center gap-0.5 h-auto py-2.5 border-[#dcc7a2] hover:border-[#b98d49] hover:bg-[#fff8ee] transition-all",
+                            needsTutorial && "opacity-60",
+                          )}
                           onClick={() =>
-                            router.push(
+                            handleMatchmakingClick(
                               `/matchmaking?initial=${preset.initialMs}&increment=${preset.incrementMs}`,
                             )
                           }
@@ -989,6 +1022,28 @@ export function LobbyPage() {
           <Button variant="ghost" onClick={() => setGuestLimitDialogOpen(false)}>
             {tc("cancel")}
           </Button>
+        </div>
+      </Dialog>
+
+      {/* Matchmaking tutorial gate */}
+      <Dialog
+        open={matchmakingGateOpen}
+        onOpenChange={(open) => {
+          setMatchmakingGateOpen(open);
+          if (!open) setPendingMatchmakingNav(null);
+        }}
+        title={t("tutorialGateTitle")}
+        description={t("tutorialGateDesc")}
+      >
+        <div className="grid gap-3">
+          <Button onClick={handleMatchmakingLearn}>{t("tutorialGateLearn")}</Button>
+          <button
+            type="button"
+            className="text-center text-sm text-[#6e5b48] underline underline-offset-4 hover:text-[#2b1e14] transition-colors"
+            onClick={handleMatchmakingKnowHowToPlay}
+          >
+            {t("tutorialGateKnow")}
+          </button>
         </div>
       </Dialog>
     </div>

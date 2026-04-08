@@ -452,14 +452,11 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     canPlacePiece(board, hoveredPos, color, size).ok;
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative">
+    <div className="flex w-full flex-col items-center gap-3">
+      <div className={cn("relative w-full", size <= 5 ? "max-w-[340px]" : "max-w-[420px]")}>
         {/* Board container — matches TiaoBoard styling */}
         <div
-          className={cn(
-            "relative overflow-hidden rounded-[1.2rem] border p-2 shadow-[0_32px_70px_-28px_rgba(66,39,11,0.75)]",
-            size <= 5 ? "w-[340px]" : "w-[420px]",
-          )}
+          className="relative w-full overflow-hidden rounded-[1.2rem] border p-2 shadow-[0_32px_70px_-28px_rgba(66,39,11,0.75)]"
           style={{
             background: theme.boardBg,
             borderColor: theme.boardBorder,
