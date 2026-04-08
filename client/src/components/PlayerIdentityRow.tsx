@@ -99,11 +99,14 @@ export function PlayerIdentityRow({
     <>
       {player.displayName ?? t("player")}
       {isYou && <span className="opacity-60"> {t("you")}</span>}
-      {player.rating != null && (
-        <span className="ml-1 text-xs font-normal opacity-50">({player.rating})</span>
-      )}
     </>
   );
+  const ratingBadge =
+    player.rating != null ? (
+      <span className="shrink-0 text-xs font-normal opacity-60 tabular-nums">
+        ({player.rating})
+      </span>
+    ) : null;
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -115,17 +118,20 @@ export function PlayerIdentityRow({
               <Link
                 href={`/profile/${encodeURIComponent(player.displayName!)}`}
                 className={cn(
-                  "truncate text-sm font-medium leading-tight hover:underline",
+                  "min-w-0 truncate text-sm font-medium leading-tight hover:underline",
                   nameClassName,
                 )}
               >
                 {nameContent}
               </Link>
             ) : (
-              <span className={cn("truncate text-sm font-medium leading-tight", nameClassName)}>
+              <span
+                className={cn("min-w-0 truncate text-sm font-medium leading-tight", nameClassName)}
+              >
                 {nameContent}
               </span>
             )}
+            {ratingBadge}
             {anonymous && (
               <InfoTooltip
                 text={t("guestPlayerTooltip")}
