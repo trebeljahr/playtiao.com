@@ -119,7 +119,8 @@ describe("SocialNotificationsContext", () => {
       expect.objectContaining({
         id: "friend-request:alice-id",
         description: "sent you a friend request",
-        duration: 15000,
+        duration: Infinity,
+        dismissible: true,
       }),
     );
   });
