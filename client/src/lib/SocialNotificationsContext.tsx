@@ -16,6 +16,7 @@ import {
 import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
+import { RematchInviteBody } from "@/components/game/RematchInviteBody";
 import { translatePlayerColor } from "@/components/game/GameShared";
 import { AchievementIcon } from "@/components/AchievementIcon";
 import { TIER_STYLES } from "@/components/AchievementCard";
@@ -135,7 +136,6 @@ export function SocialNotificationsProvider({
   auth: AuthResponse | null;
   children: React.ReactNode;
 }) {
-  const t = useTranslations("lobby");
   const tGame = useTranslations("game");
   const tCommon = useTranslations("common");
   const tAchievements = useTranslations("achievements");
@@ -476,8 +476,6 @@ export function SocialNotificationsProvider({
       const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
       const opponentPlayer = summary.seats?.[opponentSeat]?.player;
       const rematchGameId = summary.gameId as string;
-      // The rematch will be played with the same settings as the finished
-      // game, so reuse the invite-toast format to show board / time / score.
       // Rematch seats flip server-side, so the accepter's colour IS known:
       // it's the opposite of their seat in the finished game.
       const nextColor: "white" | "black" | null = summary.yourSeat
@@ -485,25 +483,18 @@ export function SocialNotificationsProvider({
           ? "black"
           : "white"
         : null;
-      const suffix = buildGameDetailsSuffix({
-        boardSize: summary.boardSize,
-        timeControl: summary.timeControl,
-        scoreToWin: summary.scoreToWin,
-        assignedColor: nextColor,
-      });
       toast(
-        <div className="min-w-0">
-          <PlayerIdentityRow
-            player={opponentPlayer ?? { displayName: "your opponent" }}
-            linkToProfile={false}
-            avatarClassName="h-6 w-6 shrink-0"
-            friendVariant="light"
-            nameClassName="text-sm font-medium"
-          />
-        </div>,
+        <RematchInviteBody
+          opponent={opponentPlayer ?? null}
+          nextColor={nextColor}
+          boardSize={summary.boardSize}
+          scoreToWin={summary.scoreToWin}
+          timeControl={summary.timeControl}
+          roomType={summary.roomType}
+          compact
+        />,
         {
           id: `rematch-${rematchGameId}`,
-          description: `${t("rematchToastDesc")}${suffix}`,
           duration: 15000,
           action: {
             label: tCommon("accept"),

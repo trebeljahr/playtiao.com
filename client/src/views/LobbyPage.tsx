@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { translatePlayerColor, ColorDot } from "@/components/game/GameShared";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
+import { RematchInviteBody } from "@/components/game/RematchInviteBody";
 import { GameConfigDialog } from "@/components/game/GameConfigDialog";
 import { useGameConfig } from "@/lib/hooks/useGameConfig";
 import { ActiveGamesList } from "@/components/game/ActiveGamesList";
@@ -718,41 +719,15 @@ export function LobbyPage() {
                                 data-wiggle-target={`rematch:${game.gameId}`}
                                 className="rounded-2xl border border-[#d4b87a] bg-[#fdf6e8] p-4 shadow-xs hover:border-[#b98d49] transition-colors group space-y-3"
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  {opponent ? (
-                                    <PlayerIdentityRow
-                                      player={opponent}
-                                      currentPlayerId={auth?.player.playerId}
-                                      linkToProfile={false}
-                                      className="gap-3 min-w-0"
-                                    />
-                                  ) : (
-                                    <span className="text-sm text-[#6b5a45]">
-                                      {tGame("rematchRequested")}
-                                    </span>
-                                  )}
-                                  {rematchNextColor && (
-                                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-2 py-1 text-xs text-[#6b5a45]">
-                                      <ColorDot color={rematchNextColor} className="h-3 w-3" />
-                                      {tc("wouldPlayAs", {
-                                        color: translatePlayerColor(rematchNextColor, tGame) ?? "",
-                                      })}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="shrink-0 rounded-lg bg-[#f5ead4] px-2 py-1 text-[10px] font-medium text-[#8d6a2f]">
-                                    {t("rematchToastDesc")}
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-[#6b5a45]">
-                                  <GameConfigBadge
-                                    boardSize={game.boardSize}
-                                    scoreToWin={game.scoreToWin}
-                                    timeControl={game.timeControl}
-                                    roomType={game.roomType}
-                                  />
-                                </div>
+                                <RematchInviteBody
+                                  opponent={opponent ?? null}
+                                  nextColor={rematchNextColor}
+                                  boardSize={game.boardSize}
+                                  scoreToWin={game.scoreToWin}
+                                  timeControl={game.timeControl}
+                                  roomType={game.roomType}
+                                  currentPlayerId={auth?.player.playerId}
+                                />
                                 <div className="flex gap-2 pt-1">
                                   <Button
                                     size="sm"

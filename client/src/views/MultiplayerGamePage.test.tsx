@@ -350,8 +350,11 @@ describe("MultiplayerGamePage", () => {
 
     rerender(<MultiplayerGamePage />);
 
+    // The rematch toast is now a JSX body (RematchInviteBody) rather than a
+    // plain string — assert on the call arity + options, not the body content.
+    // RematchInviteBody's own rendering is covered in its own tests.
     expect(toast).toHaveBeenCalledWith(
-      expect.stringContaining("wants a rematch!"),
+      expect.anything(),
       expect.objectContaining({
         action: expect.objectContaining({ label: "Accept" }),
         cancel: expect.objectContaining({ label: "Decline" }),

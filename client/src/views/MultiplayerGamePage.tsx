@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
+import { RematchInviteBody } from "@/components/game/RematchInviteBody";
 import {
   GamePanelBrand,
   AnimatedScoreTile,
@@ -743,35 +744,33 @@ export function MultiplayerGamePage() {
       } else {
         lastRematchToastRef.current = true;
         const opponentSeat = playerSeat === "white" ? "black" : "white";
-        const opponentName =
-          multiplayerSnapshot?.seats[opponentSeat]?.player.displayName ?? "undefined";
-        const boardSize = multiplayerSnapshot?.state.boardSize;
-        const scoreToWin = multiplayerSnapshot?.state.scoreToWin;
-        const tc = multiplayerSnapshot?.timeControl;
-        const tcLabel = tc
-          ? `${Math.floor(tc.initialMs / 60000)}+${Math.floor(tc.incrementMs / 1000)}`
-          : null;
-        const details = [
-          boardSize ? `${boardSize}x${boardSize}` : null,
-          scoreToWin ? `${scoreToWin}pts` : null,
-          tcLabel,
-        ]
-          .filter(Boolean)
-          .join(", ");
+        const opponentPlayer = multiplayerSnapshot?.seats[opponentSeat]?.player ?? null;
+        // Rematch seats flip, so we'll play the OPPOSITE of our current seat.
+        const nextColor: PlayerColor = playerSeat === "white" ? "black" : "white";
 
-        toast(t("opponentWantsRematch", { opponent: opponentName }), {
-          id: rematchToastId,
-          description: details || undefined,
-          action: {
-            label: tCommon("accept"),
-            onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
+        toast(
+          <RematchInviteBody
+            opponent={opponentPlayer}
+            nextColor={nextColor}
+            boardSize={multiplayerSnapshot?.state.boardSize}
+            scoreToWin={multiplayerSnapshot?.state.scoreToWin}
+            timeControl={multiplayerSnapshot?.timeControl}
+            roomType={multiplayerSnapshot?.roomType}
+            compact
+          />,
+          {
+            id: rematchToastId,
+            action: {
+              label: tCommon("accept"),
+              onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
+            },
+            cancel: {
+              label: tCommon("decline"),
+              onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
+            },
+            duration: Infinity,
           },
-          cancel: {
-            label: tCommon("decline"),
-            onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
-          },
-          duration: Infinity,
-        });
+        );
       }
     }
     if (!opponentRequested) {
