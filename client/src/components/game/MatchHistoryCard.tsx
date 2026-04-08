@@ -117,17 +117,20 @@ function PlayerRow({
     </span>
   );
 
+  const separator = (
+    <span aria-hidden className="text-[#6b5a45]/40">
+      |
+    </span>
+  );
+
   const gameStats = (
-    <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-      <div className="flex items-center gap-1.5 sm:gap-2.5">
-        {clockEl}
-        {scoreEl}
-      </div>
+    <div className="flex shrink-0 items-center gap-2 sm:ml-auto sm:gap-3">
+      {clockEl}
+      {separator}
+      {scoreEl}
       {(badgeEl || eloEl) && (
         <>
-          <span aria-hidden className="text-[#6b5a45]/40">
-            |
-          </span>
+          {separator}
           <div className="flex items-center gap-1.5 sm:gap-2.5">
             {badgeEl}
             {eloEl}
@@ -158,7 +161,7 @@ function PlayerRow({
           </span>
         </div>
       )}
-      <div className="col-start-2 sm:col-auto">{gameStats}</div>
+      <div className="col-span-2 sm:col-auto sm:col-span-1">{gameStats}</div>
     </div>
   );
 }
@@ -220,7 +223,7 @@ export function MatchHistoryCard({ game, playerId, playerName, onReview }: Match
           )}
           {reasonText && <span className="text-xs text-[#4a3928]">{reasonText}</span>}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+        <div className="flex shrink-0 flex-col-reverse items-end gap-1.5 sm:flex-row sm:items-center">
           <CopyGameIdButton gameId={game.gameId} />
           <Button size="sm" className="text-xs" onClick={onReview}>
             {tCommon("review")}

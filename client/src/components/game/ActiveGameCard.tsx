@@ -165,8 +165,11 @@ export function ActiveGameCard({
             <span className="text-xs text-[#6b563e]">{tCommon("playingAs", { color: "" })}</span>
             <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
           </div>
-          <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
+          <div className="col-span-2 flex items-center gap-2 sm:col-auto sm:col-span-1 sm:justify-self-end sm:gap-3">
             <ClockPill clockMs={yourClockMs} />
+            <span aria-hidden className="text-[#6b563e]/40">
+              |
+            </span>
             <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b563e]">
               <ScoreTargetIcon className="opacity-50" />
               {yourScore}
@@ -198,8 +201,11 @@ export function ActiveGameCard({
               />
             )}
           </div>
-          <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
+          <div className="col-span-2 flex items-center gap-2 sm:col-auto sm:col-span-1 sm:justify-self-end sm:gap-3">
             <ClockPill clockMs={opponentClockMs} muted />
+            <span aria-hidden className="text-[#8d7760]/50">
+              |
+            </span>
             <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-[#8d7760]">
               <ScoreTargetIcon className="opacity-50" />
               {opponentScore}

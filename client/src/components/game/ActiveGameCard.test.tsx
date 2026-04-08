@@ -282,9 +282,10 @@ describe("ActiveGameCard", () => {
     const gridRow = vsLabel.closest(".grid")!;
     expect(gridRow.className).toContain("grid-cols-[auto_1fr]");
     expect(gridRow.className).toContain("sm:grid-cols-[auto_1fr_auto]");
-    // And the stats cell opts into col-start-2 (below the name) on mobile
-    // and sm:col-auto (normal flow) on wider screens.
-    const statsCells = gridRow.querySelectorAll(".col-start-2");
+    // And the stats cell spans both columns on mobile (so the clock + score
+    // row aligns to the very left of the card, under the dot) and sm:col-auto
+    // (normal flow) on wider screens.
+    const statsCells = gridRow.querySelectorAll(".col-span-2");
     expect(statsCells.length).toBeGreaterThan(0);
   });
 });

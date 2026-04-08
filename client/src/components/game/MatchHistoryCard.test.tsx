@@ -217,27 +217,29 @@ describe("MatchHistoryCard", () => {
     expect(screen.getAllByText("∞")).toHaveLength(2);
   });
 
-  it("renders player stats as a single row with clock+score | badge+elo on both mobile and desktop", () => {
-    // Clock+score and winner/loser+elo now share a single row separated by a
-    // "|" character on every viewport. Previously the groups stacked on mobile.
+  it("renders player stats as a single left-aligned row with clock | score | badge+elo", () => {
+    // On mobile the stats row lives below the player name (col 2 row 2 of
+    // the grid) and is left-aligned to the start of the card; at sm+ it
+    // gets ml-auto and right-aligns next to the name. Clock, score, and
+    // badge+elo are all separated by "|" characters on every viewport.
     const ratedGame: MultiplayerGameSummary = {
       ...baseGame,
       ratingBefore: { white: 1000, black: 1000 },
       ratingAfter: { white: 1020, black: 980 },
     };
     const { container } = render(<MatchHistoryCard {...defaultProps} game={ratedGame} />);
-    const statsContainers = container.querySelectorAll(".ml-auto.flex.shrink-0");
+    // Two PlayerRow stats containers — each has sm:ml-auto (no ml-auto on
+    // mobile, which keeps the row left-aligned under the name).
+    const statsContainers = container.querySelectorAll(".flex.shrink-0.items-center.sm\\:ml-auto");
     expect(statsContainers.length).toBe(2);
     statsContainers.forEach((el) => {
       // Single flex row — no flex-col / sm:flex-row toggling anymore.
       expect(el.className).not.toContain("flex-col");
-      // "|" separator sits as a direct text child between the two groups.
-      expect(el.textContent).toContain("|");
-    });
-    // Both groups (clock+score and badge+elo) and the separator live on the
-    // same row: each stats container should have exactly 3 element children.
-    statsContainers.forEach((el) => {
-      expect(el.children).toHaveLength(3);
+      // Left-aligned on mobile — no ml-auto unless at sm+.
+      expect(el.className).not.toMatch(/(^|\s)ml-auto/);
+      // "|" separators sit as direct text children between groups.
+      const pipes = Array.from(el.children).filter((c) => c.textContent === "|");
+      expect(pipes.length).toBe(2);
     });
     // The elo change is still rendered alongside the badge.
     expect(screen.getByText("+20")).toBeInTheDocument();
@@ -272,10 +274,12 @@ describe("MatchHistoryCard", () => {
       expect(row.className).toContain("grid-cols-[auto_1fr]");
       expect(row.className).toContain("sm:grid-cols-[auto_1fr_auto]");
     });
-    // The stats cell is forced into col 2 on mobile (stacked) and falls back
-    // to the natural third column at sm+.
-    const statsCells = container.querySelectorAll(".col-start-2");
-    expect(statsCells.length).toBe(2);
+    // The stats cell spans both columns on mobile (so it sits below the
+    // dot + name row and aligns to the very left of the card, not indented
+    // under the name column) and falls back to the natural third column at
+    // sm+.
+    const statsCells = container.querySelectorAll(".col-span-2");
+    expect(statsCells.length).toBeGreaterThanOrEqual(2);
     statsCells.forEach((cell) => {
       expect(cell.className).toContain("sm:col-auto");
     });
