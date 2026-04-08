@@ -359,6 +359,7 @@ async function countLosses(playerId: string): Promise<number> {
 
   let losses = 0;
   for (const room of rooms) {
+    if (!room.state?.history) continue;
     const winner = getWinner(room.state);
     if (!winner) continue;
     const mySeat = room.seats?.white?.playerId === playerId ? "white" : "black";
