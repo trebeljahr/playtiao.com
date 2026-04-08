@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
+import { BackButton } from "@/components/BackButton";
+import { PageLayout } from "@/components/PageLayout";
 import { CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
@@ -29,10 +30,9 @@ export function PublicProfilePage() {
   const t = useTranslations("publicProfile");
   const tCommon = useTranslations("common");
   const tConfig = useTranslations("config");
-  const { auth, onOpenAuth, onLogout } = useAuth();
+  const { auth } = useAuth();
   const router = useRouter();
   const params = useParams<{ username: string }>();
-  const [navOpen, setNavOpen] = useState(false);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,314 +122,297 @@ export function PublicProfilePage() {
     : null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
+    <PageLayout
+      maxWidth="max-w-2xl"
+      mainClassName="items-center gap-6 pb-12 lg:px-6 lg:pb-12 lg:pt-24"
+    >
+      <BackButton />
 
-      <Navbar
-        mode="lobby"
-        auth={auth}
-        navOpen={navOpen}
-        onToggleNav={() => setNavOpen((v) => !v)}
-        onCloseNav={() => setNavOpen(false)}
-        onOpenAuth={onOpenAuth}
-        onLogout={onLogout}
-      />
+      {loading && <SkeletonCard rows={2} />}
 
-      <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 pb-12 pt-20 sm:px-6 lg:pt-24">
-        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
-          &larr; {tCommon("back")}
-        </Button>
+      {error && (
+        <PaperCard className="w-full">
+          <CardContent className="flex flex-col items-center gap-4 py-16">
+            <p className="text-sm text-[#8d7760]">{t("playerNotFound")}</p>
+            <Button variant="secondary" onClick={() => router.push("/")}>
+              {tCommon("backToLobby")}
+            </Button>
+          </CardContent>
+        </PaperCard>
+      )}
 
-        {loading && <SkeletonCard rows={2} />}
+      {profile && (
+        <>
+          {/* Header card with avatar, name, badge, rating */}
+          <AnimatedCard className="w-full">
+            <PaperCard className="w-full">
+              <CardContent className="flex flex-col items-center gap-6 pt-8 pb-8">
+                <div className="text-center">
+                  {isOwnProfile && (
+                    <span className="mb-2 inline-flex items-center rounded-full border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1 text-xs font-semibold text-[#6b5630]">
+                      {t("yourProfile")}
+                    </span>
+                  )}
+                  <PlayerIdentityRow
+                    player={profile}
+                    currentPlayerId={auth?.player.playerId}
+                    avatarClassName="h-24 w-24 border-4 border-[#e8d9c0] shadow-[0_20px_40px_-20px_rgba(63,37,17,0.4)]"
+                    linkToProfile={false}
+                    friendVariant="light"
+                    nameClassName="font-display text-3xl font-bold text-[#2b1e14]"
+                    className="justify-center gap-4"
+                  />
 
-        {error && (
-          <PaperCard className="w-full">
-            <CardContent className="flex flex-col items-center gap-4 py-16">
-              <p className="text-sm text-[#8d7760]">{t("playerNotFound")}</p>
-              <Button variant="secondary" onClick={() => router.push("/")}>
-                {tCommon("backToLobby")}
-              </Button>
-            </CardContent>
-          </PaperCard>
-        )}
-
-        {profile && (
-          <>
-            {/* Header card with avatar, name, badge, rating */}
-            <AnimatedCard className="w-full">
-              <PaperCard className="w-full">
-                <CardContent className="flex flex-col items-center gap-6 pt-8 pb-8">
-                  <div className="text-center">
-                    {isOwnProfile && (
-                      <span className="mb-2 inline-flex items-center rounded-full border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1 text-xs font-semibold text-[#6b5630]">
-                        {t("yourProfile")}
-                      </span>
-                    )}
-                    <PlayerIdentityRow
-                      player={profile}
-                      currentPlayerId={auth?.player.playerId}
-                      avatarClassName="h-24 w-24 border-4 border-[#e8d9c0] shadow-[0_20px_40px_-20px_rgba(63,37,17,0.4)]"
-                      linkToProfile={false}
-                      friendVariant="light"
-                      nameClassName="font-display text-3xl font-bold text-[#2b1e14]"
-                      className="justify-center gap-4"
-                    />
-
-                    {/* Friend action buttons */}
-                    {isAccount && !isOwnProfile && profileId && (
-                      <div className="mt-3 flex items-center justify-center gap-2">
-                        {friendRelationship === "none" && (
+                  {/* Friend action buttons */}
+                  {isAccount && !isOwnProfile && profileId && (
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                      {friendRelationship === "none" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => social.handleSendFriendRequest(profileId)}
+                          disabled={social.socialActionBusyKey === `friend-send:${profileId}`}
+                        >
+                          {tCommon("addFriend")}
+                        </Button>
+                      )}
+                      {friendRelationship === "outgoing" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs text-[#8d7760]"
+                          onClick={() => social.handleCancelFriendRequest(profileId)}
+                          disabled={social.socialActionBusyKey === `friend-cancel:${profileId}`}
+                        >
+                          {tCommon("pending")} &times;
+                        </Button>
+                      )}
+                      {friendRelationship === "incoming" && (
+                        <>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs"
-                            onClick={() => social.handleSendFriendRequest(profileId)}
-                            disabled={social.socialActionBusyKey === `friend-send:${profileId}`}
+                            className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => social.handleAcceptFriendRequest(profileId)}
+                            disabled={social.socialActionBusyKey === `friend-accept:${profileId}`}
                           >
-                            {tCommon("addFriend")}
+                            {tCommon("accept")}
                           </Button>
-                        )}
-                        {friendRelationship === "outgoing" && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="text-xs text-[#8d7760]"
-                            onClick={() => social.handleCancelFriendRequest(profileId)}
-                            disabled={social.socialActionBusyKey === `friend-cancel:${profileId}`}
+                            onClick={() => social.handleDeclineFriendRequest(profileId)}
+                            disabled={social.socialActionBusyKey === `friend-decline:${profileId}`}
                           >
-                            {tCommon("pending")} &times;
+                            {tCommon("decline")}
                           </Button>
-                        )}
-                        {friendRelationship === "incoming" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                              onClick={() => social.handleAcceptFriendRequest(profileId)}
-                              disabled={social.socialActionBusyKey === `friend-accept:${profileId}`}
-                            >
-                              {tCommon("accept")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs text-[#8d7760]"
-                              onClick={() => social.handleDeclineFriendRequest(profileId)}
-                              disabled={
-                                social.socialActionBusyKey === `friend-decline:${profileId}`
-                              }
-                            >
-                              {tCommon("decline")}
-                            </Button>
-                          </>
-                        )}
-                        {friendRelationship === "friend" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
-                            onClick={() => social.handleRemoveFriend(profileId)}
-                            disabled={social.socialActionBusyKey === `friend-remove:${profileId}`}
-                          >
-                            {tCommon("unfriend")}
-                          </Button>
-                        )}
-                      </div>
-                    )}
-
-                    {profile.bio && (
-                      <p className="mt-3 max-w-md text-sm text-[#6e5b48]">{profile.bio}</p>
-                    )}
-
-                    <div className="mt-4 inline-flex items-baseline gap-2 rounded-xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-2">
-                      <span className="text-sm font-medium text-[#4e3d2c]">{t("rating")}</span>
-                      <span className="font-display text-lg font-bold text-[#2b1e14]">
-                        {profile.rating ?? 1500}
-                      </span>
-                      {(profile.gamesPlayed ?? 0) > 0 && profile.ratingPercentile != null && (
-                        <span className="text-xs text-[#8d7760]">
-                          {t("ratingPercentile", { percentile: 100 - profile.ratingPercentile })}
-                        </span>
+                        </>
                       )}
-                      {(profile.gamesPlayed ?? 0) === 0 && (
-                        <span className="text-xs text-[#8d7760]">{t("ratingProvisional")}</span>
+                      {friendRelationship === "friend" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
+                          onClick={() => social.handleRemoveFriend(profileId)}
+                          disabled={social.socialActionBusyKey === `friend-remove:${profileId}`}
+                        >
+                          {tCommon("unfriend")}
+                        </Button>
                       )}
                     </div>
+                  )}
 
-                    {profile.createdAt && (
-                      <p className="mt-2 text-sm text-[#8d7760]">
-                        {t("memberSince", {
-                          date: new Date(profile.createdAt).toLocaleDateString(locale, {
-                            month: "long",
-                            year: "numeric",
-                          }),
-                          days: memberDays ?? 0,
-                        })}
-                      </p>
+                  {profile.bio && (
+                    <p className="mt-3 max-w-md text-sm text-[#6e5b48]">{profile.bio}</p>
+                  )}
+
+                  <div className="mt-4 inline-flex items-baseline gap-2 rounded-xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-2">
+                    <span className="text-sm font-medium text-[#4e3d2c]">{t("rating")}</span>
+                    <span className="font-display text-lg font-bold text-[#2b1e14]">
+                      {profile.rating ?? 1500}
+                    </span>
+                    {(profile.gamesPlayed ?? 0) > 0 && profile.ratingPercentile != null && (
+                      <span className="text-xs text-[#8d7760]">
+                        {t("ratingPercentile", { percentile: 100 - profile.ratingPercentile })}
+                      </span>
                     )}
+                    {(profile.gamesPlayed ?? 0) === 0 && (
+                      <span className="text-xs text-[#8d7760]">{t("ratingProvisional")}</span>
+                    )}
+                  </div>
+
+                  {profile.createdAt && (
+                    <p className="mt-2 text-sm text-[#8d7760]">
+                      {t("memberSince", {
+                        date: new Date(profile.createdAt).toLocaleDateString(locale, {
+                          month: "long",
+                          year: "numeric",
+                        }),
+                        days: memberDays ?? 0,
+                      })}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </PaperCard>
+          </AnimatedCard>
+
+          {/* Stats card */}
+          {(profile.gamesPlayed ?? 0) > 0 && (
+            <AnimatedCard delay={0.05} className="w-full">
+              <PaperCard className="w-full">
+                <CardContent className="py-6">
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                    {t("stats")}
+                  </h2>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="font-display text-2xl font-bold text-[#2b1e14]">
+                        {profile.gamesPlayed ?? 0}
+                      </p>
+                      <p className="text-xs text-[#8d7760]">{t("gamesPlayed")}</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-2xl font-bold text-emerald-700">
+                        {profile.gamesWon ?? 0}
+                      </p>
+                      <p className="text-xs text-[#8d7760]">{t("gamesWon")}</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-2xl font-bold text-red-700">
+                        {profile.gamesLost ?? 0}
+                      </p>
+                      <p className="text-xs text-[#8d7760]">{t("gamesLost")}</p>
+                    </div>
+                  </div>
+
+                  {(profile.favoriteBoard ||
+                    profile.favoriteTimeControl ||
+                    profile.favoriteScore) && (
+                    <div className="mt-5 flex flex-wrap justify-center gap-3">
+                      <h3 className="w-full text-center text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
+                        {t("favoriteGameTypes")}
+                      </h3>
+                      {profile.favoriteBoard && (
+                        <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
+                          {t("favoriteBoard", { size: profile.favoriteBoard })}
+                        </span>
+                      )}
+                      {profile.favoriteTimeControl && (
+                        <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
+                          {t("favoriteTimeControl", {
+                            tc:
+                              profile.favoriteTimeControl === "unlimited"
+                                ? tConfig("unlimited")
+                                : profile.favoriteTimeControl,
+                          })}
+                        </span>
+                      )}
+                      {profile.favoriteScore && (
+                        <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
+                          {t("favoriteScore", { score: profile.favoriteScore })}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
+          )}
+
+          {/* Badges card */}
+          {allBadges.length > 0 && (
+            <AnimatedCard delay={0.1} className="w-full">
+              <PaperCard className="w-full">
+                <CardContent className="py-6">
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                    {t("badges")}
+                  </h2>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {allBadges.map((id) => (
+                      <UserBadge key={id} badge={id as BadgeId} />
+                    ))}
                   </div>
                 </CardContent>
               </PaperCard>
             </AnimatedCard>
+          )}
 
-            {/* Stats card */}
-            {(profile.gamesPlayed ?? 0) > 0 && (
-              <AnimatedCard delay={0.05} className="w-full">
-                <PaperCard className="w-full">
-                  <CardContent className="py-6">
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
-                      {t("stats")}
+          {/* Achievements */}
+          {playerAchievements.length > 0 && (
+            <AnimatedCard delay={0.12} className="w-full">
+              <PaperCard className="w-full">
+                <CardContent className="py-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                      {t("achievements")}
                     </h2>
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="font-display text-2xl font-bold text-[#2b1e14]">
-                          {profile.gamesPlayed ?? 0}
-                        </p>
-                        <p className="text-xs text-[#8d7760]">{t("gamesPlayed")}</p>
-                      </div>
-                      <div>
-                        <p className="font-display text-2xl font-bold text-emerald-700">
-                          {profile.gamesWon ?? 0}
-                        </p>
-                        <p className="text-xs text-[#8d7760]">{t("gamesWon")}</p>
-                      </div>
-                      <div>
-                        <p className="font-display text-2xl font-bold text-red-700">
-                          {profile.gamesLost ?? 0}
-                        </p>
-                        <p className="text-xs text-[#8d7760]">{t("gamesLost")}</p>
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => router.push(`/achievements`)}
+                      className="text-xs text-[#8b7356] hover:underline"
+                    >
+                      {tCommon("view")} &rarr;
+                    </button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {playerAchievements.slice(0, 6).map((pa) => {
+                      const def = ACHIEVEMENTS.find((a) => a.id === pa.achievementId);
+                      if (!def) return null;
+                      return <ProfileAchievementBadge key={pa.achievementId} def={def} />;
+                    })}
+                  </div>
+                  {playerAchievements.length > 6 && (
+                    <p className="mt-3 text-center text-xs text-[#a89a7e]">
+                      +{playerAchievements.length - 6} more
+                    </p>
+                  )}
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
+          )}
 
-                    {(profile.favoriteBoard ||
-                      profile.favoriteTimeControl ||
-                      profile.favoriteScore) && (
-                      <div className="mt-5 flex flex-wrap justify-center gap-3">
-                        <h3 className="w-full text-center text-xs font-semibold uppercase tracking-wider text-[#8d7760]">
-                          {t("favoriteGameTypes")}
-                        </h3>
-                        {profile.favoriteBoard && (
-                          <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
-                            {t("favoriteBoard", { size: profile.favoriteBoard })}
-                          </span>
-                        )}
-                        {profile.favoriteTimeControl && (
-                          <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
-                            {t("favoriteTimeControl", {
-                              tc:
-                                profile.favoriteTimeControl === "unlimited"
-                                  ? tConfig("unlimited")
-                                  : profile.favoriteTimeControl,
-                            })}
-                          </span>
-                        )}
-                        {profile.favoriteScore && (
-                          <span className="rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-3 py-1.5 text-xs text-[#4e3d2c]">
-                            {t("favoriteScore", { score: profile.favoriteScore })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </PaperCard>
-              </AnimatedCard>
-            )}
-
-            {/* Badges card */}
-            {allBadges.length > 0 && (
-              <AnimatedCard delay={0.1} className="w-full">
-                <PaperCard className="w-full">
-                  <CardContent className="py-6">
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
-                      {t("badges")}
-                    </h2>
-                    <div className="flex flex-wrap justify-center gap-3">
-                      {allBadges.map((id) => (
-                        <UserBadge key={id} badge={id as BadgeId} />
-                      ))}
-                    </div>
-                  </CardContent>
-                </PaperCard>
-              </AnimatedCard>
-            )}
-
-            {/* Achievements */}
-            {playerAchievements.length > 0 && (
-              <AnimatedCard delay={0.12} className="w-full">
-                <PaperCard className="w-full">
-                  <CardContent className="py-6">
-                    <div className="mb-4 flex items-center justify-between">
-                      <h2 className="text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
-                        {t("achievements")}
-                      </h2>
-                      <button
-                        onClick={() => router.push(`/achievements`)}
-                        className="text-xs text-[#8b7356] hover:underline"
+          {/* Match history */}
+          {matchHistory.length > 0 && (matchPlayerId || auth?.player.playerId) && (
+            <AnimatedCard delay={0.15} className="w-full">
+              <PaperCard className="w-full">
+                <CardContent className="py-6">
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
+                    {t("matchHistory")}
+                  </h2>
+                  <div className="grid gap-3">
+                    {matchHistory.map((game) => (
+                      <MatchHistoryCard
+                        key={game.gameId}
+                        game={game}
+                        playerId={auth?.player.playerId ?? matchPlayerId!}
+                        playerName={isOwnProfile ? undefined : (profile?.displayName ?? undefined)}
+                        copiedId={copiedId}
+                        onCopy={() => handleCopy(game.gameId)}
+                        onReview={() => router.push(`/game/${game.gameId}`)}
+                      />
+                    ))}
+                  </div>
+                  {matchHasMore && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="ghost"
+                        className="text-[#8b7356]"
+                        onClick={handleLoadMore}
+                        disabled={matchLoading}
                       >
-                        {tCommon("view")} &rarr;
-                      </button>
+                        {matchLoading ? "..." : t("loadMore")}
+                      </Button>
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {playerAchievements.slice(0, 6).map((pa) => {
-                        const def = ACHIEVEMENTS.find((a) => a.id === pa.achievementId);
-                        if (!def) return null;
-                        return <ProfileAchievementBadge key={pa.achievementId} def={def} />;
-                      })}
-                    </div>
-                    {playerAchievements.length > 6 && (
-                      <p className="mt-3 text-center text-xs text-[#a89a7e]">
-                        +{playerAchievements.length - 6} more
-                      </p>
-                    )}
-                  </CardContent>
-                </PaperCard>
-              </AnimatedCard>
-            )}
-
-            {/* Match history */}
-            {matchHistory.length > 0 && (matchPlayerId || auth?.player.playerId) && (
-              <AnimatedCard delay={0.15} className="w-full">
-                <PaperCard className="w-full">
-                  <CardContent className="py-6">
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#8d7760]">
-                      {t("matchHistory")}
-                    </h2>
-                    <div className="grid gap-3">
-                      {matchHistory.map((game) => (
-                        <MatchHistoryCard
-                          key={game.gameId}
-                          game={game}
-                          playerId={auth?.player.playerId ?? matchPlayerId!}
-                          playerName={
-                            isOwnProfile ? undefined : (profile?.displayName ?? undefined)
-                          }
-                          copiedId={copiedId}
-                          onCopy={() => handleCopy(game.gameId)}
-                          onReview={() => router.push(`/game/${game.gameId}`)}
-                        />
-                      ))}
-                    </div>
-                    {matchHasMore && (
-                      <div className="mt-4 flex justify-center">
-                        <Button
-                          variant="ghost"
-                          className="text-[#8b7356]"
-                          onClick={handleLoadMore}
-                          disabled={matchLoading}
-                        >
-                          {matchLoading ? "..." : t("loadMore")}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </PaperCard>
-              </AnimatedCard>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+                  )}
+                </CardContent>
+              </PaperCard>
+            </AnimatedCard>
+          )}
+        </>
+      )}
+    </PageLayout>
   );
 }
 

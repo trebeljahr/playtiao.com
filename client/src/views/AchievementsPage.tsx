@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
+import { BackButton } from "@/components/BackButton";
+import { PageLayout } from "@/components/PageLayout";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -177,9 +177,7 @@ function AchievementCard({
 export function AchievementsPage() {
   const t = useTranslations("achievements");
   const tCommon = useTranslations("common");
-  const { auth, onOpenAuth, onLogout } = useAuth();
-  const router = useRouter();
-  const [navOpen, setNavOpen] = useState(false);
+  const { auth, onOpenAuth } = useAuth();
   const [achievements, setAchievements] = useState<PlayerAchievement[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -232,132 +230,116 @@ export function AchievementsPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,247,231,0.76),transparent_58%)]" />
+    <PageLayout maxWidth="max-w-3xl" mainClassName="gap-6 pb-12 lg:px-6 lg:pb-12 lg:pt-24">
+      <BackButton />
 
-      <Navbar
-        mode="lobby"
-        auth={auth}
-        navOpen={navOpen}
-        onToggleNav={() => setNavOpen((v) => !v)}
-        onCloseNav={() => setNavOpen(false)}
-        onOpenAuth={onOpenAuth}
-        onLogout={onLogout}
-      />
-
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pb-12 pt-20 sm:px-6 lg:pt-24">
-        <Button variant="ghost" className="self-start text-[#8b7356]" onClick={() => router.back()}>
-          &larr; {tCommon("back")}
-        </Button>
-
-        {/* Header */}
-        <AnimatedCard delay={0}>
-          <PaperCard className="w-full">
-            <CardContent className="flex flex-col items-center gap-3 py-8">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-400/30 to-amber-600/20 shadow-[0_0_24px_rgba(234,179,8,0.2)]">
-                <svg
-                  className="h-8 w-8 text-yellow-600"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
-                  />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-[#2b1e14]">{t("title")}</h1>
-              <p className="text-sm text-[#8d7760]">
-                {t("progress", { count: unlockedCount, total: totalCount })}
-              </p>
-              {/* Progress bar */}
-              <div className="mt-1 h-2.5 w-full max-w-xs overflow-hidden rounded-full bg-[#d5c4a8]/40">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 transition-all duration-700"
-                  style={{
-                    width: `${totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0}%`,
-                  }}
+      {/* Header */}
+      <AnimatedCard delay={0}>
+        <PaperCard className="w-full">
+          <CardContent className="flex flex-col items-center gap-3 py-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-400/30 to-amber-600/20 shadow-[0_0_24px_rgba(234,179,8,0.2)]">
+              <svg
+                className="h-8 w-8 text-yellow-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
                 />
-              </div>
-            </CardContent>
-          </PaperCard>
-        </AnimatedCard>
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-[#2b1e14]">{t("title")}</h1>
+            <p className="text-sm text-[#8d7760]">
+              {t("progress", { count: unlockedCount, total: totalCount })}
+            </p>
+            {/* Progress bar */}
+            <div className="mt-1 h-2.5 w-full max-w-xs overflow-hidden rounded-full bg-[#d5c4a8]/40">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 transition-all duration-700"
+                style={{
+                  width: `${totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0}%`,
+                }}
+              />
+            </div>
+          </CardContent>
+        </PaperCard>
+      </AnimatedCard>
 
-        {loading && (
-          <>
-            <SkeletonCard rows={3} />
-            <SkeletonCard rows={3} />
-          </>
-        )}
+      {loading && (
+        <>
+          <SkeletonCard rows={3} />
+          <SkeletonCard rows={3} />
+        </>
+      )}
 
-        {!loading && !auth?.player.kind && (
-          <PaperCard className="w-full">
-            <CardContent className="flex flex-col items-center gap-4 py-12">
-              <p className="text-sm text-[#8d7760]">{t("signInRequired")}</p>
-              <Button onClick={() => onOpenAuth("login")}>{tCommon("signIn")}</Button>
-            </CardContent>
-          </PaperCard>
-        )}
+      {!loading && !auth?.player.kind && (
+        <PaperCard className="w-full">
+          <CardContent className="flex flex-col items-center gap-4 py-12">
+            <p className="text-sm text-[#8d7760]">{t("signInRequired")}</p>
+            <Button onClick={() => onOpenAuth("login")}>{tCommon("signIn")}</Button>
+          </CardContent>
+        </PaperCard>
+      )}
 
-        {!loading &&
-          auth?.player.kind === "account" &&
-          ACHIEVEMENT_CATEGORIES.map(({ key }, catIndex) => {
-            const defs = grouped.get(key);
-            if (!defs || defs.length === 0) return null;
+      {!loading &&
+        auth?.player.kind === "account" &&
+        ACHIEVEMENT_CATEGORIES.map(({ key }, catIndex) => {
+          const defs = grouped.get(key);
+          if (!defs || defs.length === 0) return null;
 
-            const catUnlocked = defs.filter((d) => unlockedMap.has(d.id)).length;
+          const catUnlocked = defs.filter((d) => unlockedMap.has(d.id)).length;
 
-            // For secret category, only show if player has unlocked at least one OR show placeholder
-            const hasUnlocked = catUnlocked > 0;
-            if (key === "secret" && !hasUnlocked) {
-              return (
-                <AnimatedCard key={key} delay={catIndex * 0.05}>
-                  <div className="mb-6">
-                    <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#2b1e14]">
-                      <span>{CATEGORY_ICONS[key]}</span> {t(`category_${key}`)}
-                      <span className="ml-auto text-sm font-normal text-[#a89a7e]">
-                        ?/{defs.length}
-                      </span>
-                    </h2>
-                    <PaperCard>
-                      <CardContent className="py-8 text-center">
-                        <p className="text-sm text-[#a89a7e]">{t("secretHint")}</p>
-                      </CardContent>
-                    </PaperCard>
-                  </div>
-                </AnimatedCard>
-              );
-            }
-
+          // For secret category, only show if player has unlocked at least one OR show placeholder
+          const hasUnlocked = catUnlocked > 0;
+          if (key === "secret" && !hasUnlocked) {
             return (
               <AnimatedCard key={key} delay={catIndex * 0.05}>
                 <div className="mb-6">
                   <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#2b1e14]">
                     <span>{CATEGORY_ICONS[key]}</span> {t(`category_${key}`)}
                     <span className="ml-auto text-sm font-normal text-[#a89a7e]">
-                      {catUnlocked}/{defs.length}
+                      ?/{defs.length}
                     </span>
                   </h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {defs
-                      .sort((a, b) => a.order - b.order)
-                      .map((def) => (
-                        <AchievementCard
-                          key={def.id}
-                          def={def}
-                          unlocked={unlockedMap.has(def.id)}
-                          unlockedAt={unlockedMap.get(def.id)}
-                        />
-                      ))}
-                  </div>
+                  <PaperCard>
+                    <CardContent className="py-8 text-center">
+                      <p className="text-sm text-[#a89a7e]">{t("secretHint")}</p>
+                    </CardContent>
+                  </PaperCard>
                 </div>
               </AnimatedCard>
             );
-          })}
-      </main>
-    </div>
+          }
+
+          return (
+            <AnimatedCard key={key} delay={catIndex * 0.05}>
+              <div className="mb-6">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#2b1e14]">
+                  <span>{CATEGORY_ICONS[key]}</span> {t(`category_${key}`)}
+                  <span className="ml-auto text-sm font-normal text-[#a89a7e]">
+                    {catUnlocked}/{defs.length}
+                  </span>
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {defs
+                    .sort((a, b) => a.order - b.order)
+                    .map((def) => (
+                      <AchievementCard
+                        key={def.id}
+                        def={def}
+                        unlocked={unlockedMap.has(def.id)}
+                        unlockedAt={unlockedMap.get(def.id)}
+                      />
+                    ))}
+                </div>
+              </div>
+            </AnimatedCard>
+          );
+        })}
+    </PageLayout>
   );
 }
