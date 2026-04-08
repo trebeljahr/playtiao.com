@@ -11,7 +11,7 @@ interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 }
 
 export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, visible: controlledVisible, onVisibilityChange, ...props }, ref) => {
+  ({ className, visible: controlledVisible, onVisibilityChange, placeholder, ...props }, ref) => {
     const [internalVisible, setInternalVisible] = useState(false);
     const isControlled = controlledVisible !== undefined;
     const visible = isControlled ? controlledVisible : internalVisible;
@@ -22,12 +22,20 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
       if (!isControlled) setInternalVisible(next);
     }
 
+    // Callers typically pass a bullet placeholder like "••••••••••••" to hint
+    // at the password shape when the field is hidden. The moment the user
+    // reveals the field (eye toggle), those bullets become literal text and
+    // read as a preset value — confusing for an empty field. Blank the
+    // placeholder while the field is revealed so an empty input looks empty.
+    const effectivePlaceholder = visible ? "" : placeholder;
+
     return (
       <div className="relative">
         <Input
           ref={ref}
           type={visible ? "text" : "password"}
           className={cn("pr-10", className)}
+          placeholder={effectivePlaceholder}
           {...props}
         />
         <button

@@ -47,6 +47,30 @@ describe("PasswordInput", () => {
     expect(screen.getByPlaceholderText("Enter password")).toBeInTheDocument();
   });
 
+  it("blanks the placeholder while the password is revealed", () => {
+    render(<PasswordInput placeholder="••••••••••••" />);
+    const input = document.querySelector("input")!;
+    expect(input.placeholder).toBe("••••••••••••");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(input.type).toBe("text");
+    expect(input.placeholder).toBe("");
+
+    // Toggling back restores the original bullet hint
+    fireEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(input.type).toBe("password");
+    expect(input.placeholder).toBe("••••••••••••");
+  });
+
+  it("blanks the placeholder when controlled visible prop is true", () => {
+    const { rerender } = render(<PasswordInput placeholder="••••••••••••" visible={false} />);
+    const input = document.querySelector("input")!;
+    expect(input.placeholder).toBe("••••••••••••");
+
+    rerender(<PasswordInput placeholder="••••••••••••" visible={true} />);
+    expect(input.placeholder).toBe("");
+  });
+
   it("applies custom className alongside default classes", () => {
     render(<PasswordInput className="my-custom" />);
     const input = document.querySelector("input")!;
