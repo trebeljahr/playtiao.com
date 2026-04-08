@@ -189,6 +189,68 @@ describe("MatchHistoryCard", () => {
     expect(card.className).toContain("border-[#dba8a0]");
   });
 
+  it("shows a LOSER badge on the non-winning player's row", () => {
+    // Both rows render a winner/loser badge so the outcome is visible on both
+    // sides, not just the winner. This was added so the user can see at a
+    // glance who lost even on their opponent's row.
+    render(<MatchHistoryCard {...defaultProps} />);
+    expect(screen.getByText("winner")).toBeInTheDocument();
+    expect(screen.getByText("loser")).toBeInTheDocument();
+  });
+
+  it("does not show any winner/loser badge on tied / unfinished games", () => {
+    const tiedGame: MultiplayerGameSummary = {
+      ...baseGame,
+      winner: null,
+    };
+    render(<MatchHistoryCard {...defaultProps} game={tiedGame} />);
+    expect(screen.queryByText("winner")).not.toBeInTheDocument();
+    expect(screen.queryByText("loser")).not.toBeInTheDocument();
+  });
+
+  it("renders an infinity symbol for untimed games instead of hiding the clock", () => {
+    // Previously the clock pill was only rendered when clockMs was set, so
+    // untimed games had nothing where timed games had a remaining time. Now
+    // the clock icon is always rendered with "∞" as the value for untimed.
+    render(<MatchHistoryCard {...defaultProps} />);
+    // Both rows should show ∞ since baseGame has clockMs: null
+    expect(screen.getAllByText("∞")).toHaveLength(2);
+  });
+
+  it("splits player stats into two visual rows on mobile (badge+elo / clock+score)", () => {
+    // Regression: on mobile we want row 1 to be clock+score and row 2 to be
+    // winner/loser+elo, instead of everything cramming into one right-aligned
+    // row. The container uses flex-col on mobile, sm:flex-row at sm+, and the
+    // inner groups use order-{1,2} to get the mobile ordering.
+    const ratedGame: MultiplayerGameSummary = {
+      ...baseGame,
+      ratingBefore: { white: 1000, black: 1000 },
+      ratingAfter: { white: 1020, black: 980 },
+    };
+    const { container } = render(<MatchHistoryCard {...defaultProps} game={ratedGame} />);
+    const statsContainers = container.querySelectorAll(".ml-auto.flex.flex-col");
+    expect(statsContainers.length).toBe(2);
+    statsContainers.forEach((el) => {
+      expect(el.className).toContain("flex-col");
+      expect(el.className).toContain("sm:flex-row");
+    });
+  });
+
+  it("stacks header action buttons and result badge on mobile, inlines at sm+", () => {
+    // On mobile: LOST badge + reason stack in the top-left column, copy-id
+    // + review button stack in the top-right column. On sm+ both collapse
+    // back to inline rows.
+    const { container } = render(<MatchHistoryCard {...defaultProps} />);
+    // The left group (badge + reason) and right group (copy-id + review).
+    const headerGroups = container.querySelectorAll(
+      ".flex.flex-col.items-start, .flex.flex-col.items-end",
+    );
+    const anyMobileStack = Array.from(headerGroups).some((el) =>
+      el.className.includes("sm:flex-row"),
+    );
+    expect(anyMobileStack).toBe(true);
+  });
+
   it("lays out player rows as a 2-col grid on mobile, 3-col at sm+", () => {
     // Regression: the PlayerRow used to be a single flex row, which squeezed
     // the name + badges column on narrow viewports — long badges (e.g.

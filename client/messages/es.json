@@ -298,6 +298,7 @@
     "goToNextMatch": "Ir a tu siguiente partida",
     "redirectingIn": "Redirigiendo en {seconds}s...",
     "winner": "Ganador",
+    "loser": "Perdedor",
     "unknownPlayer": "Desconocido",
     "rematchOffline": "Solicitar revancha",
     "rematchOfflineDesc": "Tu oponente está desconectado. Se le notificará cuando vuelva."

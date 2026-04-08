@@ -32,9 +32,11 @@ function PlayerRow({
   scoreToWin,
   currentPlayerId,
   isWinner,
+  isLoser,
   clockMs,
   ratingChange,
   winnerLabel,
+  loserLabel,
   unknownLabel,
   anonymous,
 }: {
@@ -49,61 +51,84 @@ function PlayerRow({
   scoreToWin: number;
   currentPlayerId?: string;
   isWinner: boolean;
+  isLoser: boolean;
   clockMs?: number | null;
   ratingChange?: number | null;
   winnerLabel: string;
+  loserLabel: string;
   unknownLabel: string;
   anonymous?: boolean;
 }) {
-  const gameStats = (
-    <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-      {isWinner && (
-        <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
-          {winnerLabel}
-        </span>
-      )}
-      {ratingChange != null && (
-        <span
-          className={cn(
-            "text-xs font-semibold tabular-nums",
-            ratingChange > 0
-              ? "text-[#2a6310]"
-              : ratingChange < 0
-                ? "text-[#9a2e26]"
-                : "text-[#6b5a45]",
-          )}
-        >
-          {ratingChange > 0 ? "+" : ""}
-          {ratingChange}
-        </span>
-      )}
-      {clockMs != null && (
-        <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b5a45]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            fill="currentColor"
-            className="h-3 w-3 opacity-50"
-          >
-            <path
-              fillRule="evenodd"
-              d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8Zm7.75-4.25a.75.75 0 0 0-1.5 0V8c0 .414.336.75.75.75h3.25a.75.75 0 0 0 0-1.5h-2.5v-3.5Z"
-              clipRule="evenodd"
-            />
-          </svg>
-          {formatClockTime(clockMs)}
-        </span>
-      )}
+  const badgeEl = isWinner ? (
+    <span className="rounded-full bg-[#e8dcc6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b5630]">
+      {winnerLabel}
+    </span>
+  ) : isLoser ? (
+    <span className="rounded-full bg-[#dba8a0]/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#7f1d1d]">
+      {loserLabel}
+    </span>
+  ) : null;
+
+  const eloEl =
+    ratingChange != null ? (
       <span
         className={cn(
-          "inline-flex items-center gap-1 font-mono text-sm tabular-nums",
-          isWinner ? "font-bold text-[#1a1008]" : "text-[#6b5a45]",
+          "text-xs font-semibold tabular-nums",
+          ratingChange > 0
+            ? "text-[#2a6310]"
+            : ratingChange < 0
+              ? "text-[#9a2e26]"
+              : "text-[#6b5a45]",
         )}
       >
-        <ScoreTargetIcon className="opacity-50" />
-        {score}
-        <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
+        {ratingChange > 0 ? "+" : ""}
+        {ratingChange}
       </span>
+    ) : null;
+
+  const clockEl = (
+    <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b5a45]">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className="h-3 w-3 opacity-50"
+      >
+        <path
+          fillRule="evenodd"
+          d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8Zm7.75-4.25a.75.75 0 0 0-1.5 0V8c0 .414.336.75.75.75h3.25a.75.75 0 0 0 0-1.5h-2.5v-3.5Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {clockMs != null ? formatClockTime(clockMs) : "∞"}
+    </span>
+  );
+
+  const scoreEl = (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 font-mono text-sm tabular-nums",
+        isWinner ? "font-bold text-[#1a1008]" : "text-[#6b5a45]",
+      )}
+    >
+      <ScoreTargetIcon className="opacity-50" />
+      {score}
+      <span className="text-xs font-normal opacity-50">/{scoreToWin}</span>
+    </span>
+  );
+
+  const gameStats = (
+    <div className="ml-auto flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+      {(badgeEl || eloEl) && (
+        <div className="order-2 flex items-center gap-1.5 sm:order-1 sm:gap-2.5">
+          {badgeEl}
+          {eloEl}
+        </div>
+      )}
+      <div className="order-1 flex items-center gap-1.5 sm:order-2 sm:gap-2.5">
+        {clockEl}
+        {scoreEl}
+      </div>
     </div>
   );
 
@@ -171,8 +196,8 @@ export function MatchHistoryCard({ game, playerId, playerName, onReview }: Match
   return (
     <div className={cn("overflow-hidden rounded-2xl border p-3 space-y-3 sm:p-4", resultBg)}>
       {/* Header: result badge + reason + actions */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
           {result && (
             <Badge
               className={cn(
@@ -190,7 +215,7 @@ export function MatchHistoryCard({ game, playerId, playerName, onReview }: Match
           )}
           {reasonText && <span className="text-xs text-[#4a3928]">{reasonText}</span>}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
           <CopyGameIdButton gameId={game.gameId} />
           <Button size="sm" className="text-xs" onClick={onReview}>
             {tCommon("review")}
@@ -207,9 +232,11 @@ export function MatchHistoryCard({ game, playerId, playerName, onReview }: Match
           scoreToWin={scoreToWin}
           currentPlayerId={playerId}
           isWinner={whiteWon}
+          isLoser={blackWon}
           clockMs={game.clockMs?.white}
           ratingChange={whiteRatingChange}
           winnerLabel={t("winner")}
+          loserLabel={t("loser")}
           unknownLabel={t("unknownPlayer")}
           anonymous={game.seats?.white?.player.kind === "guest"}
         />
@@ -220,9 +247,11 @@ export function MatchHistoryCard({ game, playerId, playerName, onReview }: Match
           scoreToWin={scoreToWin}
           currentPlayerId={playerId}
           isWinner={blackWon}
+          isLoser={whiteWon}
           clockMs={game.clockMs?.black}
           ratingChange={blackRatingChange}
           winnerLabel={t("winner")}
+          loserLabel={t("loser")}
           unknownLabel={t("unknownPlayer")}
           anonymous={game.seats?.black?.player.kind === "guest"}
         />

@@ -298,6 +298,7 @@
     "goToNextMatch": "Zum nächsten Spiel",
     "redirectingIn": "Weiterleitung in {seconds}s...",
     "winner": "Gewinner",
+    "loser": "Verlierer",
     "unknownPlayer": "Unbekannt",
     "rematchOffline": "Revanche anfragen",
     "rematchOfflineDesc": "Dein Gegner ist offline. Er wird benachrichtigt, wenn er zurückkommt."
