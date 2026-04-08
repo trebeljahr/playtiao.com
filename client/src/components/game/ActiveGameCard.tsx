@@ -9,10 +9,38 @@ import {
   isSummaryYourTurn,
   translatePlayerColor,
 } from "./GameShared";
+import { formatClockTime } from "./GameClock";
 import { GameConfigBadge } from "./GameConfigBadge";
 import { CopyGameIdButton } from "./CopyGameIdButton";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { cn } from "@/lib/utils";
+
+/** Small clock badge (icon + mm:ss) matching MatchHistoryCard's gameStats row. */
+function ClockPill({ clockMs, muted = false }: { clockMs: number; muted?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 font-mono text-xs tabular-nums",
+        muted ? "text-[#8d7760]" : "text-[#6b563e]",
+      )}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className="h-3 w-3 opacity-50"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8Zm7.75-4.25a.75.75 0 0 0-1.5 0V8c0 .414.336.75.75.75h3.25a.75.75 0 0 0 0-1.5h-2.5v-3.5Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {formatClockTime(clockMs)}
+    </span>
+  );
+}
 
 type ActiveGameCardProps = {
   game: MultiplayerGameSummary;
@@ -50,6 +78,8 @@ export function ActiveGameCard({
   const yourScore = game.yourSeat === "white" ? game.score.white : game.score.black;
   const opponentScore = game.yourSeat === "white" ? game.score.black : game.score.white;
   const scoreToWin = game.scoreToWin ?? 10;
+  const yourClockMs = game.clockMs && game.yourSeat ? game.clockMs[game.yourSeat] : null;
+  const opponentClockMs = game.clockMs && game.yourSeat ? game.clockMs[opponentSeat] : null;
 
   return (
     <div
@@ -63,7 +93,9 @@ export function ActiveGameCard({
             : "border-[#d7c39e] bg-white/40",
       )}
     >
-      {/* Row 0: game settings pills + resume */}
+      {/* Row 0: game settings pills + resume.
+          Mobile: settings on top, buttons on their own row below, LEFT-aligned.
+          sm+: single row, buttons pushed to the right. */}
       <div className="flex flex-col items-stretch gap-2 pb-1 sm:flex-row sm:items-center sm:justify-between">
         <GameConfigBadge
           boardSize={game.boardSize}
@@ -73,7 +105,7 @@ export function ActiveGameCard({
           showAll
           compact
         />
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-start gap-2 sm:justify-end">
           {isWaiting && onDelete && (
             <Button
               variant="ghost"
@@ -121,44 +153,58 @@ export function ActiveGameCard({
         </div>
       </div>
 
-      {/* Row 1: playing as color + your score */}
+      {/* Row 1: playing as color + (clock + your score).
+          Grid layout: ColorDot | name | stats. Below sm the stats cell
+          drops to its own row (col 2, row 2) so the score + remaining clock
+          time stop squeezing the name on narrow viewports. */}
       {game.yourSeat && (
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="grid min-w-0 grid-cols-[auto_1fr] items-center gap-x-1.5 gap-y-1 sm:grid-cols-[auto_1fr_auto]">
           <ColorDot color={game.yourSeat} className="h-2.5 w-2.5" />
-          <span className="text-xs text-[#6b563e]">{tCommon("playingAs", { color: "" })}</span>
-          <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
-          <span className="ml-auto inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b563e]">
-            <ScoreTargetIcon className="opacity-50" />
-            {yourScore}
-            <span className="font-normal opacity-50">/{scoreToWin}</span>
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="text-xs text-[#6b563e]">{tCommon("playingAs", { color: "" })}</span>
+            <span className="text-xs font-medium text-[#2b1e14]">{yourColor}</span>
+          </div>
+          <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
+            {yourClockMs != null && <ClockPill clockMs={yourClockMs} />}
+            <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[#6b563e]">
+              <ScoreTargetIcon className="opacity-50" />
+              {yourScore}
+              <span className="font-normal opacity-50">/{scoreToWin}</span>
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Row 2: vs. opponent (with PlayerIdentityRow) + opponent score */}
+      {/* Row 2: vs. opponent (with PlayerIdentityRow) + (clock + opponent score).
+          Same grid trick as Row 1 — stats drop below the name on mobile. */}
       {opponent && (
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="grid min-w-0 grid-cols-[auto_1fr] items-center gap-x-1.5 gap-y-1 sm:grid-cols-[auto_1fr_auto]">
           <ColorDot color={game.yourSeat === "white" ? "black" : "white"} className="h-2.5 w-2.5" />
-          <span className="shrink-0 text-xs text-[#8d7760]">vs.</span>
-          <PlayerIdentityRow
-            player={opponent}
-            linkToProfile
-            anonymous={opponent.kind === "guest"}
-            className="min-w-0"
-            avatarClassName="h-5 w-5"
-            nameClassName="text-xs"
-          />
-          {opponentOnline && (
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full bg-[#6ba34a]"
-              title={tLobby("opponentOnline")}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-xs text-[#8d7760]">vs.</span>
+            <PlayerIdentityRow
+              player={opponent}
+              linkToProfile
+              anonymous={opponent.kind === "guest"}
+              className="min-w-0"
+              avatarClassName="h-5 w-5"
+              nameClassName="text-xs"
             />
-          )}
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-[#8d7760]">
-            <ScoreTargetIcon className="opacity-50" />
-            {opponentScore}
-            <span className="font-normal opacity-50">/{scoreToWin}</span>
-          </span>
+            {opponentOnline && (
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-full bg-[#6ba34a]"
+                title={tLobby("opponentOnline")}
+              />
+            )}
+          </div>
+          <div className="col-start-2 flex items-center gap-2 sm:col-auto sm:justify-self-end">
+            {opponentClockMs != null && <ClockPill clockMs={opponentClockMs} muted />}
+            <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-[#8d7760]">
+              <ScoreTargetIcon className="opacity-50" />
+              {opponentScore}
+              <span className="font-normal opacity-50">/{scoreToWin}</span>
+            </span>
+          </div>
         </div>
       )}
       {!opponent && isWaiting && (

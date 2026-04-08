@@ -231,13 +231,56 @@ describe("ActiveGameCard", () => {
     // which caused the config text ("Matchmaking | 19x19 | 10pts | Unlimited")
     // to wrap across 3 lines on narrow viewports. The row now stacks vertically
     // below the sm breakpoint and becomes inline at sm+.
-    const { container } = render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
+    render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
     const resumeBtn = screen.getByText("resume");
     const headerRow = resumeBtn.closest("div")!.parentElement!;
     expect(headerRow.className).toContain("flex-col");
     expect(headerRow.className).toContain("sm:flex-row");
-    // The buttons group is inside the header row and right-aligns on mobile.
-    const buttonsGroup = resumeBtn.closest("div")!;
-    expect(buttonsGroup.className).toContain("justify-end");
+  });
+
+  it("buttons group is left-aligned on mobile and right-aligned at sm+", () => {
+    // The Resume + copy-id buttons should sit under the settings badge on
+    // mobile, left-aligned with the card edge (not right-aligned). At sm+
+    // they move onto the same row as the settings and right-align.
+    render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
+    const buttonsGroup = screen.getByText("resume").closest("div")!;
+    expect(buttonsGroup.className).toContain("justify-start");
+    expect(buttonsGroup.className).toContain("sm:justify-end");
+  });
+
+  it("renders clock pills when clockMs is set on a timed game", () => {
+    // Timed games carry a clockMs snapshot on their summary. The card should
+    // surface both players' remaining time alongside the score.
+    const timedGame: MultiplayerGameSummary = {
+      ...baseGame,
+      timeControl: { initialMs: 300_000, incrementMs: 3_000 },
+      clockMs: { white: 180_000, black: 120_000 },
+    };
+    render(<ActiveGameCard game={timedGame} onResume={vi.fn()} />);
+    // formatClockTime(180_000) = "3:00", formatClockTime(120_000) = "2:00"
+    expect(screen.getByText("3:00")).toBeInTheDocument();
+    expect(screen.getByText("2:00")).toBeInTheDocument();
+  });
+
+  it("hides clock pills on an untimed game (clockMs == null)", () => {
+    // baseGame has clockMs: null — no pill should render.
+    render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
+    expect(screen.queryByText(/^\d+:\d{2}$/)).not.toBeInTheDocument();
+  });
+
+  it("player-row stats cell wraps to its own row on mobile via CSS grid", () => {
+    // Mobile fix: on narrow viewports the clock + score pair should drop
+    // below the player name (col 2, row 2 of the grid) instead of squeezing
+    // next to it. At sm+, the stats cell sits on the right of the same row.
+    render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
+    // The "vs." opponent row grid container.
+    const vsLabel = screen.getByText("vs.");
+    const gridRow = vsLabel.closest(".grid")!;
+    expect(gridRow.className).toContain("grid-cols-[auto_1fr]");
+    expect(gridRow.className).toContain("sm:grid-cols-[auto_1fr_auto]");
+    // And the stats cell opts into col-start-2 (below the name) on mobile
+    // and sm:col-auto (normal flow) on wider screens.
+    const statsCells = gridRow.querySelectorAll(".col-start-2");
+    expect(statsCells.length).toBeGreaterThan(0);
   });
 });
