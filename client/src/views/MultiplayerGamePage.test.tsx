@@ -500,6 +500,113 @@ describe("MultiplayerGamePage", () => {
     expect(spectatingElements.length).toBeGreaterThan(0);
   });
 
+  it("does NOT call accessMultiplayerGame while the rules-intro modal is open, even if auth re-renders with a fresh reference", async () => {
+    // Regression for the gating bug where the tutorial-check effect's
+    // rulesIntroShownRef made the second run of the effect (triggered by a
+    // fresh auth object reference, e.g. from a social/profile re-fetch) take
+    // the else-branch and silently call setReadyToJoin(true) — which fired
+    // accessMultiplayerGame and the "Game started!" toast on top of the open
+    // modal. The fix is a one-shot tutorialCheckDoneRef that bails on
+    // re-runs after the first decision.
+    localStorage.removeItem("tiao:knowsHowToPlay");
+
+    const newAccountAuth: AuthResponse = {
+      player: {
+        kind: "account",
+        playerId: "new-account-xyz",
+        displayName: "newuser",
+        email: "new@test.com",
+        hasSeenTutorial: false,
+        badges: [],
+        activeBadges: [],
+        unlockedThemes: [],
+        rating: 1500,
+      },
+    };
+
+    const authModule = await import("@/lib/AuthContext");
+    // mockImplementation so each call returns a *fresh object reference* with
+    // the same content — exactly the situation that broke the gating.
+    const useAuthSpy = vi.spyOn(authModule, "useAuth").mockImplementation(
+      () =>
+        ({
+          auth: { player: { ...newAccountAuth.player } },
+          authLoading: false,
+          appError: null,
+          authDialogOpen: false,
+          authDialogForced: false,
+          authDialogMode: "login",
+          authBusy: false,
+          authDialogError: null,
+          loginEmail: "",
+          loginPassword: "",
+          signupDisplayName: "",
+          signupEmail: "",
+          signupPassword: "",
+          signupConfirmPassword: "",
+          setAuth: vi.fn(),
+          setAuthDialogOpen: vi.fn(),
+          setAuthDialogMode: vi.fn(),
+          setAuthDialogError: vi.fn(),
+          setLoginEmail: vi.fn(),
+          setLoginPassword: vi.fn(),
+          setSignupDisplayName: vi.fn(),
+          setSignupEmail: vi.fn(),
+          setSignupPassword: vi.fn(),
+          setSignupConfirmPassword: vi.fn(),
+          onOpenAuth: vi.fn(),
+          handleLoginSubmit: vi.fn(),
+          handleSignupSubmit: vi.fn(),
+          handleForgotPassword: vi.fn(),
+          handleOAuthSignIn: vi.fn(),
+          onLogout: vi.fn(),
+          applyAuth: vi.fn(),
+        }) as ReturnType<typeof authModule.useAuth>,
+    );
+
+    // useMultiplayerGame must report null snapshot + idle connection so the
+    // page's loadGame effect would fire if the gating broke.
+    const { useMultiplayerGame } = await import("@/lib/hooks/useMultiplayerGame");
+    (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      multiplayerSnapshot: null,
+      multiplayerSelection: null,
+      connectionState: "idle",
+      connectToRoom: mockConnectToRoom,
+      sendMultiplayerMessage: mockSendMultiplayerMessage,
+      setMultiplayerSelection: mockSetMultiplayerSelection,
+      multiplayerBusy: false,
+      setMultiplayerBusy: mockSetMultiplayerBusy,
+      multiplayerError: null,
+    });
+
+    const { useSocialData } = await import("@/lib/hooks/useSocialData");
+    (useSocialData as ReturnType<typeof vi.fn>).mockReturnValue(defaultSocialMock);
+
+    const apiModule = await import("@/lib/api");
+    (apiModule.accessMultiplayerGame as ReturnType<typeof vi.fn>).mockClear();
+
+    const { rerender } = render(<MultiplayerGamePage />);
+
+    // The modal should be visible
+    expect(screen.getByText("Welcome to Tiao!")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Learn how to play first/i })).toBeInTheDocument();
+
+    // Force a re-render — useAuth's mock returns a fresh object reference,
+    // which used to flip the `rulesIntroShownRef` guard and let the else
+    // branch silently set readyToJoin=true.
+    rerender(<MultiplayerGamePage />);
+    rerender(<MultiplayerGamePage />);
+
+    // accessMultiplayerGame must NOT have been called — the modal is still up
+    // and the user has not made a decision.
+    expect(apiModule.accessMultiplayerGame).not.toHaveBeenCalled();
+
+    // The modal must STILL be visible after the re-renders.
+    expect(screen.getByText("Welcome to Tiao!")).toBeInTheDocument();
+
+    useAuthSpy.mockRestore();
+  });
+
   it("shows 'Start Spectating' button in rules intro for spectators", async () => {
     localStorage.removeItem("tiao:knowsHowToPlay");
 

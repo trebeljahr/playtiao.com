@@ -193,19 +193,32 @@ export function MultiplayerGamePage() {
 
   // Introduction modal for new players who haven't completed the tutorial (#25)
   const [rulesIntroOpen, setRulesIntroOpen] = useState(false);
-  const rulesIntroShownRef = useRef(false);
+  // Tracks whether the tutorial-check effect has already made its one-time
+  // decision for this page mount. Without this guard the effect re-fires when
+  // `auth` is replaced by a fresh object reference (social fetch, profile
+  // update, etc.) — and on the SECOND run the previous "show modal" decision
+  // makes it look like we're done, so it falls through to setReadyToJoin(true)
+  // and bypasses the gate while the modal is still open. The result was the
+  // join happening immediately and the "Game started!" toast firing on top of
+  // the modal.
+  const tutorialCheckDoneRef = useRef(false);
 
   // Gate game join on rules intro dismissal so the player isn't joined before
-  // pressing "Got it, let's play!" (#154)
+  // pressing the "I've played before" link or returning from /tutorial (#154)
   const [readyToJoin, setReadyToJoin] = useState(false);
 
   // Determine immediately whether we need the rules intro or can join right away.
   // This must NOT depend on multiplayerSnapshot (which requires joining first).
   useEffect(() => {
     if (!auth) return;
+    // One-shot: once we've decided, do not re-decide on subsequent renders
+    // (e.g. when auth gets replaced by a re-fetch) — that path used to fall
+    // through to setReadyToJoin(true) and skip the modal entirely.
+    if (tutorialCheckDoneRef.current) return;
 
     // Spectators always join immediately — they just watch, no intro needed
     if (spectateOnly) {
+      tutorialCheckDoneRef.current = true;
       setReadyToJoin(true);
       return;
     }
@@ -216,13 +229,10 @@ export function MultiplayerGamePage() {
     // the new flow forces a deliberate choice between learning and acknowledging
     // prior experience, which prevents the "Game started!" toast from firing
     // for someone who never saw the rules.
-    const needsIntro =
-      !auth.player.hasSeenTutorial &&
-      !localStorage.getItem("tiao:knowsHowToPlay") &&
-      !rulesIntroShownRef.current;
+    const needsIntro = !auth.player.hasSeenTutorial && !localStorage.getItem("tiao:knowsHowToPlay");
 
+    tutorialCheckDoneRef.current = true;
     if (needsIntro) {
-      rulesIntroShownRef.current = true;
       setRulesIntroOpen(true);
       // readyToJoin stays false until the modal is dismissed
     } else {
