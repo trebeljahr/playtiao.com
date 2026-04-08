@@ -225,4 +225,19 @@ describe("ActiveGameCard", () => {
     // White variant uses bg-white styling
     expect(idButton.className).toContain("bg-white");
   });
+
+  it("stacks the settings/actions header on mobile, inline on sm+", () => {
+    // Regression: the header row used to be a single flex row at all widths,
+    // which caused the config text ("Matchmaking | 19x19 | 10pts | Unlimited")
+    // to wrap across 3 lines on narrow viewports. The row now stacks vertically
+    // below the sm breakpoint and becomes inline at sm+.
+    const { container } = render(<ActiveGameCard game={baseGame} onResume={vi.fn()} />);
+    const resumeBtn = screen.getByText("resume");
+    const headerRow = resumeBtn.closest("div")!.parentElement!;
+    expect(headerRow.className).toContain("flex-col");
+    expect(headerRow.className).toContain("sm:flex-row");
+    // The buttons group is inside the header row and right-aligns on mobile.
+    const buttonsGroup = resumeBtn.closest("div")!;
+    expect(buttonsGroup.className).toContain("justify-end");
+  });
 });

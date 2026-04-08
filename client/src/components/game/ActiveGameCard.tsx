@@ -64,7 +64,7 @@ export function ActiveGameCard({
       )}
     >
       {/* Row 0: game settings pills + resume */}
-      <div className="flex items-center justify-between gap-2 pb-1">
+      <div className="flex flex-col items-stretch gap-2 pb-1 sm:flex-row sm:items-center sm:justify-between">
         <GameConfigBadge
           boardSize={game.boardSize}
           scoreToWin={game.scoreToWin}
@@ -73,7 +73,7 @@ export function ActiveGameCard({
           showAll
           compact
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           {isWaiting && onDelete && (
             <Button
               variant="ghost"

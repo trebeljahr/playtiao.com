@@ -188,4 +188,26 @@ describe("MatchHistoryCard", () => {
     const card = container.firstElementChild!;
     expect(card.className).toContain("border-[#dba8a0]");
   });
+
+  it("lays out player rows as a 2-col grid on mobile, 3-col at sm+", () => {
+    // Regression: the PlayerRow used to be a single flex row, which squeezed
+    // the name + badges column on narrow viewports — long badges (e.g.
+    // CONTRIBUTOR) got clipped by overflow-hidden. The row now uses a CSS
+    // grid so the score/stats cell drops below the name cell on mobile and
+    // sits inline on sm+.
+    const { container } = render(<MatchHistoryCard {...defaultProps} />);
+    const playerRows = container.querySelectorAll(".grid");
+    expect(playerRows.length).toBeGreaterThanOrEqual(2);
+    playerRows.forEach((row) => {
+      expect(row.className).toContain("grid-cols-[auto_1fr]");
+      expect(row.className).toContain("sm:grid-cols-[auto_1fr_auto]");
+    });
+    // The stats cell is forced into col 2 on mobile (stacked) and falls back
+    // to the natural third column at sm+.
+    const statsCells = container.querySelectorAll(".col-start-2");
+    expect(statsCells.length).toBe(2);
+    statsCells.forEach((cell) => {
+      expect(cell.className).toContain("sm:col-auto");
+    });
+  });
 });

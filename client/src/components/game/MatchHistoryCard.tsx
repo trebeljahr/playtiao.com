@@ -108,7 +108,7 @@ function PlayerRow({
   );
 
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-xl px-3 py-2">
+    <div className="grid min-w-0 grid-cols-[auto_1fr] items-center gap-x-2.5 gap-y-1 rounded-xl px-3 py-2 sm:grid-cols-[auto_1fr_auto]">
       <ColorDot color={color} />
       {player ? (
         <PlayerIdentityRow
@@ -117,20 +117,18 @@ function PlayerRow({
           currentPlayerId={currentPlayerId}
           avatarClassName="h-6 w-6"
           friendVariant="light"
-          className="min-w-0 flex-1"
+          className="min-w-0"
           nameClassName="text-sm font-medium text-[#1a1008]"
-        >
-          {gameStats}
-        </PlayerIdentityRow>
+        />
       ) : (
-        <>
+        <div className="flex min-w-0 items-center gap-2">
           <EmptySeatAvatar className="h-6 w-6" />
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1a1008]">
             {unknownLabel}
           </span>
-          {gameStats}
-        </>
+        </div>
       )}
+      <div className="col-start-2 sm:col-auto">{gameStats}</div>
     </div>
   );
 }
