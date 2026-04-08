@@ -9,7 +9,7 @@
     "dev": "node server.mjs",
     "build": "next build --webpack",
     "start": "node server.mjs",
-    "typecheck": "tsc",
+    "typecheck": "next typegen && tsc",
     "eslint": "eslint src/",
     "test": "vitest run"
   },
