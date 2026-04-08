@@ -90,16 +90,16 @@ function AuthDialog() {
   const dialogTitle = forgotMode
     ? "Reset password"
     : authDialogForced
-      ? "Sign in to join this custom game"
+      ? "Log in to join this custom game"
       : authDialogMode === "login"
-        ? "Sign in"
+        ? "Log in"
         : "Create account";
 
   const dialogDescription = forgotMode
     ? "Enter your email to receive a password reset link."
     : authDialogForced
-      ? "Custom games are only open to registered players. Sign in or create a free account to join."
-      : "Sign in or create an account to save your profile.";
+      ? "Custom games are only open to registered players. Log in or create a free account to join."
+      : "Log in or create an account to save your profile.";
 
   return (
     <Dialog
@@ -153,7 +153,7 @@ function AuthDialog() {
               className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline"
               onClick={() => setForgotMode(false)}
             >
-              Back to sign in
+              Back to log in
             </button>
           </form>
         ) : (
@@ -169,13 +169,15 @@ function AuthDialog() {
                     setAuthDialogError(null);
                   }}
                 >
-                  {item === "signup" ? "Sign up" : item === "login" ? "Sign in" : null}
+                  {item === "signup" ? "Sign up" : item === "login" ? "Log in" : null}
                 </Button>
               ))}
             </div>
 
             {authDialogMode === "login" ? (
               <form
+                id="tiao-login-form"
+                name="login"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void handleLoginSubmit();
@@ -191,11 +193,13 @@ function AuthDialog() {
                   </label>
                   <Input
                     id="login-email"
-                    name="identifier"
+                    name="username"
                     value={loginEmail}
                     onChange={(event) => setLoginEmail(event.target.value)}
                     placeholder="name or name@example.com"
-                    autoComplete="username email"
+                    autoComplete="username"
+                    spellCheck={false}
+                    autoCapitalize="none"
                     required
                   />
                 </div>
@@ -227,13 +231,24 @@ function AuthDialog() {
                   Forgot password?
                 </button>
                 <Button type="submit" className="w-full" disabled={authBusy}>
-                  {authBusy ? "Signing in..." : "Sign in"}
+                  {authBusy ? "Logging in..." : "Log in"}
                 </Button>
               </form>
             ) : null}
 
             {authDialogMode === "signup" ? (
+              // Form-level hints for browser/extension password generators:
+              // - id+name "signup" so Chrome/1Password classify this as a
+              //   create-account form (not a login form).
+              // - one autocomplete="username" field followed by an
+              //   autocomplete="email" field, then exactly one
+              //   autocomplete="new-password" field, then a separate
+              //   autocomplete="new-password" confirm field with a distinct
+              //   `name` ("password-confirm") so generators don't treat both
+              //   as the same input and refuse to fill.
               <form
+                id="tiao-signup-form"
+                name="signup"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void handleSignupSubmit();
@@ -258,6 +273,8 @@ function AuthDialog() {
                     }
                     placeholder="username"
                     autoComplete="username"
+                    spellCheck={false}
+                    autoCapitalize="none"
                     pattern="^[a-z0-9][a-z0-9_\-]*$"
                     minLength={3}
                     maxLength={32}
@@ -280,6 +297,8 @@ function AuthDialog() {
                     onChange={(event) => setSignupEmail(event.target.value)}
                     placeholder="name@example.com"
                     autoComplete="email"
+                    spellCheck={false}
+                    autoCapitalize="none"
                     required
                   />
                 </div>
@@ -292,11 +311,12 @@ function AuthDialog() {
                   </label>
                   <PasswordInput
                     id="signup-password"
-                    name="new-password"
+                    name="password"
                     value={signupPassword}
                     onChange={(event) => setSignupPassword(event.target.value)}
                     placeholder="••••••••••••"
                     autoComplete="new-password"
+                    minLength={8}
                     visible={signupPasswordVisible}
                     onVisibilityChange={setSignupPasswordVisible}
                     required
@@ -311,11 +331,12 @@ function AuthDialog() {
                   </label>
                   <PasswordInput
                     id="signup-confirm-password"
-                    name="new-password"
+                    name="password-confirm"
                     value={signupConfirmPassword}
                     onChange={(event) => setSignupConfirmPassword(event.target.value)}
                     placeholder="••••••••••••"
                     autoComplete="new-password"
+                    minLength={8}
                     visible={signupPasswordVisible}
                     onVisibilityChange={setSignupPasswordVisible}
                     required

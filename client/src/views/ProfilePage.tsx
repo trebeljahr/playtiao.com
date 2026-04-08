@@ -347,11 +347,12 @@ function LinkedAccounts({
             </label>
             <PasswordInput
               id="set-new-password"
-              name="new-password"
+              name="password"
               value={newPassword}
               onChange={(e) => setNewPasswordValue(e.target.value)}
               placeholder="••••••••••••"
               autoComplete="new-password"
+              minLength={8}
               visible={passwordVisible}
               onVisibilityChange={setPasswordVisible}
               required
@@ -364,11 +365,12 @@ function LinkedAccounts({
             </label>
             <PasswordInput
               id="set-confirm-password"
-              name="new-password"
+              name="password-confirm"
               value={confirmPassword}
               onChange={(e) => setConfirmPasswordValue(e.target.value)}
               placeholder="••••••••••••"
               autoComplete="new-password"
+              minLength={8}
               visible={passwordVisible}
               onVisibilityChange={setPasswordVisible}
               required

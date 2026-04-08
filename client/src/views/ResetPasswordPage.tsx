@@ -106,11 +106,12 @@ export function ResetPasswordPage() {
             </label>
             <PasswordInput
               id="new-password"
-              name="new-password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               autoComplete="new-password"
+              minLength={8}
               visible={passwordVisible}
               onVisibilityChange={setPasswordVisible}
               required
@@ -125,11 +126,12 @@ export function ResetPasswordPage() {
             </label>
             <PasswordInput
               id="confirm-new-password"
-              name="new-password"
+              name="password-confirm"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••••••"
               autoComplete="new-password"
+              minLength={8}
               visible={passwordVisible}
               onVisibilityChange={setPasswordVisible}
               required

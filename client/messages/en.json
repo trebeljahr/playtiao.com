@@ -13,7 +13,7 @@
     "view": "View",
     "resume": "Resume",
     "review": "Review",
-    "signIn": "Sign in",
+    "signIn": "Log in",
     "signUp": "Sign up",
     "logout": "Logout",
     "profile": "Profile",
@@ -62,7 +62,7 @@
     "somethingWentWrong": "Something went wrong.",
     "oauthErrorAlreadyLinked": "That account is already linked to a different user.",
     "oauthErrorAlreadyLinkedSelf": "That account is already linked to your profile.",
-    "oauthErrorUserExists": "An account with that email already exists. Try signing in instead.",
+    "oauthErrorUserExists": "An account with that email already exists. Try logging in instead.",
     "oauthErrorCreateFailed": "Could not create your account. Please try again.",
     "oauthErrorAccessDenied": "Access was denied. Please try again and authorize the app."
   },
@@ -130,7 +130,7 @@
     "computerGameTitle": "Play against a Bot",
     "computerGameDesc": "Choose your difficulty and settings.",
     "startGame": "Start Game",
-    "customGameRequiresAccount": "Sign in or create an account to create and join custom games."
+    "customGameRequiresAccount": "Log in or create an account to create and join custom games."
   },
   "game": {
     "white": "White",
@@ -320,7 +320,7 @@
   "matchmaking": {
     "title": "Matchmaking",
     "description": "Find an opponent online and start building your game history.",
-    "signInRequired": "Please sign in to enter the global matchmaking queue.",
+    "signInRequired": "Please log in to enter the global matchmaking queue.",
     "searching": "Searching for opponent...",
     "cancelSearch": "Cancel Search",
     "initializing": "Initializing matchmaking...",
@@ -569,7 +569,7 @@
   "achievements": {
     "title": "Achievements",
     "progress": "{count} of {total} unlocked",
-    "signInRequired": "Sign in to track your achievements.",
+    "signInRequired": "Log in to track your achievements.",
     "secretHint": "There are hidden achievements waiting to be discovered...",
     "category_games": "Games",
     "category_combat": "Combat",
@@ -670,7 +670,7 @@
     "tournaments": "Tournaments",
     "achievements": "Achievements",
     "profile": "Profile",
-    "signIn": "Sign in",
+    "signIn": "Log in",
     "signUp": "Sign up",
     "logout": "Logout",
     "changeLanguage": "Change language",
@@ -737,7 +737,7 @@
     "selectImage": "Please select an image file."
   },
   "authError": {
-    "title": "Sign-in error",
+    "title": "Login error",
     "goHome": "Go Home",
     "goBack": "Go Back"
   },
