@@ -17,12 +17,24 @@ type IconProps = { color: string };
 
 function FootstepIcon({ color }: IconProps) {
   return (
-    <path
-      stroke={color}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M9 3c1 0 2 1.5 2 4s-1 4-2 4-2-1.5-2-4 1-4 2-4zM15 5c1 0 2 1.2 2 3.5S16 12 15 12s-2-1.2-2-3.5S14 5 15 5zM6 14c.5-.5 2-.5 3 .5s1.5 2.5 1 3.5-2 1.5-3 .5S5.5 16 6 14zM14 15c.5-.3 1.8-.2 2.5.8s.8 2.3.3 2.8-1.8.2-2.5-.8-.8-2.5-.3-2.8z"
-    />
+    <>
+      {/* Left shoe print */}
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 14.5c0-1.5.8-2.8 2-3.5.5-.3 1-.4 1.5-.4 1.7 0 3 1.6 3 3.5S10 18 8.5 18 5 16.5 5 14.5z"
+      />
+      <ellipse cx="8" cy="9" rx="1.5" ry="2" stroke={color} fill="none" />
+      {/* Right shoe print */}
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12.5 8.5c0-1.5.8-2.8 2-3.5.5-.3 1-.4 1.5-.4 1.7 0 3 1.6 3 3.5s-1.3 3.5-2.8 3.5S12.5 10.5 12.5 8.5z"
+      />
+      <ellipse cx="15.5" cy="3.5" rx="1.5" ry="2" stroke={color} fill="none" />
+    </>
   );
 }
 
@@ -103,20 +115,24 @@ function TombstoneIcon({ color }: IconProps) {
 function BoxingGloveIcon({ color }: IconProps) {
   return (
     <>
+      {/* Glove body — puffy rounded shape */}
       <path
         stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M7 9c0-3 1.5-5 4-5h2c2.5 0 4.5 2 4.5 5v2c0 2-1 3.5-3 4l-1 1H10l-1-1c-1.5-.5-2-2-2-4V9z"
+        d="M8 6c-2 0-3.5 2-3.5 4.5S6 15 8 15h7c2.5 0 4.5-2 4.5-4.5S17.5 6 15 6H8z"
       />
-      <path stroke={color} strokeLinecap="round" d="M7 10h10" />
+      {/* Thumb */}
       <path
         stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M10 16v2.5a2.5 2.5 0 005 0V16"
+        d="M5.5 8C4 8.5 3 9.5 3 11s1.5 2.5 2.5 2"
       />
-      <path stroke={color} strokeLinecap="round" d="M12 4V2" />
+      {/* Wrist cuff */}
+      <path stroke={color} strokeLinecap="round" d="M8 15v3a2 2 0 004 0v-3" />
+      {/* Lacing lines */}
+      <path stroke={color} strokeLinecap="round" d="M9 9h5M9 12h5" />
     </>
   );
 }
@@ -160,23 +176,19 @@ function SkullIcon({ color }: IconProps) {
 function FlameIcon({ color }: IconProps) {
   return (
     <>
+      {/* Outer flame — wide and rounded like the fire emoji */}
       <path
         stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M12 1c0 3.5 5.5 5.5 5.5 11a5.5 5.5 0 01-11 0C6.5 6.5 12 4.5 12 1z"
+        d="M12 2C10 6 5 8 5 14a7 7 0 0014 0c0-6-5-8-7-12z"
       />
+      {/* Inner flame */}
       <path
         stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M12 22a3 3 0 01-3-3c0-2.5 3-5 3-5s3 2.5 3 5a3 3 0 01-3 3z"
-      />
-      <path
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9.5 6C8 8 7 10 7.5 13M14.5 5c1.5 2 2.5 4 2 7"
+        d="M12 10c-1 2-3 3-3 6a3 3 0 006 0c0-3-2-4-3-6z"
       />
     </>
   );
@@ -199,7 +211,7 @@ function HourglassIcon({ color }: IconProps) {
       stroke={color}
       strokeLinecap="round"
       strokeLinejoin="round"
-      d="M6 2h12M6 22h12M7 2v4l5 5 5-5V2M7 22v-4l5-5 5 5v4M12 12v0M20 11l1 1-1 1"
+      d="M6 2h12M6 22h12M7 2v4l5 5 5-5V2M7 22v-4l5-5 5 5v4"
     />
   );
 }
@@ -217,12 +229,38 @@ function TwoPeopleIcon({ color }: IconProps) {
 
 function ButterflyIcon({ color }: IconProps) {
   return (
-    <path
-      stroke={color}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M12 6c-3-4-8-3-8 1s4 6 8 5c4 1 8-1 8-5s-5-5-8-1zM12 6v14M9 20l3-2 3 2"
-    />
+    <>
+      {/* Left wings */}
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 12C9 9 4 8 3 11s2 5 5 5c1.5 0 3-1 4-4z"
+      />
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 12C10 10 6 6 4 7s0 5 3 6c1.5.5 3.5 0 5-1z"
+      />
+      {/* Right wings */}
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 12c3-3 8-4 9-1s-2 5-5 5c-1.5 0-3-1-4-4z"
+      />
+      <path
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 12c2-2 6-6 8-5s0 5-3 6c-1.5.5-3.5 0-5-1z"
+      />
+      {/* Body */}
+      <path stroke={color} strokeLinecap="round" d="M12 9v10" />
+      {/* Antennae */}
+      <path stroke={color} strokeLinecap="round" d="M12 9l-2-4M12 9l2-4" />
+    </>
   );
 }
 
@@ -273,10 +311,30 @@ function GradCapIcon({ color }: IconProps) {
 function SpyglassIcon({ color }: IconProps) {
   return (
     <>
-      <circle cx="10" cy="10" r="7" stroke={color} fill="none" />
-      <circle cx="10" cy="10" r="4.5" stroke={color} fill="none" strokeDasharray="2 2" />
-      <path stroke={color} strokeLinecap="round" strokeWidth={2.2} d="M15.5 15.5L21 21" />
-      <path stroke={color} strokeLinecap="round" d="M10 6v1M7 10h1M13 10h-1M10 13v1" />
+      {/* Telescope tube — long tapered cylinder */}
+      <path stroke={color} strokeLinecap="round" strokeLinejoin="round" d="M2 17l14-14" />
+      {/* Wide lens end */}
+      <ellipse
+        cx="18"
+        cy="5"
+        rx="3.5"
+        ry="2"
+        transform="rotate(-45 18 5)"
+        stroke={color}
+        fill="none"
+      />
+      {/* Narrow eyepiece end */}
+      <ellipse
+        cx="4"
+        cy="19"
+        rx="2"
+        ry="1.2"
+        transform="rotate(-45 4 19)"
+        stroke={color}
+        fill="none"
+      />
+      {/* Tube body lines */}
+      <path stroke={color} strokeLinecap="round" d="M5.5 13.5l9-9M3.5 15.5l9-9" />
     </>
   );
 }
@@ -323,7 +381,7 @@ function RisingArrowIcon({ color }: IconProps) {
       stroke={color}
       strokeLinecap="round"
       strokeLinejoin="round"
-      d="M3 20L9 8l4 6 8-12M17 2h4v4M3 20l4-1M3 20l1-4"
+      d="M3 20L9 8l4 6 8-12M17 2h4v4"
     />
   );
 }
