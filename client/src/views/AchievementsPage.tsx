@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
+import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
@@ -182,7 +183,7 @@ export function AchievementsPage() {
   const [achievements, setAchievements] = useState<PlayerAchievement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchAchievements = useCallback(() => {
     if (!auth || auth.player.kind !== "account") {
       setLoading(false);
       return;
@@ -192,6 +193,17 @@ export function AchievementsPage() {
       setLoading(false);
     });
   }, [auth]);
+
+  useEffect(() => {
+    fetchAchievements();
+  }, [fetchAchievements]);
+
+  // Refresh when an achievement is unlocked via WebSocket
+  useLobbyMessage((payload) => {
+    if (payload.type === "achievement-unlocked") {
+      fetchAchievements();
+    }
+  });
 
   const unlockedMap = useMemo(() => {
     const m = new Map<string, string>();
