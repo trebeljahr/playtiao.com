@@ -4,7 +4,7 @@
     {
       "name": "dev",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && node scripts/dev.mjs"],
+      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use && node scripts/dev.mjs"],
       "port": 3100,
       "autoPort": true
     },
