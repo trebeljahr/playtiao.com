@@ -1432,7 +1432,7 @@ describe("MultiplayerGamePage", () => {
       onOpenAuth: vi.fn(),
       onLogout: vi.fn(),
       applyAuth: vi.fn(),
-    } as ReturnType<typeof authModule.useAuth>);
+    } as unknown as ReturnType<typeof authModule.useAuth>);
 
     const { useMultiplayerGame } = await import("@/lib/hooks/useMultiplayerGame");
     (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
