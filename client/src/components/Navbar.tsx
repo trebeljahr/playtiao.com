@@ -349,7 +349,7 @@ export function Navbar({
     intlRouter.push(path);
   };
 
-  const iconClass = "mr-1.5 h-3.5 w-3.5 shrink-0";
+  const iconClass = "mr-1.5 h-3.5 w-3.5 shrink-0 translate-y-[1px]";
   const iconProps = {
     className: iconClass,
     viewBox: "0 0 24 24",
