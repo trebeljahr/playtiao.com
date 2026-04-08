@@ -61,8 +61,16 @@ export function LobbyPage() {
       .slice(0, 3);
   }, [publicTournaments, myTournaments]);
 
-  // Track the last seen history length per game to avoid spurious "your move" toasts
-  // (e.g. when leaving a game, the departure triggers a game-update but no new move).
+  // Track the last seen history length per game to avoid spurious "your move"
+  // toasts. The toast must ONLY fire when historyLength *increases* compared
+  // to a previously-known value — never on the first time we see a game in
+  // this session. Otherwise a player who leaves a game that's on their turn
+  // lands on the lobby, the first game-update arrives with historyLength > 0
+  // (because the game already has moves), and the old "prevLen ?? 0" default
+  // would treat that as a fresh move and toast them about the very game they
+  // just walked away from. This has regressed multiple times — see
+  // LobbyPage.test.tsx "does not fire your-move toast for a game on first
+  // sight after leaving it" for the regression guard.
   const seenHistoryRef = useRef<Record<string, number>>({});
 
   // Real-time updates for lobby
@@ -71,11 +79,14 @@ export function LobbyPage() {
       void refreshMultiplayerGames({ silent: true });
 
       const summary = payload.summary as any;
-      const prevLen = seenHistoryRef.current[summary.gameId] ?? 0;
+      const hadPrev = Object.prototype.hasOwnProperty.call(seenHistoryRef.current, summary.gameId);
+      const prevLen = seenHistoryRef.current[summary.gameId];
       seenHistoryRef.current[summary.gameId] = summary.historyLength;
 
       const inGame = window.location.pathname.startsWith("/game/");
-      const newMoveOccurred = summary.historyLength > prevLen;
+      // Only count as "new move" if we have a strictly earlier historyLength
+      // recorded for this game from an earlier event in this session.
+      const newMoveOccurred = hadPrev && summary.historyLength > prevLen;
       if (
         summary.status === "active" &&
         summary.yourSeat === summary.currentTurn &&
@@ -116,6 +127,19 @@ export function LobbyPage() {
 
   const activeGames = multiplayerGames.active ?? [];
   const finishedGames = multiplayerGames.finished ?? [];
+
+  // Seed seenHistoryRef from the initial active-games fetch so live updates
+  // can detect real increments from the loaded baseline. Without this, a
+  // player opening the lobby while their opponent has the move would miss
+  // the "your move" toast on the opponent's next move — because the first
+  // game-update for that game would look like "first sight".
+  useEffect(() => {
+    for (const game of activeGames) {
+      if (!Object.prototype.hasOwnProperty.call(seenHistoryRef.current, game.gameId)) {
+        seenHistoryRef.current[game.gameId] = game.historyLength;
+      }
+    }
+  }, [activeGames]);
   const rematchGames = useMemo(() => {
     return finishedGames.filter((g) => g.rematch?.requestedBy.length && g.yourSeat);
   }, [finishedGames]);
