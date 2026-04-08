@@ -27,77 +27,71 @@ Implement both parts. Start with Part A (simpler), then Part B.
 
 ### Concept
 
-When a player unlocks a specific achievement, they automatically receive a corresponding badge. The badge is permanent (earned, not purchased). These badges appear in the shop page as "Earned" (not buyable) alongside the purchasable supporter badges.
+Wire up EXISTING achievements to auto-grant corresponding badges. No new achievements needed — the achievements already exist in `shared/src/achievements.ts`. Only the hardest-to-earn achievements get badges, making them rare and prestigious. The badge is permanent (earned, not purchased).
 
-### New Badge Definitions
+### Existing Achievements → New Badge Definitions
 
-Add to `BadgeId` type and `BADGE_DEFINITIONS` in `UserBadge.tsx`:
+Only wire up achievements that are genuinely hard to earn. Add these to `BadgeId` type and `BADGE_DEFINITIONS` in `UserBadge.tsx`:
 
-| Badge ID           | Label     | Tier | Trigger Achievement     | Visual                |
-| ------------------ | --------- | ---- | ----------------------- | --------------------- |
-| `first-win`        | First Win | 1    | `first-multiplayer-win` | Green gradient        |
-| `veteran`          | Veteran   | 1    | `games-played-50`       | Bronze/brown gradient |
-| `centurion`        | Centurion | 2    | `games-played-100`      | Silver animated       |
-| `social-butterfly` | Social    | 1    | `friends-10`            | Pink/coral gradient   |
-| `streak-5`         | On Fire   | 2    | `win-streak-5`          | Orange animated       |
+| Badge ID              | Label           | Tier | Existing Achievement ID | Why it's hard                                       |
+| --------------------- | --------------- | ---- | ----------------------- | --------------------------------------------------- |
+| `veteran`             | Veteran         | 2    | `veteran`               | Play 1,000 games (platinum tier)                    |
+| `top-one-percent`     | Elite           | 3    | `top-one-percent`       | Reach top 1% rating (platinum tier)                 |
+| `tournament-champion` | Champion        | 2    | `tournament-champion`   | Win a tournament (gold tier)                        |
+| `one-jump-wonder`     | One Jump Wonder | 2    | `one-jump-wonder`       | Win entire game from single chain jump (platinum)   |
+| `flawless-victory`    | Flawless        | 2    | `flawless-victory`      | Win without losing a single piece (platinum/secret) |
+| `one-second-glory`    | Living on Edge  | 2    | `one-second-glory`      | Win with ≤1 second on clock (platinum)              |
+| `david-vs-goliath`    | Giant Killer    | 1    | `david-vs-goliath`      | Beat player rated 300+ above you (gold/secret)      |
+
+Note: Easy achievements (first-move, tutorial-complete, first-friend, ai-easy, etc.) intentionally do NOT get badges — they'd be too common to be meaningful.
 
 ### Achievement→Badge Mapping
 
 Create `server/config/badgeRewards.ts`:
 
 ```ts
-// Maps achievement IDs to badge IDs that should be auto-granted
+// Maps existing achievement IDs to badge IDs that should be auto-granted.
+// Only hard-to-earn achievements get badges — keeps them rare and prestigious.
 export const ACHIEVEMENT_BADGE_MAP: Record<string, string> = {
-  "first-multiplayer-win": "first-win",
-  "games-played-50": "veteran",
-  "games-played-100": "centurion",
-  "friends-10": "social-butterfly",
-  "win-streak-5": "streak-5",
+  veteran: "veteran",
+  "top-one-percent": "top-one-percent",
+  "tournament-champion": "tournament-champion",
+  "one-jump-wonder": "one-jump-wonder",
+  "flawless-victory": "flawless-victory",
+  "one-second-glory": "one-second-glory",
+  "david-vs-goliath": "david-vs-goliath",
 };
 ```
 
 ### Server Changes
 
-**`server/game/achievementService.ts`** — After granting an achievement, check the badge map and auto-grant:
+**`server/game/achievementService.ts`** — After granting any achievement, check the badge map and auto-grant. Find the function that inserts achievements into the DB and add:
 
 ```ts
 import { ACHIEVEMENT_BADGE_MAP } from "../config/badgeRewards";
 import { grantBadge } from "./badgeService";
 
-// In the function that grants achievements (after inserting into DB):
-async function grantAchievementAndBadge(playerId: string, achievementId: string) {
-  // ... existing achievement grant logic ...
-
-  const badgeId = ACHIEVEMENT_BADGE_MAP[achievementId];
-  if (badgeId) {
-    await grantBadge(playerId, badgeId);
-  }
+// After successfully granting an achievement:
+const badgeId = ACHIEVEMENT_BADGE_MAP[achievementId];
+if (badgeId) {
+  await grantBadge(playerId, badgeId);
 }
 ```
 
-**New achievements to define** (if not already in `shared/src/achievements.ts`):
-
-- `first-multiplayer-win` — triggered in `onGameCompleted` when winner's total wins === 1
-- `games-played-50` / `games-played-100` — triggered in `onGameCompleted` when total games reach threshold
-- `friends-10` — triggered in `onFriendAdded` when friend count reaches 10
-- `win-streak-5` — needs a win streak counter on GameAccount (new field) or computed from recent game history
+No new achievement definitions needed — all 7 achievements already exist in `shared/src/achievements.ts` and are already triggered by the existing `onGameCompleted`, `onEloUpdated`, `onFriendAdded`, `onTournamentWon` functions.
 
 ### Client Changes
 
-**`UserBadge.tsx`** — Add the 5 new badge definitions with appropriate gradients.
+**`UserBadge.tsx`** — Add the 7 new badge definitions with appropriate gradients/animations matching their prestige level.
 
-**`ShopPage.tsx`** — Show earned badges in a separate "Earned Badges" section (or inline with "Earned" label instead of price). The catalog endpoint already returns `owned: true` for badges the player has — earned badges would show the same way but with "Earned" instead of a price.
-
-**`server/config/shopCatalog.ts`** — Earned badges should NOT be in the shop catalog (they can't be purchased). Instead, the shop page should fetch the player's badges separately and display earned ones.
-
-**Alternative approach**: Add an `earnedOnly` flag to the catalog response. The shop page shows a combined view: purchasable badges with prices + earned badges with "Earned via [achievement name]" labels.
+**`ShopPage.tsx`** — Show earned badges in a separate "Earned Badges" section below the purchasable ones. These show the achievement name/description instead of a price, with an "Earned" label. They are NOT in the shop catalog — the shop page should fetch the player's badges and cross-reference with `ACHIEVEMENT_BADGE_MAP` to identify earned ones.
 
 ### Translation Keys
 
 Add to all 3 locale files:
 
-- Badge names for the 5 new badges
-- Badge descriptions explaining how to earn them
+- Badge names for the 7 new badges (can reuse achievement names where appropriate)
+- Badge descriptions (short — e.g., "Awarded for reaching the top 1% of players")
 - "Earned" label for the shop display
 
 ---
