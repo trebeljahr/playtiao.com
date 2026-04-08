@@ -195,32 +195,31 @@ export function MultiplayerGamePage() {
 
   // Introduction modal for new players who haven't completed the tutorial (#25)
   const [rulesIntroOpen, setRulesIntroOpen] = useState(false);
-  // Tracks whether the tutorial-check effect has already made its one-time
-  // decision for this page mount. Without this guard the effect re-fires when
-  // `auth` is replaced by a fresh object reference (social fetch, profile
-  // update, etc.) — and on the SECOND run the previous "show modal" decision
-  // makes it look like we're done, so it falls through to setReadyToJoin(true)
-  // and bypasses the gate while the modal is still open. The result was the
-  // join happening immediately and the "Game started!" toast firing on top of
-  // the modal.
-  const tutorialCheckDoneRef = useRef(false);
+  // Tracks which identity the intro-decision effect has already made a
+  // decision for, so it re-runs on a real identity change (guest → account
+  // after sign-up) without re-firing for incidental `auth` reference
+  // churn (social fetches, profile updates, etc.). Re-evaluating on
+  // identity change is crucial for the anon-joining-custom-game flow:
+  // we show the auth modal first, and once the guest signs in/up we
+  // need to re-check `hasSeenTutorial` against the NEW account.
+  const introDecisionPlayerIdRef = useRef<string | null>(null);
 
   // Gate game join on rules intro dismissal so the player isn't joined before
   // pressing the "I've played before" link or returning from /tutorial (#154)
   const [readyToJoin, setReadyToJoin] = useState(false);
 
-  // Determine immediately whether we need the rules intro or can join right away.
-  // This must NOT depend on multiplayerSnapshot (which requires joining first).
+  // Determine whether we need the rules intro, the auth modal, or can join
+  // right away. This must NOT depend on multiplayerSnapshot (which requires
+  // joining first). Runs on every identity change so post-signup the new
+  // account's hasSeenTutorial is evaluated (not the pre-signup guest's).
   useEffect(() => {
-    if (!auth) return;
-    // One-shot: once we've decided, do not re-decide on subsequent renders
-    // (e.g. when auth gets replaced by a re-fetch) — that path used to fall
-    // through to setReadyToJoin(true) and skip the modal entirely.
-    if (tutorialCheckDoneRef.current) return;
+    if (!auth || !gameId) return;
+    const playerId = auth.player.playerId;
+    if (introDecisionPlayerIdRef.current === playerId) return;
 
     // Spectators always join immediately — they just watch, no intro needed
     if (spectateOnly) {
-      tutorialCheckDoneRef.current = true;
+      introDecisionPlayerIdRef.current = playerId;
       setReadyToJoin(true);
       return;
     }
@@ -231,16 +230,56 @@ export function MultiplayerGamePage() {
     // the new flow forces a deliberate choice between learning and acknowledging
     // prior experience, which prevents the "Game started!" toast from firing
     // for someone who never saw the rules.
-    const needsIntro = !auth.player.hasSeenTutorial && !localStorage.getItem("tiao:knowsHowToPlay");
+    const runStandardIntroCheck = () => {
+      const needsIntro =
+        !auth.player.hasSeenTutorial && !localStorage.getItem("tiao:knowsHowToPlay");
+      if (needsIntro) {
+        setRulesIntroOpen(true);
+        // readyToJoin stays false until the modal is dismissed
+      } else {
+        setReadyToJoin(true);
+      }
+    };
 
-    tutorialCheckDoneRef.current = true;
-    if (needsIntro) {
-      setRulesIntroOpen(true);
-      // readyToJoin stays false until the modal is dismissed
-    } else {
-      setReadyToJoin(true);
+    // Guests on a CUSTOM (direct) game can't join — the server will reject
+    // them with GUEST_CANNOT_JOIN_CUSTOM_GAME no matter what, and forcing
+    // them through the rules intro before we even tell them they need to
+    // sign in feels backwards. Probe the room type first via the read-only
+    // snapshot endpoint (no side effects); if it's a custom room, pop the
+    // auth modal and skip the tutorial check — once the guest signs in/up
+    // this effect will re-run with the new playerId and re-evaluate the
+    // tutorial against whichever account they landed on (new account that
+    // hasn't done the tutorial → rules modal; existing account that has →
+    // straight to join).
+    if (auth.player.kind === "guest") {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const { snapshot } = await getMultiplayerGame(gameId);
+          if (cancelled) return;
+          if (snapshot.roomType === "direct") {
+            introDecisionPlayerIdRef.current = playerId;
+            onOpenAuth("signup", { forced: true });
+            return;
+          }
+        } catch {
+          // Probe failed (network error, 404, etc.) — fall through to the
+          // standard tutorial check so the existing error handling in the
+          // load-game effect takes over.
+        }
+        if (cancelled) return;
+        introDecisionPlayerIdRef.current = playerId;
+        runStandardIntroCheck();
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [auth, spectateOnly]);
+
+    // Signed-in account: no probe needed, the server will let us in.
+    introDecisionPlayerIdRef.current = playerId;
+    runStandardIntroCheck();
+  }, [auth, spectateOnly, gameId, onOpenAuth]);
 
   // Close invite modal, scroll to board, and notify when both seats are filled.
   // Distinguish three cases on the first snapshot we observe:

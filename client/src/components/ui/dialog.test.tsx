@@ -107,7 +107,10 @@ describe("Dialog", () => {
       </Dialog>,
     );
 
-    fireEvent.click(screen.getByText("x"));
+    // The close button is a circular icon button with an SVG X and an
+    // aria-label resolved from common.close (the test i18n provider
+    // exposes "Close" for that key).
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
