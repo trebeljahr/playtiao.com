@@ -639,7 +639,7 @@ export function Navbar({
     <>
       <button
         type="button"
-        className="fixed left-3 top-3 z-200 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur-sm transition-colors hover:bg-[rgba(255,252,245,0.96)]"
+        className="fixed left-3 top-3 z-201 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#28170e] shadow-[0_14px_28px_-18px_rgba(75,49,20,0.46)] backdrop-blur-sm transition-colors hover:bg-[rgba(255,252,245,0.96)]"
         aria-label={t("openNavigation")}
         aria-expanded={navOpen}
         onClick={onToggleNav}
