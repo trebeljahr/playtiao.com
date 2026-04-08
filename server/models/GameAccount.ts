@@ -5,6 +5,13 @@ export interface IRatingEntry {
   gamesPlayed: number;
 }
 
+export interface ISubscription {
+  subscriptionId: string;
+  badgeId: string;
+  status: "active" | "past_due" | "canceled";
+  currentPeriodEnd: Date;
+}
+
 export interface IGameAccount extends Document {
   displayName: string;
   profilePicture?: string;
@@ -22,6 +29,10 @@ export interface IGameAccount extends Document {
   isAdmin: boolean;
   /** Short user-written bio for their public profile. */
   bio: string;
+  /** Stripe customer ID for this account. */
+  stripeCustomerId?: string;
+  /** Active Stripe subscriptions granting badges. */
+  activeSubscriptions: ISubscription[];
   rating: {
     overall: IRatingEntry;
   };
@@ -87,6 +98,20 @@ const GameAccountSchema = new Schema<IGameAccount>(
       trim: true,
       maxlength: 500,
       default: "",
+    },
+    stripeCustomerId: {
+      type: String,
+    },
+    activeSubscriptions: {
+      type: [
+        {
+          subscriptionId: { type: String, required: true },
+          badgeId: { type: String, required: true },
+          status: { type: String, enum: ["active", "past_due", "canceled"], default: "active" },
+          currentPeriodEnd: { type: Date, required: true },
+        },
+      ],
+      default: [],
     },
     rating: {
       overall: {

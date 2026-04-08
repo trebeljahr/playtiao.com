@@ -686,7 +686,23 @@
     "contributorDesc": "Para jugadores que contribuyen a la comunidad de Tiao.",
     "superSupporterDesc": "Una insignia dorada animada para colaboradores dedicados.",
     "championDesc": "Una prestigiosa insignia púrpura para campeones de torneos.",
-    "creatorDesc": "La insignia arcoíris de creador — para quienes ayudaron a construir Tiao."
+    "creatorDesc": "La insignia arcoíris de creador — para quienes ayudaron a construir Tiao.",
+    "veteran": "Veterano",
+    "veteranDesc": "Otorgada por jugar 1.000 partidas.",
+    "topOnePercent": "Élite",
+    "topOnePercentDesc": "Otorgada por alcanzar el 1% superior de jugadores.",
+    "tournamentChampion": "Campeón",
+    "tournamentChampionDesc": "Otorgada por ganar un torneo.",
+    "oneJumpWonder": "Salto Prodigioso",
+    "oneJumpWonderDesc": "Otorgada por ganar una partida con un solo salto en cadena.",
+    "flawlessVictory": "Impecable",
+    "flawlessVictoryDesc": "Otorgada por ganar sin perder una sola pieza.",
+    "oneSecondGlory": "Al Límite",
+    "oneSecondGloryDesc": "Otorgada por ganar con 1 segundo o menos en el reloj.",
+    "davidVsGoliath": "Matador de Gigantes",
+    "davidVsGoliathDesc": "Otorgada por vencer a un jugador con 300+ de puntuación superior.",
+    "patron": "Patrón",
+    "patronDesc": "Una cálida insignia ámbar para los suscriptores mensuales de Tiao."
   },
   "adminBadges": {
     "title": "Gestión de insignias",
@@ -782,6 +798,21 @@
     "processing": "Procesando...",
     "purchaseSuccess": "¡Compra completada! Tu {item} ha sido desbloqueado.",
     "purchaseCancelled": "Compra cancelada.",
-    "adminPanel": "Panel de admin"
+    "purchaseFailed": "No pudimos entregar tu compra. Si se te cobró, el equipo ha sido notificado — contacta con soporte.",
+    "viewAchievement": "Cómo desbloquear",
+    "adminPanel": "Panel de admin",
+    "earnedBadgesLabel": "Logros",
+    "earnedBadgesTitle": "Insignias ganadas",
+    "earnedBadgesDesc": "Estas raras insignias se otorgan por logros excepcionales en el juego.",
+    "earned": "Ganada",
+    "locked": "Bloqueada",
+    "subscribe": "Suscribirse",
+    "perMonth": "{price}/mes",
+    "activeSubscription": "Activa — se renueva el {date}",
+    "cancellingSubscription": "Se cancela el {date}",
+    "pastDueSubscription": "Pago fallido — actualizar datos de pago",
+    "cancelSubscription": "Cancelar",
+    "cancelConfirm": "¿Seguro que quieres cancelar tu suscripción? Tu insignia permanecerá activa hasta el final del período de facturación actual.",
+    "subscriptionCancelled": "Suscripción cancelada. Tu insignia permanece activa hasta el {date}."
   }
 }

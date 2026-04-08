@@ -91,7 +91,8 @@ function AchievementCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 transition-all duration-300 ${
+      id={`achievement-${def.id}`}
+      className={`relative scroll-mt-24 overflow-hidden rounded-xl border bg-gradient-to-br p-4 transition-all duration-300 ${
         unlocked
           ? `${tier.bg} ${tier.border} ${tier.glow}`
           : "border-[#d5c4a8]/40 from-[#e8dcc8]/30 to-[#ddd0b8]/10 opacity-50 grayscale"
@@ -199,6 +200,22 @@ export function AchievementsPage() {
   useEffect(() => {
     fetchAchievements();
   }, [fetchAchievements]);
+
+  // After achievements load, jump to a #achievement-X hash if the user
+  // arrived via a deep link (e.g. clicking a locked badge in the shop).
+  useEffect(() => {
+    if (loading) return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-yellow-400");
+      setTimeout(() => el.classList.remove("ring-2", "ring-yellow-400"), 1800);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // Refresh when achievements change via WebSocket (silent — no skeleton)
   useLobbyMessage((payload) => {

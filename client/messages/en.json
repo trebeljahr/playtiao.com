@@ -686,7 +686,23 @@
     "contributorDesc": "For players who contribute to the Tiao community.",
     "superSupporterDesc": "An animated golden badge for dedicated supporters.",
     "championDesc": "A prestigious purple badge for tournament champions.",
-    "creatorDesc": "The rainbow creator badge — for those who helped build Tiao."
+    "creatorDesc": "The rainbow creator badge — for those who helped build Tiao.",
+    "veteran": "Veteran",
+    "veteranDesc": "Awarded for playing 1,000 games.",
+    "topOnePercent": "Elite",
+    "topOnePercentDesc": "Awarded for reaching the top 1% of players.",
+    "tournamentChampion": "Champion",
+    "tournamentChampionDesc": "Awarded for winning a tournament.",
+    "oneJumpWonder": "One Jump Wonder",
+    "oneJumpWonderDesc": "Awarded for winning a game with a single chain jump.",
+    "flawlessVictory": "Flawless",
+    "flawlessVictoryDesc": "Awarded for winning without losing a single piece.",
+    "oneSecondGlory": "Living on Edge",
+    "oneSecondGloryDesc": "Awarded for winning with 1 second or less on the clock.",
+    "davidVsGoliath": "Giant Killer",
+    "davidVsGoliathDesc": "Awarded for beating a player rated 300+ above you.",
+    "patron": "Patron",
+    "patronDesc": "A warm amber badge for monthly supporters of Tiao."
   },
   "adminBadges": {
     "title": "Badge Management",
@@ -782,6 +798,21 @@
     "processing": "Processing...",
     "purchaseSuccess": "Purchase complete! Your {item} has been unlocked.",
     "purchaseCancelled": "Purchase cancelled.",
-    "adminPanel": "Admin Panel"
+    "purchaseFailed": "We couldn't deliver your purchase. If you were charged, the team has been notified — please contact support.",
+    "viewAchievement": "How to unlock",
+    "adminPanel": "Admin Panel",
+    "earnedBadgesLabel": "Achievements",
+    "earnedBadgesTitle": "Earned Badges",
+    "earnedBadgesDesc": "These rare badges are awarded for exceptional in-game achievements.",
+    "earned": "Earned",
+    "locked": "Locked",
+    "subscribe": "Subscribe",
+    "perMonth": "{price}/month",
+    "activeSubscription": "Active — renews {date}",
+    "cancellingSubscription": "Cancels on {date}",
+    "pastDueSubscription": "Payment failed — update billing",
+    "cancelSubscription": "Cancel",
+    "cancelConfirm": "Are you sure you want to cancel your subscription? Your badge will remain active until the end of the current billing period.",
+    "subscriptionCancelled": "Subscription cancelled. Your badge remains active until {date}."
   }
 }

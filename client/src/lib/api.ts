@@ -422,6 +422,14 @@ export type ShopCatalogItem = {
   price: number;
   currency: string;
   owned: boolean;
+  recurring?: { interval: "month" | "year" };
+};
+
+export type Subscription = {
+  subscriptionId: string;
+  badgeId: string;
+  status: "active" | "past_due" | "canceled";
+  currentPeriodEnd: string;
 };
 
 export function getShopCatalog() {
@@ -432,6 +440,17 @@ export function createCheckoutSession(itemType: string, itemId: string) {
   return request<{ url: string }>("/api/shop/checkout", {
     method: "POST",
     body: { itemType, itemId },
+  });
+}
+
+export function getSubscriptions() {
+  return request<{ subscriptions: Subscription[] }>("/api/shop/subscriptions");
+}
+
+export function cancelSubscription(subscriptionId: string) {
+  return request<{ message: string; currentPeriodEnd: string }>("/api/shop/cancel-subscription", {
+    method: "POST",
+    body: { subscriptionId },
   });
 }
 

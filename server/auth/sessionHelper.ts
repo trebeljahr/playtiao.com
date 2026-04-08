@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
 import GameAccount from "../models/GameAccount";
+import Achievement from "../models/Achievement";
+import { ACHIEVEMENT_BADGE_MAP } from "../config/badgeRewards";
 import { PlayerIdentity, isValidUsername } from "../../shared/src";
 
 async function toPlayerIdentity(user: {
@@ -24,6 +26,32 @@ async function toPlayerIdentity(user: {
   const account = await GameAccount.findById(user.id);
   const displayName = account?.displayName || user.displayName || user.name;
   const needsUsername = !isValidUsername(displayName);
+
+  // Backfill achievement-earned badges into account.badges so the badge
+  // selector shows them. This catches users who unlocked an achievement
+  // before the auto-grant logic landed (or any case where the grant call
+  // silently failed). Cheap: a single Achievement query per session lookup.
+  if (account) {
+    const achievementIds = await Achievement.find({ playerId: user.id })
+      .select("achievementId")
+      .lean();
+    const expectedBadges: string[] = [];
+    for (const a of achievementIds) {
+      const badgeId = ACHIEVEMENT_BADGE_MAP[a.achievementId];
+      if (badgeId && !account.badges.includes(badgeId)) {
+        expectedBadges.push(badgeId);
+      }
+    }
+    if (expectedBadges.length > 0) {
+      account.badges.push(...expectedBadges);
+      try {
+        await account.save();
+      } catch (err) {
+        console.error("[sessionHelper] Failed to backfill achievement badges:", err);
+      }
+    }
+  }
+
   return {
     playerId: user.id,
     displayName,

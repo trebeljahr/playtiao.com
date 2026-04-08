@@ -9,6 +9,8 @@ import {
 import { getWinner, getFinishReason, isBoardMove } from "../../shared/src/tiao";
 import type { GameState, PlayerColor, JumpTurn } from "../../shared/src/tiao";
 import type { StoredMultiplayerRoom } from "./gameStore";
+import { ACHIEVEMENT_BADGE_MAP } from "../config/badgeRewards";
+import { grantBadge } from "./badgeService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,6 +74,18 @@ async function grant(playerId: string, achievementId: string): Promise<boolean> 
 
   console.log(`[achievement] Granted "${achievementId}" to ${playerId}`);
   if (_notifier) _notifier(playerId, def);
+
+  // Auto-grant corresponding badge if this achievement has one
+  const badgeId = ACHIEVEMENT_BADGE_MAP[achievementId];
+  if (badgeId) {
+    try {
+      await grantBadge(playerId, badgeId);
+      console.log(`[achievement] Auto-granted badge "${badgeId}" to ${playerId}`);
+    } catch (err) {
+      console.error(`[achievement] Failed to auto-grant badge "${badgeId}":`, err);
+    }
+  }
+
   return true;
 }
 

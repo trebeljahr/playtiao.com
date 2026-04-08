@@ -6,6 +6,8 @@ export type ShopItem = {
   /** Price in cents (USD). */
   price: number;
   currency: "usd";
+  /** If present, this is a subscription item. */
+  recurring?: { interval: "month" | "year" };
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -21,6 +23,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   { type: "badge", id: "badge-6", price: 599, currency: "usd" },
   { type: "badge", id: "badge-7", price: 999, currency: "usd" },
   { type: "badge", id: "badge-8", price: 599, currency: "usd" },
+
+  // Subscription badges
+  { type: "badge", id: "patron", price: 499, currency: "usd", recurring: { interval: "month" } },
 
   // Board themes (classic is free/default, not in shop)
   { type: "theme", id: "night", price: 199, currency: "usd" },

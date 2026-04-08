@@ -686,7 +686,23 @@
     "contributorDesc": "Für Spieler, die zur Tiao-Community beitragen.",
     "superSupporterDesc": "Ein animiertes goldenes Abzeichen für engagierte Unterstützer.",
     "championDesc": "Ein prestigeträchtiges lila Abzeichen für Turnier-Champions.",
-    "creatorDesc": "Das Regenbogen-Erfinder-Abzeichen — für die Erbauer von Tiao."
+    "creatorDesc": "Das Regenbogen-Erfinder-Abzeichen — für die Erbauer von Tiao.",
+    "veteran": "Veteran",
+    "veteranDesc": "Verliehen für 1.000 gespielte Partien.",
+    "topOnePercent": "Elite",
+    "topOnePercentDesc": "Verliehen für das Erreichen der Top 1% der Spieler.",
+    "tournamentChampion": "Champion",
+    "tournamentChampionDesc": "Verliehen für den Gewinn eines Turniers.",
+    "oneJumpWonder": "Sprungwunder",
+    "oneJumpWonderDesc": "Verliehen für den Gewinn eines Spiels mit einem einzigen Kettensprung.",
+    "flawlessVictory": "Makellos",
+    "flawlessVictoryDesc": "Verliehen für einen Sieg ohne einen einzigen verlorenen Stein.",
+    "oneSecondGlory": "Auf Messers Schneide",
+    "oneSecondGloryDesc": "Verliehen für einen Sieg mit 1 Sekunde oder weniger auf der Uhr.",
+    "davidVsGoliath": "Riesentöter",
+    "davidVsGoliathDesc": "Verliehen für den Sieg gegen einen Spieler mit 300+ höherer Wertung.",
+    "patron": "Patron",
+    "patronDesc": "Ein warmes bernsteinfarbenes Abzeichen für monatliche Unterstützer von Tiao."
   },
   "adminBadges": {
     "title": "Abzeichen-Verwaltung",
@@ -782,6 +798,21 @@
     "processing": "Wird verarbeitet...",
     "purchaseSuccess": "Kauf abgeschlossen! Dein {item} wurde freigeschaltet.",
     "purchaseCancelled": "Kauf abgebrochen.",
-    "adminPanel": "Admin-Panel"
+    "purchaseFailed": "Dein Kauf konnte nicht zugestellt werden. Falls dir Geld abgebucht wurde, wurde das Team benachrichtigt — bitte kontaktiere den Support.",
+    "viewAchievement": "So freischalten",
+    "adminPanel": "Admin-Panel",
+    "earnedBadgesLabel": "Errungenschaften",
+    "earnedBadgesTitle": "Verdiente Abzeichen",
+    "earnedBadgesDesc": "Diese seltenen Abzeichen werden für außergewöhnliche Spielleistungen verliehen.",
+    "earned": "Verdient",
+    "locked": "Gesperrt",
+    "subscribe": "Abonnieren",
+    "perMonth": "{price}/Monat",
+    "activeSubscription": "Aktiv — verlängert sich am {date}",
+    "cancellingSubscription": "Endet am {date}",
+    "pastDueSubscription": "Zahlung fehlgeschlagen — Zahlungsdaten aktualisieren",
+    "cancelSubscription": "Kündigen",
+    "cancelConfirm": "Möchtest du dein Abonnement wirklich kündigen? Dein Abzeichen bleibt bis zum Ende des aktuellen Abrechnungszeitraums aktiv.",
+    "subscriptionCancelled": "Abonnement gekündigt. Dein Abzeichen bleibt bis zum {date} aktiv."
   }
 }
