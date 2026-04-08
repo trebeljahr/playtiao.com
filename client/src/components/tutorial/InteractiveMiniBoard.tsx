@@ -376,6 +376,9 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
       if (!selected && !hasPending) {
         return { pos: interaction.firstSelect, label: t("_selectPiece") };
       }
+      if (selected && !hasPending && jumpTargetPositions.length > 0) {
+        return { pos: jumpTargetPositions[0], label: t("_jumpHere") };
+      }
       if (hasPending && forcedOrigin) {
         // While more jumps are available, point at the next jump target.
         // Only show the confirm hint once the chain has nowhere left to go.
@@ -550,6 +553,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                     isCapture ? "z-0" : isForcedOrigin || isSelected ? "z-20" : "z-10",
                     active &&
                       !completed &&
+                      !isJumpTarget &&
                       (showConfirmAffordance
                         ? "cursor-pointer hover:scale-[1.12]"
                         : "hover:scale-[1.02]"),
@@ -951,7 +955,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
               initial={{ opacity: 0, y: 5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -5, scale: 0.95 }}
-              className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 shadow-lg"
+              className="absolute left-1/2 top-2 z-99 max-w-[90%] -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-center text-sm font-medium text-red-700 shadow-lg"
             >
               {errorMsg}
             </motion.div>
