@@ -344,9 +344,10 @@ export function PublicProfilePage() {
                     </h2>
                     <button
                       onClick={() => router.push(`/achievements`)}
-                      className="text-xs text-[#8b7356] hover:underline"
+                      className="inline-flex items-center gap-2 text-xs text-[#8b7356] hover:underline"
                     >
-                      {tCommon("view")} &rarr;
+                      <span>{t("viewYourOwnAchievements")}</span>
+                      <span aria-hidden="true">&rarr;</span>
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">

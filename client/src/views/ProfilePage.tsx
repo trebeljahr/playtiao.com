@@ -937,41 +937,51 @@ export function ProfilePage() {
               <CardContent className="space-y-4">
                 {loading ? (
                   <div className="animate-pulse space-y-4">
-                    {/* Username skeleton */}
-                    <div className="grid gap-2">
-                      <SkeletonBlock className="h-4 w-20" />
-                      <SkeletonBlock className="h-9 w-full rounded-xl" />
-                      <SkeletonBlock className="h-3 w-48 bg-[#ede3d2]" />
+                    {/* Username row skeleton — matches the real labelled row with an edit button */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <SkeletonBlock className="h-3 w-20 bg-[#ede3d2]" />
+                        <SkeletonBlock className="h-4 w-32" />
+                      </div>
+                      <SkeletonBlock className="h-8 w-14 rounded-xl" />
+                    </div>
+                    {/* Email row skeleton */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <SkeletonBlock className="h-3 w-16 bg-[#ede3d2]" />
+                        <SkeletonBlock className="h-4 w-44" />
+                      </div>
+                      <SkeletonBlock className="h-8 w-14 rounded-xl" />
+                    </div>
+                    {/* Password row skeleton */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dcc7a3] bg-[#fffdf8] px-4 py-3">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <SkeletonBlock className="h-3 w-20 bg-[#ede3d2]" />
+                        <SkeletonBlock className="h-4 w-28" />
+                      </div>
+                      <SkeletonBlock className="h-8 w-14 rounded-xl" />
                     </div>
                     {/* Bio skeleton */}
                     <div className="grid gap-2">
                       <SkeletonBlock className="h-4 w-10" />
-                      <SkeletonBlock className="h-20 w-full rounded-xl" />
-                      <SkeletonBlock className="h-3 w-24 bg-[#ede3d2]" />
-                    </div>
-                    {/* Email skeleton */}
-                    <div className="grid gap-2">
-                      <SkeletonBlock className="h-4 w-32" />
-                      <SkeletonBlock className="h-9 w-full rounded-xl" />
+                      <SkeletonBlock className="h-[76px] w-full rounded-xl" />
+                      <SkeletonBlock className="h-3 w-40 bg-[#ede3d2]" />
                     </div>
                     {/* Rating info skeleton */}
                     <div className="rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3">
                       <div className="flex items-baseline justify-between">
-                        <SkeletonBlock className="h-4 w-14" />
-                        <SkeletonBlock className="h-6 w-12" />
+                        <SkeletonBlock className="h-4 w-16" />
+                        <SkeletonBlock className="h-6 w-14" />
                       </div>
-                      <SkeletonBlock className="mt-2 h-3 w-20 bg-[#ede3d2]" />
+                      <SkeletonBlock className="mt-2 h-3 w-36 bg-[#ede3d2]" />
                     </div>
                     {/* Timestamps skeleton */}
                     <div className="space-y-2 rounded-2xl border border-[#dcc7a3] bg-[#fff9ef] px-4 py-3">
                       <SkeletonBlock className="h-4 w-56" />
-                      <SkeletonBlock className="h-4 w-56" />
+                      <SkeletonBlock className="h-4 w-64" />
                     </div>
-                    {/* Buttons skeleton */}
-                    <div className="flex flex-wrap gap-3">
-                      <SkeletonBlock className="h-9 w-32 rounded-xl" />
-                      <SkeletonBlock className="h-9 w-36 rounded-xl" />
-                    </div>
+                    {/* Copy profile link skeleton */}
+                    <SkeletonBlock className="h-9 w-40 rounded-xl" />
                   </div>
                 ) : (
                   <div className="space-y-4">
