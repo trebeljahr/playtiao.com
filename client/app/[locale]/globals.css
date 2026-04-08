@@ -176,7 +176,7 @@ html [data-sonner-toaster][dir="ltr"] {
    writing four separate per-type overrides that beat that specificity,
    and it makes the intent obvious: the X should always look the same. */
 [data-sonner-toast] [data-close-button] {
-  background: #f5e6d0 !important;
+  background: #fffdf7 !important;
   border-color: #dbc6a2 !important;
   color: #4a3728 !important;
 }
