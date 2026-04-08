@@ -399,7 +399,6 @@ describe("ProfilePage delete account (#91)", () => {
 
 describe("ProfilePage OAuth linking (#98, #100)", () => {
   const originalLocation = window.location;
-  const replaceStateSpy = vi.spyOn(window.history, "replaceState");
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -420,64 +419,13 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
     Object.defineProperty(window, "location", { writable: true, value: originalLocation });
   });
 
-  it("shows a toast when ?error= is present in URL on mount (#98)", async () => {
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: {
-        ...originalLocation,
-        search: "?error=account_already_linked_to_different_user",
-        pathname: "/settings",
-        origin: "http://localhost",
-        href: "http://localhost/settings?error=account_already_linked_to_different_user",
-      },
-    });
-
-    render(<ProfilePage />);
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(
-        "That account is already linked to a different user.",
-      );
-    });
-  });
-
-  it("cleans the URL after showing the error toast (#98)", async () => {
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: {
-        ...originalLocation,
-        search: "?error=some_error",
-        pathname: "/settings",
-        origin: "http://localhost",
-        href: "http://localhost/settings?error=some_error",
-      },
-    });
-
-    render(<ProfilePage />);
-
-    await waitFor(() => {
-      expect(replaceStateSpy).toHaveBeenCalledWith({}, "", "/settings");
-    });
-  });
-
-  it("shows raw error code for unknown errors (#98)", async () => {
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: {
-        ...originalLocation,
-        search: "?error=unknown_code",
-        pathname: "/settings",
-        origin: "http://localhost",
-        href: "http://localhost/settings?error=unknown_code",
-      },
-    });
-
-    render(<ProfilePage />);
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith("unknown code");
-    });
-  });
+  // NOTE: `?error=` toasting and URL cleanup used to live in ProfilePage,
+  // but that logic has been moved to the global `OAuthErrorHandler` in
+  // `app/[locale]/providers.tsx` (since bd766c78) so the toast fires on
+  // whatever page the OAuth flow was initiated from, not just /settings.
+  // ProfilePage now only clears the `oauthLinkReturnPath` sessionStorage
+  // breadcrumb on mount. The error-toast / URL-cleanup behavior belongs
+  // to an OAuthErrorHandler test, not here.
 
   it("passes callbackURL pointing to /profile when linking (#100)", async () => {
     const { authClient } = await import("@/lib/auth-client");
