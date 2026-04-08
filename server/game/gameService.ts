@@ -2098,11 +2098,25 @@ export class GameService {
       }
 
       // Mark old room rematch as null (completed)
-      await this.saveRoom({
+      const oldRoomAfterAccept = await this.saveRoom({
         ...room,
         rematch: null,
         takeback: null,
       });
+
+      // Also broadcast a lobby game-update for the OLD room so any client
+      // that tracked this finished game as an "incoming rematch" (badge in
+      // the lobby notifications bubble) can clear it — without this the
+      // accepter's own bubble keeps showing the old gameId after accepting
+      // from the lobby via SPA navigation. Decline / cancel already do this.
+      for (const color of ["white", "black"] as const) {
+        const seat = oldRoomAfterAccept.seats[color];
+        if (seat) {
+          void this.toSummary(oldRoomAfterAccept, seat.playerId).then((summary) => {
+            this.broadcastLobby(seat.playerId, { type: "game-update", summary });
+          });
+        }
+      }
 
       return newRoom;
     }

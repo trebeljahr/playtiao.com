@@ -678,3 +678,57 @@ test("rematch is revoked when the receiver disconnects (not just the sender)", a
     "alice's outgoing rematch should be cleared when bob leaves",
   );
 });
+
+test("both players receive a game-update for the OLD room when rematch is accepted", async () => {
+  // Regression: the accepter's lobby "notifications" bubble (driven by
+  // incomingRematchGameIds) would get stuck on the old gameId after accepting
+  // a rematch from the lobby, because the server only broadcast game-update
+  // for the NEW room, never for the OLD one with rematch=null. Now accept
+  // mirrors decline/cancel and broadcasts an old-room game-update too.
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice requests the rematch first.
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+  // Let the initial request's fire-and-forget lobby broadcasts settle so we
+  // can isolate the acceptance broadcasts below.
+  await new Promise((r) => setTimeout(r, 50));
+
+  // Both players are on the lobby when the rematch is accepted.
+  const aliceLobbySocket = new FakeSocket() as unknown as WebSocket;
+  const bobLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(alice, aliceLobbySocket);
+  await service.connectLobby(bob, bobLobbySocket);
+  await new Promise((r) => setTimeout(r, 50));
+  (aliceLobbySocket as unknown as FakeSocket).messages = [];
+  (bobLobbySocket as unknown as FakeSocket).messages = [];
+
+  // Bob accepts the rematch.
+  await service.applyAction(created.gameId, bob, { type: "request-rematch" });
+  await new Promise((r) => setTimeout(r, 50));
+
+  for (const [who, socket] of [
+    ["alice", aliceLobbySocket],
+    ["bob", bobLobbySocket],
+  ] as const) {
+    const updates = (socket as unknown as FakeSocket).parsedMessages.filter(
+      (m) => (m as any).type === "game-update",
+    );
+    const oldRoomUpdate = updates.find((m) => (m as any).summary?.gameId === created.gameId) as any;
+    assert.ok(
+      oldRoomUpdate,
+      `${who} should receive a game-update for the OLD room after rematch accept`,
+    );
+    assert.equal(
+      oldRoomUpdate.summary.rematch,
+      null,
+      `${who}'s old-room game-update should show rematch cleared`,
+    );
+  }
+});
