@@ -3,12 +3,23 @@ import type { TimeControl, PlayerColor } from "@shared";
 import type { AIDifficulty } from "@/lib/computer-ai";
 import type { GameConfigMode } from "@/components/game/GameConfigPanel";
 
-export function useGameConfig(mode: GameConfigMode) {
-  const [boardSize, setBoardSize] = useState(19);
-  const [scoreToWin, setScoreToWin] = useState(10);
-  const [timeControl, setTimeControl] = useState<TimeControl>(null);
-  const [color, setColor] = useState<PlayerColor | "random">("random");
-  const [difficulty, setDifficulty] = useState<AIDifficulty>(2);
+type InitialGameConfig = {
+  boardSize?: number;
+  scoreToWin?: number;
+  timeControl?: TimeControl;
+  color?: PlayerColor | "random";
+  difficulty?: AIDifficulty;
+};
+
+export function useGameConfig(mode: GameConfigMode, initial?: InitialGameConfig) {
+  // These seed the state on first render only — subsequent prop changes are
+  // ignored, matching React's useState(initial) semantics. Callers that want
+  // to push new values after mount should use setValues() below.
+  const [boardSize, setBoardSize] = useState(initial?.boardSize ?? 19);
+  const [scoreToWin, setScoreToWin] = useState(initial?.scoreToWin ?? 10);
+  const [timeControl, setTimeControl] = useState<TimeControl>(initial?.timeControl ?? null);
+  const [color, setColor] = useState<PlayerColor | "random">(initial?.color ?? "random");
+  const [difficulty, setDifficulty] = useState<AIDifficulty>(initial?.difficulty ?? 2);
 
   function reset() {
     setBoardSize(19);

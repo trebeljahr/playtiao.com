@@ -30,16 +30,48 @@ export function ComputerGamePage() {
   const searchParams = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
 
+  // Parse autostart params synchronously on first render so the config
+  // hook, board state, and dialog open state all start correct — otherwise
+  // the default setup briefly flashes before the autostart effect runs.
+  const autostartConfig = React.useRef<{
+    boardSize: number;
+    scoreToWin: number;
+    color: PlayerColor | "random";
+    difficulty: AIDifficulty;
+  } | null>(null);
+  if (autostartConfig.current === null && searchParams.has("autostart")) {
+    const d = Number(searchParams.get("difficulty") || 1) as AIDifficulty;
+    const c = (searchParams.get("color") || "white") as PlayerColor;
+    autostartConfig.current = {
+      boardSize: parseInt(searchParams.get("boardSize") || "19", 10),
+      scoreToWin: parseInt(searchParams.get("scoreToWin") || "10", 10),
+      color: c,
+      difficulty: d,
+    };
+  }
+
   // Unified game setup: the dialog drives every configuration change.
   // `difficultyCommitted` is only set once the player commits via submit —
   // before that the computer game hook runs with a placeholder but its
-  // controls are disabled because the dialog blocks the board.
-  const config = useGameConfig("computer");
-  const [setupOpen, setSetupOpen] = useState(true);
-  const [difficultyCommitted, setDifficultyCommitted] = useState<AIDifficulty | null>(null);
+  // controls are disabled because the dialog blocks the board. On autostart
+  // the commit happens synchronously from URL params so we skip the dialog
+  // and the AI is live on first render.
+  const config = useGameConfig("computer", autostartConfig.current ?? undefined);
+  const [setupOpen, setSetupOpen] = useState(() => autostartConfig.current === null);
+  const [difficultyCommitted, setDifficultyCommitted] = useState<AIDifficulty | null>(
+    () => autostartConfig.current?.difficulty ?? null,
+  );
 
   const gameSettings = { boardSize: config.boardSize, scoreToWin: config.scoreToWin };
-  const computer = useComputerGame(difficultyCommitted ?? 3, gameSettings);
+  // Seed the computer hook's initial colour from autostart so the human/bot
+  // seat assignment is correct on first render (without this, we'd briefly
+  // render a random colour and then flip on the effect).
+  const initialComputerColor: PlayerColor | undefined = autostartConfig.current
+    ? autostartConfig.current.color === "white"
+      ? "black"
+      : "white"
+    : undefined;
+  const computer = useComputerGame(difficultyCommitted ?? 3, gameSettings, initialComputerColor);
 
   const handleStartGame = useCallback(() => {
     const playerColorChoice = config.color === "random" ? undefined : config.color;
@@ -55,32 +87,6 @@ export function ComputerGamePage() {
     });
     setSetupOpen(false);
   }, [config.difficulty, config.color, config.boardSize, config.scoreToWin, computer]);
-
-  // Auto-start from query params (e.g. from tutorial).
-  const autoStartRef = React.useRef(false);
-  useEffect(() => {
-    if (autoStartRef.current) return;
-    if (searchParams.has("autostart")) {
-      autoStartRef.current = true;
-      const d = Number(searchParams.get("difficulty") || 1) as AIDifficulty;
-      const c = (searchParams.get("color") || "white") as PlayerColor;
-      const bs = parseInt(searchParams.get("boardSize") || "19", 10);
-      const stw = parseInt(searchParams.get("scoreToWin") || "10", 10);
-      config.setValues({
-        boardSize: bs,
-        scoreToWin: stw,
-        difficulty: d,
-        color: c,
-      });
-      setDifficultyCommitted(d);
-      computer.resetLocalGame(c === "white" ? "black" : "white", {
-        boardSize: bs,
-        scoreToWin: stw,
-      });
-      setSetupOpen(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, computer.resetLocalGame]);
 
   const handleChangeDifficulty = useCallback(() => {
     setSetupOpen(true);

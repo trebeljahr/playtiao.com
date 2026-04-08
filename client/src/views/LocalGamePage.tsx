@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/AuthContext";
@@ -27,40 +27,36 @@ export function LocalGamePage() {
   const tLobby = useTranslations("lobby");
   const [navOpen, setNavOpen] = useState(false);
 
+  // Parse autostart params from the URL once, synchronously on first render,
+  // so the rest of the page (config hook, board state, dialog open state)
+  // can initialise from them without flashing a default 19×19 setup first.
+  const autostartConfig = useRef<{
+    boardSize: number;
+    scoreToWin: number;
+    timeControl: { initialMs: number; incrementMs: number } | null;
+  } | null>(null);
+  if (autostartConfig.current === null && searchParams.has("autostart")) {
+    const tcInitial = searchParams.get("tcInitial");
+    const tcIncrement = searchParams.get("tcIncrement");
+    autostartConfig.current = {
+      boardSize: parseInt(searchParams.get("boardSize") || "19", 10),
+      scoreToWin: parseInt(searchParams.get("scoreToWin") || "10", 10),
+      timeControl:
+        tcInitial && tcIncrement
+          ? { initialMs: Number(tcInitial), incrementMs: Number(tcIncrement) }
+          : null,
+    };
+  }
+
   // Unified game setup: the dialog is the one and only configuration UI.
-  // Opens automatically on a plain /local visit (non-dismissable so the
-  // user must submit), skipped when ?autostart=… is present in the URL.
-  const config = useGameConfig("local");
-  const [setupOpen, setSetupOpen] = useState(true);
+  // Opens automatically on a plain /local visit (non-dismissable so the user
+  // must submit), skipped when ?autostart=… is present so hopping in from
+  // the lobby / a rematch link lands the player straight on the board.
+  const config = useGameConfig("local", autostartConfig.current ?? undefined);
+  const [setupOpen, setSetupOpen] = useState(() => autostartConfig.current === null);
 
   const gameSettings = { boardSize: config.boardSize, scoreToWin: config.scoreToWin };
   const local = useLocalGame(gameSettings);
-
-  // Auto-start from query params (e.g. from lobby dialog or rematch links).
-  // Hydrate the config hook from the URL so the setup dialog reflects these
-  // values if the user later opens it via "New Game".
-  const autoStartRef = useRef(false);
-  useEffect(() => {
-    if (autoStartRef.current) return;
-    if (searchParams.has("autostart")) {
-      autoStartRef.current = true;
-      const bs = parseInt(searchParams.get("boardSize") || "19", 10);
-      const stw = parseInt(searchParams.get("scoreToWin") || "10", 10);
-      const tcInitial = searchParams.get("tcInitial");
-      const tcIncrement = searchParams.get("tcIncrement");
-      config.setValues({
-        boardSize: bs,
-        scoreToWin: stw,
-        timeControl:
-          tcInitial && tcIncrement
-            ? { initialMs: Number(tcInitial), incrementMs: Number(tcIncrement) }
-            : null,
-      });
-      local.resetLocalGame({ boardSize: bs, scoreToWin: stw });
-      setSetupOpen(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, local.resetLocalGame]);
 
   const gameOver = isGameOver(local.localGame);
   const winner = gameOver ? getWinner(local.localGame) : null;
