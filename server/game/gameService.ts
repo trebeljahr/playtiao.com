@@ -689,6 +689,71 @@ export class GameService {
     });
   }
 
+  /**
+   * Accept a rematch via REST. Used by the global rematch toast so a player can
+   * accept directly without first navigating to the old game page. Strictly
+   * requires the *opponent* to currently have a pending rematch request — if
+   * the opponent disconnected (and the disconnect handler cleared the rematch)
+   * or declined moments before, this throws REMATCH_EXPIRED so the toast can
+   * show a friendly error instead of silently turning the accept into a fresh
+   * rematch request from this player. Returns `{ newGameId }` with the new
+   * room id created once both players have agreed.
+   */
+  async requestRematchViaRest(
+    gameId: string,
+    player: PlayerIdentity,
+  ): Promise<{ newGameId: string }> {
+    return this.withLock(this.roomLockKey(gameId), async () => {
+      const room = await this.getRoom(gameId);
+      const playerColor = getPlayerColorForRoom(room, player.playerId);
+      if (!playerColor) {
+        throw new GameServiceError(403, "NOT_IN_GAME", "You are not seated in this game.");
+      }
+
+      // The toast is only shown to the opponent of an existing rematch request.
+      // By the time the user clicks Accept, the requester may have left and the
+      // disconnect handler cleared the rematch state. Surface a clear error.
+      const opponentColor = playerColor === "white" ? "black" : "white";
+      const opponentRequested = room.rematch?.requestedBy.includes(opponentColor) ?? false;
+      if (!opponentRequested) {
+        throw new GameServiceError(
+          410,
+          "REMATCH_EXPIRED",
+          "Your opponent cancelled the rematch request — can't join rematch.",
+        );
+      }
+
+      const result = await this.requestRematch(room, playerColor);
+      // requestRematch returns the NEW room when both have agreed. Since we
+      // just verified the opponent had requested, this branch should always
+      // be taken — but defensively handle the unexpected case.
+      if (result.id === gameId) {
+        void this.broadcastSnapshot(result);
+        throw new GameServiceError(
+          500,
+          "REMATCH_FAILED",
+          "Rematch could not be created. Please try again.",
+        );
+      }
+      return { newGameId: result.id };
+    });
+  }
+
+  /**
+   * Decline a rematch request via REST (for use from the global rematch toast).
+   */
+  async declineRematchViaRest(gameId: string, player: PlayerIdentity): Promise<void> {
+    await this.withLock(this.roomLockKey(gameId), async () => {
+      const room = await this.getRoom(gameId);
+      const playerColor = getPlayerColorForRoom(room, player.playerId);
+      if (!playerColor) {
+        throw new GameServiceError(403, "NOT_IN_GAME", "You are not seated in this game.");
+      }
+      const savedRoom = await this.declineRematch(room, playerColor);
+      void this.broadcastSnapshot(savedRoom);
+    });
+  }
+
   async applyAction(
     gameId: string,
     player: PlayerIdentity,

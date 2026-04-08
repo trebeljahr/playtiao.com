@@ -195,6 +195,18 @@ export function cancelRematchRequest(gameId: string) {
   });
 }
 
+export function requestRematchRest(gameId: string) {
+  return request<{ newGameId: string }>(`/api/games/${gameId}/request-rematch`, {
+    method: "POST",
+  });
+}
+
+export function declineRematchRest(gameId: string) {
+  return request<{ message: string }>(`/api/games/${gameId}/decline-rematch`, {
+    method: "POST",
+  });
+}
+
 export function joinMultiplayerGame(gameId: string) {
   return request<{ snapshot: MultiplayerSnapshot }>(`/api/games/${gameId}/join`, {
     method: "POST",

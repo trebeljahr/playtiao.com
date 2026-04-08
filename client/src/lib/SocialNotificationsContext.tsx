@@ -10,6 +10,8 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   declineGameInvitation,
+  requestRematchRest,
+  declineRematchRest,
 } from "./api";
 import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
@@ -150,6 +152,37 @@ export function SocialNotificationsProvider({
     [],
   );
 
+  // Build a "(13×13, 5+3, first to 10, playing as White)" suffix shared
+  // between game-invitation and rematch toasts so the recipient sees the
+  // exact settings the new game will use.
+  const buildGameDetailsSuffix = useCallback(
+    (settings: {
+      boardSize?: number | null;
+      timeControl?: { initialMs: number; incrementMs: number } | null;
+      scoreToWin?: number | null;
+      assignedColor?: "white" | "black" | null;
+    }): string => {
+      const details: string[] = [];
+      const board = settings.boardSize ?? 19;
+      details.push(`${board}×${board}`);
+      if (settings.timeControl) {
+        const mins = Math.round(settings.timeControl.initialMs / 60_000);
+        const inc = Math.round(settings.timeControl.incrementMs / 1_000);
+        details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
+      } else {
+        details.push("Unlimited");
+      }
+      const score = settings.scoreToWin ?? 10;
+      details.push(`first to ${score}`);
+      if (settings.assignedColor) {
+        const colorName = translatePlayerColor(settings.assignedColor, tGame);
+        if (colorName) details.push(tCommon("playingAs", { color: colorName }));
+      }
+      return ` (${details.join(", ")})`;
+    },
+    [tGame, tCommon],
+  );
+
   const showGameInvitationToast = useCallback(
     (inv: SocialOverview["incomingInvitations"][number], onFetch: () => void) => {
       const invGameId = inv.gameId;
@@ -157,24 +190,12 @@ export function SocialNotificationsProvider({
       const sender = inv.sender;
       const senderName = (typeof sender === "object" ? sender?.displayName : null) || "Someone";
 
-      // Build contextual toast message with game details
-      const details: string[] = [];
-      const board = inv.boardSize ?? 19;
-      details.push(`${board}×${board}`);
-      if (inv.timeControl) {
-        const mins = Math.round(inv.timeControl.initialMs / 60_000);
-        const inc = Math.round(inv.timeControl.incrementMs / 1_000);
-        details.push(inc > 0 ? `${mins}+${inc}` : `${mins}min`);
-      } else {
-        details.push("Unlimited");
-      }
-      const score = inv.scoreToWin ?? 10;
-      details.push(`first to ${score}`);
-      if (inv.assignedColor) {
-        const colorName = translatePlayerColor(inv.assignedColor, tGame);
-        if (colorName) details.push(tCommon("playingAs", { color: colorName }));
-      }
-      const suffix = ` (${details.join(", ")})`;
+      const suffix = buildGameDetailsSuffix({
+        boardSize: inv.boardSize,
+        timeControl: inv.timeControl,
+        scoreToWin: inv.scoreToWin,
+        assignedColor: inv.assignedColor,
+      });
 
       const toastId = `game-invitation:${invId}`;
       toast(
@@ -208,7 +229,7 @@ export function SocialNotificationsProvider({
         },
       );
     },
-    [],
+    [buildGameDetailsSuffix],
   );
 
   // ---------------------------------------------------------------------------
@@ -387,6 +408,16 @@ export function SocialNotificationsProvider({
 
       const opponentSeat = summary.yourSeat === "white" ? "black" : "white";
       const opponentPlayer = summary.seats?.[opponentSeat]?.player;
+      const rematchGameId = summary.gameId as string;
+      // The rematch will be played with the same settings as the finished
+      // game, so reuse the invite-toast format to show board / time / score.
+      const suffix = buildGameDetailsSuffix({
+        boardSize: summary.boardSize,
+        timeControl: summary.timeControl,
+        scoreToWin: summary.scoreToWin,
+        // The accepter's seat in the new game is randomized server-side,
+        // so we don't pre-announce a color here.
+      });
       toast(
         <div className="min-w-0">
           <PlayerIdentityRow
@@ -398,11 +429,30 @@ export function SocialNotificationsProvider({
           />
         </div>,
         {
-          id: `rematch-${summary.gameId}`,
-          description: t("rematchToastDesc"),
+          id: `rematch-${rematchGameId}`,
+          description: `${t("rematchToastDesc")}${suffix}`,
+          duration: 15000,
           action: {
-            label: t("viewGame"),
-            onClick: () => window.location.assign(`/game/${summary.gameId}`),
+            label: tCommon("accept"),
+            onClick: () => {
+              void (async () => {
+                try {
+                  const { newGameId } = await requestRematchRest(rematchGameId);
+                  window.location.assign(`/game/${newGameId}`);
+                } catch (e) {
+                  // Surfaces REMATCH_EXPIRED ("Your opponent cancelled the
+                  // rematch request — can't join rematch.") and any other
+                  // server-side errors via the existing error toast.
+                  toastError(e);
+                }
+              })();
+            },
+          },
+          cancel: {
+            label: tCommon("decline"),
+            onClick: () => {
+              void declineRematchRest(rematchGameId).catch(toastError);
+            },
           },
         },
       );

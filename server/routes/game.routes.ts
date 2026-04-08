@@ -690,6 +690,40 @@ router.post("/games/:gameId/cancel-rematch", async (req: Request, res: Response)
   }
 });
 
+router.post("/games/:gameId/request-rematch", async (req: Request, res: Response) => {
+  const player = await getAuthenticatedPlayer(req, res);
+  if (!player) return;
+
+  const gameId = (req.params.gameId as string)?.trim().toUpperCase();
+  if (!gameId || !isValidGameId(gameId)) {
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
+  }
+
+  try {
+    const result = await gameService.requestRematchViaRest(gameId, player);
+    return res.status(200).json(result);
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to request rematch.", req);
+  }
+});
+
+router.post("/games/:gameId/decline-rematch", async (req: Request, res: Response) => {
+  const player = await getAuthenticatedPlayer(req, res);
+  if (!player) return;
+
+  const gameId = (req.params.gameId as string)?.trim().toUpperCase();
+  if (!gameId || !isValidGameId(gameId)) {
+    return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
+  }
+
+  try {
+    await gameService.declineRematchViaRest(gameId, player);
+    return res.status(200).json({ message: "Rematch declined." });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to decline rematch.", req);
+  }
+});
+
 router.post("/games/:gameId/test-finish", async (req: Request, res: Response) => {
   if (process.env.NODE_ENV !== "test") {
     return res
