@@ -95,9 +95,12 @@ export function PlayerIdentityRow({
 
   const canLink = linkToProfile && player.displayName && !anonymous && !deleted;
 
+  // `||` not `??` — a player object with an empty-string displayName (can
+  // happen for half-populated seat payloads) should still render the
+  // "Player" fallback, not blank text that collapses to zero width.
   const nameContent = (
     <>
-      {player.displayName ?? t("player")}
+      {player.displayName || t("player")}
       {isYou && <span className="opacity-60"> {t("you")}</span>}
     </>
   );

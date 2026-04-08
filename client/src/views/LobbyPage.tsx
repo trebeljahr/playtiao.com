@@ -15,7 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { translatePlayerColor, ColorDot } from "@/components/game/GameShared";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
-import { RematchInviteBody } from "@/components/game/RematchInviteBody";
+import { RematchInviteCard } from "@/components/game/RematchInviteCard";
 import { GameConfigDialog } from "@/components/game/GameConfigDialog";
 import { useGameConfig } from "@/lib/hooks/useGameConfig";
 import { ActiveGamesList } from "@/components/game/ActiveGamesList";
@@ -178,14 +178,33 @@ export function LobbyPage() {
   const guestGameCount = multiplayerGames.active.length + multiplayerGames.finished.length;
   const guestGamesRemaining = GUEST_GAME_LIMIT - guestGameCount;
   const [guestLimitDialogOpen, setGuestLimitDialogOpen] = useState(false);
-  const [showTutorialBanner, setShowTutorialBanner] = useState(false);
-  const [needsTutorial, setNeedsTutorial] = useState(false);
+  // Initialize tutorial state SYNCHRONOUSLY from localStorage so the banner
+  // doesn't "jump in" after first paint. The previous pattern was to start
+  // with `false` and flip it inside a useEffect, which caused a visible
+  // flash where the page rendered without the banner, then the effect
+  // fired after mount and the banner appeared from the top. Reading the
+  // flag inside a lazy useState initializer means the very first client
+  // render is already correct. (SSR still returns `false` because window
+  // is undefined there — the mismatch only fires on the browser-side
+  // paint, which reads localStorage and settles into the final state.)
+  const initialKnowsHowToPlay = () => {
+    if (typeof window === "undefined") return false;
+    return Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
+  };
+  const [showTutorialBanner, setShowTutorialBanner] = useState(() => !initialKnowsHowToPlay());
+  const [needsTutorial, setNeedsTutorial] = useState(() => !initialKnowsHowToPlay());
   const [matchmakingGateOpen, setMatchmakingGateOpen] = useState(false);
   const [pendingMatchmakingNav, setPendingMatchmakingNav] = useState<string | null>(null);
 
   useEffect(() => {
+    // Keep state in sync with the live auth object — a logged-in account
+    // with `hasSeenTutorial` on the server overrides the localStorage
+    // check (accounts shouldn't lose their "completed tutorial" state by
+    // switching browsers). Also re-runs after logout clears the flag so
+    // a newly-guest lobby reflects the cleared state.
     const seenViaAccount = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
-    const seenViaLocal = localStorage.getItem("tiao:knowsHowToPlay");
+    const seenViaLocal =
+      typeof window !== "undefined" && Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
     const completed = Boolean(seenViaAccount || seenViaLocal);
     setShowTutorialBanner(!completed);
     setNeedsTutorial(!completed);
@@ -715,11 +734,12 @@ export function LobbyPage() {
                             return (
                               <div
                                 key={`rematch-${game.gameId}`}
-                                data-testid={`lobby-rematch-${game.gameId}`}
                                 data-wiggle-target={`rematch:${game.gameId}`}
-                                className="rounded-2xl border border-[#d4b87a] bg-[#fdf6e8] p-4 shadow-xs hover:border-[#b98d49] transition-colors group space-y-3"
+                                className="group"
                               >
-                                <RematchInviteBody
+                                <RematchInviteCard
+                                  testId={`lobby-rematch-${game.gameId}`}
+                                  className="max-w-none hover:border-[#b98d49] transition-colors"
                                   opponent={opponent ?? null}
                                   nextColor={rematchNextColor}
                                   boardSize={game.boardSize}
@@ -727,26 +747,10 @@ export function LobbyPage() {
                                   timeControl={game.timeControl}
                                   roomType={game.roomType}
                                   currentPlayerId={auth?.player.playerId}
+                                  onAccept={() => void handleAcceptRematch(game.gameId)}
+                                  onDecline={() => void handleDeclineRematch(game.gameId)}
+                                  busy={busy}
                                 />
-                                <div className="flex gap-2 pt-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-[#dcc7a2] hover:bg-[#faefd8]"
-                                    onClick={() => void handleDeclineRematch(game.gameId)}
-                                    disabled={busy}
-                                  >
-                                    {tc("decline")}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="shadow-xs group-hover:scale-105 transition-transform"
-                                    onClick={() => void handleAcceptRematch(game.gameId)}
-                                    disabled={busy}
-                                  >
-                                    {tc("accept")}
-                                  </Button>
-                                </div>
                               </div>
                             );
                           })}

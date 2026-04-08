@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
-import { RematchInviteBody } from "@/components/game/RematchInviteBody";
+import { RematchInviteCard } from "@/components/game/RematchInviteCard";
 import {
   GamePanelBrand,
   AnimatedScoreTile,
@@ -748,28 +748,28 @@ export function MultiplayerGamePage() {
         // Rematch seats flip, so we'll play the OPPOSITE of our current seat.
         const nextColor: PlayerColor = playerSeat === "white" ? "black" : "white";
 
-        toast(
-          <RematchInviteBody
-            opponent={opponentPlayer}
-            nextColor={nextColor}
-            boardSize={multiplayerSnapshot?.state.boardSize}
-            scoreToWin={multiplayerSnapshot?.state.scoreToWin}
-            timeControl={multiplayerSnapshot?.timeControl}
-            roomType={multiplayerSnapshot?.roomType}
-            compact
-          />,
-          {
-            id: rematchToastId,
-            action: {
-              label: tCommon("accept"),
-              onClick: () => sendMultiplayerMessage({ type: "request-rematch" }),
-            },
-            cancel: {
-              label: tCommon("decline"),
-              onClick: () => sendMultiplayerMessage({ type: "decline-rematch" }),
-            },
-            duration: Infinity,
-          },
+        // `toast.custom` bypasses sonner's default title/description/button
+        // layout so the RematchInviteCard controls every pixel of the toast.
+        toast.custom(
+          () => (
+            <RematchInviteCard
+              opponent={opponentPlayer}
+              nextColor={nextColor}
+              boardSize={multiplayerSnapshot?.state.boardSize}
+              scoreToWin={multiplayerSnapshot?.state.scoreToWin}
+              timeControl={multiplayerSnapshot?.timeControl}
+              roomType={multiplayerSnapshot?.roomType}
+              onAccept={() => {
+                toast.dismiss(rematchToastId);
+                sendMultiplayerMessage({ type: "request-rematch" });
+              }}
+              onDecline={() => {
+                toast.dismiss(rematchToastId);
+                sendMultiplayerMessage({ type: "decline-rematch" });
+              }}
+            />
+          ),
+          { id: rematchToastId, duration: Infinity },
         );
       }
     }

@@ -16,7 +16,7 @@ import {
 import { toastError } from "./errors";
 import { useLobbyMessage } from "./LobbySocketContext";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
-import { RematchInviteBody } from "@/components/game/RematchInviteBody";
+import { RematchInviteCard } from "@/components/game/RematchInviteCard";
 import { translatePlayerColor } from "@/components/game/GameShared";
 import { AchievementIcon } from "@/components/AchievementIcon";
 import { TIER_STYLES } from "@/components/AchievementCard";
@@ -483,22 +483,21 @@ export function SocialNotificationsProvider({
           ? "black"
           : "white"
         : null;
-      toast(
-        <RematchInviteBody
-          opponent={opponentPlayer ?? null}
-          nextColor={nextColor}
-          boardSize={summary.boardSize}
-          scoreToWin={summary.scoreToWin}
-          timeControl={summary.timeControl}
-          roomType={summary.roomType}
-          compact
-        />,
-        {
-          id: `rematch-${rematchGameId}`,
-          duration: 15000,
-          action: {
-            label: tCommon("accept"),
-            onClick: () => {
+      const toastId = `rematch-${rematchGameId}`;
+      // `toast.custom` bypasses sonner's default title/description/button
+      // layout — crucial because that layout squeezed the RematchInviteCard
+      // body down to ~200px, collapsing PlayerIdentityRow's name column.
+      toast.custom(
+        () => (
+          <RematchInviteCard
+            opponent={opponentPlayer ?? null}
+            nextColor={nextColor}
+            boardSize={summary.boardSize}
+            scoreToWin={summary.scoreToWin}
+            timeControl={summary.timeControl}
+            roomType={summary.roomType}
+            onAccept={() => {
+              toast.dismiss(toastId);
               void (async () => {
                 try {
                   const { newGameId } = await requestRematchRest(rematchGameId);
@@ -510,15 +509,14 @@ export function SocialNotificationsProvider({
                   toastError(e);
                 }
               })();
-            },
-          },
-          cancel: {
-            label: tCommon("decline"),
-            onClick: () => {
+            }}
+            onDecline={() => {
+              toast.dismiss(toastId);
               void declineRematchRest(rematchGameId).catch(toastError);
-            },
-          },
-        },
+            }}
+          />
+        ),
+        { id: toastId, duration: 15000 },
       );
     } else if (playerId) {
       // Rematch was cancelled/declined — remove from sessionStorage so a future
