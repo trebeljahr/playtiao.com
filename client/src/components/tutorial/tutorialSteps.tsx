@@ -35,6 +35,8 @@ export type StepBoardConfig = {
   suggestedPos?: Pos;
   /** Faint static arrows showing possible jump paths (e.g. enemy threat on border) */
   hintArrows?: HintArrow[];
+  /** Short instruction shown as an overlay on the board, dismissed on first interaction */
+  overlayHint?: string;
 };
 
 export type TutorialStep = {
@@ -90,6 +92,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place" },
         suggestedPos: { x: 2, y: 2 },
+        overlayHint: t("_overlay_place"),
       },
     },
 
@@ -109,6 +112,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           selectPiece: { x: 2, y: 1 },
           jumpTo: { x: 2, y: 3 },
         },
+        overlayHint: t("_overlay_jump"),
       },
     },
 
@@ -129,6 +133,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           type: "chain-jump",
           firstSelect: { x: 1, y: 5 },
         },
+        overlayHint: t("_overlay_chain"),
       },
     },
 
@@ -149,6 +154,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           firstSelect: { x: 3, y: 5 },
           undoAfterJumps: 2,
         },
+        overlayHint: t("_overlay_undo"),
       },
     },
 
@@ -172,6 +178,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           then: { x: 4, y: 4 },
         },
         hintArrows: [{ from: { x: 2, y: 2 }, to: { x: 4, y: 4 } }],
+        overlayHint: t("_overlay_borderBasic"),
       },
     },
 
@@ -196,6 +203,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           { from: { x: 2, y: 2 }, to: { x: 4, y: 4 } },
           { from: { x: 4, y: 4 }, to: { x: 6, y: 6 } },
         ],
+        overlayHint: t("_overlay_borderChain"),
       },
     },
 
@@ -226,6 +234,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           errorMessage: t("_clusterBasic_error"),
           then: { x: 5, y: 1 },
         },
+        overlayHint: t("_overlay_clusterBasic"),
       },
     },
 
@@ -250,6 +259,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place", requiredPos: { x: 5, y: 5 } },
         suggestedPos: { x: 5, y: 5 },
+        overlayHint: t("_overlay_clusterDiagonal"),
       },
     },
 

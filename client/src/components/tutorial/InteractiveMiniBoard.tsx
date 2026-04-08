@@ -94,12 +94,14 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     thickBorder,
     suggestedPos,
     hintArrows,
+    overlayHint,
   } = config;
   const [board, setBoard] = useState<Cell[][]>(() => cloneBoard(initialBoard));
   const [selected, setSelected] = useState<Pos | null>(null);
   const [pendingJumps, setPendingJumps] = useState<JumpRecord[]>([]);
   const [pendingCaptures, setPendingCaptures] = useState<Pos[]>([]);
   const [completed, setCompleted] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(!!overlayHint);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [undoHovered, setUndoHovered] = useState(false);
@@ -137,8 +139,9 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     setHasUndone(false);
     setHasSeenConfirmHint(false);
     setShowConfirmNudge(false);
+    setShowOverlay(!!overlayHint);
     completedRef.current = false;
-  }, [resetKey, initialBoard]);
+  }, [resetKey, initialBoard, overlayHint]);
 
   // After a pending jump in chain-jump steps, nudge the user to confirm after 3s
   useEffect(() => {
@@ -165,6 +168,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
   // --- Click handler (mirrors useLocalGame state machine) ---
   function handleClick(pos: Pos) {
     if (!active || completed || completedRef.current) return;
+    if (showOverlay) setShowOverlay(false);
 
     // Handle try-and-fail interactions
     if (
@@ -1012,6 +1016,27 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
             </div>
           </motion.div>
         )}
+
+        {/* Step-by-step overlay instruction — dismisses on first interaction */}
+        <AnimatePresence>
+          {showOverlay && overlayHint && !completed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 z-100 flex items-center justify-center rounded-3xl bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setShowOverlay(false)}
+            >
+              <div className="flex flex-col items-center gap-3 px-4 text-center">
+                <p className="rounded-2xl border border-white/20 bg-white/90 px-5 py-3 text-sm font-medium text-[#2b1e14] shadow-lg">
+                  {overlayHint}
+                </p>
+                <span className="text-xs text-white/70">{t("_overlay_dismiss")}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
