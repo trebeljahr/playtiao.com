@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { TournamentCreationForm } from "@/components/tournament/TournamentCreationForm";
@@ -14,7 +14,7 @@ import { createTournament } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useTranslations } from "next-intl";
-import { SkeletonCard } from "@/components/ui/skeleton";
+import { SkeletonBlock } from "@/components/ui/skeleton";
 
 function formatLabel(format: string, t: (key: string) => string): string {
   switch (format) {
@@ -110,47 +110,60 @@ export function TournamentListPage() {
           </div>
         )}
 
-        {loading && displayList.length === 0 ? (
-          <SkeletonCard rows={2} />
-        ) : displayList.length === 0 ? (
-          <AnimatedCard delay={0}>
-            <PaperCard>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                {tab === "my" ? t("noMyTournaments") : t("noPublicTournaments")}
-              </CardContent>
-            </PaperCard>
-          </AnimatedCard>
-        ) : (
-          <div className="space-y-3">
-            {displayList.map((item, index) => (
-              <AnimatedCard key={item.tournamentId} delay={index * 0.05}>
-                <PaperCard
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => router.push(`/tournament/${item.tournamentId}`)}
-                >
-                  <CardContent className="flex items-center justify-between gap-4 py-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{item.name}</span>
-                        <Badge className={statusColor(item.status)}>{item.status}</Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                        <span>{formatLabel(item.format, t)}</span>
-                        <span>
-                          {t("players", { count: item.playerCount, max: item.maxPlayers })}
-                        </span>
-                        <span>{t("by", { name: item.creatorDisplayName })}</span>
-                      </div>
+        <PaperCard>
+          <CardContent className="space-y-3 pt-6">
+            {loading && displayList.length === 0 ? (
+              <div className="space-y-3 animate-pulse">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <SkeletonBlock className="h-5 w-40" />
+                      <SkeletonBlock className="h-3.5 w-56 bg-[#ede3d2]" />
                     </div>
-                    <Button variant="outline" size="sm">
-                      {tCommon("view")}
-                    </Button>
-                  </CardContent>
-                </PaperCard>
+                    <SkeletonBlock className="h-8 w-16 rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            ) : displayList.length === 0 ? (
+              <AnimatedCard delay={0}>
+                <div className="py-8 text-center text-muted-foreground">
+                  {tab === "my" ? t("noMyTournaments") : t("noPublicTournaments")}
+                </div>
               </AnimatedCard>
-            ))}
-          </div>
-        )}
+            ) : (
+              displayList.map((item, index) => (
+                <AnimatedCard key={item.tournamentId} delay={index * 0.05}>
+                  <Card
+                    className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl"
+                    onClick={() => router.push(`/tournament/${item.tournamentId}`)}
+                  >
+                    <CardContent className="flex items-center justify-between gap-4 py-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{item.name}</span>
+                          <Badge className={statusColor(item.status)}>{item.status}</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                          <span>{formatLabel(item.format, t)}</span>
+                          <span>
+                            {t("players", { count: item.playerCount, max: item.maxPlayers })}
+                          </span>
+                          <span>{t("by", { name: item.creatorDisplayName })}</span>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        {tCommon("view")}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </AnimatedCard>
+              ))
+            )}
+          </CardContent>
+        </PaperCard>
       </div>
 
       <TournamentCreationForm
