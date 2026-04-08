@@ -349,12 +349,28 @@ export function Navbar({
     intlRouter.push(path);
   };
 
+  const iconClass = "mr-1 inline-block h-3.5 w-3.5";
+  const iconProps = {
+    className: iconClass,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+  } as const;
+  const pathProps = { strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
   const navItems = [
     {
       label: t("lobby"),
       active: pathname === "/",
       onClick: () => handleNav("/"),
       badge: incomingInvitationCount + incomingRematchCount,
+      icon: (
+        <svg {...iconProps}>
+          <path {...pathProps} d="M3 12l9-8 9 8" />
+          <path {...pathProps} d="M5 10v9a1 1 0 001 1h3v-5h6v5h3a1 1 0 001-1v-9" />
+        </svg>
+      ),
     },
     ...(isAccount
       ? [
@@ -363,18 +379,41 @@ export function Navbar({
             active: pathname === "/friends",
             onClick: () => handleNav("/friends"),
             badge: pendingFriendRequestCount,
+            icon: (
+              <svg {...iconProps}>
+                <circle {...pathProps} cx="9" cy="7" r="3" />
+                <path {...pathProps} d="M3 21v-1a5 5 0 015-5h2a5 5 0 015 5v1" />
+                <circle {...pathProps} cx="17" cy="8" r="2.5" />
+                <path {...pathProps} d="M21 21v-.5a4 4 0 00-3-3.87" />
+              </svg>
+            ),
           },
           {
             label: t("myGames"),
             active: pathname === "/games",
             onClick: () => handleNav("/games"),
             badge: 0,
+            icon: (
+              <svg {...iconProps}>
+                <rect {...pathProps} x="3" y="3" width="18" height="18" rx="2" />
+                <path {...pathProps} d="M3 12h18M12 3v18M3 7.5h18M3 16.5h18M7.5 3v18M16.5 3v18" />
+              </svg>
+            ),
           },
           {
             label: t("tournaments"),
             active: pathname?.startsWith("/tournament"),
             onClick: () => handleNav("/tournaments"),
             badge: 0,
+            icon: (
+              <svg {...iconProps}>
+                <path {...pathProps} d="M5 4l7 7M19 4l-7 7" />
+                <path {...pathProps} d="M5 4l-1-1M19 4l1-1" />
+                <path {...pathProps} d="M12 11v5" />
+                <path {...pathProps} d="M8 21h8" />
+                <path {...pathProps} d="M12 16l-3 5M12 16l3 5" />
+              </svg>
+            ),
           },
           ...(isDevFeatureEnabled()
             ? [
@@ -384,16 +423,9 @@ export function Navbar({
                   onClick: () => handleNav("/achievements"),
                   badge: 0,
                   icon: (
-                    <svg
-                      className="mr-1 inline-block h-3.5 w-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
+                    <svg {...iconProps}>
                       <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        {...pathProps}
                         d="M6 9V2h12v7a6 6 0 01-12 0zM6 4H4a1 1 0 00-1 1v1a4 4 0 004 4M18 4h2a1 1 0 011 1v1a4 4 0 01-4 4M9 21h6M12 15v6"
                       />
                     </svg>
@@ -410,6 +442,13 @@ export function Navbar({
             active: pathname === "/shop",
             onClick: () => handleNav("/shop"),
             badge: 0,
+            icon: (
+              <svg {...iconProps}>
+                <path {...pathProps} d="M6 2L3 7h18l-3-5H6z" />
+                <path {...pathProps} d="M3 7v12a2 2 0 002 2h14a2 2 0 002-2V7" />
+                <path {...pathProps} d="M9 11a3 3 0 006 0" />
+              </svg>
+            ),
           },
         ]
       : []),
@@ -418,6 +457,12 @@ export function Navbar({
       active: pathname === "/tutorial",
       onClick: () => handleNav("/tutorial"),
       badge: 0,
+      icon: (
+        <svg {...iconProps}>
+          <path {...pathProps} d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
+          <path {...pathProps} d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
+        </svg>
+      ),
     },
   ];
 
@@ -435,7 +480,7 @@ export function Navbar({
           )}
           onClick={item.active ? undefined : item.onClick}
         >
-          {"icon" in item && item.icon}
+          {item.icon}
           {item.label}
           {item.badge > 0 && (
             <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">
@@ -515,7 +560,7 @@ export function Navbar({
             )}
             onClick={item.active ? undefined : item.onClick}
           >
-            {"icon" in item && item.icon}
+            {item.icon}
             {item.label}
             {item.badge > 0 && (
               <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c0542e] px-1 text-[0.65rem] font-bold leading-none text-white">
