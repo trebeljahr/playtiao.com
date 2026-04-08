@@ -18,6 +18,27 @@ export function useGameConfig(mode: GameConfigMode) {
     setDifficulty(2);
   }
 
+  /**
+   * Set multiple values at once, e.g. from URL query params on autostart.
+   * Missing fields keep their current values. Used by LocalGamePage and
+   * ComputerGamePage when reading ?boardSize=…&scoreToWin=…&tcInitial=…
+   * so the same hook that drives the setup dialog also reflects deep-linked
+   * game configuration.
+   */
+  function setValues(values: {
+    boardSize?: number;
+    scoreToWin?: number;
+    timeControl?: TimeControl;
+    color?: PlayerColor | "random";
+    difficulty?: AIDifficulty;
+  }) {
+    if (values.boardSize !== undefined) setBoardSize(values.boardSize);
+    if (values.scoreToWin !== undefined) setScoreToWin(values.scoreToWin);
+    if (values.timeControl !== undefined) setTimeControl(values.timeControl);
+    if (values.color !== undefined) setColor(values.color);
+    if (values.difficulty !== undefined) setDifficulty(values.difficulty);
+  }
+
   const configPanelProps = useMemo(() => {
     const base = {
       mode,
@@ -85,7 +106,13 @@ export function useGameConfig(mode: GameConfigMode) {
   }
 
   return {
+    boardSize,
+    scoreToWin,
+    timeControl,
+    color,
+    difficulty,
     reset,
+    setValues,
     configPanelProps,
     buildMultiplayerSettings,
     buildLocalParams,

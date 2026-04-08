@@ -2,18 +2,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { TimeControl } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaperCard } from "@/components/ui/paper-card";
-import { AnimatedCard } from "@/components/ui/animated-card";
 import { Dialog } from "@/components/ui/dialog";
 import { Navbar } from "@/components/Navbar";
 import { TiaoBoard } from "@/components/game/TiaoBoard";
-import { translatePlayerColor, GamePanelBrand } from "@/components/game/GameShared";
-import { GameConfigPanel } from "@/components/game/GameConfigPanel";
+import { translatePlayerColor } from "@/components/game/GameShared";
+import { GameConfigDialog } from "@/components/game/GameConfigDialog";
 import { GameSidePanel } from "@/components/game/GameSidePanel";
+import { useGameConfig } from "@/lib/hooks/useGameConfig";
 import { useLocalGame } from "@/lib/hooks/useLocalGame";
 import { useLocalClock } from "@/lib/hooks/useLocalClock";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
@@ -30,16 +27,18 @@ export function LocalGamePage() {
   const tLobby = useTranslations("lobby");
   const [navOpen, setNavOpen] = useState(false);
 
-  // Config state
-  const [configuring, setConfiguring] = useState(true);
-  const [boardSize, setBoardSize] = useState(19);
-  const [scoreToWin, setScoreToWin] = useState(10);
-  const [timeControl, setTimeControl] = useState<TimeControl>(null);
+  // Unified game setup: the dialog is the one and only configuration UI.
+  // Opens automatically on a plain /local visit (non-dismissable so the
+  // user must submit), skipped when ?autostart=… is present in the URL.
+  const config = useGameConfig("local");
+  const [setupOpen, setSetupOpen] = useState(true);
 
-  const gameSettings = { boardSize, scoreToWin };
+  const gameSettings = { boardSize: config.boardSize, scoreToWin: config.scoreToWin };
   const local = useLocalGame(gameSettings);
 
-  // Auto-start from query params (e.g. from lobby dialog)
+  // Auto-start from query params (e.g. from lobby dialog or rematch links).
+  // Hydrate the config hook from the URL so the setup dialog reflects these
+  // values if the user later opens it via "New Game".
   const autoStartRef = useRef(false);
   useEffect(() => {
     if (autoStartRef.current) return;
@@ -47,16 +46,20 @@ export function LocalGamePage() {
       autoStartRef.current = true;
       const bs = parseInt(searchParams.get("boardSize") || "19", 10);
       const stw = parseInt(searchParams.get("scoreToWin") || "10", 10);
-      setBoardSize(bs);
-      setScoreToWin(stw);
       const tcInitial = searchParams.get("tcInitial");
       const tcIncrement = searchParams.get("tcIncrement");
-      if (tcInitial && tcIncrement) {
-        setTimeControl({ initialMs: Number(tcInitial), incrementMs: Number(tcIncrement) });
-      }
+      config.setValues({
+        boardSize: bs,
+        scoreToWin: stw,
+        timeControl:
+          tcInitial && tcIncrement
+            ? { initialMs: Number(tcInitial), incrementMs: Number(tcIncrement) }
+            : null,
+      });
       local.resetLocalGame({ boardSize: bs, scoreToWin: stw });
-      setConfiguring(false);
+      setSetupOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, local.resetLocalGame]);
 
   const gameOver = isGameOver(local.localGame);
@@ -65,7 +68,7 @@ export function LocalGamePage() {
 
   // Clock
   const { clock, resetClock } = useLocalClock(
-    timeControl,
+    config.timeControl,
     local.localGame.currentTurn,
     gameOver,
     local.localGame.history,
@@ -96,14 +99,27 @@ export function LocalGamePage() {
   };
 
   function handleStartGame() {
-    local.resetLocalGame();
+    local.resetLocalGame({
+      boardSize: config.boardSize,
+      scoreToWin: config.scoreToWin,
+    });
     resetClock();
-    setConfiguring(false);
+    setSetupOpen(false);
   }
 
   function handleNewGame() {
-    setConfiguring(true);
-    local.resetLocalGame();
+    // Open the setup dialog so the player can adjust settings before
+    // starting the next game. The live board stays visible behind the
+    // dialog, which reduces the page's feeling of "jumping back to a
+    // separate screen" between games.
+    setSetupOpen(true);
+  }
+
+  function handleRematchSameSettings() {
+    local.resetLocalGame({
+      boardSize: config.boardSize,
+      scoreToWin: config.scoreToWin,
+    });
     resetClock();
   }
 
@@ -122,72 +138,56 @@ export function LocalGamePage() {
       />
 
       <main className="mx-auto flex max-w-416 flex-col gap-5 px-4 pb-3 pt-16 sm:px-6 sm:pt-5 lg:px-6 lg:pb-4 xl:pt-2">
-        {configuring ? (
-          <section className="flex items-center justify-center py-12">
-            <AnimatedCard delay={0}>
-              <PaperCard className="w-full max-w-md">
-                <CardHeader>
-                  <GamePanelBrand />
-                  <CardTitle className="text-[#2b1e14]">{t("gameSetup")}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <GameConfigPanel
-                    mode="local"
-                    boardSize={boardSize}
-                    onBoardSizeChange={setBoardSize}
-                    scoreToWin={scoreToWin}
-                    onScoreToWinChange={setScoreToWin}
-                    timeControl={timeControl}
-                    onTimeControlChange={setTimeControl}
-                    submitLabel={t("startGame")}
-                    onSubmit={handleStartGame}
-                  />
-                </CardContent>
-              </PaperCard>
-            </AnimatedCard>
-          </section>
-        ) : (
-          <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
-            <div className="flex items-center justify-center xl:items-start xl:justify-end">
-              <div className="isolate mx-auto w-full" style={boardWrapStyle}>
-                <TiaoBoard
-                  state={local.localGame}
-                  selectedPiece={local.localSelection}
-                  jumpTargets={local.localJumpTargets}
-                  confirmReady={true}
-                  lastMove={local.lastMove}
-                  onPointClick={effectiveGameOver ? undefined : local.handleLocalBoardClick}
-                  onUndoLastJump={local.handleLocalUndoPendingJump}
-                  onConfirmJump={local.handleLocalConfirmPendingJump}
-                  disabled={effectiveGameOver}
-                />
-              </div>
+        <section className="grid gap-3 xl:min-h-[calc(100dvh-1rem)] xl:content-center xl:gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+          <div className="flex items-center justify-center xl:items-start xl:justify-end">
+            <div className="isolate mx-auto w-full" style={boardWrapStyle}>
+              <TiaoBoard
+                state={local.localGame}
+                selectedPiece={local.localSelection}
+                jumpTargets={local.localJumpTargets}
+                confirmReady={true}
+                lastMove={local.lastMove}
+                onPointClick={effectiveGameOver ? undefined : local.handleLocalBoardClick}
+                onUndoLastJump={local.handleLocalUndoPendingJump}
+                onConfirmJump={local.handleLocalConfirmPendingJump}
+                disabled={effectiveGameOver}
+              />
             </div>
+          </div>
 
-            <GameSidePanel
-              gameState={local.localGame}
-              scorePulse={local.localScorePulse}
-              clock={timeControl ? clock : undefined}
-              timeControl={timeControl}
-              badge={tLobby("overTheBoard")}
-              statusTitle={localStatusTitle}
-              onUndo={local.handleLocalUndoTurn}
-              undoDisabled={local.localGame.history.length === 0}
-              gameOver={effectiveGameOver}
-              gameOverActions={
-                <>
-                  <Button variant="secondary" onClick={handleNewGame}>
-                    {t("newGame")}
-                  </Button>
-                  <Button variant="ghost" onClick={() => router.push("/")}>
-                    {tCommon("backToLobby")}
-                  </Button>
-                </>
-              }
-            />
-          </section>
-        )}
+          <GameSidePanel
+            gameState={local.localGame}
+            scorePulse={local.localScorePulse}
+            clock={config.timeControl ? clock : undefined}
+            timeControl={config.timeControl}
+            badge={tLobby("overTheBoard")}
+            statusTitle={localStatusTitle}
+            onUndo={local.handleLocalUndoTurn}
+            undoDisabled={local.localGame.history.length === 0}
+            gameOver={effectiveGameOver}
+            gameOverActions={
+              <>
+                <Button variant="secondary" onClick={handleNewGame}>
+                  {t("newGame")}
+                </Button>
+                <Button variant="ghost" onClick={() => router.push("/")}>
+                  {tCommon("backToLobby")}
+                </Button>
+              </>
+            }
+          />
+        </section>
       </main>
+
+      <GameConfigDialog
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        title={t("gameSetup")}
+        config={config}
+        submitLabel={t("startGame")}
+        onSubmit={handleStartGame}
+        closeable={false}
+      />
 
       <Dialog
         open={gameOverDialogOpen}
@@ -214,7 +214,7 @@ export function LocalGamePage() {
             variant="secondary"
             onClick={() => {
               setGameOverDialogOpen(false);
-              handleStartGame();
+              handleRematchSameSettings();
             }}
           >
             {t("rematchSameSettings")}

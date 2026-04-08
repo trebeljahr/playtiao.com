@@ -11,6 +11,13 @@ type GameConfigDialogProps = {
   submitLabel: string;
   onSubmit: () => void;
   busy?: boolean;
+  /**
+   * When false, the dialog cannot be dismissed by the user (Esc key,
+   * backdrop click, or the close X are all disabled). Used by the local
+   * and computer game pages where the dialog acts as a mandatory setup
+   * gate — the only way out is to click the submit button.
+   */
+  closeable?: boolean;
 };
 
 export function GameConfigDialog({
@@ -22,9 +29,16 @@ export function GameConfigDialog({
   submitLabel,
   onSubmit,
   busy,
+  closeable = true,
 }: GameConfigDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      closeable={closeable}
+    >
       <GameConfigPanel
         {...config.configPanelProps}
         submitLabel={submitLabel}
