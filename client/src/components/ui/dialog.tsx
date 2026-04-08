@@ -102,7 +102,7 @@ export function Dialog({
               type="button"
               aria-label={tCommon("close")}
               onClick={() => onOpenChange(false)}
-              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#6e5b48] shadow-[0_10px_20px_-16px_rgba(75,49,20,0.5)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-px hover:border-[#af8a56]/55 hover:bg-[rgba(255,252,245,0.96)] hover:text-[#28170e] hover:shadow-[0_14px_24px_-16px_rgba(75,49,20,0.55)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#af8a56]/60"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#af8a56]/35 bg-[rgba(255,248,232,0.88)] text-[#6e5b48] shadow-[0_10px_20px_-16px_rgba(75,49,20,0.5)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-px hover:border-[#af8a56]/55 hover:bg-[rgba(255,252,245,0.96)] hover:text-[#28170e] hover:shadow-[0_14px_24px_-16px_rgba(75,49,20,0.55)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#af8a56]/60"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -111,7 +111,7 @@ export function Dialog({
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90"
+                className="h-4 w-4"
                 aria-hidden="true"
               >
                 <path d="M6 6l12 12M18 6L6 18" />

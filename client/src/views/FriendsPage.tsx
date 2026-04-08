@@ -5,6 +5,7 @@ import { RequireAccount } from "@/components/RequireAccount";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
+import { scrollToAndWiggle } from "@/lib/scroll-to-and-wiggle";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -87,13 +88,8 @@ export function FriendsPage() {
       if (window.location.hash !== "#incoming-friend-requests") return;
       const el = document.getElementById("incoming-friend-requests");
       if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
       acknowledgeFriendRequests();
-      el.classList.remove("notification-target-wiggle");
-      // Force reflow so re-clicks restart the keyframe.
-      void el.offsetWidth;
-      el.classList.add("notification-target-wiggle");
-      window.setTimeout(() => el.classList.remove("notification-target-wiggle"), 1400);
+      scrollToAndWiggle(el);
       history.replaceState(null, "", window.location.pathname + window.location.search);
     };
 

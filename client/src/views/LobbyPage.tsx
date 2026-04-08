@@ -22,6 +22,7 @@ import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { useGamesIndex } from "@/lib/hooks/useGamesIndex";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
+import { scrollToAndWiggle } from "@/lib/scroll-to-and-wiggle";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { toast } from "sonner";
@@ -274,16 +275,8 @@ export function LobbyPage() {
       if (window.location.hash !== "#invitations") return;
       const el = document.getElementById("invitations");
       if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
       acknowledgeInvitations();
-      // Wiggle the section so it's clear what the badge was pointing at.
-      // Re-applying the class requires a tick of removal first so re-clicks
-      // restart the animation instead of being a no-op.
-      el.classList.remove("notification-target-wiggle");
-      // Force reflow so removing + re-adding triggers the keyframe again.
-      void el.offsetWidth;
-      el.classList.add("notification-target-wiggle");
-      window.setTimeout(() => el.classList.remove("notification-target-wiggle"), 1400);
+      scrollToAndWiggle(el);
       // Remove the hash so revisiting the lobby doesn't re-scroll and
       // re-acknowledge without a fresh notification click.
       history.replaceState(null, "", window.location.pathname + window.location.search);
