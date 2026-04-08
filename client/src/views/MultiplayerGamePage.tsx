@@ -240,17 +240,42 @@ export function MultiplayerGamePage() {
     }
   }, [auth, spectateOnly]);
 
-  // Close invite modal, scroll to board, and notify when both seats are filled
+  // Close invite modal, scroll to board, and notify when both seats are filled.
+  // Distinguish two cases on the first snapshot we observe:
+  //   - Both seats already filled and the game is in progress  → "gameResumed"
+  //     (player is re-opening a game, e.g. after a reload — they should NOT see
+  //     a "Game started!" pop, which used to fire because prevBothSeatedRef was
+  //     initialized from a render where snapshot was still null and bothSeated
+  //     was therefore false, so the first real snapshot looked like a transition.)
+  //   - Otherwise, only fire "gameStarted" when we actually witness both seats
+  //     transition from not-both → both during this page lifetime.
   const bothSeated = !!(multiplayerSnapshot?.seats.white && multiplayerSnapshot?.seats.black);
-  const prevBothSeatedRef = useRef(bothSeated);
+  const prevBothSeatedRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (bothSeated && !prevBothSeatedRef.current) {
+    if (!multiplayerSnapshot) return;
+    const prev = prevBothSeatedRef.current;
+    if (prev === null) {
+      // First snapshot we've seen — decide between "resumed" and silent.
+      // Only fire "Game resumed" if the current user is actually one of the
+      // seated players (not a spectator) and the game is in progress.
+      const isSeatedPlayer = !!(
+        auth &&
+        (multiplayerSnapshot.seats.white?.player.playerId === auth.player.playerId ||
+          multiplayerSnapshot.seats.black?.player.playerId === auth.player.playerId)
+      );
+      if (bothSeated && multiplayerSnapshot.status === "active" && isSeatedPlayer) {
+        toast(t("gameResumed"));
+      }
+      prevBothSeatedRef.current = bothSeated;
+      return;
+    }
+    if (bothSeated && !prev) {
       setInviteDialogOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
       toast(t("gameStarted"));
     }
     prevBothSeatedRef.current = bothSeated;
-  }, [bothSeated, t]);
+  }, [bothSeated, multiplayerSnapshot, auth, t]);
 
   // Real-time social updates (friend online status, invitation state)
   useLobbyMessage((payload) => {

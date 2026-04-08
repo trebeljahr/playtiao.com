@@ -137,6 +137,7 @@
     "black": "Schwarz",
     "draw": "Unentschieden!",
     "gameStarted": "Spiel gestartet!",
+    "gameResumed": "Spiel fortgesetzt",
     "wins": "{color} gewinnt!",
     "winsOnTime": "{color} gewinnt auf Zeit!",
     "toMove": "{color} am Zug",

@@ -1206,6 +1206,141 @@ describe("MultiplayerGamePage", () => {
     expect(screen.queryByRole("button", { name: "Invite a Friend" })).not.toBeInTheDocument();
   });
 
+  it("shows 'Game resumed' toast (not 'Game started!') when re-opening an active game with both seats already filled", async () => {
+    // Regression: prevBothSeatedRef used to be initialized from a render where
+    // snapshot was still null, so the first real snapshot looked like a
+    // false→true transition and fired the "Game started!" toast even though
+    // the game had been in progress for a while.
+    const { toast } = await import("sonner");
+    (toast as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    // Reset useAuth to the default guest mock — earlier tests in the file
+    // install vi.spyOn mocks that persist across tests.
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: guestAuth,
+      authLoading: false,
+      onOpenAuth: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    } as unknown as ReturnType<typeof authModule.useAuth>);
+
+    const snapshot = makeMatchmakingSnapshot({ status: "active" });
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(toast).toHaveBeenCalledWith("Game resumed");
+    expect(toast).not.toHaveBeenCalledWith("Game started!");
+  });
+
+  it("does not toast 'Game resumed' for spectators re-joining an active game", async () => {
+    const { toast } = await import("sonner");
+    (toast as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    // Spectator (not in players list)
+    const spectatorAuth: AuthResponse = {
+      player: {
+        kind: "guest",
+        playerId: "watcher-xyz",
+        displayName: "Watcher",
+      },
+    };
+    const authModule = await import("@/lib/AuthContext");
+    vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: spectatorAuth,
+      authLoading: false,
+      appError: null,
+      authDialogOpen: false,
+      authDialogForced: false,
+      authDialogMode: "login",
+      authBusy: false,
+      authDialogError: null,
+      loginEmail: "",
+      loginPassword: "",
+      signupDisplayName: "",
+      signupEmail: "",
+      signupPassword: "",
+      signupConfirmPassword: "",
+      setAuth: vi.fn(),
+      setAuthDialogOpen: vi.fn(),
+      setAuthDialogMode: vi.fn(),
+      setAuthDialogError: vi.fn(),
+      setLoginEmail: vi.fn(),
+      setLoginPassword: vi.fn(),
+      setSignupDisplayName: vi.fn(),
+      setSignupEmail: vi.fn(),
+      setSignupPassword: vi.fn(),
+      setSignupConfirmPassword: vi.fn(),
+      onOpenAuth: vi.fn(),
+      handleLoginSubmit: vi.fn(),
+      handleSignupSubmit: vi.fn(),
+      handleForgotPassword: vi.fn(),
+      handleOAuthSignIn: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    } as ReturnType<typeof authModule.useAuth>);
+
+    // Snapshot has two OTHER players seated; the watcher is not in either seat.
+    const snapshot = makeMatchmakingSnapshot({ status: "active" });
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(toast).not.toHaveBeenCalledWith("Game resumed");
+    expect(toast).not.toHaveBeenCalledWith("Game started!");
+  });
+
+  it("fires 'Game started!' when both seats transition from not-both → both during page lifetime", async () => {
+    const { toast } = await import("sonner");
+    (toast as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    const { useMultiplayerGame } = await import("@/lib/hooks/useMultiplayerGame");
+    const { useSocialData } = await import("@/lib/hooks/useSocialData");
+    (useSocialData as ReturnType<typeof vi.fn>).mockReturnValue(defaultSocialMock);
+
+    // First render: only white seated, status waiting
+    const waitingSnapshot = makeMatchmakingSnapshot({
+      status: "waiting",
+      seats: {
+        white: {
+          player: { playerId: "guest-aaa", displayName: "Anonymous", kind: "guest" },
+          online: true,
+        },
+        black: null,
+      },
+    });
+    (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      multiplayerSnapshot: waitingSnapshot,
+      multiplayerSelection: null,
+      connectionState: "connected",
+      connectToRoom: mockConnectToRoom,
+      sendMultiplayerMessage: mockSendMultiplayerMessage,
+      setMultiplayerSelection: mockSetMultiplayerSelection,
+      multiplayerBusy: false,
+      setMultiplayerBusy: mockSetMultiplayerBusy,
+      multiplayerError: null,
+    });
+    const { rerender } = render(<MultiplayerGamePage />);
+    expect(toast).not.toHaveBeenCalledWith("Game started!");
+    expect(toast).not.toHaveBeenCalledWith("Game resumed");
+
+    // Second render: both seats now filled
+    const startedSnapshot = makeMatchmakingSnapshot({ status: "active" });
+    (useMultiplayerGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      multiplayerSnapshot: startedSnapshot,
+      multiplayerSelection: null,
+      connectionState: "connected",
+      connectToRoom: mockConnectToRoom,
+      sendMultiplayerMessage: mockSendMultiplayerMessage,
+      setMultiplayerSelection: mockSetMultiplayerSelection,
+      multiplayerBusy: false,
+      setMultiplayerBusy: mockSetMultiplayerBusy,
+      multiplayerError: null,
+    });
+    rerender(<MultiplayerGamePage />);
+
+    expect(toast).toHaveBeenCalledWith("Game started!");
+  });
+
   it("displays spectator count next to eye icon when spectatorCount > 0", async () => {
     const snapshot = makeMatchmakingSnapshot({
       spectators: [

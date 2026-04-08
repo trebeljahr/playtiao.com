@@ -137,6 +137,7 @@
     "black": "Negras",
     "draw": "¡Empate!",
     "gameStarted": "¡Partida iniciada!",
+    "gameResumed": "Partida reanudada",
     "wins": "¡{color} gana!",
     "winsOnTime": "¡{color} gana por tiempo!",
     "toMove": "Turno de {color}",
