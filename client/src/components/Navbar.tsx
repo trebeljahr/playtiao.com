@@ -349,7 +349,7 @@ export function Navbar({
     intlRouter.push(path);
   };
 
-  const iconClass = "mr-1 inline-block h-3.5 w-3.5";
+  const iconClass = "mr-1.5 inline-block h-3.5 w-3.5 -translate-y-px";
   const iconProps = {
     className: iconClass,
     viewBox: "0 0 24 24",
@@ -407,11 +407,11 @@ export function Navbar({
             badge: 0,
             icon: (
               <svg {...iconProps}>
-                <path {...pathProps} d="M5 4l7 7M19 4l-7 7" />
-                <path {...pathProps} d="M5 4l-1-1M19 4l1-1" />
-                <path {...pathProps} d="M12 11v5" />
-                <path {...pathProps} d="M8 21h8" />
-                <path {...pathProps} d="M12 16l-3 5M12 16l3 5" />
+                <path {...pathProps} d="M5 14c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+                <path {...pathProps} d="M4 14h16" />
+                <path {...pathProps} d="M5 14v3h14v-3" />
+                <path {...pathProps} d="M9 17v2M15 17v2" />
+                <path {...pathProps} d="M5 12c-2-3-3-7-1-10M19 12c2-3 3-7 1-10" />
               </svg>
             ),
           },
@@ -492,13 +492,32 @@ export function Navbar({
     </div>
   );
 
+  const settingsIcon = (
+    <svg {...iconProps}>
+      <circle {...pathProps} cx="12" cy="12" r="3" />
+      <path
+        {...pathProps}
+        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z"
+      />
+    </svg>
+  );
+  const logoutIcon = (
+    <svg {...iconProps}>
+      <path {...pathProps} d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+      <polyline {...pathProps} points="16 17 21 12 16 7" />
+      <line {...pathProps} x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+
   const accountControls =
     player?.kind === "account" ? (
       <>
         <Button variant="secondary" size="sm" onClick={() => handleNav("/settings")}>
+          {settingsIcon}
           {t("settings")}
         </Button>
         <Button variant="ghost" size="sm" className="text-[#28170e]" onClick={onLogout}>
+          {logoutIcon}
           {t("logout")}
         </Button>
       </>
@@ -594,6 +613,7 @@ export function Navbar({
                 className="w-full justify-start"
                 onClick={() => handleNav("/settings")}
               >
+                {settingsIcon}
                 {t("settings")}
               </Button>
               <Button
@@ -604,6 +624,7 @@ export function Navbar({
                   onLogout();
                 }}
               >
+                {logoutIcon}
                 {t("logout")}
               </Button>
             </>
