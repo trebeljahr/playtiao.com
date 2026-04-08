@@ -7,9 +7,8 @@ import { cn } from "@/lib/utils";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
-import { UserBadge, BADGE_DEFINITIONS, ALL_BADGE_IDS, type BadgeId } from "@/components/UserBadge";
+import { UserBadge, BADGE_DEFINITIONS, type BadgeId } from "@/components/UserBadge";
 import { updateActiveBadges } from "@/lib/api";
-import { isAdmin } from "@/lib/featureGate";
 
 export function BadgeSelector({
   auth,
@@ -99,25 +98,6 @@ export function BadgeSelector({
                   .join(", "),
               })}
             </p>
-          )}
-
-          {isAdmin(auth) && (
-            <div className="mt-5 rounded-xl border border-dashed border-[#c4a978]/50 p-3">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#b09a78]">
-                {t("devPreviewBadges")}
-              </p>
-              <div className="flex flex-col gap-3">
-                {ALL_BADGE_IDS.map((id) => (
-                  <div key={id} className="flex items-center gap-3">
-                    <UserBadge badge={id} />
-                    <UserBadge badge={id} compact />
-                    <span className="text-[11px] text-[#9a8670]">
-                      {t("badgeTier", { tier: BADGE_DEFINITIONS[id].tier, id })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
         </CardContent>
       </PaperCard>
