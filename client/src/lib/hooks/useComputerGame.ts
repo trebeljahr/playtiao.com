@@ -22,8 +22,9 @@ export function useComputerGame(difficulty: AIDifficulty = 3, settings?: Partial
   const [resetGeneration, setResetGeneration] = useState(0);
 
   // Track the game history length that triggered the current search.
-  // This prevents re-triggering for the same position and handles strict mode:
-  // cleanup doesn't need to reset computerThinking because the ref guards re-entry.
+  // This prevents re-triggering for the same position when deps change
+  // but the board hasn't advanced. Reset to -1 in effect cleanup so
+  // React StrictMode's remount can properly restart the search.
   const searchedForRef = useRef(-1);
 
   // Track the last resetGeneration the effect has observed.  When it
@@ -175,6 +176,11 @@ export function useComputerGame(difficulty: AIDifficulty = 3, settings?: Partial
       // Without this, the stale snapshot persists into the next AI
       // turn and undo would jump back too far.
       preAIStateRef.current = null;
+      // Allow the next effect invocation to restart the search.
+      // Without this, React StrictMode's cleanup→remount cycle
+      // cancels the worker but the de-dup guard (searchedForRef)
+      // blocks the second invocation from restarting.
+      searchedForRef.current = -1;
     };
   }, [needsMove, histLen, currentTurn, difficulty, computerColor, resetGeneration]);
 
