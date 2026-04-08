@@ -753,7 +753,6 @@
     "changeLanguage": "Cambiar idioma",
     "reportIssue": "Reportar un problema",
     "settings": "Configuración",
-    "eloRating": "Puntuación Elo",
     "notificationBadgeAria": "{label}: {count} nuevos — ver"
   },
   "badges": {

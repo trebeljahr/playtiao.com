@@ -753,7 +753,6 @@
     "changeLanguage": "Change language",
     "reportIssue": "Report an Issue",
     "settings": "Settings",
-    "eloRating": "Elo rating",
     "notificationBadgeAria": "{label}: {count} new — view"
   },
   "badges": {

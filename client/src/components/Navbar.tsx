@@ -547,6 +547,7 @@ export function Navbar({
               displayName: player?.displayName,
               profilePicture: player?.profilePicture,
               activeBadges: player?.activeBadges,
+              rating: isAccount ? (player?.rating ?? 1500) : undefined,
             }}
             anonymous={isAnonymous}
             avatarClassName="h-10 w-10 border border-[#a37d48]/35 shadow-xs"
@@ -554,16 +555,6 @@ export function Navbar({
             className="min-w-0 flex-1 gap-3"
           />
         </div>
-        {isAccount && (
-          <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#b69261]/22 bg-[rgba(255,250,236,0.94)] px-3 py-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-[#7a6a58]">
-              {t("eloRating")}
-            </span>
-            <span className="font-mono text-base font-bold tabular-nums text-[#28170e]">
-              {player?.rating ?? 1500}
-            </span>
-          </div>
-        )}
         <div className="mt-4 grid gap-2">
           {player?.kind === "account" ? (
             <>
