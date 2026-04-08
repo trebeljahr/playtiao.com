@@ -1876,7 +1876,7 @@ export function MultiplayerGamePage() {
             >
               {isSpectator && !isInPlayerList ? t("startSpectating") : t("gotItPlay")}
             </Button>
-            <Button variant="outline" onClick={() => router.push("/tutorial")}>
+            <Button variant="outline" onClick={() => router.push("/tutorial?from=game")}>
               {t("learnToPlay")}
             </Button>
           </div>

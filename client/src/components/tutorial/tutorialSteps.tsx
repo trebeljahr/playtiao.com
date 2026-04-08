@@ -92,7 +92,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place" },
         suggestedPos: { x: 2, y: 2 },
-        overlayHint: t("_overlay_place"),
+        overlayHint: t("_place_desc"),
       },
     },
 
@@ -112,7 +112,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           selectPiece: { x: 2, y: 1 },
           jumpTo: { x: 2, y: 3 },
         },
-        overlayHint: t("_overlay_jump"),
+        overlayHint: t("_jump_desc"),
       },
     },
 
@@ -133,7 +133,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           type: "chain-jump",
           firstSelect: { x: 1, y: 5 },
         },
-        overlayHint: t("_overlay_chain"),
+        overlayHint: t("_chain_desc"),
       },
     },
 
@@ -154,7 +154,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           firstSelect: { x: 3, y: 5 },
           undoAfterJumps: 2,
         },
-        overlayHint: t("_overlay_undo"),
+        overlayHint: t("_confirmUndo_desc"),
       },
     },
 
@@ -178,7 +178,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           then: { x: 4, y: 4 },
         },
         hintArrows: [{ from: { x: 2, y: 2 }, to: { x: 4, y: 4 } }],
-        overlayHint: t("_overlay_borderBasic"),
+        overlayHint: t("_borderBasic_desc"),
       },
     },
 
@@ -203,7 +203,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           { from: { x: 2, y: 2 }, to: { x: 4, y: 4 } },
           { from: { x: 4, y: 4 }, to: { x: 6, y: 6 } },
         ],
-        overlayHint: t("_overlay_borderChain"),
+        overlayHint: t("_borderChain_desc"),
       },
     },
 
@@ -234,7 +234,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           errorMessage: t("_clusterBasic_error"),
           then: { x: 5, y: 1 },
         },
-        overlayHint: t("_overlay_clusterBasic"),
+        overlayHint: t("_clusterBasic_desc"),
       },
     },
 
@@ -259,7 +259,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place", requiredPos: { x: 5, y: 5 } },
         suggestedPos: { x: 5, y: 5 },
-        overlayHint: t("_overlay_clusterDiagonal"),
+        overlayHint: t("_clusterDiagonal_desc"),
       },
     },
 
@@ -288,6 +288,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place", requiredPos: { x: 3, y: 2 } },
         suggestedPos: { x: 3, y: 2 },
+        overlayHint: t("_clusterMerge_desc"),
       },
     },
 
@@ -313,6 +314,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
         ]),
         interaction: { type: "free-place", requiredPos: { x: 1, y: 3 } },
         suggestedPos: { x: 1, y: 3 },
+        overlayHint: t("_clusterEnemy_desc"),
       },
     },
 
@@ -342,6 +344,7 @@ export function getTutorialSteps(t: T): TutorialStep[] {
           selectPiece: { x: 5, y: 3 },
           jumpTo: { x: 3, y: 3 },
         },
+        overlayHint: t("_clusterJump_desc"),
       },
     },
 

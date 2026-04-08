@@ -110,7 +110,6 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
   const [triedIllegal, setTriedIllegal] = useState(false);
   const [hasUndone, setHasUndone] = useState(false);
   const [hasSeenConfirmHint, setHasSeenConfirmHint] = useState(false);
-  const [showConfirmNudge, setShowConfirmNudge] = useState(false);
   const completedRef = useRef(false);
 
   const color = turnColor;
@@ -138,24 +137,9 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
     setTriedIllegal(false);
     setHasUndone(false);
     setHasSeenConfirmHint(false);
-    setShowConfirmNudge(false);
     setShowOverlay(!!overlayHint);
     completedRef.current = false;
   }, [resetKey, initialBoard, overlayHint]);
-
-  // After a pending jump in chain-jump steps, nudge the user to confirm after 3s
-  useEffect(() => {
-    if (
-      hasPending &&
-      !completed &&
-      (interaction.type === "chain-jump" || interaction.type === "chain-jump-early")
-    ) {
-      setShowConfirmNudge(false);
-      const timer = setTimeout(() => setShowConfirmNudge(true), 3000);
-      return () => clearTimeout(timer);
-    }
-    setShowConfirmNudge(false);
-  }, [hasPending, completed, interaction.type, pendingJumps.length]);
 
   const complete = useCallback(() => {
     if (completedRef.current) return;
@@ -392,7 +376,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
       if (!selected && !hasPending) {
         return { pos: interaction.firstSelect, label: t("_selectPiece") };
       }
-      if (hasPending && forcedOrigin && showConfirmNudge) {
+      if (hasPending && forcedOrigin) {
         return { pos: forcedOrigin, label: t("_clickPieceToConfirm") };
       }
     }
@@ -419,7 +403,12 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
 
   // On mobile, show a prominent confirm circle the first time a confirm is needed
   const showMobileConfirmHint =
-    IS_TOUCH_DEVICE && !hasSeenConfirmHint && hasPending && forcedOrigin && !completed;
+    IS_TOUCH_DEVICE &&
+    !hasSeenConfirmHint &&
+    hasPending &&
+    forcedOrigin &&
+    !completed &&
+    !showOverlay;
 
   // Mark the hint as seen once the confirm circle has been shown
   useEffect(() => {
@@ -464,7 +453,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
         <div
           className={cn(
             "relative overflow-hidden rounded-[1.2rem] border p-2 shadow-[0_32px_70px_-28px_rgba(66,39,11,0.75)]",
-            size <= 5 ? "w-[280px]" : "w-[340px]",
+            size <= 5 ? "w-[340px]" : "w-[420px]",
           )}
           style={{
             background: theme.boardBg,
@@ -961,6 +950,7 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
         {nudge &&
           !shakePos &&
           !completed &&
+          !showOverlay &&
           (() => {
             // Map nudge grid position to percentage of the board container
             // The board has p-2 padding, inner div is the grid area
@@ -1005,10 +995,10 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{
-              scale: [0, 1.15, 1, 1, 0.85],
-              opacity: [0, 1, 1, 1, 0],
+              scale: [0, 1.15, 1, 0.85],
+              opacity: [0, 1, 1, 0],
             }}
-            transition={{ duration: 1.3, times: [0, 0.12, 0.22, 0.7, 1], ease: "easeOut" }}
+            transition={{ duration: 0.55, times: [0, 0.25, 0.55, 1], ease: "easeOut" }}
             className="absolute inset-0 z-100 flex items-center justify-center pointer-events-none"
           >
             <div className="flex h-12 w-20 items-center justify-center rounded-full bg-[#e0eef8] border-2 border-[#6ba3d6] shadow-[0_8px_24px_-6px_rgba(107,163,214,0.5)]">
@@ -1017,22 +1007,24 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
           </motion.div>
         )}
 
-        {/* Step-by-step overlay instruction — dismisses on first interaction */}
+        {/* Step-by-step overlay instruction — dismisses on first interaction.
+            Extends slightly past the board bounds so nudge labels that translate
+            outside the board (via -translate-x-1/2) are also covered. */}
         <AnimatePresence>
           {showOverlay && overlayHint && !completed && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 z-100 flex items-center justify-center rounded-3xl bg-black/40 backdrop-blur-[2px]"
+              transition={{ duration: 0.18 }}
+              className="absolute -inset-8 z-100 flex items-center justify-center rounded-3xl bg-black/45 backdrop-blur-[2px]"
               onClick={() => setShowOverlay(false)}
             >
               <div className="flex flex-col items-center gap-3 px-4 text-center">
-                <p className="rounded-2xl border border-white/20 bg-white/90 px-5 py-3 text-sm font-medium text-[#2b1e14] shadow-lg">
+                <p className="max-w-[340px] rounded-2xl border border-white/20 bg-white/95 px-5 py-4 text-[15px] leading-snug font-medium text-[#2b1e14] shadow-lg">
                   {overlayHint}
                 </p>
-                <span className="text-xs text-white/70">{t("_overlay_dismiss")}</span>
+                <span className="text-xs text-white/80">{t("_overlay_dismiss")}</span>
               </div>
             </motion.div>
           )}

@@ -25,7 +25,7 @@ function setupBoard(
 }
 
 /** Small empty board for search tests — 7x7 has 49 positions vs 361 on 19x19. */
-function emptySmallBoard(turn: "black" | "white" = "black"): GameState {
+function emptySmallBoard(): GameState {
   return createInitialGameState({ boardSize: 7 });
 }
 

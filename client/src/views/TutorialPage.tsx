@@ -1,7 +1,7 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/lib/AuthContext";
@@ -81,9 +81,21 @@ function ProgressDots({
 // --- Main tutorial component ---
 
 export function TutorialPage() {
+  // useSearchParams must be under a Suspense boundary for Next.js
+  // static prerender of the [locale]/tutorial page.
+  return (
+    <Suspense fallback={null}>
+      <TutorialPageInner />
+    </Suspense>
+  );
+}
+
+function TutorialPageInner() {
   const t = useTranslations("tutorial");
   const { auth, applyAuth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromGame = searchParams?.get("from") === "game";
 
   const steps = useMemo(() => getTutorialSteps(t), [t]);
 
@@ -171,6 +183,11 @@ export function TutorialPage() {
     router.push("/");
   }
 
+  function handleReturnToGame() {
+    completeTutorial();
+    router.back();
+  }
+
   function handleSkip() {
     completeTutorial();
     router.push("/");
@@ -249,8 +266,9 @@ export function TutorialPage() {
                   {step.title}
                 </h2>
 
-                {/* Description text */}
-                <div className="mb-4">{step.description}</div>
+                {/* Description text — only for non-interactive steps; interactive
+                    steps surface the description via the in-board overlay hint. */}
+                {!step.board && <div className="mb-4">{step.description}</div>}
 
                 {/* Interactive board */}
                 {step.board && (
@@ -302,23 +320,34 @@ export function TutorialPage() {
             )}
 
             {isLastStep ? (
-              <div className="flex flex-col items-center gap-2">
+              fromGame ? (
                 <Button
                   size="lg"
                   className="min-w-[180px] h-14 text-lg shadow-lg bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-xl transition-all"
-                  onClick={handlePlayAI}
+                  onClick={handleReturnToGame}
                   disabled={completing}
                 >
-                  {completing ? t("letsGo") : t("playAI")}
+                  {t("returnToGame")}
                 </Button>
-                <button
-                  className="text-sm text-[#8d7760] underline hover:text-[#5d4732] transition-colors"
-                  onClick={handleGoToLobby}
-                  disabled={completing}
-                >
-                  {t("orGoToLobby")}
-                </button>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <Button
+                    size="lg"
+                    className="min-w-[180px] h-14 text-lg shadow-lg bg-[linear-gradient(180deg,#4b3726,#2b1e14)] hover:shadow-xl transition-all"
+                    onClick={handlePlayAI}
+                    disabled={completing}
+                  >
+                    {completing ? t("letsGo") : t("playAI")}
+                  </Button>
+                  <button
+                    className="text-sm text-[#8d7760] underline hover:text-[#5d4732] transition-colors"
+                    onClick={handleGoToLobby}
+                    disabled={completing}
+                  >
+                    {t("orGoToLobby")}
+                  </button>
+                </div>
+              )
             ) : showNextButton ? (
               <Button
                 size="lg"
