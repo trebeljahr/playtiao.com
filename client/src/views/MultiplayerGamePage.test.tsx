@@ -61,6 +61,10 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
     success: vi.fn(),
     info: vi.fn(),
+    // `toast.custom` is used by the rematch toast path; mock it so tests
+    // that reach that path don't crash on `toast.custom is not a function`.
+    custom: vi.fn(),
+    dismiss: vi.fn(),
   }),
 }));
 
@@ -73,6 +77,10 @@ vi.mock("@/lib/SocialNotificationsContext", () => ({
     pendingFriendRequestCount: 0,
     incomingInvitationCount: 0,
     refreshNotifications: vi.fn(),
+    // Stubs for the granular clear-on-accept methods MultiplayerGamePage
+    // calls when the user accepts an incoming rematch from the game page.
+    clearRematchNotification: vi.fn(),
+    clearFriendRequestNotification: vi.fn(),
   }),
 }));
 
@@ -350,14 +358,14 @@ describe("MultiplayerGamePage", () => {
 
     rerender(<MultiplayerGamePage />);
 
-    // The rematch toast is now a JSX body (RematchInviteBody) rather than a
-    // plain string — assert on the call arity + options, not the body content.
-    // RematchInviteBody's own rendering is covered in its own tests.
-    expect(toast).toHaveBeenCalledWith(
-      expect.anything(),
+    // The rematch toast is now rendered via `toast.custom(() => <Rematch
+    // InviteCard …/>, { id, duration: Infinity })` — the old sonner
+    // action/cancel button pattern is gone. Assert on the custom call
+    // arity + options instead. RematchInviteCard's own rendering is
+    // covered in its own tests.
+    expect(toast.custom).toHaveBeenCalledWith(
+      expect.any(Function),
       expect.objectContaining({
-        action: expect.objectContaining({ label: "Accept" }),
-        cancel: expect.objectContaining({ label: "Decline" }),
         duration: Infinity,
       }),
     );
