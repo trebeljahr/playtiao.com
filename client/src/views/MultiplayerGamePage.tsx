@@ -51,7 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { accessMultiplayerGame, getMultiplayerGame } from "@/lib/api";
 import { InviteFriendsModal } from "@/components/InviteFriendsModal";
-import { SkeletonGamePage } from "@/components/ui/skeleton";
+import { LoadingBoardSkeleton } from "@/components/game/LoadingBoardSkeleton";
 
 function AnimatedEllipsis() {
   const [dots, setDots] = useState(0);
@@ -874,7 +874,7 @@ export function MultiplayerGamePage() {
   };
 
   if (multiplayerBusy && !multiplayerSnapshot) {
-    return <SkeletonGamePage />;
+    return <LoadingBoardSkeleton />;
   }
 
   return (
