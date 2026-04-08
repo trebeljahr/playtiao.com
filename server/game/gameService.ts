@@ -635,8 +635,14 @@ export class GameService {
 
     let derivedRoom = this.deriveRoomStatus(room);
 
-    // Auto-revoke rematch request when the requester disconnects from a finished game.
-    // Use the room lock to prevent races with concurrent rematch acceptance.
+    // Auto-revoke any pending rematch when *either* seated player disconnects
+    // from a finished game. The original implementation only cleared the
+    // rematch when the *sender* left, which left a stale request behind if the
+    // *receiver* closed the browser instead — when the receiver came back
+    // online, pushPendingRematches would resurface the still-pending rematch
+    // as a new toast (and the sender's "waiting for opponent" view never
+    // cleared either). Either party leaving invalidates the rematch.
+    // Uses the room lock to prevent races with concurrent rematch acceptance.
     if (
       disconnectedPlayerId &&
       derivedRoom.status === "finished" &&
@@ -647,10 +653,8 @@ export class GameService {
         const freshRoom = this.deriveRoomStatus(await this.getRoom(roomId));
         if (!freshRoom.rematch?.requestedBy.length) return freshRoom;
         const playerColor = getPlayerColorForRoom(freshRoom, disconnectedPlayerId);
-        if (playerColor && freshRoom.rematch.requestedBy.includes(playerColor)) {
-          return this.saveRoom({ ...freshRoom, rematch: null });
-        }
-        return freshRoom;
+        if (!playerColor) return freshRoom;
+        return this.saveRoom({ ...freshRoom, rematch: null });
       });
     }
 
@@ -1903,9 +1907,15 @@ export class GameService {
 
   /**
    * When a player fully disconnects from the lobby, revoke any pending rematch
-   * requests they sent on finished games. This mirrors the per-room disconnect
-   * logic but covers the case where the player leaves the site entirely (closing
-   * the lobby socket) without first disconnecting from each game room socket.
+   * on their finished games — regardless of whether *they* were the sender or
+   * the receiver. Both cases produce a stale rematch:
+   *  - Sender leaves: receiver should not be able to accept anymore.
+   *  - Receiver leaves: sender's "waiting for opponent" state never clears,
+   *    and pushPendingRematches would re-deliver the rematch to the receiver
+   *    as a brand-new toast on reconnect.
+   * This mirrors the per-room disconnect logic but covers the case where the
+   * player leaves the site entirely (closing the lobby socket) without first
+   * disconnecting from each game room socket.
    */
   private async revokeRematchesOnDisconnect(playerId: string): Promise<void> {
     try {
@@ -1913,17 +1923,15 @@ export class GameService {
       for (const room of rooms) {
         if (room.status !== "finished" || !room.rematch?.requestedBy.length) continue;
         const playerColor = getPlayerColorForRoom(room, playerId);
-        if (!playerColor || !room.rematch.requestedBy.includes(playerColor)) continue;
+        if (!playerColor) continue;
 
         // Use the room lock to prevent races with concurrent rematch acceptance
         const savedRoom = await this.withLock(this.roomLockKey(room.id), async () => {
           const freshRoom = this.deriveRoomStatus(await this.getRoom(room.id));
           if (!freshRoom.rematch?.requestedBy.length) return freshRoom;
           const color = getPlayerColorForRoom(freshRoom, playerId);
-          if (color && freshRoom.rematch.requestedBy.includes(color)) {
-            return this.saveRoom({ ...freshRoom, rematch: null });
-          }
-          return freshRoom;
+          if (!color) return freshRoom;
+          return this.saveRoom({ ...freshRoom, rematch: null });
         });
 
         void this.broadcastSnapshot(savedRoom);

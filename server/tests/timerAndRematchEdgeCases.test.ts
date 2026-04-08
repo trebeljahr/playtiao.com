@@ -17,7 +17,7 @@ function createPlayer(playerId: string, options: Partial<PlayerIdentity> = {}): 
 }
 
 class FakeSocket {
-  readyState = WebSocket.OPEN;
+  readyState: number = WebSocket.OPEN;
   messages: string[] = [];
   private listeners: Record<string, Array<(...args: any[]) => void>> = {};
 
@@ -507,5 +507,174 @@ test("cancelRematchViaRest rejects when player is not in game", async () => {
   await assert.rejects(
     () => service.cancelRematchViaRest(created.gameId, charlie),
     (error) => isGameServiceError(error, "NOT_IN_GAME"),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Issue #144 — sender disconnect → revoke → reconnect should not resurrect
+// ---------------------------------------------------------------------------
+
+test("rematch is revoked end-to-end when sender fully disconnects and reconnects", async () => {
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice opens the game page (game socket) AND the lobby socket
+  const aliceGameSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connect(created.gameId, alice, aliceGameSocket);
+  const aliceLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(alice, aliceLobbySocket);
+
+  // Alice requests a rematch from the game page
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+
+  let snapshot = await service.getSnapshot(created.gameId);
+  assert.ok(snapshot.rematch?.requestedBy.length, "rematch should be pending after request");
+
+  // Alice closes the browser entirely — both her game socket AND lobby socket
+  // tear down. Order is intentionally lobby-first to mirror the trickier branch
+  // (the per-room handler will see rematch already null and must not resurrect).
+  (aliceLobbySocket as unknown as FakeSocket).readyState = WebSocket.CLOSED;
+  (aliceLobbySocket as unknown as FakeSocket).emit("close");
+  await service.disconnect(aliceGameSocket);
+
+  // Give the fire-and-forget revocation lock + broadcasts time to settle
+  await new Promise((r) => setTimeout(r, 50));
+
+  // The room should have rematch cleared
+  snapshot = await service.getSnapshot(created.gameId);
+  assert.equal(snapshot.rematch, null, "rematch should be revoked after disconnect");
+
+  // listGames for alice should reflect the cleared state — no dangling rematch
+  // would show in her lobby on reconnect.
+  const aliceGames = await service.listGames(alice);
+  const aliceFinished = aliceGames.finished.find((g) => g.gameId === created.gameId);
+  assert.ok(aliceFinished, "alice should still see the finished game in her list");
+  assert.equal(aliceFinished.rematch, null, "alice's lobby view should not show a rematch");
+
+  // listGames for bob should also be clean
+  const bobGames = await service.listGames(bob);
+  const bobFinished = bobGames.finished.find((g) => g.gameId === created.gameId);
+  assert.ok(bobFinished, "bob should still see the finished game in his list");
+  assert.equal(bobFinished.rematch, null, "bob's lobby view should not show a rematch");
+
+  // When alice reconnects her lobby socket, pushPendingRematches must NOT
+  // re-deliver the cleared rematch as an incoming notification.
+  const aliceReconnectSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(alice, aliceReconnectSocket);
+  await new Promise((r) => setTimeout(r, 50));
+
+  const aliceMessages = (aliceReconnectSocket as unknown as FakeSocket).parsedMessages;
+  const aliceRematchPushes = aliceMessages.filter(
+    (m) =>
+      (m as { type?: string }).type === "game-update" &&
+      (m as { summary?: { gameId?: string; rematch?: { requestedBy?: string[] } } }).summary
+        ?.gameId === created.gameId &&
+      ((m as { summary?: { rematch?: { requestedBy?: string[] } } }).summary?.rematch?.requestedBy
+        ?.length ?? 0) > 0,
+  );
+  assert.equal(
+    aliceRematchPushes.length,
+    0,
+    "alice should not see her own stale rematch on lobby reconnect",
+  );
+
+  // And bob's reconnect should also be clean — no resurrected toast.
+  const bobReconnectSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(bob, bobReconnectSocket);
+  await new Promise((r) => setTimeout(r, 50));
+
+  const bobMessages = (bobReconnectSocket as unknown as FakeSocket).parsedMessages;
+  const bobRematchPushes = bobMessages.filter(
+    (m) =>
+      (m as { type?: string }).type === "game-update" &&
+      (m as { summary?: { gameId?: string; rematch?: { requestedBy?: string[] } } }).summary
+        ?.gameId === created.gameId &&
+      ((m as { summary?: { rematch?: { requestedBy?: string[] } } }).summary?.rematch?.requestedBy
+        ?.length ?? 0) > 0,
+  );
+  assert.equal(
+    bobRematchPushes.length,
+    0,
+    "bob should not receive a stale incoming rematch toast on reconnect",
+  );
+});
+
+test("rematch is revoked when the receiver disconnects (not just the sender)", async () => {
+  // Symmetrical to the test above: alice sends, BOB leaves. The previous
+  // implementation only cleared the rematch on sender-disconnect, leaving the
+  // receiver's pending request in the DB — which then resurrected as a toast
+  // when bob came back online.
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+  await finishRoom(store, created.gameId, "white");
+
+  // Alice (sender) is connected to the game socket and her lobby socket
+  const aliceGameSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connect(created.gameId, alice, aliceGameSocket);
+  const aliceLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(alice, aliceLobbySocket);
+
+  // Bob (receiver) is connected to the lobby (and would normally receive the
+  // toast there). He has no game-page socket — he's just sitting on the lobby.
+  const bobLobbySocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(bob, bobLobbySocket);
+
+  // Alice requests a rematch
+  await service.applyAction(created.gameId, alice, { type: "request-rematch" });
+  await new Promise((r) => setTimeout(r, 20));
+
+  let snapshot = await service.getSnapshot(created.gameId);
+  assert.ok(snapshot.rematch?.requestedBy.length, "rematch should be pending after request");
+
+  // Bob closes the browser entirely — only his lobby socket exists, so close it
+  (bobLobbySocket as unknown as FakeSocket).readyState = WebSocket.CLOSED;
+  (bobLobbySocket as unknown as FakeSocket).emit("close");
+  await new Promise((r) => setTimeout(r, 50));
+
+  // The rematch must be cleared even though bob never requested it
+  snapshot = await service.getSnapshot(created.gameId);
+  assert.equal(snapshot.rematch, null, "rematch should be revoked when the receiver disconnects");
+
+  // When bob reconnects his lobby socket, pushPendingRematches must NOT
+  // resurface the (now-cleared) rematch as a fresh toast.
+  const bobReconnectSocket = new FakeSocket() as unknown as WebSocket;
+  await service.connectLobby(bob, bobReconnectSocket);
+  await new Promise((r) => setTimeout(r, 50));
+
+  const bobMessages = (bobReconnectSocket as unknown as FakeSocket).parsedMessages;
+  const bobRematchPushes = bobMessages.filter(
+    (m) =>
+      (m as { type?: string }).type === "game-update" &&
+      (m as { summary?: { gameId?: string; rematch?: { requestedBy?: string[] } } }).summary
+        ?.gameId === created.gameId &&
+      ((m as { summary?: { rematch?: { requestedBy?: string[] } } }).summary?.rematch?.requestedBy
+        ?.length ?? 0) > 0,
+  );
+  assert.equal(
+    bobRematchPushes.length,
+    0,
+    "bob should not see a resurrected rematch toast after coming back online",
+  );
+
+  // Alice's lobby view (listGames) should also reflect rematch=null so her
+  // "waiting for opponent" UI doesn't dangle indefinitely.
+  const aliceGames = await service.listGames(alice);
+  const aliceFinished = aliceGames.finished.find((g) => g.gameId === created.gameId);
+  assert.ok(aliceFinished, "alice should still see the finished game in her list");
+  assert.equal(
+    aliceFinished.rematch,
+    null,
+    "alice's outgoing rematch should be cleared when bob leaves",
   );
 });
