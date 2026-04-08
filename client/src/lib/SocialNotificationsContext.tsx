@@ -102,8 +102,9 @@ export function SocialNotificationsProvider({
     (req: SocialOverview["incomingFriendRequests"][number]) => {
       const reqPlayerId = req.playerId;
       const reqName = req.displayName || "Someone";
+      const toastId = `friend-request:${reqPlayerId}`;
       toast(
-        <div className="min-w-0">
+        <div className="min-w-0 cursor-pointer" onClick={() => toast.dismiss(toastId)}>
           <PlayerIdentityRow
             player={req}
             linkToProfile={false}
@@ -113,9 +114,10 @@ export function SocialNotificationsProvider({
           />
         </div>,
         {
-          id: `friend-request:${reqPlayerId}`,
+          id: toastId,
           description: "sent you a friend request",
-          duration: 15000,
+          duration: Infinity,
+          dismissible: true,
 
           action: {
             label: "Accept",
@@ -174,8 +176,9 @@ export function SocialNotificationsProvider({
       }
       const suffix = ` (${details.join(", ")})`;
 
+      const toastId = `game-invitation:${invId}`;
       toast(
-        <div className="min-w-0">
+        <div className="min-w-0 cursor-pointer" onClick={() => toast.dismiss(toastId)}>
           <PlayerIdentityRow
             player={typeof sender === "object" ? sender : { displayName: senderName }}
             linkToProfile={false}
@@ -185,9 +188,10 @@ export function SocialNotificationsProvider({
           />
         </div>,
         {
-          id: `game-invitation:${invId}`,
+          id: toastId,
           description: `invited you to a game${suffix}`,
-          duration: 15000,
+          duration: Infinity,
+          dismissible: true,
 
           action: {
             label: "Join",
@@ -466,8 +470,8 @@ export function SocialNotificationsProvider({
         dismissible: true,
         action: {
           label: "View",
-          onClick: (event) => {
-            event.preventDefault();
+          onClick: () => {
+            toast.dismiss(`achievement-${achievement.id}`);
             router.push("/achievements");
           },
         },

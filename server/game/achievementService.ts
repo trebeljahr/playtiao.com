@@ -245,11 +245,6 @@ export async function onGameCompleted(ctx: GameCompletedContext): Promise<void> 
       void grant(p.id, "checkered-past");
     }
 
-    // ── First Blood (captured at least one piece in any game) ──
-    if (room.state.score[p.color] > 0) {
-      void grant(p.id, "first-blood");
-    }
-
     // ── Chain Reaction (5+ captures in a single chain jump) ──
     const playerJumps = room.state.history.filter(
       (t): t is JumpTurn => t.type === "jump" && t.color === p.color,
@@ -276,6 +271,14 @@ export async function onGameCompleted(ctx: GameCompletedContext): Promise<void> 
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Event: Piece Captured (multiplayer, fires on each confirmed jump)
+// ---------------------------------------------------------------------------
+
+export async function onPieceCaptured(playerId: string): Promise<void> {
+  void grant(playerId, "first-blood");
 }
 
 // ---------------------------------------------------------------------------

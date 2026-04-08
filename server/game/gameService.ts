@@ -60,6 +60,7 @@ import GameAccount from "../models/GameAccount";
 import {
   onGameCompleted as checkGameAchievements,
   onEloUpdated as checkEloAchievements,
+  onPieceCaptured as checkPieceCapturedAchievement,
   onSpectateStarted as checkSpectateAchievement,
   setAchievementNotifier,
   setAchievementChangeNotifier,
@@ -838,6 +839,20 @@ export class GameService {
       this.scheduleClockTimer(savedRoom);
 
       await this.broadcastSnapshot(savedRoom);
+
+      // First Blood achievement: fire as soon as a player captures a piece,
+      // not at game end. Score increments only on confirm-jump.
+      if (
+        message.type === "confirm-jump" &&
+        result.value.score[playerColor] > room.state.score[playerColor]
+      ) {
+        const seat = playerColor === "white" ? savedRoom.seats.white : savedRoom.seats.black;
+        if (seat?.kind === "account") {
+          void checkPieceCapturedAchievement(seat.playerId).catch((err) => {
+            console.error("[achievement] onPieceCaptured failed", err);
+          });
+        }
+      }
 
       // Broadcast live score to tournament participants
       if (savedRoom.tournamentId && savedRoom.tournamentMatchId && this.tournamentCallback) {
