@@ -989,8 +989,11 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
         {completed && (
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 350, damping: 18 }}
+            animate={{
+              scale: [0, 1.15, 1, 1, 0.85],
+              opacity: [0, 1, 1, 1, 0],
+            }}
+            transition={{ duration: 1.3, times: [0, 0.12, 0.22, 0.7, 1], ease: "easeOut" }}
             className="absolute inset-0 z-100 flex items-center justify-center pointer-events-none"
           >
             <div className="flex h-12 w-20 items-center justify-center rounded-full bg-[#e0eef8] border-2 border-[#6ba3d6] shadow-[0_8px_24px_-6px_rgba(107,163,214,0.5)]">
