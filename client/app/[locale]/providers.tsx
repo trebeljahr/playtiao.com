@@ -89,9 +89,17 @@ function AuthDialog() {
 
   const dialogTitle = forgotMode
     ? "Reset password"
-    : authDialogMode === "login"
-      ? "Sign in"
-      : "Create account";
+    : authDialogForced
+      ? "Sign in to join this custom game"
+      : authDialogMode === "login"
+        ? "Sign in"
+        : "Create account";
+
+  const dialogDescription = forgotMode
+    ? "Enter your email to receive a password reset link."
+    : authDialogForced
+      ? "Custom games are only open to registered players. Sign in or create a free account to join."
+      : "Sign in or create an account to save your profile.";
 
   return (
     <Dialog
@@ -102,11 +110,7 @@ function AuthDialog() {
       }}
       closeable={!authDialogForced}
       title={dialogTitle}
-      description={
-        forgotMode
-          ? "Enter your email to receive a password reset link."
-          : "Sign in or create an account to save your profile."
-      }
+      description={dialogDescription}
     >
       <div className="space-y-4">
         {forgotMode ? (
