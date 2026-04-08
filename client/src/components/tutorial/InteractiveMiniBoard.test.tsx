@@ -70,18 +70,22 @@ function board(size: number, pieces: Array<[number, number, Cell]>): Cell[][] {
   return b;
 }
 
-// The chain-jump tutorial board: 7x7, white at (3,5), black at (3,4) and (3,2)
-// White can jump (3,5)->(3,3) over black at (3,4), then (3,3)->(3,1) over black at (3,2)
+// The chain-jump tutorial board: 7x7, white at (1,5) with 3 enemies arranged
+// so the white piece can chain vertical → diagonal → horizontal:
+//   (1,5) -> (1,3) over (1,4)  [up]
+//   (1,3) -> (3,1) over (2,2)  [up-right diagonal]
+//   (3,1) -> (5,1) over (4,1)  [right]
 const chainJumpConfig: StepBoardConfig = {
   size: 7,
   initialBoard: board(7, [
-    [3, 5, "W"],
-    [3, 4, "B"],
-    [3, 2, "B"],
+    [1, 5, "W"],
+    [1, 4, "B"],
+    [2, 2, "B"],
+    [4, 1, "B"],
   ]),
   interaction: {
     type: "chain-jump",
-    firstSelect: { x: 3, y: 5 },
+    firstSelect: { x: 1, y: 5 },
   },
 };
 
@@ -123,18 +127,22 @@ describe("InteractiveMiniBoard – chain-jump requires full chain", () => {
     vi.useFakeTimers();
   });
 
-  it("does NOT complete when confirming after only one jump", () => {
+  it("does NOT complete when confirming after fewer than the full chain", () => {
     const { onComplete } = renderBoard(chainJumpConfig);
 
-    // 1. Select the white piece at (3,5)
-    clickPos({ x: 3, y: 5 }, 7);
+    // 1. Select the white piece at (1,5)
+    clickPos({ x: 1, y: 5 }, 7);
 
-    // 2. Jump to (3,3) — over black at (3,4). This is the first jump.
-    clickPos({ x: 3, y: 3 }, 7);
+    // 2. First jump: (1,5) -> (1,3) over (1,4)
+    clickPos({ x: 1, y: 3 }, 7);
 
-    // 3. Try to confirm by clicking the piece at its current position (3,3)
-    //    This should NOT complete because it's only 1 jump (chain-jump requires 2+)
-    clickPos({ x: 3, y: 3 }, 7);
+    // 3. Second jump: (1,3) -> (3,1) over (2,2)
+    clickPos({ x: 3, y: 1 }, 7);
+
+    // 4. Try to confirm by clicking the piece at (3,1)
+    //    This should NOT complete because chain-jump requires the full
+    //    3-jump chain (vertical → diagonal → horizontal).
+    clickPos({ x: 3, y: 1 }, 7);
 
     // Advance timers in case onComplete would be called after a delay
     act(() => vi.advanceTimersByTime(2000));
@@ -142,22 +150,25 @@ describe("InteractiveMiniBoard – chain-jump requires full chain", () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it("completes when confirming after the full chain (2 jumps)", () => {
+  it("completes when confirming after the full chain (3 jumps)", () => {
     const { onComplete } = renderBoard(chainJumpConfig);
 
-    // 1. Select the white piece at (3,5)
-    clickPos({ x: 3, y: 5 }, 7);
+    // 1. Select the white piece at (1,5)
+    clickPos({ x: 1, y: 5 }, 7);
 
-    // 2. First jump: (3,5) -> (3,3) over black at (3,4)
-    clickPos({ x: 3, y: 3 }, 7);
+    // 2. First jump: (1,5) -> (1,3) over (1,4) [vertical]
+    clickPos({ x: 1, y: 3 }, 7);
 
-    // 3. Second jump: (3,3) -> (3,1) over black at (3,2)
+    // 3. Second jump: (1,3) -> (3,1) over (2,2) [diagonal]
     clickPos({ x: 3, y: 1 }, 7);
 
-    // 4. Confirm by clicking the piece at (3,1)
-    clickPos({ x: 3, y: 1 }, 7);
+    // 4. Third jump: (3,1) -> (5,1) over (4,1) [horizontal]
+    clickPos({ x: 5, y: 1 }, 7);
 
-    // Advance timers — onComplete is called after 800ms delay
+    // 5. Confirm by clicking the piece at (5,1)
+    clickPos({ x: 5, y: 1 }, 7);
+
+    // Advance timers — onComplete is called after the complete() delay
     act(() => vi.advanceTimersByTime(1000));
 
     expect(onComplete).toHaveBeenCalled();
