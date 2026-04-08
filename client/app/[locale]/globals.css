@@ -179,10 +179,40 @@ html [data-sonner-toaster][dir="ltr"] {
   background: #fffdf7 !important;
   border-color: #dbc6a2 !important;
   color: #4a3728 !important;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
 }
-[data-sonner-toast] [data-close-button]:hover {
-  background: #ecd4a6 !important;
-  border-color: #b98d49 !important;
+/* Sonner has a (0,4,2) rule on
+   [data-sonner-toast][data-styled="true"]:hover [data-close-button]:hover
+   for the gray2/gray5 hover, so we must match that structure plus an extra
+   element selector (`html`) to reach (0,4,3) and win. */
+html [data-sonner-toast][data-styled="true"]:hover [data-close-button]:hover {
+  background: #e5e5e5 !important;
+  border-color: #c4c4c4 !important;
+  color: #2b2b2b !important;
+}
+
+/* Give sonner's action/cancel buttons (Accept, Decline, Join, View, etc.)
+   the same "lift" hover animation as the main UI Button component —
+   without this, toasts feel visually disconnected from the rest of the
+   app. Sonner's base rule is
+   [data-sonner-toast][data-styled="true"] [data-button] (0,3,1) with a
+   `transition: opacity 0.4s, box-shadow 0.2s`. Match the selector and
+   prefix `html` to reach (0,3,2) so our transform transition wins. */
+html [data-sonner-toast][data-styled="true"] [data-button] {
+  transition:
+    transform 0.2s,
+    opacity 0.4s,
+    box-shadow 0.2s;
+}
+html [data-sonner-toast][data-styled="true"] [data-button]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px -10px rgba(92, 66, 35, 0.4);
+}
+html [data-sonner-toast][data-styled="true"] [data-button]:active {
+  transform: translateY(0);
 }
 
 /* Card entrance animation — pure CSS, no JS hydration needed */
