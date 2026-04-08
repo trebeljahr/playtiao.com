@@ -813,25 +813,36 @@ export function InteractiveMiniBoard({ config, onComplete, active, resetKey, t }
                 })()}
             </svg>
 
-            {/* Confirm overlay */}
+            {/* Confirm overlay + label */}
             {showConfirmOverlay && forcedOrigin && (
-              <span
-                className="pointer-events-none absolute z-95 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
-                style={{
-                  left: `${pointPct(forcedOrigin.x, size)}%`,
-                  top: `${pointPct(forcedOrigin.y, size)}%`,
-                }}
-              >
-                <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5" fill="none">
-                  <path
-                    d="M3.5 8.25L6.6 11.35L12.5 5.45"
-                    stroke="currentColor"
-                    strokeWidth="2.1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
+              <>
+                <span
+                  className="pointer-events-none absolute z-95 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#a7c191]/95 bg-[rgba(247,253,243,0.98)] text-[#5e7b4e] shadow-[0_14px_22px_-14px_rgba(66,89,47,0.62)]"
+                  style={{
+                    left: `${pointPct(forcedOrigin.x, size)}%`,
+                    top: `${pointPct(forcedOrigin.y, size)}%`,
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5" fill="none">
+                    <path
+                      d="M3.5 8.25L6.6 11.35L12.5 5.45"
+                      stroke="currentColor"
+                      strokeWidth="2.1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span
+                  className="pointer-events-none absolute z-95 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#a7c191]/80 bg-[rgba(247,253,243,0.96)] px-2 py-0.5 text-[10px] font-semibold text-[#5e7b4e] shadow-sm"
+                  style={{
+                    left: `${pointPct(forcedOrigin.x, size)}%`,
+                    top: `calc(${pointPct(forcedOrigin.y, size)}% + 18px)`,
+                  }}
+                >
+                  {IS_TOUCH_DEVICE ? t("_tapToConfirm") : t("_clickPieceToConfirm")}
+                </span>
+              </>
             )}
 
             {/* Undo button */}
