@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import Achievement from "../models/Achievement";
 import GameAccount from "../models/GameAccount";
 import GameRoom from "../models/GameRoom";
@@ -52,6 +53,10 @@ export function setAchievementChangeNotifier(notifier: AchievementChangeNotifier
 async function grant(playerId: string, achievementId: string): Promise<boolean> {
   const def = getAchievementById(achievementId);
   if (!def) return false;
+  // Production player IDs are always Mongo ObjectIds. Skip silently for
+  // synthetic IDs (e.g. from unit tests) so we never trigger a CastError
+  // or schedule async DB work after a test has finished.
+  if (!Types.ObjectId.isValid(playerId)) return false;
 
   try {
     await Achievement.create({
@@ -90,6 +95,7 @@ async function grant(playerId: string, achievementId: string): Promise<boolean> 
 }
 
 async function hasAchievement(playerId: string, achievementId: string): Promise<boolean> {
+  if (!Types.ObjectId.isValid(playerId)) return false;
   const count = await Achievement.countDocuments({ playerId, achievementId });
   return count > 0;
 }
@@ -101,6 +107,7 @@ async function hasAchievement(playerId: string, achievementId: string): Promise<
 export async function getPlayerAchievements(
   playerId: string,
 ): Promise<{ achievementId: string; unlockedAt: Date }[]> {
+  if (!Types.ObjectId.isValid(playerId)) return [];
   const docs = await Achievement.find({ playerId }).lean();
   return docs.map((d) => ({
     achievementId: d.achievementId,
@@ -129,6 +136,7 @@ export async function adminRevokeAchievement(
 }
 
 export async function getPlayerAchievementIds(playerId: string): Promise<string[]> {
+  if (!Types.ObjectId.isValid(playerId)) return [];
   const docs = await Achievement.find({ playerId }).select("achievementId").lean();
   return docs.map((d) => d.achievementId);
 }

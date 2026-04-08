@@ -1,5 +1,6 @@
 import { IncomingMessage } from "http";
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
 import GameAccount from "../models/GameAccount";
@@ -31,7 +32,8 @@ async function toPlayerIdentity(user: {
   // selector shows them. This catches users who unlocked an achievement
   // before the auto-grant logic landed (or any case where the grant call
   // silently failed). Cheap: a single Achievement query per session lookup.
-  if (account) {
+  // Skip when user.id isn't a valid ObjectId (e.g. unit test stubs).
+  if (account && Types.ObjectId.isValid(user.id)) {
     const achievementIds = await Achievement.find({ playerId: user.id })
       .select("achievementId")
       .lean();
