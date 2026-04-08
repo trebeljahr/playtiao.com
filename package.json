@@ -23,7 +23,7 @@
     "eslint:client": "npm --prefix client run eslint",
     "eslint:server": "npm --prefix server run eslint",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "concurrently \"npm --prefix server test\" \"npm --prefix client test\"",
+    "test:unit": "concurrently -n server,client -c green,blue \"npm --prefix server test\" \"npm --prefix client test\"",
     "test:e2e": "playwright test",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",
