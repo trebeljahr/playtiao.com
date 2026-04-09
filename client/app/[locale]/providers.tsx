@@ -492,6 +492,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
           </UsernameOnboardingGuard>
           <AuthDialog />
           <OAuthErrorHandler />
+          {/* Sonner hardcodes z-index:999999999 on [data-sonner-toaster].
+              Override it below the mobile nav drawer (backdrop z-200). */}
+          <style>{`[data-sonner-toaster] { z-index: 150 !important; }`}</style>
           <Toaster
             richColors
             position="top-right"

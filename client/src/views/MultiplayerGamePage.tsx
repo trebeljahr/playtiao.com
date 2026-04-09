@@ -769,9 +769,21 @@ export function MultiplayerGamePage() {
                 toast.dismiss(rematchToastId);
                 sendMultiplayerMessage({ type: "decline-rematch" });
               }}
+              onDismiss={() => toast.dismiss(rematchToastId)}
             />
           ),
-          { id: rematchToastId, duration: Infinity },
+          {
+            id: rematchToastId,
+            duration: Infinity,
+            // Override the global Toaster toastOptions.style — see
+            // SocialNotificationsContext for the full rationale.
+            style: {
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              padding: 0,
+            },
+          },
         );
       }
     }

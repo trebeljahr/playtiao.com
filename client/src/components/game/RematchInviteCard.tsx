@@ -4,6 +4,23 @@ import { Button } from "@/components/ui/button";
 import { RematchInviteBody } from "@/components/game/RematchInviteBody";
 import { cn } from "@/lib/utils";
 
+function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 type RematchInviteCardProps = {
   opponent: {
     playerId?: string;
@@ -22,6 +39,13 @@ type RematchInviteCardProps = {
   currentPlayerId?: string;
   onAccept: () => void;
   onDecline: () => void;
+  /**
+   * Optional dismiss handler — renders an X button in the top-right corner.
+   * Used by the sonner `toast.custom` surfaces, which bypass sonner's default
+   * `closeButton` slot (that slot only wires up for the default
+   * title/description layout, not custom bodies).
+   */
+  onDismiss?: () => void;
   busy?: boolean;
   /** Surfaces identifier used in data-testid + aria. */
   testId?: string;
@@ -52,6 +76,7 @@ export function RematchInviteCard({
   currentPlayerId,
   onAccept,
   onDecline,
+  onDismiss,
   busy,
   testId,
   className,
@@ -62,10 +87,20 @@ export function RematchInviteCard({
     <div
       data-testid={testId}
       className={cn(
-        "w-full max-w-sm space-y-3 rounded-2xl border border-[#d4b87a] bg-[#fdf6e8] p-4 shadow-[0_4px_16px_rgba(74,55,40,0.15)]",
+        "relative w-full max-w-sm space-y-3 rounded-2xl border border-[#d4b87a] bg-[#fdf6e8] p-4 shadow-[0_4px_16px_rgba(74,55,40,0.15)]",
         className,
       )}
     >
+      {onDismiss && (
+        <button
+          type="button"
+          aria-label={tCommon("close")}
+          onClick={onDismiss}
+          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[#6e5b48] transition-colors hover:bg-[#f0e2c5] hover:text-[#28170e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#af8a56]/60"
+        >
+          <CloseIcon />
+        </button>
+      )}
       <RematchInviteBody
         opponent={opponent}
         nextColor={nextColor}

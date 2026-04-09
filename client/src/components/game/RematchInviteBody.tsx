@@ -80,6 +80,7 @@ export function RematchInviteBody({
       ) : (
         <span className="text-sm text-[#6b5a45]">{tGame("rematchRequested")}</span>
       )}
+      <p className="text-xs font-semibold text-[#8d6a2f]">{tLobby("rematchToastDesc")}</p>
       {nextColor && (
         <span className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-[#dcc7a3] bg-[#fff9ef] px-2 py-0.5 text-xs text-[#6b5a45]">
           <ColorDot color={nextColor} className="h-3 w-3" />
@@ -88,7 +89,6 @@ export function RematchInviteBody({
           })}
         </span>
       )}
-      <p className="text-xs font-semibold text-[#8d6a2f]">{tLobby("rematchToastDesc")}</p>
       <div className="flex flex-wrap items-center gap-2 text-xs text-[#6b5a45]">
         <GameConfigBadge
           boardSize={boardSize}

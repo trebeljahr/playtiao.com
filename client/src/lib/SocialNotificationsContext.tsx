@@ -537,9 +537,24 @@ export function SocialNotificationsProvider({
               toast.dismiss(toastId);
               void declineRematchRest(rematchGameId).catch(toastError);
             }}
+            onDismiss={() => toast.dismiss(toastId)}
           />
         ),
-        { id: toastId, duration: 15000 },
+        {
+          id: toastId,
+          duration: 15000,
+          // Override the global Toaster toastOptions.style (bg/border/shadow).
+          // Without this, sonner inlines the tan panel styling onto the
+          // wrapper <li>, and our card's own rounded border stacks on top of
+          // it — producing a visible square outer edge around the rounded
+          // inner card. Transparent wrapper lets the card own every pixel.
+          style: {
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+            padding: 0,
+          },
+        },
       );
     } else if (playerId) {
       // Rematch was cancelled/declined — remove from sessionStorage so a future
