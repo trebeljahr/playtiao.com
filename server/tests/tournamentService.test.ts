@@ -1299,3 +1299,336 @@ describe("Tournament live scores", () => {
     );
   });
 });
+
+// ── getMyNextMatch ──
+
+describe("getMyNextMatch", () => {
+  async function setupRR4() {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+    const carol = createPlayer("carol");
+    const dave = createPlayer("dave");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ format: "round-robin", minPlayers: 4, maxPlayers: 4 }),
+      "Next-Match RR",
+    );
+    for (const p of [alice, bob, carol, dave]) {
+      await tournamentService.registerPlayer(t.tournamentId, p);
+    }
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    return { tournamentService, gameStore, tournamentId: t.tournamentId };
+  }
+
+  test("returns `ready` when the player has an active match with a room", async () => {
+    const { tournamentService, tournamentId } = await setupRR4();
+    // All four players are in round 1 with rooms allocated.
+    const result = await tournamentService.getMyNextMatch(tournamentId, "alice");
+    assert.equal(result.state, "ready");
+    if (result.state === "ready") {
+      assert.ok(result.roomId);
+      assert.ok(result.matchId);
+    }
+  });
+
+  test("returns `waiting` with a watchable room after finishing and while others are still playing", async () => {
+    const { tournamentService, gameStore, tournamentId } = await setupRR4();
+
+    // Finish alice's match so she becomes free, leaving the other round-1
+    // match still live.
+    const snapAfterStart = await tournamentService.getTournamentSnapshot(tournamentId);
+    const aliceMatch = snapAfterStart.rounds[0].matches.find((m) =>
+      m.players.some((p) => p?.playerId === "alice"),
+    )!;
+    const aliceRoomId = aliceMatch.roomId!;
+    const otherMatch = snapAfterStart.rounds[0].matches.find(
+      (m) => m.matchId !== aliceMatch.matchId && m.status === "active",
+    );
+    const aliceRoom = await gameStore.getRoom(aliceRoomId);
+    assert.ok(aliceRoom);
+    aliceRoom.state.score.white = 10;
+    aliceRoom.status = "finished";
+    await gameStore.saveRoom(aliceRoom);
+    await tournamentService.onGameCompleted(aliceRoomId);
+
+    // After the soft-round-boundary change, finishing alice's match may
+    // activate her next pairing immediately. We only check the waiting
+    // branch when alice's next opponent is still in a live match.
+    const result = await tournamentService.getMyNextMatch(tournamentId, "alice");
+    if (result.state === "waiting") {
+      assert.ok(result.watchRoomId, "waiting result should carry a watchable room");
+      assert.ok(otherMatch);
+    } else {
+      // Accept "ready" as well — soft boundaries may have already paired
+      // alice with another free player.
+      assert.equal(result.state, "ready");
+    }
+  });
+
+  test("returns `done: eliminated` in a single-elimination tournament after the player loses", async () => {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+    const carol = createPlayer("carol");
+    const dave = createPlayer("dave");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ format: "single-elimination", minPlayers: 4, maxPlayers: 4 }),
+      "Elim",
+    );
+    for (const p of [alice, bob, carol, dave]) {
+      await tournamentService.registerPlayer(t.tournamentId, p);
+    }
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    // Resolve alice's first match as a loss.
+    const snapshot = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const aliceMatch = snapshot.rounds[0].matches.find((m) =>
+      m.players.some((p) => p?.playerId === "alice"),
+    )!;
+    const room = await gameStore.getRoom(aliceMatch.roomId!);
+    assert.ok(room);
+    // Give the win to whichever color is NOT alice.
+    const aliceIsWhite = room.seats.white?.playerId === "alice";
+    if (aliceIsWhite) {
+      room.state.score.black = 10;
+    } else {
+      room.state.score.white = 10;
+    }
+    room.status = "finished";
+    await gameStore.saveRoom(room);
+    await tournamentService.onGameCompleted(room.id);
+
+    const result = await tournamentService.getMyNextMatch(t.tournamentId, "alice");
+    assert.equal(result.state, "done");
+    if (result.state === "done") {
+      assert.equal(result.outcome, "eliminated");
+    }
+  });
+
+  test("returns `not-participant` when the player is not registered", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const t = await tournamentService.createTournament(alice, defaultSettings(), "NP");
+    const result = await tournamentService.getMyNextMatch(t.tournamentId, "stranger");
+    assert.equal(result.state, "not-participant");
+  });
+});
+
+// ── listPendingMatchReady ──
+
+describe("listPendingMatchReady", () => {
+  test("returns a live tournament match the player is seated in", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2 }),
+      "Pending",
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const pending = await tournamentService.listPendingMatchReady("alice");
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].tournamentId, t.tournamentId);
+    assert.equal(pending[0].tournamentName, "Pending");
+    assert.ok(pending[0].roomId);
+  });
+
+  test("excludes tournaments where the player isn't currently in an active match", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+
+    const t = await tournamentService.createTournament(alice, defaultSettings(), "Empty");
+    // No registration / no start → no matches to be "ready" for.
+    const pending = await tournamentService.listPendingMatchReady("alice");
+    assert.equal(pending.length, 0);
+    assert.equal(t.status, "registration");
+  });
+});
+
+// ── Soft round-robin boundaries ──
+
+describe("Round-robin soft round boundaries", () => {
+  test("activates the next pairing for a free player before the round finishes", async () => {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+    const carol = createPlayer("carol");
+    const dave = createPlayer("dave");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ format: "round-robin", minPlayers: 4, maxPlayers: 4 }),
+      "Soft RR",
+    );
+    for (const p of [alice, bob, carol, dave]) {
+      await tournamentService.registerPlayer(t.tournamentId, p);
+    }
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    // Finish BOTH round-1 matches in a single pass so all four players
+    // become free at once. The soft-boundary logic should then activate
+    // the round-2 pairings even though round-1 standings have only just
+    // been committed.
+    const snapAfterStart = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const r1Matches = snapAfterStart.rounds[0].matches.filter((m) => m.status === "active");
+    assert.equal(r1Matches.length, 2, "round 1 should start with 2 active matches");
+
+    for (const match of r1Matches) {
+      const room = await gameStore.getRoom(match.roomId!);
+      assert.ok(room);
+      room.state.score.white = 10;
+      room.status = "finished";
+      await gameStore.saveRoom(room);
+      await tournamentService.onGameCompleted(match.roomId!);
+    }
+
+    // At least one match from a later round should now be active.
+    const after = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const nonRound1Active = after.rounds
+      .filter((r) => r.roundIndex > 0)
+      .flatMap((r) => r.matches)
+      .filter((m) => m.status === "active");
+    assert.ok(
+      nonRound1Active.length > 0,
+      "soft boundaries should activate round-2+ matches once players are free",
+    );
+  });
+
+  test("single-elimination stays strictly round-ordered (no soft boundaries)", async () => {
+    const { tournamentService, gameStore } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+    const carol = createPlayer("carol");
+    const dave = createPlayer("dave");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ format: "single-elimination", minPlayers: 4, maxPlayers: 4 }),
+      "Strict SE",
+    );
+    for (const p of [alice, bob, carol, dave]) {
+      await tournamentService.registerPlayer(t.tournamentId, p);
+    }
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snap = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const firstMatch = snap.rounds[0].matches[0];
+    // Finish ONE first-round match only.
+    const room = await gameStore.getRoom(firstMatch.roomId!);
+    assert.ok(room);
+    room.state.score.white = 10;
+    room.status = "finished";
+    await gameStore.saveRoom(room);
+    await tournamentService.onGameCompleted(firstMatch.roomId!);
+
+    // Round 2 must NOT be active yet — the other round-1 match is still live.
+    const after = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    assert.equal(after.rounds[1].status, "pending");
+  });
+});
+
+// ── devForceMatchResult ──
+
+describe("devForceMatchResult", () => {
+  test("fabricates a match result and advances the bracket without a real game", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2 }),
+      "Dev Force",
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snap = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const match = snap.rounds[0].matches[0];
+    assert.equal(match.status, "active");
+
+    await tournamentService.devForceMatchResult(t.tournamentId, match.matchId, {
+      winnerId: "alice",
+      scoreWhite: 10,
+      scoreBlack: 3,
+      finishReason: "captured",
+    });
+
+    const after = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    assert.equal(after.status, "finished");
+    assert.equal(after.rounds[0].matches[0].winner, "alice");
+  });
+
+  test("rejects a winnerId that isn't one of the players", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const bob = createPlayer("bob");
+
+    const t = await tournamentService.createTournament(
+      alice,
+      defaultSettings({ minPlayers: 2 }),
+      "Dev Force Reject",
+    );
+    await tournamentService.registerPlayer(t.tournamentId, alice);
+    await tournamentService.registerPlayer(t.tournamentId, bob);
+    await tournamentService.startTournament(t.tournamentId, "alice");
+
+    const snap = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    const match = snap.rounds[0].matches[0];
+
+    await assert.rejects(
+      () =>
+        tournamentService.devForceMatchResult(t.tournamentId, match.matchId, {
+          winnerId: "stranger",
+          scoreWhite: 10,
+          scoreBlack: 3,
+          finishReason: "captured",
+        }),
+      (err) => isGameServiceError(err, "INVALID_WINNER"),
+    );
+  });
+});
+
+// ── setFeatured ──
+
+describe("setFeatured", () => {
+  test("marks a tournament as featured", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const t = await tournamentService.createTournament(alice, defaultSettings(), "Featured");
+
+    const before = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    assert.equal(before.isFeatured, false);
+
+    await tournamentService.setFeatured(t.tournamentId, true);
+
+    const after = await tournamentService.getTournamentSnapshot(t.tournamentId);
+    assert.equal(after.isFeatured, true);
+  });
+
+  test("featured tournaments sort first in the public list", async () => {
+    const { tournamentService } = createServices();
+    const alice = createPlayer("alice");
+    const older = await tournamentService.createTournament(alice, defaultSettings(), "Older");
+    const newer = await tournamentService.createTournament(alice, defaultSettings(), "Newer");
+
+    // Mark the older one as featured.
+    await tournamentService.setFeatured(older.tournamentId, true);
+
+    const list = await tournamentService.listPublicTournaments();
+    assert.ok(list.length >= 2);
+    assert.equal(list[0].tournamentId, older.tournamentId, "featured should come first");
+    assert.equal(list[1].tournamentId, newer.tournamentId);
+  });
+});

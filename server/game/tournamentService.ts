@@ -1,4 +1,6 @@
 import type {
+  MyNextMatchResult,
+  PendingTournamentMatch,
   PlayerIdentity,
   TournamentMatch,
   TournamentMatchPlayer,
@@ -311,7 +313,7 @@ export class TournamentService implements TournamentGameCallback {
     }
 
     const tournamentId = generateTournamentId();
-    return this.store.createTournament({
+    const created = await this.store.createTournament({
       tournamentId,
       name,
       description,
@@ -323,8 +325,11 @@ export class TournamentService implements TournamentGameCallback {
       groups: [],
       knockoutRounds: [],
       featuredMatchId: null,
+      isFeatured: false,
       invitedUserIds: [],
     });
+    this.broadcastTournamentListUpdate();
+    return created;
   }
 
   async registerPlayer(
@@ -466,6 +471,7 @@ export class TournamentService implements TournamentGameCallback {
       await this.createRoomsForActiveRound(saved);
 
       this.broadcastTournamentUpdate(saved);
+      this.broadcastTournamentListUpdate();
       return saved;
     });
   }
@@ -490,6 +496,92 @@ export class TournamentService implements TournamentGameCallback {
       await this.gameService.unlinkTournamentGames(tournamentId);
       const saved = await this.store.saveTournament(tournament);
       this.broadcastTournamentUpdate(saved);
+      this.broadcastTournamentListUpdate();
+      return saved;
+    });
+  }
+
+  /**
+   * DEV-ONLY: fabricate a match result without playing a real game. Callers
+   * must gate on NODE_ENV themselves — this helper just does the work.
+   *
+   * Mirrors the side-effects of `onGameCompleted` (update match row, advance
+   * bracket, create rooms for the next round, broadcast) but skips the
+   * underlying GameRoom — the match is treated as finished regardless of
+   * whether a room was ever created for it.
+   */
+  async devForceMatchResult(
+    tournamentId: string,
+    matchId: string,
+    result: {
+      winnerId: string;
+      scoreWhite: number;
+      scoreBlack: number;
+      finishReason: "captured" | "forfeit" | "timeout";
+    },
+  ): Promise<StoredTournament> {
+    return this.withLock(tournamentId, async () => {
+      const tournament = await this.getTournament(tournamentId);
+      const match = this.findMatch(tournament, matchId);
+      if (!match) {
+        throw new GameServiceError(404, "MATCH_NOT_FOUND", "Match not found.");
+      }
+      if (match.status === "finished" || match.status === "forfeit" || match.status === "bye") {
+        throw new GameServiceError(409, "MATCH_ALREADY_DONE", "Match is already completed.");
+      }
+      if (!match.players[0] || !match.players[1]) {
+        throw new GameServiceError(
+          409,
+          "MATCH_NOT_READY",
+          "Cannot force result on an unfilled match.",
+        );
+      }
+      if (
+        match.players[0].playerId !== result.winnerId &&
+        match.players[1].playerId !== result.winnerId
+      ) {
+        throw new GameServiceError(400, "INVALID_WINNER", "winnerId is not one of the players.");
+      }
+
+      match.winner = result.winnerId;
+      match.status = "finished";
+      // Align score to player slot order (p0Score, p1Score).
+      const p0Color = match.playerColors?.[0] ?? "white";
+      match.score =
+        p0Color === "white"
+          ? [result.scoreWhite, result.scoreBlack]
+          : [result.scoreBlack, result.scoreWhite];
+      match.finishReason = result.finishReason;
+      match.historyLength = 0;
+
+      if (match.groupId) {
+        this.updateGroupStandings(tournament, match);
+      }
+
+      if (tournament.settings.format === "single-elimination") {
+        const loserId = match.players.find((p) => p && p.playerId !== match.winner)?.playerId;
+        if (loserId) {
+          const loser = tournament.participants.find((p) => p.playerId === loserId);
+          if (loser) loser.status = "eliminated";
+        }
+      }
+
+      this.checkRoundAdvancement(tournament);
+      const saved = await this.store.saveTournament(tournament);
+      await this.createRoomsForActiveRound(saved);
+      this.broadcastTournamentUpdate(saved);
+      return saved;
+    });
+  }
+
+  // ── Featured flag (site admin) ──
+
+  async setFeatured(tournamentId: string, featured: boolean): Promise<StoredTournament> {
+    return this.withLock(tournamentId, async () => {
+      const tournament = await this.getTournament(tournamentId);
+      tournament.isFeatured = featured;
+      const saved = await this.store.saveTournament(tournament);
+      this.broadcastTournamentListUpdate();
       return saved;
     });
   }
@@ -743,6 +835,193 @@ export class TournamentService implements TournamentGameCallback {
     return this.toListItems(tournaments);
   }
 
+  async listAllTournamentsForAdmin(): Promise<TournamentListItem[]> {
+    const tournaments = await this.store.listAllTournaments();
+    return this.toListItems(tournaments);
+  }
+
+  // ── "What's my next tournament match?" ──
+
+  /**
+   * Decide what should happen when the player asks for their next match in
+   * this tournament. See `MyNextMatchResult` for the shape of the answer.
+   *
+   * Walks the tournament's rounds (main + knockout + group rounds) in order
+   * and returns the first match that applies to the player. Implementation
+   * notes:
+   *
+   * - "ready" wins over everything else: if they already have an active
+   *   match with a room, we just drop them in.
+   * - "waiting" carries an optional `watchRoomId` so the client can route
+   *   them into an ongoing match as a spectator instead of parking them
+   *   on the bracket page. We pick the first active match in the same
+   *   round they're currently waiting on; failing that, any active match
+   *   in the tournament.
+   * - "done" distinguishes winner / eliminated / finished so the client
+   *   can show the right end-of-tournament copy.
+   */
+  async getMyNextMatch(tournamentId: string, playerId: string): Promise<MyNextMatchResult> {
+    const tournament = await this.getTournament(tournamentId);
+
+    const participant = tournament.participants.find((p) => p.playerId === playerId);
+    if (!participant) {
+      return { state: "not-participant" };
+    }
+
+    type RoundWithContext = { round: TournamentRound; groupLabel?: string };
+    const orderedRounds: RoundWithContext[] = [];
+    for (const round of tournament.rounds) orderedRounds.push({ round });
+    for (const group of tournament.groups) {
+      for (const round of group.rounds) {
+        orderedRounds.push({ round, groupLabel: group.label });
+      }
+    }
+    for (const round of tournament.knockoutRounds) orderedRounds.push({ round });
+
+    const isPlayerInMatch = (match: TournamentMatch) =>
+      match.players.some((mp) => mp?.playerId === playerId);
+
+    // 1. An ACTIVE match for the player with a roomId → ready to play.
+    for (const { round } of orderedRounds) {
+      for (const match of round.matches) {
+        if (match.status !== "active") continue;
+        if (!match.roomId) continue;
+        if (isPlayerInMatch(match)) {
+          return { state: "ready", roomId: match.roomId, matchId: match.matchId };
+        }
+      }
+    }
+
+    // 2. A PENDING match for the player → they're waiting. Figure out what
+    //    we can offer them to watch while they wait.
+    let waitingRound: TournamentRound | null = null;
+    let waitingLabel = "";
+    for (const { round, groupLabel } of orderedRounds) {
+      for (const match of round.matches) {
+        if (match.status !== "pending") continue;
+        if (!isPlayerInMatch(match)) continue;
+        waitingRound = round;
+        waitingLabel = groupLabel ? `${groupLabel} · ${round.label}` : round.label;
+        break;
+      }
+      if (waitingRound) break;
+    }
+
+    if (waitingRound) {
+      // Prefer an active match in the SAME round (more relevant to what
+      // they're waiting on). Fall back to any active match anywhere.
+      let watchRoomId: string | null = null;
+      let watchMatchId: string | null = null;
+
+      for (const match of waitingRound.matches) {
+        if (match.status === "active" && match.roomId) {
+          watchRoomId = match.roomId;
+          watchMatchId = match.matchId;
+          break;
+        }
+      }
+      if (!watchRoomId) {
+        for (const { round } of orderedRounds) {
+          for (const match of round.matches) {
+            if (match.status === "active" && match.roomId) {
+              watchRoomId = match.roomId;
+              watchMatchId = match.matchId;
+              break;
+            }
+          }
+          if (watchRoomId) break;
+        }
+      }
+
+      return {
+        state: "waiting",
+        watchRoomId,
+        watchMatchId,
+        waitingOnLabel: waitingLabel,
+      };
+    }
+
+    // 3. No pending/active match for this player — they're done.
+    if (tournament.status === "finished" || tournament.status === "cancelled") {
+      if (participant.status === "winner") {
+        return { state: "done", outcome: "winner" };
+      }
+      return { state: "done", outcome: "finished" };
+    }
+    if (participant.status === "eliminated") {
+      return { state: "done", outcome: "eliminated" };
+    }
+    if (participant.status === "winner") {
+      return { state: "done", outcome: "winner" };
+    }
+    // Round-robin with all their games done but tournament still running.
+    return { state: "done", outcome: "finished" };
+  }
+
+  // ── Pending "match ready" notifications ──
+
+  /**
+   * List every tournament match this player is currently sitting in that
+   * has a live game room. The sticky "tournament match ready" notification
+   * uses this as its source of truth — it gets re-queried on every mount
+   * and on every `tournament-match-ready` socket message, so the toast
+   * survives reloads without any client-side persistence.
+   */
+  async listPendingMatchReady(playerId: string): Promise<PendingTournamentMatch[]> {
+    const tournaments = await this.store.listTournamentsForPlayer(playerId);
+    const pending: PendingTournamentMatch[] = [];
+
+    // Batch-resolve opponent display names (best-effort).
+    const opponentIds = new Set<string>();
+    for (const t of tournaments) {
+      if (t.status !== "active") continue;
+      for (const match of this.iterAllMatches(t)) {
+        if (match.status !== "active" || !match.roomId) continue;
+        if (!match.players.some((p) => p?.playerId === playerId)) continue;
+        for (const p of match.players) {
+          if (p && p.playerId !== playerId) opponentIds.add(p.playerId);
+        }
+      }
+    }
+    const profiles = await getPlayerProfiles([...opponentIds]);
+
+    for (const t of tournaments) {
+      if (t.status !== "active") continue;
+      for (const match of this.iterAllMatches(t)) {
+        if (match.status !== "active" || !match.roomId) continue;
+        if (!match.players.some((p) => p?.playerId === playerId)) continue;
+
+        const opponent = match.players.find((p) => p && p.playerId !== playerId);
+        pending.push({
+          tournamentId: t.tournamentId,
+          tournamentName: t.name,
+          matchId: match.matchId,
+          roomId: match.roomId,
+          opponentPlayerId: opponent?.playerId ?? null,
+          opponentDisplayName: opponent
+            ? (profiles.get(opponent.playerId)?.displayName ?? null)
+            : null,
+        });
+      }
+    }
+
+    return pending;
+  }
+
+  private *iterAllMatches(tournament: StoredTournament): Generator<TournamentMatch> {
+    for (const round of tournament.rounds) {
+      for (const match of round.matches) yield match;
+    }
+    for (const round of tournament.knockoutRounds) {
+      for (const match of round.matches) yield match;
+    }
+    for (const group of tournament.groups) {
+      for (const round of group.rounds) {
+        for (const match of round.matches) yield match;
+      }
+    }
+  }
+
   // ── Private Helpers ──
 
   private async getTournament(tournamentId: string): Promise<StoredTournament> {
@@ -802,27 +1081,84 @@ export class TournamentService implements TournamentGameCallback {
   }
 
   private advanceRoundRobin(tournament: StoredTournament): void {
+    // Mark any fully-finished rounds as "finished" for standings purposes.
     for (const round of tournament.rounds) {
-      if (round.status === "active") {
-        const allDone = round.matches.every(
+      if (round.status !== "active" && round.status !== "pending") continue;
+      const allDone =
+        round.matches.length > 0 &&
+        round.matches.every(
           (m) => m.status === "finished" || m.status === "forfeit" || m.status === "bye",
         );
-        if (allDone) {
-          round.status = "finished";
+      if (allDone && round.status === "active") {
+        round.status = "finished";
+        this.broadcastRoundComplete(tournament, round.roundIndex);
+      }
+    }
 
-          // Notify round complete
-          this.broadcastRoundComplete(tournament, round.roundIndex);
+    // Round-robin uses SOFT round boundaries: a player who finishes their
+    // current-round match shouldn't have to wait for the rest of the round
+    // before their next opponent comes online. As soon as two players are
+    // both "free" (no active match anywhere) and share a pending match,
+    // we activate that match regardless of which round it belongs to.
+    this.activateFreeRoundRobinMatches(tournament);
+
+    // If every match in every round is done, the tournament is finished.
+    const allMatchesDone = tournament.rounds.every((round) =>
+      round.matches.every(
+        (m) => m.status === "finished" || m.status === "forfeit" || m.status === "bye",
+      ),
+    );
+    if (allMatchesDone) {
+      this.finishTournament(tournament);
+    }
+  }
+
+  /**
+   * Round-robin only: find any pending match whose two players are both
+   * currently free (no `active` match in the tournament) and activate it.
+   *
+   * Rationale: round-robin is commutative — "Alice vs Dave" can happen at
+   * any time, it doesn't need the rest of Round 1 to finish first. This
+   * keeps the tournament flowing instead of leaving a player twiddling
+   * their thumbs because one other pair is still playing a long game.
+   *
+   * Only called for `format === "round-robin"`. Single-elim and
+   * groups-knockout are bracket-ordered and must stay sequential.
+   */
+  private activateFreeRoundRobinMatches(tournament: StoredTournament): void {
+    if (tournament.settings.format !== "round-robin") return;
+
+    // Collect players who currently have any active match anywhere.
+    const busyPlayers = new Set<string>();
+    for (const round of tournament.rounds) {
+      for (const match of round.matches) {
+        if (match.status !== "active") continue;
+        for (const mp of match.players) {
+          if (mp) busyPlayers.add(mp.playerId);
         }
       }
     }
 
-    // Activate next pending round
-    const nextPending = tournament.rounds.find((r) => r.status === "pending");
-    if (nextPending) {
-      nextPending.status = "active";
-    } else {
-      // All rounds done — tournament finished
-      this.finishTournament(tournament);
+    // Walk pending matches in round order (so earlier rounds get preferred
+    // when ties occur) and activate any where both players are free.
+    // Each activation updates `busyPlayers` so we don't double-book a
+    // player in the same pass.
+    for (const round of tournament.rounds) {
+      for (const match of round.matches) {
+        if (match.status !== "pending") continue;
+        if (!match.players[0] || !match.players[1]) continue;
+
+        const p0 = match.players[0].playerId;
+        const p1 = match.players[1].playerId;
+        if (busyPlayers.has(p0) || busyPlayers.has(p1)) continue;
+
+        // Activate the match. Flipping round.status to "active" is
+        // required because createRoomsForActiveRound only walks active
+        // rounds when deciding which matches to create rooms for.
+        if (round.status === "pending") round.status = "active";
+        busyPlayers.add(p0);
+        busyPlayers.add(p1);
+      }
     }
   }
 
@@ -1097,6 +1433,9 @@ export class TournamentService implements TournamentGameCallback {
         console.error("[tournament] Tournament achievement check failed:", err);
       });
     }
+
+    // Tournament just ended — refresh every lobby viewer's tournament list.
+    this.broadcastTournamentListUpdate();
   }
 
   private async createRoomsForActiveRound(tournament: StoredTournament): Promise<void> {
@@ -1201,6 +1540,17 @@ export class TournamentService implements TournamentGameCallback {
       type: "tournament-update",
       tournamentId: tournament.tournamentId,
     });
+  }
+
+  /**
+   * Tell EVERY connected lobby socket that the tournament listing has
+   * changed — fires on create/start/cancel/finish and when an admin toggles
+   * the featured flag. Without this, the lobby tournament list on
+   * non-participants never updates (bug: "sometimes tournaments don't show
+   * up in the lobby").
+   */
+  broadcastTournamentListUpdate(): void {
+    this.gameService.broadcastLobbyToAll({ type: "tournament-list-update" });
   }
 
   private broadcastRoundComplete(tournament: StoredTournament, roundIndex: number): void {
@@ -1354,6 +1704,7 @@ export class TournamentService implements TournamentGameCallback {
       groups,
       knockoutRounds: enrichRounds(t.knockoutRounds),
       featuredMatchId: t.featuredMatchId,
+      isFeatured: t.isFeatured,
       playerIdentities,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
@@ -1376,6 +1727,7 @@ export class TournamentService implements TournamentGameCallback {
       playerCount: t.participants.length,
       maxPlayers: t.settings.maxPlayers,
       timeControl: t.settings.timeControl,
+      isFeatured: t.isFeatured,
       createdAt: t.createdAt.toISOString(),
     }));
   }

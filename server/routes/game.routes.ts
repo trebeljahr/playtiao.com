@@ -62,6 +62,26 @@ async function checkGuestCustomGameGate(
   return true;
 }
 
+/**
+ * Tournament games are not joinable by invite-link or game-ID sharing —
+ * pairings are matched automatically by the tournament service. Anyone
+ * reaching a tournament game room who isn't one of the two seated players
+ * should drop into spectator mode via `accessGame`, not the JOIN endpoint.
+ */
+async function checkTournamentJoinBlock(gameId: string, res: Response): Promise<boolean> {
+  const room = await GameRoom.findOne({ roomId: gameId })
+    .select("roomType")
+    .lean<Pick<IGameRoom, "roomType">>();
+  if (room && room.roomType === "tournament") {
+    res.status(403).json({
+      code: "TOURNAMENT_NO_JOIN",
+      message: "Tournament games can't be joined by ID — register for the tournament instead.",
+    });
+    return false;
+  }
+  return true;
+}
+
 const GAME_ID_PATTERN = /^[A-Z2-9]{6}$/;
 
 function isValidGameId(gameId: string): boolean {
@@ -293,6 +313,10 @@ router.post("/games/:gameId/join", async (req: Request, res: Response) => {
   }
 
   if (!(await checkGuestCustomGameGate(player, req.params.gameId as string, res))) {
+    return;
+  }
+
+  if (!(await checkTournamentJoinBlock(req.params.gameId as string, res))) {
     return;
   }
 

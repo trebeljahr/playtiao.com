@@ -60,6 +60,32 @@ router.get("/tournaments/my", async (req: Request, res: Response) => {
   }
 });
 
+// GET /tournaments/my-pending-matches — live tournament matches waiting for the player
+router.get("/tournaments/my-pending-matches", async (req: Request, res: Response) => {
+  const player = await getAccountPlayer(req, res);
+  if (!player) return;
+
+  try {
+    const matches = await tournamentService.listPendingMatchReady(player.playerId);
+    return res.status(200).json({ matches });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to load pending tournament matches.", req);
+  }
+});
+
+// GET /tournaments/:id/my-next-match — where should the player go next?
+router.get("/tournaments/:id/my-next-match", async (req: Request, res: Response) => {
+  const player = await getAccountPlayer(req, res);
+  if (!player) return;
+
+  try {
+    const result = await tournamentService.getMyNextMatch(req.params.id as string, player.playerId);
+    return res.status(200).json({ result });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to determine next match.", req);
+  }
+});
+
 // POST /tournaments — create tournament
 router.post("/tournaments", async (req: Request, res: Response) => {
   const player = await getAccountPlayer(req, res);

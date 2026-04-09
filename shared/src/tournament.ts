@@ -139,6 +139,8 @@ export type TournamentSnapshot = {
   /** Knockout rounds after group stage (only for groups-knockout) */
   knockoutRounds: TournamentRound[];
   featuredMatchId: string | null;
+  /** Pinned by a site admin; surfaces at the top of the lobby tournament list. */
+  isFeatured: boolean;
   /** Identity map: playerId → resolved identity. Use this for display names/pictures. */
   playerIdentities: Record<string, TournamentPlayerIdentity>;
   createdAt: string;
@@ -158,6 +160,7 @@ export type TournamentListItem = {
   playerCount: number;
   maxPlayers: number;
   timeControl: TimeControl;
+  isFeatured: boolean;
   createdAt: string;
 };
 
@@ -178,4 +181,52 @@ export type TournamentLobbyMessage =
       type: "tournament-round-complete";
       tournamentId: string;
       roundIndex: number;
+    }
+  | {
+      type: "tournament-list-update";
     };
+
+// ── "My next match" response ──
+
+/**
+ * Server's decision about what should happen when a player clicks "next match"
+ * after a tournament game ends (or navigates back to the tournament).
+ *
+ * - `ready` — their next match exists and has a room. Go straight into it.
+ * - `waiting` — their next match is blocked waiting for other results. If
+ *   `watchRoomId` is set, we can drop them into that match as a spectator
+ *   so they have something to watch while they wait. If not, they should
+ *   land on the tournament page with a "waiting" banner.
+ * - `done` — the tournament is over for this player (they won, were
+ *   eliminated, or all their games are finished).
+ * - `not-participant` — the caller isn't registered in this tournament.
+ */
+export type MyNextMatchResult =
+  | { state: "ready"; roomId: string; matchId: string }
+  | {
+      state: "waiting";
+      /** A match to spectate while waiting, if one exists. */
+      watchRoomId: string | null;
+      watchMatchId: string | null;
+      /** Short label describing what we're waiting on (e.g. "Round 2 match 3"). */
+      waitingOnLabel: string;
+    }
+  | { state: "done"; outcome: "winner" | "eliminated" | "finished" }
+  | { state: "not-participant" };
+
+// ── Pending tournament match (for sticky notifications) ──
+
+/**
+ * A tournament match that is currently live for the player but which they
+ * haven't joined yet. Used by the sticky notification system to re-surface
+ * a "your match is ready" toast on every page until they actually enter the
+ * game.
+ */
+export type PendingTournamentMatch = {
+  tournamentId: string;
+  tournamentName: string;
+  matchId: string;
+  roomId: string;
+  opponentPlayerId: string | null;
+  opponentDisplayName: string | null;
+};

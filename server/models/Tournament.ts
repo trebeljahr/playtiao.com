@@ -19,6 +19,7 @@ export interface ITournament extends Document {
   groups: TournamentGroup[];
   knockoutRounds: TournamentRound[];
   featuredMatchId: string | null;
+  isFeatured: boolean;
   invitedUserIds: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -199,6 +200,11 @@ const TournamentSchema = new Schema<ITournament>(
     featuredMatchId: {
       type: String,
       default: null,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     invitedUserIds: {
       type: [String],

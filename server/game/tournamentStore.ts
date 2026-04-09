@@ -19,6 +19,7 @@ export type StoredTournament = {
   groups: TournamentGroup[];
   knockoutRounds: TournamentRound[];
   featuredMatchId: string | null;
+  isFeatured: boolean;
   invitedUserIds: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +32,8 @@ export interface TournamentStore {
   getTournament(tournamentId: string): Promise<StoredTournament | null>;
   saveTournament(tournament: StoredTournament): Promise<StoredTournament>;
   listPublicTournaments(options?: { status?: TournamentStatus }): Promise<StoredTournament[]>;
+  /** Admin-only: returns every tournament regardless of visibility. */
+  listAllTournaments(): Promise<StoredTournament[]>;
   listTournamentsForPlayer(playerId: string): Promise<StoredTournament[]>;
   findTournamentByMatchRoomId(roomId: string): Promise<StoredTournament | null>;
   findRegistrationTournamentsByParticipant(playerId: string): Promise<StoredTournament[]>;
@@ -59,6 +62,7 @@ function toStoredTournament(
     groups: obj.groups ?? [],
     knockoutRounds: obj.knockoutRounds ?? [],
     featuredMatchId: obj.featuredMatchId ?? null,
+    isFeatured: obj.isFeatured ?? false,
     invitedUserIds: obj.invitedUserIds ?? [],
     createdAt: new Date(obj.createdAt),
     updatedAt: new Date(obj.updatedAt),
@@ -92,6 +96,7 @@ export class MongoTournamentStore implements TournamentStore {
           groups: tournament.groups,
           knockoutRounds: tournament.knockoutRounds,
           featuredMatchId: tournament.featuredMatchId,
+          isFeatured: tournament.isFeatured,
           invitedUserIds: tournament.invitedUserIds,
         },
       },
@@ -119,7 +124,23 @@ export class MongoTournamentStore implements TournamentStore {
       filter.status = { $ne: "cancelled" };
     }
 
-    const docs = await Tournament.find(filter).sort({ createdAt: -1 }).limit(50).lean().exec();
+    // Sort featured first, then newest first. isFeatured is boolean; Mongo
+    // sorts false < true so we pass -1 to put true (featured) at the top.
+    const docs = await Tournament.find(filter)
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .limit(50)
+      .lean()
+      .exec();
+
+    return docs.map(toStoredTournament);
+  }
+
+  async listAllTournaments(): Promise<StoredTournament[]> {
+    const docs = await Tournament.find({})
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .limit(200)
+      .lean()
+      .exec();
 
     return docs.map(toStoredTournament);
   }
@@ -241,7 +262,18 @@ export class InMemoryTournamentStore implements TournamentStore {
         }
         return true;
       })
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => {
+        // Featured first, then newest first.
+        if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+  }
+
+  async listAllTournaments(): Promise<StoredTournament[]> {
+    return Array.from(this.tournaments.values()).sort((a, b) => {
+      if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
   }
 
   async countOngoingTournamentsByCreator(creatorId: string): Promise<number> {

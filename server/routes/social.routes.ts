@@ -891,6 +891,14 @@ router.post("/player/social/game-invitations", async (req: Request, res: Respons
     }
 
     const snapshot = await gameService.getSnapshot(gameId);
+
+    if (snapshot.roomType === "tournament") {
+      return res.status(403).json({
+        code: "TOURNAMENT_NO_INVITE",
+        message: "Tournament games can't be shared via invitation.",
+      });
+    }
+
     const isPlayerInRoom = snapshot.players.some((slot) => slot.player.playerId === account.id);
 
     if (!isPlayerInRoom) {

@@ -9,6 +9,7 @@ import {
   adminRevokeAchievement,
   getPlayerAchievementIds,
 } from "../game/achievementService";
+import { tournamentService } from "../game/tournamentService";
 
 const router = express.Router();
 
@@ -176,6 +177,81 @@ router.post("/achievements/revoke", async (req: Request, res: Response) => {
     return res.status(200).json({ revoked, achievements });
   } catch (error) {
     return handleRouteError(res, error, "Unable to revoke achievement right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /admin/tournaments — list every tournament (public + private) for admin
+// ---------------------------------------------------------------------------
+
+router.get("/tournaments", async (req: Request, res: Response) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  try {
+    const tournaments = await tournamentService.listAllTournamentsForAdmin();
+    return res.status(200).json({ tournaments });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to list tournaments right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/tournaments/:id/featured — toggle the "featured" flag
+// ---------------------------------------------------------------------------
+
+router.post("/tournaments/:id/featured", async (req: Request, res: Response) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  const { featured } = req.body as { featured?: boolean };
+  if (typeof featured !== "boolean") {
+    return res
+      .status(400)
+      .json({ code: "VALIDATION_ERROR", message: "featured (boolean) is required." });
+  }
+  try {
+    await tournamentService.setFeatured(req.params.id as string, featured);
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to update featured flag.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/tournaments/:id/dev-force-match-result — DEV ONLY
+// Fabricates a match result so we can exercise mid-tournament flow states
+// without having to play 50 real games. Guarded by NODE_ENV !== "production".
+// ---------------------------------------------------------------------------
+
+router.post("/tournaments/:id/dev-force-match-result", async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === "production") {
+    return res
+      .status(404)
+      .json({ code: "NOT_FOUND", message: "Dev-only endpoint is not available." });
+  }
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  const { matchId, winnerId, scoreWhite, scoreBlack, finishReason } = req.body as {
+    matchId?: string;
+    winnerId?: string;
+    scoreWhite?: number;
+    scoreBlack?: number;
+    finishReason?: string;
+  };
+  if (!matchId || !winnerId) {
+    return res
+      .status(400)
+      .json({ code: "VALIDATION_ERROR", message: "matchId and winnerId are required." });
+  }
+  try {
+    await tournamentService.devForceMatchResult(req.params.id as string, matchId, {
+      winnerId,
+      scoreWhite: scoreWhite ?? 10,
+      scoreBlack: scoreBlack ?? 0,
+      finishReason: (finishReason as "captured" | "forfeit" | "timeout" | undefined) ?? "captured",
+    });
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to force match result.", req);
   }
 });
 
