@@ -17,6 +17,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
 import { TournamentNotificationsProvider } from "@/lib/TournamentNotificationsContext";
+import { AnalyticsConsentProvider } from "@/lib/AnalyticsConsent";
+import { ConsentBanner } from "@/components/ConsentBanner";
 import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 
 function OAuthButtons() {
@@ -494,6 +496,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
             </UsernameOnboardingGuard>
             <AuthDialog />
             <OAuthErrorHandler />
+            <ConsentBanner />
             {/* Sonner hardcodes z-index:999999999 on [data-sonner-toaster].
                 Override it below the mobile nav drawer (backdrop z-200). */}
             <style>{`[data-sonner-toaster] { z-index: 150 !important; }`}</style>
@@ -528,9 +531,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppShell>{children}</AppShell>
-      </AuthProvider>
+      <AnalyticsConsentProvider>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
+      </AnalyticsConsentProvider>
     </ErrorBoundary>
   );
 }
