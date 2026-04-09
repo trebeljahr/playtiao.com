@@ -2,6 +2,17 @@ import "@testing-library/jest-dom";
 import { vi } from "vitest";
 import enMessages from "../../messages/en.json";
 
+// jsdom doesn't implement window.scrollTo (nor Element.scrollTo), so any
+// component that calls it during mount — e.g. MultiplayerGamePage's
+// "both seated" effect — floods test logs with:
+//   Error: Not implemented: window.scrollTo
+// Stub both to no-ops. Tests that care about scroll behavior should
+// explicitly spy/assert on these.
+if (typeof window !== "undefined") {
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
+}
+
 // Mock next/navigation — must be in setup so it's available before next-intl resolves it
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
