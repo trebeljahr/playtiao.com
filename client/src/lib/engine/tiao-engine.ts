@@ -365,7 +365,41 @@ export function evaluate(state: GameState): number {
   const myJumpOrigins = getSelectableJumpOrigins(state, me).length;
   const oppJumpOrigins = getSelectableJumpOrigins(state, opp).length;
 
+  // Vulnerability: penalize own pieces that sit adjacent to an opponent piece
+  // which could jump over them (landing square empty). This teaches the AI to
+  // avoid "gifting" captures — e.g. placing right next to an opponent.
+  let myVulnerable = 0;
+  let oppVulnerable = 0;
+  for (let y = 0; y < bs; y++) {
+    for (let x = 0; x < bs; x++) {
+      const tile = state.positions[y][x];
+      if (!tile) continue;
+      for (const { dx, dy } of XY_DIRECTIONS) {
+        const adjX = x + dx;
+        const adjY = y + dy;
+        if (adjX < 0 || adjX >= bs || adjY < 0 || adjY >= bs) continue;
+        const adjTile = state.positions[adjY][adjX];
+        if (adjTile === null || adjTile === tile) continue;
+        // Adjacent opponent — check if they can land behind us
+        const landX = x - dx;
+        const landY = y - dy;
+        if (
+          landX >= 0 &&
+          landX < bs &&
+          landY >= 0 &&
+          landY < bs &&
+          state.positions[landY][landX] === null
+        ) {
+          if (tile === me) myVulnerable++;
+          else oppVulnerable++;
+        }
+      }
+    }
+  }
+
   score += myJumpOrigins * 120 - oppJumpOrigins * 130;
+  score -= myVulnerable * 80;
+  score += oppVulnerable * 80;
   score += (myPieces - oppPieces) * 5;
   score += (myCenterScore - oppCenterScore) * 2;
   score += myConnections - oppConnections;
