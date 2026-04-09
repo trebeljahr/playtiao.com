@@ -19,10 +19,7 @@ export function useTournamentNextMatch(tournamentId: string | null) {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!tournamentId) {
-      setResult(null);
-      return;
-    }
+    if (!tournamentId) return;
     setLoading(true);
     try {
       const { result } = await getMyNextTournamentMatch(tournamentId);
@@ -35,9 +32,15 @@ export function useTournamentNextMatch(tournamentId: string | null) {
     }
   }, [tournamentId]);
 
+  // Don't fire any effects or fetches when there's no tournamentId — most
+  // game pages aren't tournament games and the hook is mounted there too.
+  // An idle no-op effect (with even a benign setState) under heavy parallel
+  // load contributes enough async churn to flake unrelated tests in the
+  // matchmaking game-page suite.
   useEffect(() => {
+    if (!tournamentId) return;
     void refresh();
-  }, [refresh]);
+  }, [tournamentId, refresh]);
 
   useLobbyMessage(
     useCallback(
