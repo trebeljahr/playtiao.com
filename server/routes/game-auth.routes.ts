@@ -24,6 +24,12 @@ import { onTutorialCompleted } from "../game/achievementService";
 import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
 import { authRateLimiter } from "../middleware/rateLimiter";
 import { deleteOpenPanelProfile, identify, track } from "../analytics/openpanel";
+import {
+  enqueueExport,
+  getActiveExportForAccount,
+  getExportDownloadUrl,
+  listExportsForAccount,
+} from "./dataExportService";
 
 const router = express.Router();
 
@@ -1407,6 +1413,83 @@ router.delete("/account", async (req: Request, res: Response) => {
     return res.status(200).json({ message: "Account deleted successfully." });
   } catch (error) {
     return handleRouteError(res, error, "Unable to delete account right now.", req);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GDPR art. 15 "right of access" — self-serve data export endpoints.
+// Users can request a JSON bundle of their personal data and download it
+// without any manual intervention from us. See dataExportService for the
+// worker implementation.
+// ---------------------------------------------------------------------------
+
+// GET /account/exports — list this account's export requests (most recent first)
+router.get("/account/exports", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const exports = await listExportsForAccount(String(account._id));
+    return res.status(200).json({
+      exports: exports.map((e) => ({
+        id: String(e._id),
+        status: e.status,
+        createdAt: e.createdAt,
+        expiresAt: e.expiresAt,
+        error: e.error ?? null,
+      })),
+    });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to list exports right now.", req);
+  }
+});
+
+// POST /account/exports — enqueue a new export
+router.post("/account/exports", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    // One active request at a time. Forces users to delete/expire the
+    // previous export before starting another — basic abuse prevention
+    // and keeps storage bounded.
+    const existing = await getActiveExportForAccount(String(account._id));
+    if (existing) {
+      return res.status(409).json({
+        code: "EXPORT_ALREADY_ACTIVE",
+        message: "You already have an active export request.",
+        exportId: String(existing._id),
+        status: existing.status,
+      });
+    }
+
+    const request = await enqueueExport(String(account._id));
+    return res.status(202).json({
+      id: String(request._id),
+      status: request.status,
+      createdAt: request.createdAt,
+      expiresAt: request.expiresAt,
+    });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to start export right now.", req);
+  }
+});
+
+// GET /account/exports/:id/download — mint a short-lived presigned URL
+router.get("/account/exports/:id/download", async (req: Request, res: Response) => {
+  try {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+
+    const url = await getExportDownloadUrl(req.params.id as string, String(account._id));
+    if (!url) {
+      return res.status(404).json({
+        code: "EXPORT_NOT_FOUND",
+        message: "Export not found, not ready, or has expired.",
+      });
+    }
+    return res.status(200).json({ url });
+  } catch (error) {
+    return handleRouteError(res, error, "Unable to download export right now.", req);
   }
 });
 
