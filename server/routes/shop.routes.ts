@@ -5,6 +5,7 @@ import { grantBadge, revokeBadge, grantTheme } from "../game/badgeService";
 import { handleRouteError } from "../error-handling/routeError";
 import { SHOP_ITEMS, findShopItem } from "../config/shopCatalog";
 import { FRONTEND_URL } from "../config/envVars";
+import { track, trackRevenue } from "../analytics/openpanel";
 
 const router = express.Router();
 
@@ -384,6 +385,11 @@ router.post(
                 }
                 await grantBadge(playerId, itemId);
                 console.info(`[shop] Subscription badge "${itemId}" granted to ${playerId}`);
+                track("subscription_started", {
+                  profileId: playerId,
+                  badge_id: itemId,
+                  subscription_id: subscriptionId,
+                });
               }
             } else {
               if (itemType === "badge") {
@@ -393,6 +399,22 @@ router.post(
                 await grantTheme(playerId, itemId);
                 console.info(`[shop] Granted theme "${itemId}" to ${playerId}`);
               }
+            }
+
+            // Revenue event — fire for every successful checkout, whether
+            // subscription or one-off. Stripe gives the amount in minor
+            // units (cents), so divide for the human-readable figure the
+            // OpenPanel revenue dashboard expects. amount_total can be
+            // null for subscriptions created with a zero-invoice upfront;
+            // skip when so.
+            if (typeof session.amount_total === "number" && session.amount_total > 0) {
+              trackRevenue(session.amount_total / 100, {
+                profileId: playerId,
+                currency: (session.currency ?? "usd").toUpperCase(),
+                item_type: itemType,
+                item_id: itemId,
+                mode: session.mode,
+              });
             }
           } catch (grantErr) {
             console.error("[shop] Failed to grant item:", grantErr);
@@ -448,6 +470,11 @@ router.post(
           } catch (err) {
             console.error("[shop] Failed to revoke badge:", err);
           }
+          track("subscription_cancelled", {
+            profileId: playerId,
+            badge_id: itemId,
+            subscription_id: subscription.id,
+          });
           break;
         }
 

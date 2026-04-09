@@ -68,6 +68,7 @@ import {
 } from "./achievementService";
 import mongoose, { isValidObjectId } from "mongoose";
 import type { RatingStatus } from "../models/GameRoom";
+import { track } from "../analytics/openpanel";
 
 type RoomConnections = Map<WebSocket, string>;
 
@@ -1632,6 +1633,98 @@ export class GameService {
   private async saveRoom(room: StoredMultiplayerRoom): Promise<StoredMultiplayerRoom> {
     const previousStatus = room.status;
     const saved = this.deriveRoomStatus(await this.store.saveRoom(this.deriveRoomStatus(room)));
+
+    // Analytics: fire game lifecycle events on status transitions. The
+    // saveRoom path is the single chokepoint every room state change goes
+    // through (moves, joins, finishes, rematches), so putting the track
+    // calls here gives us uniform coverage regardless of which caller
+    // triggered the transition.
+    if (previousStatus !== "active" && saved.status === "active") {
+      // Fire one event per seated account so each player's profile gets the
+      // game_started in OpenPanel. Guests with synthetic ids still produce
+      // an event — useful for tracking guest conversion later.
+      const baseProps = {
+        game_id: saved.id,
+        mode: saved.roomType,
+        time_control_initial_ms: saved.timeControl?.initialMs ?? null,
+        time_control_increment_ms: saved.timeControl?.incrementMs ?? null,
+      };
+      if (saved.seats.white) {
+        track("game_started", {
+          profileId: saved.seats.white.playerId,
+          color: "white",
+          ...baseProps,
+        });
+      }
+      if (saved.seats.black) {
+        track("game_started", {
+          profileId: saved.seats.black.playerId,
+          color: "black",
+          ...baseProps,
+        });
+      }
+    }
+
+    if (previousStatus !== "finished" && saved.status === "finished") {
+      const winner = getWinner(saved.state);
+      const durationSeconds = Math.round((Date.now() - saved.createdAt.getTime()) / 1000);
+      const moveCount = saved.state.history?.length ?? 0;
+      const finishReason = GameService.deriveFinishReason(saved);
+      const baseFinishProps = {
+        game_id: saved.id,
+        mode: saved.roomType,
+        time_control_initial_ms: saved.timeControl?.initialMs ?? null,
+        time_control_increment_ms: saved.timeControl?.incrementMs ?? null,
+        duration_seconds: durationSeconds,
+        move_count: moveCount,
+        winner: winner ?? "draw",
+        finish_reason: finishReason ?? "unknown",
+      };
+      const resultFor = (color: "white" | "black") =>
+        winner === null ? "draw" : winner === color ? "won" : "lost";
+      if (saved.seats.white) {
+        track("game_finished", {
+          profileId: saved.seats.white.playerId,
+          color: "white",
+          result: resultFor("white"),
+          opponent_type: saved.seats.black?.kind ?? "unknown",
+          ...baseFinishProps,
+        });
+      }
+      if (saved.seats.black) {
+        track("game_finished", {
+          profileId: saved.seats.black.playerId,
+          color: "black",
+          result: resultFor("black"),
+          opponent_type: saved.seats.white?.kind ?? "unknown",
+          ...baseFinishProps,
+        });
+      }
+
+      // Parallel "abandoned" event when the game didn't play out on the
+      // board — lets dashboards distinguish real completions from forfeits
+      // / timeouts without having to filter on finish_reason themselves.
+      if (finishReason === "forfeit" || finishReason === "timeout") {
+        const abandonProps = {
+          game_id: saved.id,
+          mode: saved.roomType,
+          reason: finishReason,
+          move_count: moveCount,
+        };
+        if (saved.seats.white) {
+          track("match_abandoned", {
+            profileId: saved.seats.white.playerId,
+            ...abandonProps,
+          });
+        }
+        if (saved.seats.black) {
+          track("match_abandoned", {
+            profileId: saved.seats.black.playerId,
+            ...abandonProps,
+          });
+        }
+      }
+    }
 
     // Fire tournament callback when a tournament game finishes
     if (

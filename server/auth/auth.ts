@@ -8,6 +8,7 @@ import GameAccount from "../models/GameAccount";
 import { generateFunAnonymousName } from "../game/playerTokens";
 import { FRONTEND_URL, MONGODB_URI, TOKEN_SECRET, PORT } from "../config/envVars";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
+import { identify, track } from "../analytics/openpanel";
 
 const SALT_ROUNDS = 10;
 
@@ -32,6 +33,7 @@ export const auth = betterAuth({
     },
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail(user.email, url);
+      track("password_reset_requested", { profileId: user.id });
     },
   },
 
@@ -228,6 +230,19 @@ export const auth = betterAuth({
               throw err;
             }
           }
+
+          // Authoritative signup event. Fire after the GameAccount exists so
+          // downstream analytics can join on profileId without a race. Guests
+          // bail earlier (isAnonymous short-circuit above) so this only
+          // records real accounts — OAuth + email/password both land here.
+          identify(user.id, {
+            firstName: displayName,
+            ...(user.email ? { email: user.email } : {}),
+          });
+          track("user_signed_up", {
+            profileId: user.id,
+            method: user.email ? "email" : "oauth",
+          });
         },
       },
     },
@@ -269,6 +284,12 @@ export const auth = betterAuth({
           if (result.migrated > 0) {
             console.info(`[auth] Migrated ${result.migrated} guest room(s) to ${newId}`);
           }
+          track("guest_upgraded", {
+            profileId: newId,
+            guest_id: guestId,
+            migrated_games: result.migrated,
+            dropped_games: result.deleted,
+          });
         } catch (err) {
           console.error("[auth] Guest game migration failed:", err);
         }

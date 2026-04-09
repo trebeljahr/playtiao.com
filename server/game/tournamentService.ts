@@ -28,6 +28,7 @@ export const MAX_ONGOING_TOURNAMENTS_PER_CREATOR = 10;
 import { getWinner, getFinishReason } from "../../shared/src";
 import { getPlayerProfiles, type CachedPlayerProfile } from "../cache/playerIdentityCache";
 import { onTournamentWon } from "./achievementService";
+import { track } from "../analytics/openpanel";
 
 // ── Helpers ──
 
@@ -1431,6 +1432,20 @@ export class TournamentService implements TournamentGameCallback {
     if (tournamentWinner) {
       void onTournamentWon(tournamentWinner.playerId).catch((err) => {
         console.error("[tournament] Tournament achievement check failed:", err);
+      });
+    }
+
+    // Analytics: one tournament_finished event per participant so the
+    // dashboard can segment by result (winner vs eliminated). Participant
+    // count is included so the same event can power "average tournament
+    // size" charts without a second query.
+    for (const p of tournament.participants) {
+      track("tournament_finished", {
+        profileId: p.playerId,
+        tournament_id: tournament.tournamentId,
+        format: tournament.settings.format,
+        participants: tournament.participants.length,
+        result: p.status === "winner" ? "won" : "eliminated",
       });
     }
 

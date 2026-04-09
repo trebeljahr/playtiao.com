@@ -3,6 +3,7 @@ import { tournamentService } from "../game/tournamentService";
 import { getPlayerFromRequest } from "../auth/sessionHelper";
 import { handleRouteError } from "../error-handling/routeError";
 import type { TournamentSettings, TournamentStatus } from "../../shared/src";
+import { track } from "../analytics/openpanel";
 
 const router = express.Router();
 
@@ -170,6 +171,11 @@ router.post("/tournaments/:id/register", async (req: Request, res: Response) => 
     const { inviteCode } = req.body as { inviteCode?: string };
     await tournamentService.registerPlayer(req.params.id as string, player, inviteCode);
     const snapshot = await tournamentService.getTournamentSnapshot(req.params.id as string);
+    track("tournament_joined", {
+      profileId: player.playerId,
+      tournament_id: req.params.id as string,
+      via_invite: Boolean(inviteCode),
+    });
     return res.status(200).json({ tournament: snapshot });
   } catch (error) {
     return handleRouteError(res, error, "Unable to register for tournament.", req);
