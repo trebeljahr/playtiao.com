@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LobbySocketProvider } from "@/lib/LobbySocketContext";
 import { SocialNotificationsProvider } from "@/lib/SocialNotificationsContext";
+import { TournamentNotificationsProvider } from "@/lib/TournamentNotificationsContext";
 import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 
 function OAuthButtons() {
@@ -486,37 +487,39 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LobbySocketProvider auth={auth}>
       <SocialNotificationsProvider auth={auth}>
-        <div className="min-h-screen bg-background text-foreground">
-          <UsernameOnboardingGuard>
-            <main className="min-h-screen">{children}</main>
-          </UsernameOnboardingGuard>
-          <AuthDialog />
-          <OAuthErrorHandler />
-          {/* Sonner hardcodes z-index:999999999 on [data-sonner-toaster].
-              Override it below the mobile nav drawer (backdrop z-200). */}
-          <style>{`[data-sonner-toaster] { z-index: 150 !important; }`}</style>
-          <Toaster
-            richColors
-            position="top-right"
-            closeButton
-            toastOptions={{
-              style: {
-                background: "#f5e6d0",
-                color: "#4a3728",
-                border: "1px solid #dbc6a2",
-                boxShadow: "0 4px 16px rgba(74, 55, 40, 0.15)",
-              },
-              cancelButtonStyle: {
-                background: "rgba(74, 55, 40, 0.1)",
-                color: "#6e5b48",
-                flexShrink: 0,
-              },
-              actionButtonStyle: {
-                flexShrink: 0,
-              },
-            }}
-          />
-        </div>
+        <TournamentNotificationsProvider auth={auth}>
+          <div className="min-h-screen bg-background text-foreground">
+            <UsernameOnboardingGuard>
+              <main className="min-h-screen">{children}</main>
+            </UsernameOnboardingGuard>
+            <AuthDialog />
+            <OAuthErrorHandler />
+            {/* Sonner hardcodes z-index:999999999 on [data-sonner-toaster].
+                Override it below the mobile nav drawer (backdrop z-200). */}
+            <style>{`[data-sonner-toaster] { z-index: 150 !important; }`}</style>
+            <Toaster
+              richColors
+              position="top-right"
+              closeButton
+              toastOptions={{
+                style: {
+                  background: "#f5e6d0",
+                  color: "#4a3728",
+                  border: "1px solid #dbc6a2",
+                  boxShadow: "0 4px 16px rgba(74, 55, 40, 0.15)",
+                },
+                cancelButtonStyle: {
+                  background: "rgba(74, 55, 40, 0.1)",
+                  color: "#6e5b48",
+                  flexShrink: 0,
+                },
+                actionButtonStyle: {
+                  flexShrink: 0,
+                },
+              }}
+            />
+          </div>
+        </TournamentNotificationsProvider>
       </SocialNotificationsProvider>
     </LobbySocketProvider>
   );
