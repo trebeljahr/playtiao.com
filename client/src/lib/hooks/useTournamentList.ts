@@ -37,11 +37,14 @@ export function useTournamentList(
     refresh();
   }, [refresh]);
 
-  // Auto-refresh on tournament updates
+  // Auto-refresh on tournament updates. `tournament-update` is only sent
+  // to participants/creator, so without `tournament-list-update` (which
+  // is broadcast globally on create/start/cancel/finish/featured-toggle)
+  // non-participant lobby viewers never see new tournaments appear.
   useLobbyMessage(
     useCallback(
       (payload) => {
-        if (payload.type === "tournament-update") {
+        if (payload.type === "tournament-update" || payload.type === "tournament-list-update") {
           refresh({ silent: true });
         }
       },

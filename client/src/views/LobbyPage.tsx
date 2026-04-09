@@ -62,10 +62,13 @@ export function LobbyPage() {
       ...myTournaments,
       ...publicTournaments.filter((t) => !myIds.has(t.tournamentId)),
     ];
-    // Show active/registration first, then by date
+    // Featured first, then active/registration, then newest first.
     return merged
       .filter((t) => t.status === "registration" || t.status === "active")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => {
+        if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      })
       .slice(0, 3);
   }, [publicTournaments, myTournaments]);
 
@@ -874,6 +877,11 @@ export function LobbyPage() {
                             <p className="font-semibold text-lg text-[#2b1e14] truncate">
                               {item.name}
                             </p>
+                            {item.isFeatured && (
+                              <Badge className="shrink-0 border-amber-400 bg-amber-50 text-amber-700">
+                                {tTournament("featured")}
+                              </Badge>
+                            )}
                             <Badge
                               className={cn(
                                 "shrink-0",
