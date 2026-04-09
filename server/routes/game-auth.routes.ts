@@ -23,6 +23,7 @@ import { grantBadge, revokeBadge } from "../game/badgeService";
 import { onTutorialCompleted } from "../game/achievementService";
 import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
 import { authRateLimiter } from "../middleware/rateLimiter";
+import { deleteOpenPanelProfile, identify, track } from "../analytics/openpanel";
 
 const router = express.Router();
 
@@ -292,6 +293,17 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
     }
 
     const player = buildPlayerIdentityFromAccount(account, result.user.email);
+
+    // Authoritative login event. Fire-and-forget: never blocks the response,
+    // never throws on analytics failure.
+    identify(player.playerId, {
+      firstName: player.displayName,
+      email: result.user.email,
+    });
+    track("user_logged_in", {
+      profileId: player.playerId,
+      method: "username_password",
+    });
 
     return res.status(200).json({ player });
   } catch (error: any) {
@@ -1385,6 +1397,12 @@ router.delete("/account", async (req: Request, res: Response) => {
       db.collection("account").deleteMany({ userId: idFilter } as any),
       db.collection("verification").deleteMany({ identifier: userDoc?.email } as any),
     ]);
+
+    // (i) GDPR right to erasure for analytics — delete the profile and its
+    // event history from OpenPanel. Fire-and-forget; we don't want a stale
+    // analytics backend to block the primary deletion flow.
+    track("account_deleted", { profileId: accountId });
+    void deleteOpenPanelProfile(accountId);
 
     return res.status(200).json({ message: "Account deleted successfully." });
   } catch (error) {

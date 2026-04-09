@@ -44,6 +44,16 @@ const CORRECT_PATH = process.cwd();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const REDIS_URL = process.env.REDIS_URL;
 
+// --- OpenPanel analytics ----------------------------------------------------
+// CLIENT_ID and CLIENT_SECRET together authenticate the Node SDK. The
+// secret never ships to the browser — it must stay server-side. API_URL
+// points at a self-hosted OpenPanel (see server/.env.example); if any of
+// the three is missing the server-side SDK boots fully disabled and all
+// track() calls become no-ops.
+const OPENPANEL_CLIENT_ID = process.env.OPENPANEL_CLIENT_ID;
+const OPENPANEL_CLIENT_SECRET = process.env.OPENPANEL_CLIENT_SECRET;
+const OPENPANEL_API_URL = process.env.OPENPANEL_API_URL;
+
 export {
   TOKEN_SECRET,
   MONGODB_URI,
@@ -55,4 +65,7 @@ export {
   S3_ENDPOINT,
   S3_FORCE_PATH_STYLE,
   REDIS_URL,
+  OPENPANEL_CLIENT_ID,
+  OPENPANEL_CLIENT_SECRET,
+  OPENPANEL_API_URL,
 };
