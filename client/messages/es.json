@@ -296,6 +296,9 @@
     "unrated": "Sin puntuación",
     "addAsFriend": "Añadir a {name} como amigo",
     "goToNextMatch": "Ir a tu siguiente partida",
+    "spectateWhileWaiting": "Ver la partida en curso mientras esperas",
+    "waitingForOpponents": "Esperando a tu próximo rival…",
+    "viewTournamentResults": "Ver resultados del torneo",
     "redirectingIn": "Redirigiendo en {seconds}s...",
     "winner": "Ganador",
     "loser": "Perdedor",
@@ -495,6 +498,11 @@
     "loadingTournament": "Cargando torneo...",
     "tournamentNotFound": "Torneo no encontrado.",
     "matchReady": "¡Tu partida de torneo está lista!",
+    "matchReadyToast": "Tu partida de torneo está lista",
+    "matchReadyToastVs": "contra {opponent}",
+    "waitingBannerLabel": "Esperando",
+    "waitingBannerDesc": "Estás viendo esta partida mientras esperas tu próximo juego del torneo. Te cambiaremos en cuanto esté lista.",
+    "featured": "Destacado",
     "joinTournament": "Unirse al torneo",
     "leaveTournament": "Salir",
     "startTournament": "Iniciar torneo",
@@ -815,6 +823,16 @@
     "achievementCount": "{count} logros desbloqueados",
     "achievementGranted": "Logro \"{achievement}\" otorgado correctamente.",
     "achievementRevoked": "Logro \"{achievement}\" revocado correctamente."
+  },
+  "adminTournaments": {
+    "title": "Gestión de torneos",
+    "forbidden": "No tienes permiso para acceder a esta página.",
+    "allTournaments": "Todos los torneos",
+    "noTournaments": "Aún no hay torneos.",
+    "featureAction": "Destacar",
+    "unfeatureAction": "Quitar destacado",
+    "featured": "Torneo destacado",
+    "unfeatured": "Torneo sin destacar"
   },
   "error": {
     "somethingWentWrong": "Algo salió mal",

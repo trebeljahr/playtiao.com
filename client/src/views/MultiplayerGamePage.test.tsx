@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MultiplayerGamePage } from "./MultiplayerGamePage";
 import type { AuthResponse, MultiplayerSnapshot, TurnRecord } from "@shared";
 import { createInitialGameState, EMPTY_SOCIAL_OVERVIEW } from "@shared";
@@ -43,6 +43,13 @@ vi.mock("@/lib/hooks/useSocialData", () => ({
 
 vi.mock("@/lib/api", () => ({
   accessMultiplayerGame: vi.fn(),
+  // Stub the new next-match endpoint to immediately resolve to `ready`
+  // so the tournament post-game CTA in tests shows the "Go to your
+  // next match" label (matching the old static behavior covered by
+  // existing regression tests).
+  getMyNextTournamentMatch: vi.fn().mockResolvedValue({
+    result: { state: "ready", roomId: "NEXT01", matchId: "R1M0" },
+  }),
   buildWebSocketUrl: (gameId: string) => `ws://localhost:5005/api/ws?gameId=${gameId}`,
 }));
 
@@ -978,9 +985,14 @@ describe("MultiplayerGamePage", () => {
     // Should NOT show rematch button for tournament games
     expect(screen.queryByRole("button", { name: "Rematch" })).not.toBeInTheDocument();
 
-    // Should show "Go to your next match" button
-    const nextMatchBtns = screen.getAllByRole("button", { name: "Go to your next match" });
-    expect(nextMatchBtns.length).toBeGreaterThan(0);
+    // Should show "Go to your next match" button. The label is now
+    // driven by the server's next-match decision (mocked at the top of
+    // this file to resolve to `state: "ready"`), so the hook's async
+    // update needs to settle before we assert.
+    await waitFor(() => {
+      const nextMatchBtns = screen.getAllByRole("button", { name: "Go to your next match" });
+      expect(nextMatchBtns.length).toBeGreaterThan(0);
+    });
 
     // Should show "Add friend" button (for the opponent)
     const addFriendBtns = screen.getAllByRole("button", { name: /Add friend/i });

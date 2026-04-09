@@ -296,6 +296,9 @@
     "unrated": "Unrated",
     "addAsFriend": "Add {name} as a friend",
     "goToNextMatch": "Go to your next match",
+    "spectateWhileWaiting": "Watch current match while waiting",
+    "waitingForOpponents": "Waiting for your next opponent…",
+    "viewTournamentResults": "View tournament results",
     "redirectingIn": "Redirecting in {seconds}s...",
     "winner": "Winner",
     "loser": "Loser",
@@ -495,6 +498,11 @@
     "loadingTournament": "Loading tournament...",
     "tournamentNotFound": "Tournament not found.",
     "matchReady": "Your tournament match is ready!",
+    "matchReadyToast": "Your tournament match is ready",
+    "matchReadyToastVs": "vs {opponent}",
+    "waitingBannerLabel": "Waiting",
+    "waitingBannerDesc": "You're watching this match while waiting for your next tournament game. We'll switch you over the moment it's ready.",
+    "featured": "Featured",
     "joinTournament": "Join Tournament",
     "leaveTournament": "Leave",
     "startTournament": "Start Tournament",
@@ -815,6 +823,16 @@
     "achievementCount": "{count} achievements unlocked",
     "achievementGranted": "Achievement \"{achievement}\" granted successfully.",
     "achievementRevoked": "Achievement \"{achievement}\" revoked successfully."
+  },
+  "adminTournaments": {
+    "title": "Tournament Management",
+    "forbidden": "You do not have permission to access this page.",
+    "allTournaments": "All Tournaments",
+    "noTournaments": "No tournaments yet.",
+    "featureAction": "Feature",
+    "unfeatureAction": "Unfeature",
+    "featured": "Tournament featured",
+    "unfeatured": "Tournament unfeatured"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",

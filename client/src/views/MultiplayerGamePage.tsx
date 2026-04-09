@@ -30,6 +30,7 @@ import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { useStonePlacementSound } from "@/lib/useStonePlacementSound";
 import { TournamentContextBar } from "@/components/tournament/TournamentContextBar";
+import { TournamentWaitingSpectatorBanner } from "@/components/tournament/TournamentWaitingSpectatorBanner";
 import confetti from "canvas-confetti";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import {
@@ -52,6 +53,7 @@ import {
 } from "@/components/game/GameClock";
 import { cn } from "@/lib/utils";
 import { accessMultiplayerGame, getMultiplayerGame } from "@/lib/api";
+import { useTournamentNextMatch } from "@/lib/hooks/useTournamentNextMatch";
 import { InviteFriendsModal } from "@/components/InviteFriendsModal";
 import { LoadingBoardSkeleton } from "@/components/game/LoadingBoardSkeleton";
 
@@ -153,6 +155,11 @@ export function MultiplayerGamePage() {
 
   const websocketDebugEnabled = searchParams?.has("wsDebug") ?? false;
   const spectateOnly = searchParams?.has("spectate") ?? false;
+  // When a tournament player is waiting for their next match and we
+  // drop them into a different match as a spectator, the URL carries
+  // `?waitingForTournament={tournamentId}` so the overlay knows which
+  // tournament to poll for readiness.
+  const waitingForTournamentId = searchParams?.get("waitingForTournament") ?? null;
 
   const multi = useMultiplayerGame(auth, gameId ?? null, {
     websocketDebugEnabled,
@@ -651,6 +658,67 @@ export function MultiplayerGamePage() {
       : "/";
   const backLabel = isTournamentGame ? tCommon("backToTournament") : tCommon("backToLobby");
 
+  // Server-driven "what do I do next?" decision. Only query while we're
+  // actually in a tournament game and we know the tournamentId — otherwise
+  // the hook is a no-op.
+  const tournamentIdForNext =
+    isTournamentGame && multiplayerSnapshot?.tournamentId ? multiplayerSnapshot.tournamentId : null;
+  const { result: nextMatchResult } = useTournamentNextMatch(tournamentIdForNext);
+
+  /**
+   * Derives the post-game CTA (route + label + kind) from the server's
+   * next-match decision. `kind` drives copy and button styling:
+   *
+   * - `next-ready`: next pairing exists, click to play
+   * - `waiting-watch`: waiting on someone else; click to spectate that match
+   * - `waiting-idle`: waiting, nothing to watch — send them to the bracket
+   * - `view-results`: tournament is over for this player
+   * - `back`: fallback while we're still loading the decision
+   */
+  const tournamentPostGame: {
+    route: string;
+    label: string;
+    kind: "next-ready" | "waiting-watch" | "waiting-idle" | "view-results" | "back";
+  } = (() => {
+    if (!isTournamentGame) {
+      return { route: tournamentBackPath, label: backLabel, kind: "back" };
+    }
+    if (!nextMatchResult) {
+      return { route: tournamentBackPath, label: tCommon("backToTournament"), kind: "back" };
+    }
+    if (nextMatchResult.state === "ready") {
+      return {
+        route: `/game/${nextMatchResult.roomId}`,
+        label: t("goToNextMatch"),
+        kind: "next-ready",
+      };
+    }
+    if (nextMatchResult.state === "waiting") {
+      if (nextMatchResult.watchRoomId) {
+        const tid = multiplayerSnapshot?.tournamentId ?? "";
+        return {
+          route: `/game/${nextMatchResult.watchRoomId}?spectate=1&waitingForTournament=${encodeURIComponent(tid)}`,
+          label: t("spectateWhileWaiting"),
+          kind: "waiting-watch",
+        };
+      }
+      return {
+        route: tournamentBackPath,
+        label: t("waitingForOpponents"),
+        kind: "waiting-idle",
+      };
+    }
+    if (nextMatchResult.state === "done") {
+      return {
+        route: tournamentBackPath,
+        label: t("viewTournamentResults"),
+        kind: "view-results",
+      };
+    }
+    // `not-participant` — fall back to the bracket view.
+    return { route: tournamentBackPath, label: tCommon("backToTournament"), kind: "back" };
+  })();
+
   // Tournament post-game: opponent info for "add as friend"
   const tournamentOpponent =
     isTournamentGame && playerSeat && multiplayerSnapshot
@@ -683,14 +751,17 @@ export function MultiplayerGamePage() {
   useEffect(() => {
     if (tournamentRedirectSeconds === null || tournamentRedirectCancelledRef.current) return;
     if (tournamentRedirectSeconds <= 0) {
-      router.push(tournamentBackPath);
+      // Route the player to wherever the server's decision says they
+      // should go — straight into the next game, to the match they're
+      // waiting on (as a spectator), or to the tournament results view.
+      router.push(tournamentPostGame.route);
       return;
     }
     const timer = setTimeout(() => {
       setTournamentRedirectSeconds((s) => (s !== null ? s - 1 : null));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [tournamentRedirectSeconds, router, tournamentBackPath]);
+  }, [tournamentRedirectSeconds, router, tournamentPostGame.route]);
 
   const cancelTournamentRedirect = useCallback(() => {
     tournamentRedirectCancelledRef.current = true;
@@ -1083,6 +1154,20 @@ export function MultiplayerGamePage() {
         <TournamentContextBar
           tournamentId={multiplayerSnapshot.tournamentId}
           tournamentName="Tournament"
+        />
+      )}
+
+      {/*
+       * Spectator overlay for tournament players waiting on another match.
+       * Set when the post-game flow routes a waiting player into an
+       * in-progress game as a spectator. Polls getMyNextMatch in the
+       * background and auto-navigates them into their next pairing as
+       * soon as it's ready.
+       */}
+      {waitingForTournamentId && (
+        <TournamentWaitingSpectatorBanner
+          tournamentId={waitingForTournamentId}
+          onReady={(roomId) => router.replace(`/game/${roomId}`)}
         />
       )}
 
@@ -1566,10 +1651,15 @@ export function MultiplayerGamePage() {
                               </Button>
                             )}
                             <Button
-                              variant="outline"
-                              onClick={() => router.push(tournamentBackPath)}
+                              variant={
+                                tournamentPostGame.kind === "next-ready" ? "default" : "outline"
+                              }
+                              onClick={() => {
+                                cancelTournamentRedirect();
+                                router.push(tournamentPostGame.route);
+                              }}
                             >
-                              {t("goToNextMatch")}
+                              {tournamentPostGame.label}
                             </Button>
                             {tournamentRedirectSeconds !== null && (
                               <button
@@ -1808,10 +1898,10 @@ export function MultiplayerGamePage() {
                   onClick={() => {
                     setGameOverDialogOpen(false);
                     cancelTournamentRedirect();
-                    router.push(tournamentBackPath);
+                    router.push(tournamentPostGame.route);
                   }}
                 >
-                  {tCommon("backToTournament")}
+                  {tournamentPostGame.label}
                 </Button>
                 {canAddTournamentOpponent && tournamentOpponent && (
                   <Button
@@ -1838,7 +1928,7 @@ export function MultiplayerGamePage() {
                     router.push(tournamentBackPath);
                   }}
                 >
-                  {t("goToNextMatch")}
+                  {tCommon("backToTournament")}
                 </Button>
                 {tournamentRedirectSeconds !== null && (
                   <button

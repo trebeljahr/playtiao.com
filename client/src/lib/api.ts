@@ -4,6 +4,8 @@ import type {
   MultiplayerGameSummary,
   MultiplayerGamesIndex,
   MultiplayerSnapshot,
+  MyNextMatchResult,
+  PendingTournamentMatch,
   PlayerIdentity,
   SocialOverview,
   SocialSearchResult,
@@ -552,6 +554,20 @@ export function forfeitTournamentMatch(tournamentId: string, matchId: string, lo
   );
 }
 
+/**
+ * Ask the server what this player should do next in the tournament — the
+ * single source of truth for the post-game CTA (next match / view results /
+ * spectate while waiting). See `MyNextMatchResult` in @shared.
+ */
+export function getMyNextTournamentMatch(tournamentId: string) {
+  return request<{ result: MyNextMatchResult }>(`/api/tournaments/${tournamentId}/my-next-match`);
+}
+
+/** Active tournament matches that are ready & waiting for the current player. */
+export function getMyPendingTournamentMatches() {
+  return request<{ matches: PendingTournamentMatch[] }>(`/api/tournaments/my-pending-matches`);
+}
+
 // ── Admin API ──
 
 export type AdminUserResult = {
@@ -609,6 +625,36 @@ export function adminRevokeAchievement(playerId: string, achievementId: string) 
   return request<{ revoked: boolean; achievements: string[] }>(
     "/api/player/admin/achievements/revoke",
     { method: "POST", body: { playerId, achievementId } },
+  );
+}
+
+export function adminListTournaments() {
+  return request<{ tournaments: TournamentListItem[] }>("/api/player/admin/tournaments");
+}
+
+export function adminSetTournamentFeatured(tournamentId: string, featured: boolean) {
+  return request<{ ok: true }>(`/api/player/admin/tournaments/${tournamentId}/featured`, {
+    method: "POST",
+    body: { featured },
+  });
+}
+
+export function adminDevForceMatchResult(
+  tournamentId: string,
+  matchId: string,
+  result: {
+    winnerId: string;
+    scoreWhite?: number;
+    scoreBlack?: number;
+    finishReason?: "captured" | "forfeit" | "timeout";
+  },
+) {
+  return request<{ ok: true }>(
+    `/api/player/admin/tournaments/${tournamentId}/dev-force-match-result`,
+    {
+      method: "POST",
+      body: { matchId, ...result },
+    },
   );
 }
 

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { TournamentSnapshot } from "@shared";
@@ -63,21 +63,13 @@ export function TournamentPage() {
     }
   }
 
-  const onMatchReady = useCallback(
-    (_matchId: string, roomId: string) => {
-      toast(t("matchReady"), {
-        action: {
-          label: tCommon("play"),
-          onClick: () => router.push(`/game/${roomId}`),
-        },
-      });
-    },
-    [router, t, tCommon],
-  );
-
-  const { tournament, loading, error, refresh } = useTournament(auth, tournamentId ?? null, {
-    onMatchReady,
-  });
+  // The sticky "match ready" notification is now handled globally by
+  // TournamentNotificationsContext — see providers.tsx. We no longer fire
+  // an ephemeral sonner toast here, so the user sees the same
+  // notification whether they're on the tournament page or anywhere
+  // else in the app, and it survives page reloads because the provider
+  // re-fetches from the server on mount.
+  const { tournament, loading, error, refresh } = useTournament(auth, tournamentId ?? null);
 
   // Auto-access private tournament when invite code is in URL
   useEffect(() => {

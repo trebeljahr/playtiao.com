@@ -296,6 +296,9 @@
     "unrated": "Ohne Wertung",
     "addAsFriend": "{name} als Freund hinzufügen",
     "goToNextMatch": "Zum nächsten Spiel",
+    "spectateWhileWaiting": "Aktuelles Spiel beobachten",
+    "waitingForOpponents": "Warte auf deinen nächsten Gegner…",
+    "viewTournamentResults": "Turnierergebnisse ansehen",
     "redirectingIn": "Weiterleitung in {seconds}s...",
     "winner": "Gewinner",
     "loser": "Verlierer",
@@ -495,6 +498,11 @@
     "loadingTournament": "Turnier wird geladen...",
     "tournamentNotFound": "Turnier nicht gefunden.",
     "matchReady": "Dein Turnierspiel ist bereit!",
+    "matchReadyToast": "Dein Turnierspiel ist bereit",
+    "matchReadyToastVs": "gegen {opponent}",
+    "waitingBannerLabel": "Warten",
+    "waitingBannerDesc": "Du schaust dieses Spiel, während du auf dein nächstes Turnierspiel wartest. Wir schalten sofort um, sobald es bereit ist.",
+    "featured": "Ausgewählt",
     "joinTournament": "Turnier beitreten",
     "leaveTournament": "Verlassen",
     "startTournament": "Turnier starten",
@@ -815,6 +823,16 @@
     "achievementCount": "{count} Erfolge freigeschaltet",
     "achievementGranted": "Erfolg \"{achievement}\" erfolgreich freigeschaltet.",
     "achievementRevoked": "Erfolg \"{achievement}\" erfolgreich entzogen."
+  },
+  "adminTournaments": {
+    "title": "Turnierverwaltung",
+    "forbidden": "Du hast keine Berechtigung für diese Seite.",
+    "allTournaments": "Alle Turniere",
+    "noTournaments": "Noch keine Turniere.",
+    "featureAction": "Hervorheben",
+    "unfeatureAction": "Nicht mehr hervorheben",
+    "featured": "Turnier hervorgehoben",
+    "unfeatured": "Turnier nicht mehr hervorgehoben"
   },
   "error": {
     "somethingWentWrong": "Etwas ist schiefgelaufen",
