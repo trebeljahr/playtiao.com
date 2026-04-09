@@ -23,8 +23,10 @@ import {
   unregisterFromTournament,
   startTournament as apiStartTournament,
   cancelTournament as apiCancelTournament,
+  deleteTournament as apiDeleteTournament,
   randomizeTournamentSeeding,
 } from "@/lib/api";
+import { BackButton } from "@/components/BackButton";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { toastError } from "@/lib/errors";
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ export function TournamentPage() {
   const [busy, setBusy] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [inviteCodeDialogOpen, setInviteCodeDialogOpen] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const accessAttempted = useRef(false);
@@ -107,7 +110,8 @@ export function TournamentPage() {
           onOpenAuth={onOpenAuth}
           onLogout={onLogout}
         />
-        <div className="mx-auto max-w-4xl px-4 pb-5 pt-20">
+        <div className="mx-auto max-w-4xl px-4 pb-5 pt-20 space-y-4">
+          <BackButton />
           <p className="text-red-600">{error ?? t("tournamentNotFound")}</p>
         </div>
       </>
@@ -153,6 +157,7 @@ export function TournamentPage() {
       />
 
       <div className="mx-auto max-w-5xl px-4 pb-5 pt-20 space-y-6">
+        <BackButton />
         {/* Header */}
         <div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -241,6 +246,16 @@ export function TournamentPage() {
           {isAdmin && tournament.status !== "finished" && tournament.status !== "cancelled" && (
             <Button variant="outline" disabled={busy} onClick={() => setCancelDialogOpen(true)}>
               {t("cancelTournament")}
+            </Button>
+          )}
+          {isAdmin && tournament.status === "cancelled" && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => setDeleteDialogOpen(true)}
+              className="border-red-300 text-red-700 hover:bg-red-50"
+            >
+              {t("deleteTournament")}
             </Button>
           )}
         </div>
@@ -452,6 +467,39 @@ export function TournamentPage() {
             }}
           >
             {t("cancelTournament")}
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={t("deleteTournamentTitle")}
+        description={t("deleteTournamentDesc")}
+      >
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            {tCommon("cancel")}
+          </Button>
+          <Button
+            className="bg-[#9b4030] text-white hover:bg-[#7a2e22]"
+            disabled={busy}
+            onClick={async () => {
+              setDeleteDialogOpen(false);
+              setBusy(true);
+              try {
+                await apiDeleteTournament(tournament.tournamentId);
+                toast.success(t("tournamentDeleted"));
+                router.push("/tournaments");
+              } catch (err: any) {
+                toastError(err.message ?? t("failedToDelete"));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {t("deleteTournament")}
           </Button>
         </div>
       </Dialog>
