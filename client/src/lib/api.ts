@@ -405,6 +405,35 @@ export function deleteAccount(displayName: string) {
   });
 }
 
+// ── GDPR data export API ──
+
+export type UserExportStatus = "pending" | "running" | "ready" | "failed";
+export type UserExportRow = {
+  id: string;
+  status: UserExportStatus;
+  createdAt: string;
+  expiresAt: string;
+  error: string | null;
+};
+
+export function listDataExports() {
+  return request<{ exports: UserExportRow[] }>("/api/player/account/exports", {
+    method: "GET",
+  });
+}
+
+export function createDataExport() {
+  return request<UserExportRow>("/api/player/account/exports", {
+    method: "POST",
+  });
+}
+
+export function getDataExportDownloadUrl(id: string) {
+  return request<{ url: string }>(`/api/player/account/exports/${id}/download`, {
+    method: "GET",
+  });
+}
+
 export function updateActiveBadges(activeBadges: string[]) {
   return request<{ auth: AuthResponse; activeBadges: string[] }>("/api/player/badges/active", {
     method: "PUT",

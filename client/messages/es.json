@@ -944,6 +944,16 @@
     "impressum": "Aviso legal",
     "privacy": "Privacidad"
   },
+  "dataExport": {
+    "title": "Descargar mis datos",
+    "description": "Obtén una copia de todo lo que Tiao guarda sobre ti — perfil, partidas terminadas, torneos, amigos e invitaciones. Art. 15 RGPD.",
+    "note": "El archivo es un único documento JSON. Los datos de pago los guarda Stripe y no se incluyen.",
+    "request": "Solicitar exportación",
+    "requestedToast": "Exportación solicitada — la preparamos en segundo plano.",
+    "statusPreparing": "Preparando tu exportación… suele tardar unos segundos.",
+    "statusReady": "Tu exportación está lista. El enlace de descarga caduca el {expiresAt}.",
+    "download": "Descargar"
+  },
   "consent": {
     "title": "Cookies y analítica",
     "body": "Usamos una herramienta de analítica autoalojada (OpenPanel) para entender cómo se usa Tiao. Sin rastreo de terceros, sin redes publicitarias. La analítica solo funciona si la aceptas — las cookies esenciales para iniciar sesión y jugar siguen funcionando en cualquier caso.",
@@ -1003,7 +1013,7 @@
     "rightObject": "Oposición — oponerte al tratamiento basado en interés legítimo.",
     "rightWithdraw": "Retirar el consentimiento — en cualquier momento, sin afectar a la legalidad del tratamiento previo.",
     "rightComplain": "Presentar una reclamación ante la autoridad de protección de datos competente. Para el responsable, la autoridad supervisora competente es Die Landesbeauftragte für den Datenschutz und für das Recht auf Akteneinsicht Brandenburg (Stahnsdorfer Damm 77, 14532 Kleinmachnow, Alemania).",
-    "rightsHowTo": "La mayoría de los derechos se pueden ejercer directamente desde la página de Ajustes (eliminar cuenta, alternar analítica, editar perfil). Para cualquier otra cosa, escribe a privacy@playtiao.com y responderemos en un plazo de 30 días.",
+    "rightsHowTo": "La mayoría de los derechos se pueden ejercer directamente desde la página de Ajustes (eliminar cuenta, descargar tus datos, alternar analítica, editar perfil). Para cualquier otra cosa, escribe a privacy@playtiao.com y responderemos en un plazo de 30 días.",
     "cookiesTitle": "7. Cookies y almacenamiento local",
     "cookiesIntro": "Tiao usa dos categorías de almacenamiento del navegador:",
     "cookieEssential": "Esencial — cookies de sesión para el inicio de sesión, protección CSRF y tus preferencias de juego. Necesarias para que el sitio funcione; no requieren consentimiento.",

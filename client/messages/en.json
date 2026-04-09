@@ -944,6 +944,16 @@
     "impressum": "Legal notice",
     "privacy": "Privacy policy"
   },
+  "dataExport": {
+    "title": "Download my data",
+    "description": "Get a copy of everything Tiao stores about you — profile, finished games, tournaments, friends, and invitations. GDPR art. 15.",
+    "note": "The file is a single JSON document. Payment records are held by Stripe and are not included.",
+    "request": "Request export",
+    "requestedToast": "Export requested — we'll prepare it in the background.",
+    "statusPreparing": "Preparing your export… this usually takes a few seconds.",
+    "statusReady": "Your export is ready. Download link expires on {expiresAt}.",
+    "download": "Download"
+  },
   "consent": {
     "title": "Cookies & analytics",
     "body": "We use a self-hosted analytics tool (OpenPanel) to understand how people use Tiao. No third-party tracking, no ad networks. Analytics only run if you accept — essential cookies for login and gameplay keep working either way.",
@@ -1003,7 +1013,7 @@
     "rightObject": "Object — object to processing based on legitimate interest.",
     "rightWithdraw": "Withdraw consent — at any time, without affecting the lawfulness of prior processing.",
     "rightComplain": "Lodge a complaint with your national data-protection authority. For the controller, the competent supervisory authority is Die Landesbeauftragte für den Datenschutz und für das Recht auf Akteneinsicht Brandenburg (Stahnsdorfer Damm 77, 14532 Kleinmachnow, Germany).",
-    "rightsHowTo": "Most rights can be exercised directly from the Settings page (delete account, toggle analytics, edit profile). For anything else, email privacy@playtiao.com and we'll respond within 30 days.",
+    "rightsHowTo": "Most rights can be exercised directly from the Settings page (delete account, download your data, toggle analytics, edit profile). For anything else, email privacy@playtiao.com and we'll respond within 30 days.",
     "cookiesTitle": "7. Cookies and local storage",
     "cookiesIntro": "Tiao uses two categories of browser storage:",
     "cookieEssential": "Essential — session cookies for login, CSRF protection, and your in-game preferences. Required for the site to work; no consent needed.",

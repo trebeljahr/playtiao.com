@@ -19,6 +19,10 @@ import {
   updateAccountProfile,
   uploadAccountProfilePicture,
   deleteAccount,
+  listDataExports,
+  createDataExport,
+  getDataExportDownloadUrl,
+  type UserExportRow,
 } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { setAccountPassword, requestEmailChange } from "@/lib/api";
@@ -81,6 +85,102 @@ const SOCIAL_PROVIDERS = [
   { id: "google" as const, label: "Google", icon: FaGoogle },
   { id: "discord" as const, label: "Discord", icon: FaDiscord },
 ];
+
+function DataExportCard() {
+  const t = useTranslations("dataExport");
+  const tCommon = useTranslations("common");
+  const [exports, setExports] = useState<UserExportRow[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await listDataExports();
+      setExports(res.exports);
+    } catch (error) {
+      toastError(readableError(error));
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Poll while any request is pending/running so the UI flips to "ready"
+  // without a manual refresh. The interval is long enough that a normal
+  // background tab costs basically nothing, short enough that the user
+  // sees the transition without getting impatient.
+  useEffect(() => {
+    const hasActive = exports?.some((e) => e.status === "pending" || e.status === "running");
+    if (!hasActive) return;
+    const interval = window.setInterval(() => {
+      void load();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [exports, load]);
+
+  async function handleRequest() {
+    setBusy(true);
+    try {
+      await createDataExport();
+      toast.success(t("requestedToast"));
+      await load();
+    } catch (error) {
+      toastError(readableError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDownload(id: string) {
+    try {
+      const { url } = await getDataExportDownloadUrl(id);
+      window.location.href = url;
+    } catch (error) {
+      toastError(readableError(error));
+    }
+  }
+
+  const active = exports?.find(
+    (e) => e.status === "pending" || e.status === "running" || e.status === "ready",
+  );
+  const hasActive = Boolean(active);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {active ? (
+          <div className="rounded-lg border border-[#dbc6a2] bg-[#f5e6d0]/40 px-4 py-3 text-sm">
+            {active.status === "pending" || active.status === "running" ? (
+              <p className="text-[#6e5b48]">{t("statusPreparing")}</p>
+            ) : active.status === "ready" ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[#4a3728]">
+                  {t("statusReady", {
+                    expiresAt: new Date(active.expiresAt).toLocaleDateString(),
+                  })}
+                </p>
+                <Button type="button" onClick={() => handleDownload(active.id)}>
+                  {t("download")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs text-[#6e5b48]">{t("note")}</p>
+          <Button type="button" onClick={handleRequest} disabled={busy || hasActive}>
+            {busy ? tCommon("saving") : t("request")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function PrivacyCard() {
   const t = useTranslations("privacy");
@@ -1254,6 +1354,8 @@ export function ProfilePage() {
           />
 
           <PrivacyCard />
+
+          <DataExportCard />
 
           <Card className="border-red-300 bg-red-50/50">
             <CardHeader>
