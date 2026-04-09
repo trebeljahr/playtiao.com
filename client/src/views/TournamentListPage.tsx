@@ -10,8 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { TournamentCreationForm } from "@/components/tournament/TournamentCreationForm";
-import { createTournament } from "@/lib/api";
+import { createTournament, ApiError } from "@/lib/api";
 import { toastError } from "@/lib/errors";
+
+const MAX_ONGOING_TOURNAMENTS = 10;
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useTranslations } from "next-intl";
 import { SkeletonBlock } from "@/components/ui/skeleton";
@@ -67,7 +69,11 @@ export function TournamentListPage() {
       setCreateOpen(false);
       router.push(`/tournament/${tournament.tournamentId}`);
     } catch (err: any) {
-      toastError(err.message ?? t("failedToCreate"));
+      if (err instanceof ApiError && err.code === "TOURNAMENT_LIMIT_REACHED") {
+        toastError(t("tournamentLimitReached", { max: MAX_ONGOING_TOURNAMENTS }));
+      } else {
+        toastError(err.message ?? t("failedToCreate"));
+      }
     } finally {
       setCreateBusy(false);
     }
