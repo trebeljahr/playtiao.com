@@ -229,6 +229,57 @@ async function collectUserData(accountId: string): Promise<Record<string, unknow
     GameInvitation.find({ recipientId: accountId }).lean().exec(),
   ]);
 
+  // Strip denormalized identity from each game. Two things are going on:
+  //
+  //   1. The current GameRoom schema stores playerId + displayName + kind
+  //      on every seat as a query/render optimization. Even that is more
+  //      than we want to export: we don't need the opponent's displayName
+  //      leaking into *this* user's export, and our own displayName is
+  //      already on the top-level `account` section.
+  //
+  //   2. Legacy records (written before PlayerIdentitySchema was slimmed)
+  //      still carry the full profile on disk — email, profilePicture,
+  //      rating, badges, activeBadges — both inside seats and as a
+  //      top-level `players` array that the schema no longer declares.
+  //      Mongoose's .lean() returns whatever is on disk, so those fields
+  //      flow straight through unless we explicitly prune. This is the
+  //      actual PII leak: other users' emails (marc2@example.com etc.)
+  //      were appearing in the export.
+  //
+  // Seats are reduced to bare playerId references; the legacy `players`
+  // array is dropped entirely. Consumers can join seats against `account`
+  // (for self) if they need a display name.
+  const stripSeat = (seat: { playerId?: string; kind?: string } | null | undefined) =>
+    seat ? { playerId: seat.playerId, kind: seat.kind } : null;
+  const leanGames = games.map((g) => {
+    const { players: _legacyPlayers, ...rest } = g as typeof g & { players?: unknown };
+    return {
+      ...rest,
+      seats: {
+        white: stripSeat(g.seats?.white as { playerId?: string; kind?: string } | null | undefined),
+        black: stripSeat(g.seats?.black as { playerId?: string; kind?: string } | null | undefined),
+      },
+    };
+  });
+
+  // Tournaments have the same problem on a smaller scale: the schema
+  // stores `creatorDisplayName` and `participants[i].displayName` as
+  // denormalized copies. Strip both — participants become playerId-only,
+  // and creatorDisplayName drops out (creatorId is enough to identify
+  // self, and opponents' names don't belong in your export).
+  const leanTournaments = tournaments.map((t) => {
+    const { creatorDisplayName: _cdn, ...rest } = t as typeof t & {
+      creatorDisplayName?: unknown;
+    };
+    return {
+      ...rest,
+      participants: ((t.participants ?? []) as Array<Record<string, unknown>>).map((p) => {
+        const { displayName: _dn, ...pRest } = p;
+        return pRest;
+      }),
+    };
+  });
+
   return {
     exported_at: new Date().toISOString(),
     format_version: 1,
@@ -238,8 +289,8 @@ async function collectUserData(accountId: string): Promise<Record<string, unknow
       "Analytics events are held by OpenPanel — contact privacy@playtiao.com if you want those too.",
     ].join(" "),
     account: account ?? null,
-    finished_games: games,
-    tournaments: tournaments,
+    finished_games: leanGames,
+    tournaments: leanTournaments,
     sent_invitations: sentInvites,
     received_invitations: receivedInvites,
   };
