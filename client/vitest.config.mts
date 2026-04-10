@@ -28,6 +28,17 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // 15s per test (up from the 5s vitest default). The AI engine tests
+    // under src/lib/engine are CPU-heavy (individual tests run for 6-16
+    // seconds of pure search) and share vitest's worker pool with the
+    // lightweight component tests. When several engine workers land on
+    // the same pool as a render-heavy test like MultiplayerGamePage,
+    // the component test gets starved and waitFor loops blow through
+    // 5s even though the actual render work is sub-second. 15s is
+    // enough headroom that genuine slow tests still pass cleanly while
+    // real regressions still fail fast — anything that legitimately
+    // needs >15s is almost certainly stuck, not slow.
+    testTimeout: 15_000,
     server: {
       deps: {
         // Process next-intl through vite's pipeline to avoid ESM bare-specifier issues
