@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Impressum (legal notice) page. Required by German law (§ 5 TMG, § 18 MStV)
+ * Impressum (legal notice) page. Required by German law (§ 5 DDG, § 18 MStV)
  * for any commercial or business-like telemedia offering — including hobby
  * projects once they show ads, accept payments, or are "nicht ausschließlich
  * persönlich oder familiär". Tiao accepts Stripe payments, so it qualifies.
