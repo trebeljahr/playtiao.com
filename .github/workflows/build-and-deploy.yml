@@ -64,8 +64,18 @@ jobs:
           no-cache: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # NEXT_PUBLIC_* vars must be passed as build-args here because
+          # `next build` inlines them into the browser bundle at build time.
+          # Coolify only pulls the pre-built image, so setting them in the
+          # Coolify env-vars UI has no effect on the already-compiled JS.
+          # They're hardcoded on purpose: they end up in the public bundle
+          # anyway, so there's nothing to protect as a secret.
           build-args: |
             APP_VERSION=${{ steps.version.outputs.app_version }}
+            NEXT_PUBLIC_OPENPANEL_CLIENT_ID=458ec9bb-b1f5-4326-be2c-b0462667b163
+            NEXT_PUBLIC_OPENPANEL_API_URL=https://analytics-api.trebeljahr.com
+            NEXT_PUBLIC_CREATOR_RICO_ID=69c80a6cb5edd849e485b970
+            NEXT_PUBLIC_CREATOR_ANDREAS_ID=69c8193de40bacfe753a2472
 
       - name: Trigger client deployment via API
         if: ${{ env.COOLIFY_BASE_URL != '' && env.COOLIFY_API_TOKEN != '' && env.COOLIFY_RESOURCE_UUID != '' }}
