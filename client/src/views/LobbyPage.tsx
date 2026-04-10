@@ -782,7 +782,7 @@ export function LobbyPage() {
           <AnimatedCard delay={0.2} className="flex flex-col">
             <PaperCard className="overflow-hidden shadow-lg flex-1">
               <CardHeader className="pb-3">
-                <Badge className="w-fit bg-[#e8e0f4] text-[#5a4570] mb-2">{t("spectate")}</Badge>
+                <Badge className="w-fit bg-[#f5ead8] text-[#6e5437] mb-2">{t("spectate")}</Badge>
                 <CardTitle className="text-2xl text-[#2b1e14]">{t("watchGame")}</CardTitle>
                 <CardDescription className="text-sm text-[#6e5b48] mt-1">
                   {t("watchGameDesc")}
