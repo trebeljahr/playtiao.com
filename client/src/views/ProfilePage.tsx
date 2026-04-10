@@ -174,19 +174,23 @@ function DataExportCard() {
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {active ? (
           <div className="rounded-lg border border-[#dbc6a2] bg-[#f5e6d0]/40 px-4 py-3 text-sm">
             {active.status === "pending" || active.status === "running" ? (
               <p className="text-[#6e5b48]">{t("statusPreparing")}</p>
             ) : active.status === "ready" ? (
-              <div className="flex items-center justify-between gap-3">
+              <div className="space-y-2">
                 <p className="text-[#4a3728]">
                   {t("statusReady", {
                     expiresAt: new Date(active.expiresAt).toLocaleDateString(),
                   })}
                 </p>
-                <Button type="button" onClick={() => handleDownload(active.id)}>
+                <Button
+                  type="button"
+                  onClick={() => handleDownload(active.id)}
+                  className="w-full"
+                >
                   {t("download")}
                 </Button>
               </div>
@@ -194,12 +198,15 @@ function DataExportCard() {
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-[#6e5b48]">{t("note")}</p>
-          <Button type="button" onClick={handleRequest} disabled={busy || hasActive}>
-            {busy ? tCommon("saving") : t("request")}
-          </Button>
-        </div>
+        <p className="text-xs text-[#6e5b48]">{t("note")}</p>
+        <Button
+          type="button"
+          onClick={handleRequest}
+          disabled={busy || hasActive}
+          className="w-full"
+        >
+          {busy ? tCommon("saving") : t("request")}
+        </Button>
       </CardContent>
     </Card>
   );
