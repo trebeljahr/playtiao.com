@@ -579,13 +579,15 @@ export function MultiplayerGamePage() {
 
   const gameOverTitle = isDraw
     ? t("draw")
-    : playerWon
-      ? t("youWon")
-      : playerLost
-        ? t("youLost")
-        : winner
-          ? t("wins", { color: translatePlayerColor(winner, t)! })
-          : "";
+    : isSpectator && winner
+      ? t("wins", { color: translatePlayerColor(winner, t)! })
+      : playerWon
+        ? t("youWon")
+        : playerLost
+          ? t("youLost")
+          : winner
+            ? t("wins", { color: translatePlayerColor(winner, t)! })
+            : "";
 
   function describeFinishReason(): string {
     if (!finishReason) return t("gameOver");

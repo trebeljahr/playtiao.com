@@ -7,6 +7,8 @@ import { authClient } from "@/lib/auth-client";
 import { login as loginWithUsername, getPlayerIdentity } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { op } from "@/lib/openpanel";
+import { resetBoardTheme } from "@/lib/useBoardTheme";
+import { resetActiveBadges } from "@/lib/useActiveBadge";
 
 export interface AuthContextValue {
   auth: AuthResponse | null;
@@ -353,6 +355,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // banner after the page paints.
     if (typeof window !== "undefined") {
       localStorage.removeItem("tiao:knowsHowToPlay");
+      resetBoardTheme();
+      resetActiveBadges();
     }
 
     // Order matters for the rest: do the server-side signout + new-guest

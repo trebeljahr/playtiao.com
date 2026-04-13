@@ -479,8 +479,21 @@ export class MongoGameRoomStore implements GameRoomStore {
   }
 
   async unlinkTournamentGames(tournamentId: string): Promise<number> {
-    const result = await GameRoom.updateMany(
-      { tournamentId, status: { $in: ["waiting", "active"] } },
+    // Finish waiting games — they'll never start now that the tournament is cancelled
+    const waitingResult = await GameRoom.updateMany(
+      { tournamentId, status: "waiting" },
+      {
+        $set: {
+          tournamentId: null,
+          tournamentMatchId: null,
+          roomType: "direct",
+          status: "finished",
+        },
+      },
+    );
+    // Active (in-progress) games get unlinked but stay playable
+    const activeResult = await GameRoom.updateMany(
+      { tournamentId, status: "active" },
       {
         $set: {
           tournamentId: null,
@@ -489,7 +502,7 @@ export class MongoGameRoomStore implements GameRoomStore {
         },
       },
     );
-    return result.modifiedCount;
+    return waitingResult.modifiedCount + activeResult.modifiedCount;
   }
 }
 
@@ -660,9 +673,14 @@ export class InMemoryGameRoomStore implements GameRoomStore {
     let count = 0;
     for (const [, room] of this.rooms) {
       if (room.tournamentId === tournamentId && room.status !== "finished") {
+        const wasWaiting = room.status === "waiting";
         room.tournamentId = null;
         room.tournamentMatchId = null;
         room.roomType = "direct";
+        // Waiting games will never start — mark them finished
+        if (wasWaiting) {
+          room.status = "finished";
+        }
         count++;
       }
     }
