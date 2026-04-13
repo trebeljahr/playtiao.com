@@ -61,6 +61,13 @@ const OPENPANEL_CLIENT_ID = process.env.OPENPANEL_CLIENT_ID;
 const OPENPANEL_CLIENT_SECRET = process.env.OPENPANEL_CLIENT_SECRET;
 const OPENPANEL_API_URL = process.env.OPENPANEL_API_URL;
 
+// Read-mode credentials for the Export API (GDPR data export). Separate
+// from the write credentials above because OpenPanel scopes access by
+// client mode. When missing the data export still works — it just won't
+// include the analytics_events section.
+const OPENPANEL_READ_CLIENT_ID = process.env.OPENPANEL_READ_CLIENT_ID;
+const OPENPANEL_READ_CLIENT_SECRET = process.env.OPENPANEL_READ_CLIENT_SECRET;
+
 export {
   TOKEN_SECRET,
   MONGODB_URI,
@@ -76,4 +83,6 @@ export {
   OPENPANEL_CLIENT_ID,
   OPENPANEL_CLIENT_SECRET,
   OPENPANEL_API_URL,
+  OPENPANEL_READ_CLIENT_ID,
+  OPENPANEL_READ_CLIENT_SECRET,
 };

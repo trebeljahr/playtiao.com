@@ -978,7 +978,7 @@
   },
   "dataExport": {
     "title": "Download my data",
-    "description": "Get a copy of everything Tiao stores about you — profile, finished games, tournaments, friends, and invitations. GDPR art. 15.",
+    "description": "Get a copy of everything Tiao stores about you — profile, finished games, tournaments, friends, invitations, and analytics events. GDPR art. 15.",
     "note": "The file is a single JSON document. Payment records are held by Stripe and are not included.",
     "request": "Request export",
     "requestedToast": "Export requested — we'll prepare it in the background.",

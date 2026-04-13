@@ -978,7 +978,7 @@
   },
   "dataExport": {
     "title": "Descargar mis datos",
-    "description": "Obtén una copia de todo lo que Tiao guarda sobre ti — perfil, partidas terminadas, torneos, amigos e invitaciones. Art. 15 RGPD.",
+    "description": "Obtén una copia de todo lo que Tiao guarda sobre ti — perfil, partidas terminadas, torneos, amigos, invitaciones y eventos de analítica. Art. 15 RGPD.",
     "note": "El archivo es un único documento JSON. Los datos de pago los guarda Stripe y no se incluyen.",
     "request": "Solicitar exportación",
     "requestedToast": "Exportación solicitada — la preparamos en segundo plano.",

@@ -22,11 +22,9 @@
  *   - Output is a single JSON file, not a ZIP. Avoids pulling in an
  *     archiver dependency for a feature that will run <100 times/year.
  *     Plain JSON is trivially parseable by users and regulators alike.
- *   - The export intentionally does NOT include the OpenPanel event
- *     history. Those events are tied to the profileId and can be
- *     exported from the OpenPanel dashboard separately if a regulator
- *     ever asks. Including them here would require a second network
- *     round-trip per request and would bloat the JSON for little value.
+ *   - The export includes OpenPanel analytics events fetched via the
+ *     Export API (read-mode credentials). When read creds aren't
+ *     configured the section is an empty array — the export still works.
  */
 
 import crypto from "crypto";
@@ -44,6 +42,7 @@ import { gameService } from "../game/gameService";
 import { getRedisClient } from "../config/redisClient";
 import { InMemoryExportScheduler, BullMQExportScheduler } from "../game/timerQueue";
 import type { ExportJobScheduler } from "../game/timerQueue";
+import { exportOpenPanelEvents } from "../analytics/openpanel";
 
 /**
  * Push an `export-update` message to this user's lobby socket(s) so
@@ -221,18 +220,20 @@ const exportScheduler: ExportJobScheduler = redis
  * require a full API traversal on every export.
  */
 async function collectUserData(accountId: string): Promise<Record<string, unknown>> {
-  const [account, games, tournaments, sentInvites, receivedInvites] = await Promise.all([
-    GameAccount.findById(accountId).lean(),
-    GameRoom.find({
-      status: "finished",
-      $or: [{ "seats.white.playerId": accountId }, { "seats.black.playerId": accountId }],
-    })
-      .lean()
-      .exec(),
-    Tournament.find({ "participants.playerId": accountId }).lean().exec(),
-    GameInvitation.find({ senderId: accountId }).lean().exec(),
-    GameInvitation.find({ recipientId: accountId }).lean().exec(),
-  ]);
+  const [account, games, tournaments, sentInvites, receivedInvites, analyticsEvents] =
+    await Promise.all([
+      GameAccount.findById(accountId).lean(),
+      GameRoom.find({
+        status: "finished",
+        $or: [{ "seats.white.playerId": accountId }, { "seats.black.playerId": accountId }],
+      })
+        .lean()
+        .exec(),
+      Tournament.find({ "participants.playerId": accountId }).lean().exec(),
+      GameInvitation.find({ senderId: accountId }).lean().exec(),
+      GameInvitation.find({ recipientId: accountId }).lean().exec(),
+      exportOpenPanelEvents(accountId),
+    ]);
 
   // Strip denormalized identity from each game. Two things are going on:
   //
@@ -287,17 +288,17 @@ async function collectUserData(accountId: string): Promise<Record<string, unknow
 
   return {
     exported_at: new Date().toISOString(),
-    format_version: 1,
+    format_version: 2,
     notice: [
-      "This is a full export of your personal data held in Tiao's own database.",
+      "This is a full export of your personal data held in Tiao's systems.",
       "Payment records are held by Stripe — use Stripe's customer portal to download those.",
-      "Analytics events are held by OpenPanel — contact privacy@playtiao.com if you want those too.",
     ].join(" "),
     account: account ?? null,
     finished_games: leanGames,
     tournaments: leanTournaments,
     sent_invitations: sentInvites,
     received_invitations: receivedInvites,
+    analytics_events: analyticsEvents,
   };
 }
 

@@ -126,6 +126,93 @@ export function increment(profileId: string, property: string, value = 1): void 
 
 export { instance as openPanel };
 
+// --- Export API (read-mode credentials) ------------------------------------
+
+const readClientId = process.env.OPENPANEL_READ_CLIENT_ID;
+const readClientSecret = process.env.OPENPANEL_READ_CLIENT_SECRET;
+
+/**
+ * True when the Export API can be used — requires the base API URL plus
+ * a separate read-mode client. When false, GDPR data exports still work
+ * but the `analytics_events` section will be empty.
+ */
+export const openPanelExportEnabled =
+  Boolean(readClientId) && Boolean(readClientSecret) && Boolean(apiUrl);
+
+interface ExportEventsMeta {
+  count: number;
+  totalCount: number;
+  pages: number;
+  current: number;
+}
+
+/**
+ * Fetch all analytics events for a profile from the OpenPanel Export API.
+ * Paginates automatically (1 000 events per page). Only includes
+ * production events — dev/test noise is filtered out so it never leaks
+ * into a user's GDPR export.
+ *
+ * Returns an empty array when:
+ *   - read credentials aren't configured
+ *   - OpenPanel is unreachable or returns an error
+ *   - the profile simply has no events
+ *
+ * Never throws — errors are logged and swallowed so the rest of the
+ * export always succeeds.
+ */
+export async function exportOpenPanelEvents(profileId: string): Promise<Record<string, unknown>[]> {
+  if (!openPanelExportEnabled || !readClientId || !readClientSecret || !apiUrl) {
+    return [];
+  }
+
+  const allEvents: Record<string, unknown>[] = [];
+  let page = 1;
+
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const url = new URL(`${apiUrl}/export/events`);
+      url.searchParams.set("profileId", profileId);
+      url.searchParams.set("limit", "1000");
+      url.searchParams.set("page", String(page));
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          "openpanel-client-id": readClientId,
+          "openpanel-client-secret": readClientSecret,
+        },
+      });
+
+      if (!res.ok) {
+        console.error(
+          `[openpanel] exportOpenPanelEvents(${profileId}) page ${page} failed: ${res.status} ${res.statusText}`,
+        );
+        break;
+      }
+
+      const body = (await res.json()) as {
+        meta: ExportEventsMeta;
+        data: Record<string, unknown>[];
+      };
+
+      // Filter to production events only so dev testing noise stays out
+      // of the user's data export.
+      const prodEvents = body.data.filter(
+        (evt) =>
+          (evt.properties as Record<string, unknown> | undefined)?.environment !== "development",
+      );
+      allEvents.push(...prodEvents);
+
+      if (page >= body.meta.pages) break;
+      page++;
+    }
+  } catch (err) {
+    console.error(`[openpanel] exportOpenPanelEvents(${profileId}) threw:`, err);
+  }
+
+  return allEvents;
+}
+
 /**
  * GDPR right-to-erasure: ask OpenPanel to delete a profile and all its
  * events from the analytics backend. The Node SDK doesn't expose a

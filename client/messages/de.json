@@ -978,7 +978,7 @@
   },
   "dataExport": {
     "title": "Meine Daten herunterladen",
-    "description": "Erhalte eine Kopie aller Daten, die Tiao über dich speichert — Profil, beendete Spiele, Turniere, Freunde und Einladungen. Art. 15 DSGVO.",
+    "description": "Erhalte eine Kopie aller Daten, die Tiao über dich speichert — Profil, beendete Spiele, Turniere, Freunde, Einladungen und Analyse-Events. Art. 15 DSGVO.",
     "note": "Die Datei ist ein einzelnes JSON-Dokument. Zahlungsdaten liegen bei Stripe und sind nicht enthalten.",
     "request": "Export anfordern",
     "requestedToast": "Export angefordert — wir bereiten ihn im Hintergrund vor.",
