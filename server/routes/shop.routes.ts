@@ -360,6 +360,20 @@ router.post(
             break;
           }
 
+          // Validate metadata values before using them in DB queries
+          if (!/^[a-f0-9]{24}$/i.test(playerId)) {
+            console.warn(`[shop] Invalid playerId format in webhook metadata: ${playerId}`);
+            break;
+          }
+          if (itemType !== "badge" && itemType !== "theme") {
+            console.warn(`[shop] Invalid itemType in webhook metadata: ${itemType}`);
+            break;
+          }
+          if (!findShopItem(itemType, itemId)) {
+            console.warn(`[shop] Unknown item in webhook metadata: ${itemType}/${itemId}`);
+            break;
+          }
+
           try {
             if (session.mode === "subscription") {
               const subscriptionId = session.subscription;
@@ -417,8 +431,11 @@ router.post(
               });
             }
           } catch (grantErr) {
-            console.error("[shop] Failed to grant item:", grantErr);
-            // Still return 200 so Stripe doesn't retry indefinitely
+            // Return 500 so Stripe retries — the user paid but didn't get
+            // their item, and a retry will likely succeed once the transient
+            // issue (DB hiccup, etc.) resolves.
+            console.error("[shop] Failed to grant item, returning 500 for Stripe retry:", grantErr);
+            return res.status(500).json({ message: "Fulfillment failed." });
           }
           break;
         }
