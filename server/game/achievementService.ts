@@ -73,7 +73,6 @@ async function grant(playerId: string, achievementId: string): Promise<boolean> 
     throw err;
   }
 
-  console.log(`[achievement] Granted "${achievementId}" to ${playerId}`);
   if (_notifier) _notifier(playerId, def);
 
   // Auto-grant corresponding badge if this achievement has one
@@ -81,7 +80,6 @@ async function grant(playerId: string, achievementId: string): Promise<boolean> 
   if (badgeId) {
     try {
       await grantBadge(playerId, badgeId);
-      console.log(`[achievement] Auto-granted badge "${badgeId}" to ${playerId}`);
     } catch (err) {
       console.error(`[achievement] Failed to auto-grant badge "${badgeId}":`, err);
     }
@@ -122,7 +120,6 @@ export async function adminRevokeAchievement(
 ): Promise<boolean> {
   const result = await Achievement.deleteOne({ playerId, achievementId });
   if (result.deletedCount > 0) {
-    console.log(`[achievement] Revoked "${achievementId}" from ${playerId}`);
     if (_changeNotifier) _changeNotifier(playerId);
     return true;
   }

@@ -1,3 +1,4 @@
+import "./lib/glitchtip"; // Must be early — hooks uncaughtException/unhandledRejection
 import { createServer } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import app from "./app";
@@ -237,6 +238,8 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     await closeWebSocketServer();
     await closeHttpServer();
     await disconnectFromDB();
+    const { flush: flushGlitchtip } = await import("./lib/glitchtip");
+    await flushGlitchtip();
     clearTimeout(forceExitTimer);
     process.exit(0);
   } catch (error) {

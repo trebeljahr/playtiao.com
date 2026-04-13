@@ -842,6 +842,17 @@
     "genericError": "Algo salió mal.",
     "selectImage": "Por favor selecciona un archivo de imagen."
   },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o ha sido movida.",
+    "backToLobby": "Volver al lobby"
+  },
+  "serverError": {
+    "title": "Algo salió mal",
+    "description": "Ocurrió un error inesperado. Nuestros servidores podrían estar teniendo un mal momento — por favor inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo",
+    "backToLobby": "Volver al lobby"
+  },
   "og": {
     "siteDescription": "Un hermoso juego de estrategia abstracto. Juega en línea con amigos, contra IA o en la misma pantalla.",
     "lobbyTitle": "Tiao — Jugar en línea",

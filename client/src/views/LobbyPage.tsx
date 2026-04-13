@@ -190,27 +190,22 @@ export function LobbyPage() {
   // flash where the page rendered without the banner, then the effect
   // fired after mount and the banner appeared from the top. Reading the
   // flag inside a lazy useState initializer means the very first client
-  // render is already correct. (SSR still returns `false` because window
-  // is undefined there — the mismatch only fires on the browser-side
-  // paint, which reads localStorage and settles into the final state.)
-  const initialKnowsHowToPlay = () => {
-    if (typeof window === "undefined") return false;
-    return Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
-  };
-  const [showTutorialBanner, setShowTutorialBanner] = useState(() => !initialKnowsHowToPlay());
-  const [needsTutorial, setNeedsTutorial] = useState(() => !initialKnowsHowToPlay());
+  // Start with SSR-safe defaults (banner visible, tutorial needed) so the
+  // server and client first render always agree. The useEffect below reads
+  // localStorage / auth on mount and corrects the state immediately,
+  // avoiding a hydration mismatch.
+  const [showTutorialBanner, setShowTutorialBanner] = useState(true);
+  const [needsTutorial, setNeedsTutorial] = useState(true);
   const [matchmakingGateOpen, setMatchmakingGateOpen] = useState(false);
   const [pendingMatchmakingNav, setPendingMatchmakingNav] = useState<string | null>(null);
 
   useEffect(() => {
-    // Keep state in sync with the live auth object — a logged-in account
-    // with `hasSeenTutorial` on the server overrides the localStorage
-    // check (accounts shouldn't lose their "completed tutorial" state by
-    // switching browsers). Also re-runs after logout clears the flag so
-    // a newly-guest lobby reflects the cleared state.
+    // Sync tutorial state from the auth object and localStorage.
+    // Accounts with `hasSeenTutorial` override localStorage so users
+    // don't lose their "completed" state across browsers. Also re-runs
+    // after logout clears the flag.
     const seenViaAccount = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
-    const seenViaLocal =
-      typeof window !== "undefined" && Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
+    const seenViaLocal = Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
     const completed = Boolean(seenViaAccount || seenViaLocal);
     setShowTutorialBanner(!completed);
     setNeedsTutorial(!completed);
@@ -547,20 +542,20 @@ export function LobbyPage() {
           </AnimatedCard>
 
           {/* Online — Matchmaking */}
-          <AnimatedCard delay={0.1} className="break-inside-avoid">
-            <PaperCard className="overflow-hidden shadow-xl">
+          <AnimatedCard delay={0.1} className="break-inside-avoid xl:flex xl:flex-col">
+            <PaperCard className="overflow-hidden shadow-xl xl:flex-1">
               <div className="h-2 bg-[linear-gradient(90deg,#6e4f29,#d2a661)]" />
               <CardHeader className="pb-6">
                 <Badge className="w-fit bg-[#f5ead8] text-[#6e5437] mb-2">{t("online")}</Badge>
                 <CardTitle className="text-3xl text-[#2b1e14]">{t("matchmaking")}</CardTitle>
-                <CardDescription className="text-sm text-[#6e5b48] mt-1 xl:hidden">
+                <CardDescription className="text-sm text-[#6e5b48] mt-1 md:hidden xl:block">
                   {t("matchmakingDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pb-6">
                 <Button
                   size="lg"
-                  className={cn("w-full h-12 text-base", needsTutorial && "opacity-60")}
+                  className={cn("w-full h-12 text-base")}
                   onClick={() => handleMatchmakingClick("/matchmaking")}
                   title={needsTutorial ? t("tutorialGateTitle") : undefined}
                 >
@@ -588,7 +583,6 @@ export function LobbyPage() {
                           title={needsTutorial ? t("tutorialGateTitle") : tooltip}
                           className={cn(
                             "flex flex-col items-center gap-0.5 h-auto py-2.5 border-[#dcc7a2] hover:border-[#b98d49] hover:bg-[#fff8ee] transition-all",
-                            needsTutorial && "opacity-60",
                           )}
                           onClick={() =>
                             handleMatchmakingClick(

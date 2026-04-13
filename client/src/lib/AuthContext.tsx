@@ -9,6 +9,7 @@ import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { op } from "@/lib/openpanel";
 import { resetBoardTheme } from "@/lib/useBoardTheme";
 import { resetActiveBadges } from "@/lib/useActiveBadge";
+import { setUser as setGlitchtipUser } from "@/lib/glitchtip";
 
 export interface AuthContextValue {
   auth: AuthResponse | null;
@@ -124,6 +125,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       firstName: player.displayName,
       ...(player.email ? { email: player.email } : {}),
     });
+  }, [auth?.player]);
+
+  // Sync GlitchTip user context so captured errors include playerId
+  useEffect(() => {
+    const player = auth?.player;
+    if (player) {
+      setGlitchtipUser({ id: player.playerId, username: player.displayName });
+    } else {
+      setGlitchtipUser(null);
+    }
   }, [auth?.player]);
 
   useEffect(() => {

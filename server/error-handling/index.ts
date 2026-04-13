@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response, ErrorRequestHandler, Application } from "express";
+import { captureException } from "../lib/glitchtip";
 
 interface MongoError extends Error {
   code?: number;
@@ -53,6 +54,7 @@ export const addErrorHandlingToApp = (app: Application) => {
     }
 
     console.error(`[${req.method} ${req.path}] Unhandled error:`, err);
+    captureException(err, { method: req.method, path: req.path });
 
     if (!res.headersSent) {
       res.status(500).json({

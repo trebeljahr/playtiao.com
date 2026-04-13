@@ -42,6 +42,13 @@ const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true";
 const CORRECT_PATH = process.cwd();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const GLITCHTIP_DSN = process.env.GLITCHTIP_DSN;
+if (!FRONTEND_URL && process.env.NODE_ENV === "production") {
+  console.error(
+    "FRONTEND_URL is required in production — CORS and WebSocket origin checks are disabled without it.",
+  );
+  process.exit(1);
+}
 const REDIS_URL = process.env.REDIS_URL;
 
 // --- OpenPanel analytics ----------------------------------------------------
@@ -65,6 +72,7 @@ export {
   S3_ENDPOINT,
   S3_FORCE_PATH_STYLE,
   REDIS_URL,
+  GLITCHTIP_DSN,
   OPENPANEL_CLIENT_ID,
   OPENPANEL_CLIENT_SECRET,
   OPENPANEL_API_URL,

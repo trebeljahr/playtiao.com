@@ -1823,10 +1823,6 @@ export class GameService {
 
     await this.store.saveRoom(room);
 
-    console.log(
-      `[game] Elo updated for room ${room.id}: white ${whiteElo}->${newRatingA}, black ${blackElo}->${newRatingB}`,
-    );
-
     // Re-broadcast the snapshot so clients receive the rating data
     void this.broadcastSnapshot(room);
   }

@@ -51,6 +51,21 @@ export const authRateLimiter = rateLimit({
   },
 });
 
+/** Game creation / joining: 20 requests per minute per player/IP. */
+export const gameActionRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  store: createStore("tiao:rl:game:"),
+  keyGenerator: perAccountKey,
+  validate: !isTest,
+  message: {
+    code: "RATE_LIMITED",
+    message: "Too many game requests. Please slow down.",
+  },
+});
+
 export const userSearchRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   limit: 50,

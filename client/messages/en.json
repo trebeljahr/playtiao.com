@@ -842,6 +842,17 @@
     "genericError": "Something went wrong.",
     "selectImage": "Please select an image file."
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "backToLobby": "Back to Lobby"
+  },
+  "serverError": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Our servers might be having a bad moment — please try again.",
+    "tryAgain": "Try again",
+    "backToLobby": "Back to Lobby"
+  },
   "og": {
     "siteDescription": "A beautiful abstract strategy board game. Play online with friends, against AI, or over the board.",
     "lobbyTitle": "Tiao — Play Online",

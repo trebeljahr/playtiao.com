@@ -140,9 +140,7 @@ export const auth = betterAuth({
                 await db.collection("session").deleteMany({ userId: session.userId } as any);
                 await db.collection("account").deleteMany({ userId: session.userId } as any);
                 await db.collection("user").deleteOne({ _id: session.userId as any });
-                console.info(
-                  `[auth] Cleaned up orphaned BA records for deleted user ${session.userId}`,
-                );
+                // Orphaned BA records cleaned up for deleted user
               } catch (cleanupErr) {
                 console.warn("[auth] Failed to clean up orphaned BA records:", cleanupErr);
               }
@@ -253,7 +251,6 @@ export const auth = betterAuth({
     anonymous({
       generateName: () => {
         const name = generateFunAnonymousName();
-        console.info(`[auth] Generated anonymous name: ${name}`);
         return name;
       },
       onLinkAccount: async ({ anonymousUser, newUser }) => {
@@ -268,8 +265,6 @@ export const auth = betterAuth({
         const newId = newUser.user.id;
         const newDisplayName =
           (newUser.user as { displayName?: string }).displayName || newUser.user.name;
-        console.info(`[auth] Migrating guest games from ${guestId} to account ${newId}`);
-
         const { gameService } = await import("../game/gameService");
         try {
           const result = await gameService.migrateGuestToAccount(guestId, {
@@ -277,14 +272,6 @@ export const auth = betterAuth({
             displayName: newDisplayName,
             kind: "account",
           });
-          if (result.deleted > 0) {
-            console.info(
-              `[auth] Migration dropped ${result.deleted} self-vs-self room(s): ${result.deletedRoomIds.join(", ")}`,
-            );
-          }
-          if (result.migrated > 0) {
-            console.info(`[auth] Migrated ${result.migrated} guest room(s) to ${newId}`);
-          }
           track("guest_upgraded", {
             profileId: newId,
             guest_id: guestId,

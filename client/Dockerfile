@@ -29,6 +29,10 @@ ENV NEXT_PUBLIC_OPENPANEL_CLIENT_ID=${NEXT_PUBLIC_OPENPANEL_CLIENT_ID}
 ENV NEXT_PUBLIC_OPENPANEL_API_URL=${NEXT_PUBLIC_OPENPANEL_API_URL}
 ENV NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV=${NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV}
 
+# GlitchTip (Sentry-compatible) error monitoring — DSN inlined at build time.
+ARG NEXT_PUBLIC_GLITCHTIP_DSN
+ENV NEXT_PUBLIC_GLITCHTIP_DSN=${NEXT_PUBLIC_GLITCHTIP_DSN}
+
 # Creator profile shortcuts — stable player IDs linked from the landing page.
 # Optional: if unset, the creator pages fall back to a 404.
 ARG NEXT_PUBLIC_CREATOR_RICO_ID

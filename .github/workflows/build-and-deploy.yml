@@ -76,6 +76,7 @@ jobs:
             NEXT_PUBLIC_OPENPANEL_API_URL=https://analytics-api.trebeljahr.com
             NEXT_PUBLIC_CREATOR_RICO_ID=69c80a6cb5edd849e485b970
             NEXT_PUBLIC_CREATOR_ANDREAS_ID=69c8193de40bacfe753a2472
+            NEXT_PUBLIC_GLITCHTIP_DSN=https://e44c9bfbc30546e19f875b55b4429b97@glitchtip.trebeljahr.com/1
 
       - name: Trigger client deployment via API
         if: ${{ env.COOLIFY_BASE_URL != '' && env.COOLIFY_API_TOKEN != '' && env.COOLIFY_RESOURCE_UUID != '' }}

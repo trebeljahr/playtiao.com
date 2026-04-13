@@ -842,6 +842,17 @@
     "genericError": "Etwas ist schiefgelaufen.",
     "selectImage": "Bitte wähle eine Bilddatei aus."
   },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToLobby": "Zurück zur Lobby"
+  },
+  "serverError": {
+    "title": "Etwas ist schiefgelaufen",
+    "description": "Ein unerwarteter Fehler ist aufgetreten. Unsere Server haben gerade einen schlechten Moment — bitte versuche es erneut.",
+    "tryAgain": "Nochmal versuchen",
+    "backToLobby": "Zurück zur Lobby"
+  },
   "og": {
     "siteDescription": "Ein wunderschönes abstraktes Strategiespiel. Spiele online mit Freunden, gegen KI oder am gleichen Bildschirm.",
     "lobbyTitle": "Tiao — Online spielen",

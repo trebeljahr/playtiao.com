@@ -9,6 +9,7 @@ import GameAccount from "../models/GameAccount";
 import GameRoom, { type IGameRoom } from "../models/GameRoom";
 import { PlayerIdentity } from "../../shared/src";
 import { notifyLobbyUpdate } from "./social.routes";
+import { gameActionRateLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
 
@@ -220,7 +221,7 @@ router.get("/games", async (req: Request, res: Response) => {
  *       500:
  *         description: Server error
  */
-router.post("/games", async (req: Request, res: Response) => {
+router.post("/games", gameActionRateLimiter, async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;
@@ -302,7 +303,7 @@ router.delete("/games/:gameId", async (req: Request, res: Response) => {
  *       500:
  *         description: Server error
  */
-router.post("/games/:gameId/join", async (req: Request, res: Response) => {
+router.post("/games/:gameId/join", gameActionRateLimiter, async (req: Request, res: Response) => {
   const player = await getAuthenticatedPlayer(req, res);
   if (!player) {
     return;

@@ -1,25 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@/components/PageLayout";
 import { PaperCard } from "@/components/ui/paper-card";
 import { CardContent } from "@/components/ui/card";
-import { captureException } from "@/lib/glitchtip";
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-  const t = useTranslations("serverError");
-
-  useEffect(() => {
-    captureException(error, { digest: error.digest });
-  }, [error]);
+export default function NotFound() {
+  const t = useTranslations("notFound");
 
   return (
     <PageLayout maxWidth="max-w-lg">
@@ -31,24 +19,14 @@ export default function Error({
 
         <PaperCard className="mt-8 w-full shadow-xl">
           <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 font-display text-3xl text-red-600">
-              !
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f4e8d2] font-display text-3xl text-[#6c543c]">
+              ?
             </div>
             <h2 className="font-display text-2xl font-bold text-[#2b1e14]">{t("title")}</h2>
             <p className="max-w-sm text-sm text-[#6e5b48]">{t("description")}</p>
-            {error.message && process.env.NODE_ENV !== "production" && (
-              <pre className="w-full max-h-32 overflow-auto rounded-lg bg-black/5 p-3 text-left text-xs text-red-500">
-                {error.message}
-              </pre>
-            )}
-            <div className="mt-2 flex gap-3">
-              <Button variant="outline" className="border-[#dcc7a2] px-6" onClick={reset}>
-                {t("tryAgain")}
-              </Button>
-              <Button className="px-6" onClick={() => (window.location.href = "/")}>
-                {t("backToLobby")}
-              </Button>
-            </div>
+            <Button className="mt-2 px-8" onClick={() => (window.location.href = "/")}>
+              {t("backToLobby")}
+            </Button>
           </CardContent>
         </PaperCard>
       </div>
