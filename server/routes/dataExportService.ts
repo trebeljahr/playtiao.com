@@ -41,6 +41,9 @@ import Tournament from "../models/Tournament";
 import { s3Client } from "../config/s3Client";
 import { BUCKET_NAME } from "../config/envVars";
 import { gameService } from "../game/gameService";
+import { getRedisClient } from "../config/redisClient";
+import { InMemoryExportScheduler, BullMQExportScheduler } from "../game/timerQueue";
+import type { ExportJobScheduler } from "../game/timerQueue";
 
 /**
  * Push an `export-update` message to this user's lobby socket(s) so
@@ -122,15 +125,10 @@ export async function enqueueExport(accountId: string) {
   // Settings page open.
   broadcastExportUpdate(request);
 
-  // Detach from the request lifecycle. Errors inside runExport are
-  // caught there and persisted as status="failed" on the row — never
-  // rethrown into this setImmediate callback so the event loop stays
-  // clean.
-  setImmediate(() => {
-    void runExport(String(request._id)).catch((err) => {
-      console.error("[export] Unhandled worker error:", err);
-    });
-  });
+  // Dispatch to the job scheduler. When Redis is available, this enqueues
+  // a BullMQ job so any instance can pick it up. Otherwise, fires via
+  // setImmediate in-process.
+  exportScheduler.enqueue(String(request._id));
 
   return request;
 }
@@ -139,7 +137,7 @@ export async function enqueueExport(accountId: string) {
  * The worker itself. Runs detached; never throws. On failure, flips
  * the row to "failed" with a user-facing error message.
  */
-async function runExport(requestId: string): Promise<void> {
+export async function runExport(requestId: string): Promise<void> {
   const request = await UserExportRequest.findById(requestId);
   if (!request) return;
 
@@ -207,6 +205,13 @@ export async function getExportDownloadUrl(
     { expiresIn: PRESIGNED_URL_TTL_SECONDS },
   );
 }
+
+// ─── Job scheduler ──────────────────────────────────────────────────────
+
+const redis = getRedisClient();
+const exportScheduler: ExportJobScheduler = redis
+  ? new BullMQExportScheduler(redis, runExport)
+  : new InMemoryExportScheduler(runExport);
 
 /**
  * Collect everything the user is entitled to receive under GDPR art.

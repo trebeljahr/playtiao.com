@@ -56,6 +56,14 @@ export class GameServiceError extends Error {
 
 import { InMemoryLockProvider, LockProvider } from "./lockProvider";
 import { InMemoryMatchmakingStore, MatchmakingStore } from "./matchmakingStore";
+import { Broadcaster, InMemoryBroadcaster } from "./broadcaster";
+import {
+  TimerScheduler,
+  InMemoryTimerScheduler,
+  TimerHandlers,
+  MatchmakingSweepScheduler,
+  InMemoryMatchmakingSweepScheduler,
+} from "./timerQueue";
 import { computeNewRatings, DEFAULT_RATING } from "./elo";
 import GameAccount from "../models/GameAccount";
 import {
@@ -110,12 +118,11 @@ export class GameService {
   private readonly spectatorIdentities = new Map<string, Map<string, PlayerIdentity>>();
   private readonly matchmaking: MatchmakingStore;
   private readonly lockProvider: LockProvider;
-  private readonly guestAbandonTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private readonly clockTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private readonly firstMoveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly broadcaster: Broadcaster;
+  private readonly timerScheduler: TimerScheduler;
+  private readonly sweepScheduler: MatchmakingSweepScheduler;
   private tournamentCallback: TournamentGameCallback | null = null;
   private readonly lobbyDisconnectCallbacks: Array<(playerId: string) => void> = [];
-  private matchmakingSweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly store: GameRoomStore = new MongoGameRoomStore(),
@@ -123,9 +130,55 @@ export class GameService {
     private readonly abandonTimeoutMs: number = GUEST_ABANDON_TIMEOUT_MS,
     matchmaking?: MatchmakingStore,
     lockProvider?: LockProvider,
+    broadcaster?: Broadcaster,
+    timerSchedulerFactory?: (handlers: TimerHandlers) => TimerScheduler,
+    sweepSchedulerFactory?: (sweepFn: () => Promise<void>) => MatchmakingSweepScheduler,
   ) {
     this.matchmaking = matchmaking ?? new InMemoryMatchmakingStore();
     this.lockProvider = lockProvider ?? new InMemoryLockProvider();
+    this.broadcaster = broadcaster ?? new InMemoryBroadcaster();
+
+    const timerHandlers: TimerHandlers = {
+      onClockExpired: (roomId, expectedTurn) => this.handleClockExpired(roomId, expectedTurn),
+      onAbandonExpired: (roomId, playerId) => this.handleAbandonExpired(roomId, playerId),
+      onFirstMoveExpired: (roomId) => this.handleFirstMoveExpired(roomId),
+    };
+    this.timerScheduler = timerSchedulerFactory
+      ? timerSchedulerFactory(timerHandlers)
+      : new InMemoryTimerScheduler(timerHandlers);
+
+    this.sweepScheduler = sweepSchedulerFactory
+      ? sweepSchedulerFactory(() => this.sweepMatchmakingQueue())
+      : new InMemoryMatchmakingSweepScheduler(() => this.sweepMatchmakingQueue());
+
+    // Wire up broadcaster to deliver received messages to local sockets
+    this.broadcaster.onMessage((channel, target, message) => {
+      if (channel === "room" && target) {
+        const connections = this.connections.get(target);
+        if (!connections) return;
+        for (const [socket] of connections.entries()) {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(message);
+          }
+        }
+      } else if (channel === "lobby" && target) {
+        const sockets = this.lobbyConnections.get(target);
+        if (!sockets) return;
+        for (const socket of sockets) {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(message);
+          }
+        }
+      } else if (channel === "lobby-all") {
+        for (const sockets of this.lobbyConnections.values()) {
+          for (const socket of sockets) {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(message);
+            }
+          }
+        }
+      }
+    });
   }
 
   setTournamentService(svc: TournamentGameCallback): void {
@@ -218,11 +271,13 @@ export class GameService {
 
   async connectLobby(player: PlayerIdentity, socket: WebSocket): Promise<void> {
     let userSockets = this.lobbyConnections.get(player.playerId);
+    const isFirst = !userSockets;
     if (!userSockets) {
       userSockets = new Set();
       this.lobbyConnections.set(player.playerId, userSockets);
     }
     userSockets.add(socket);
+    if (isFirst) this.broadcaster.subscribeLobby(player.playerId);
 
     socket.on("message", (raw) => {
       void this.handleLobbyMessage(player, socket, raw);
@@ -256,6 +311,7 @@ export class GameService {
 
       if (userSockets?.size === 0) {
         this.lobbyConnections.delete(player.playerId);
+        this.broadcaster.unsubscribeLobby(player.playerId);
         void this.revokeRematchesOnDisconnect(player.playerId);
         for (const cb of this.lobbyDisconnectCallbacks) {
           try {
@@ -342,15 +398,7 @@ export class GameService {
   }
 
   broadcastLobby(playerId: string, payload: Record<string, unknown>): void {
-    const userSockets = this.lobbyConnections.get(playerId);
-    if (!userSockets) return;
-
-    const message = JSON.stringify(payload);
-    for (const socket of userSockets) {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(message);
-      }
-    }
+    this.broadcaster.publishLobby(playerId, JSON.stringify(payload));
   }
 
   /**
@@ -360,14 +408,7 @@ export class GameService {
    * has that player on screen (lobby active-games list, friends list, profile).
    */
   broadcastLobbyToAll(payload: Record<string, unknown>): void {
-    const message = JSON.stringify(payload);
-    for (const userSockets of this.lobbyConnections.values()) {
-      for (const socket of userSockets) {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(message);
-        }
-      }
-    }
+    this.broadcaster.publishLobbyAll(JSON.stringify(payload));
   }
 
   async unlinkTournamentGames(tournamentId: string): Promise<number> {
@@ -775,8 +816,10 @@ export class GameService {
     this.clearAbandonTimer(room.id, player.playerId);
 
     const connections = this.getConnections(room.id);
+    const wasEmpty = connections.size === 0;
     connections.set(socket, player.playerId);
     this.socketRooms.set(socket, room.id);
+    if (wasEmpty) this.broadcaster.subscribeRoom(room.id);
 
     // Track spectator identity (non-players connecting to a room)
     if (!this.isPlayerInRoom(room, player.playerId)) {
@@ -822,12 +865,7 @@ export class GameService {
 
     // Ensure the clock timer is running for active timed games (e.g. after
     // server restart or if no timer was scheduled for this room yet).
-    if (
-      room.status === "active" &&
-      room.clockMs &&
-      room.lastMoveAt &&
-      !this.clockTimers.has(room.id)
-    ) {
+    if (room.status === "active" && room.clockMs && room.lastMoveAt) {
       this.scheduleClockTimer(room);
     }
 
@@ -852,6 +890,7 @@ export class GameService {
 
     if (connections.size === 0) {
       this.connections.delete(roomId);
+      this.broadcaster.unsubscribeRoom(roomId);
     }
 
     // Remove spectator identity when all their sockets disconnect
@@ -1389,18 +1428,11 @@ export class GameService {
 
   /** Periodically re-check the queue for players whose Elo windows have expanded enough to match. */
   startMatchmakingSweep(intervalMs = 5_000): void {
-    if (this.matchmakingSweepTimer) return;
-    this.matchmakingSweepTimer = setInterval(() => {
-      void this.sweepMatchmakingQueue();
-    }, intervalMs);
-    if (this.matchmakingSweepTimer.unref) this.matchmakingSweepTimer.unref();
+    this.sweepScheduler.start(intervalMs);
   }
 
   stopMatchmakingSweep(): void {
-    if (this.matchmakingSweepTimer) {
-      clearInterval(this.matchmakingSweepTimer);
-      this.matchmakingSweepTimer = null;
-    }
+    this.sweepScheduler.stop();
   }
 
   private async sweepMatchmakingQueue(): Promise<void> {
@@ -2592,21 +2624,21 @@ export class GameService {
       snapshot,
     });
 
-    // Notify active game connections
+    // Publish to all instances watching this room
+    this.broadcaster.publishRoom(room.id, message);
+
+    // Clean up stale local connections opportunistically
     const connections = this.connections.get(room.id);
-    if (connections && connections.size > 0) {
+    if (connections) {
       for (const [socket] of connections.entries()) {
         if (socket.readyState !== WebSocket.OPEN) {
           connections.delete(socket);
           this.socketRooms.delete(socket);
-          continue;
         }
-
-        socket.send(message);
       }
-
       if (connections.size === 0) {
         this.connections.delete(room.id);
+        this.broadcaster.unsubscribeRoom(room.id);
       }
     }
 
@@ -2645,36 +2677,15 @@ export class GameService {
     return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
   }
 
-  private abandonTimerKey(roomId: string, playerId: string): string {
-    return `${roomId}:${playerId}`;
-  }
-
   private startAbandonTimer(roomId: string, playerId: string): void {
-    const key = this.abandonTimerKey(roomId, playerId);
-    if (this.guestAbandonTimers.has(key)) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      void this.abandonGame(roomId, playerId);
-    }, this.abandonTimeoutMs);
-
-    timer.unref?.();
-    this.guestAbandonTimers.set(key, timer);
+    void this.timerScheduler.scheduleAbandonTimer(roomId, playerId, this.abandonTimeoutMs);
   }
 
   private clearAbandonTimer(roomId: string, playerId: string): void {
-    const key = this.abandonTimerKey(roomId, playerId);
-    const timer = this.guestAbandonTimers.get(key);
-    if (timer) {
-      clearTimeout(timer);
-      this.guestAbandonTimers.delete(key);
-    }
+    void this.timerScheduler.cancelAbandonTimer(roomId, playerId);
   }
 
-  private async abandonGame(roomId: string, playerId: string): Promise<void> {
-    this.guestAbandonTimers.delete(this.abandonTimerKey(roomId, playerId));
-
+  private async handleAbandonExpired(roomId: string, playerId: string): Promise<void> {
     try {
       await this.withLock(this.roomLockKey(roomId), async () => {
         const room = await this.store.getRoom(roomId);
@@ -2703,7 +2714,7 @@ export class GameService {
   // ─── Clock Timers ────────────────────────────────────────────────────
 
   private scheduleClockTimer(room: StoredMultiplayerRoom): void {
-    this.clearClockTimer(room.id);
+    void this.timerScheduler.cancelClockTimer(room.id);
 
     if (
       !room.clockMs ||
@@ -2720,47 +2731,43 @@ export class GameService {
 
     if (remainingMs <= 0) return;
 
-    const timer = setTimeout(async () => {
-      try {
-        await this.withLock(this.roomLockKey(room.id), async () => {
-          const freshRoom = await this.getRoom(room.id);
-          if (freshRoom.status !== "active" || isGameOver(freshRoom.state)) return;
-          if (!freshRoom.clockMs || !freshRoom.lastMoveAt) return;
+    // Small buffer (+100ms) to avoid race conditions
+    void this.timerScheduler.scheduleClockTimer(room.id, remainingMs + 100, currentPlayer);
+  }
 
-          const elapsed = Date.now() - freshRoom.lastMoveAt.getTime();
-          const playerTime = freshRoom.clockMs[freshRoom.state.currentTurn] - elapsed;
+  private async handleClockExpired(roomId: string, _expectedTurn: string): Promise<void> {
+    try {
+      await this.withLock(this.roomLockKey(roomId), async () => {
+        const freshRoom = await this.getRoom(roomId);
+        if (freshRoom.status !== "active" || isGameOver(freshRoom.state)) return;
+        if (!freshRoom.clockMs || !freshRoom.lastMoveAt) return;
 
-          if (playerTime > 0) return; // Not actually expired
+        const elapsed = Date.now() - freshRoom.lastMoveAt.getTime();
+        const playerTime = freshRoom.clockMs[freshRoom.state.currentTurn] - elapsed;
 
-          const flagColor = freshRoom.state.currentTurn;
-          const flagResult = forfeitGame(freshRoom.state, flagColor, "timeout");
-          if (!flagResult.ok) return;
+        if (playerTime > 0) return; // Not actually expired
 
-          freshRoom.clockMs[flagColor] = 0;
-          const savedRoom = await this.saveRoom({
-            ...freshRoom,
-            state: flagResult.value,
-            clockMs: freshRoom.clockMs,
-            lastMoveAt: new Date(),
-          });
+        const flagColor = freshRoom.state.currentTurn;
+        const flagResult = forfeitGame(freshRoom.state, flagColor, "timeout");
+        if (!flagResult.ok) return;
 
-          void this.broadcastSnapshot(savedRoom);
+        freshRoom.clockMs[flagColor] = 0;
+        const savedRoom = await this.saveRoom({
+          ...freshRoom,
+          state: flagResult.value,
+          clockMs: freshRoom.clockMs,
+          lastMoveAt: new Date(),
         });
-      } catch {
-        // Best-effort; don't crash the server.
-      }
-    }, remainingMs + 100); // Small buffer to avoid race conditions
 
-    timer.unref();
-    this.clockTimers.set(room.id, timer);
+        void this.broadcastSnapshot(savedRoom);
+      });
+    } catch {
+      // Best-effort; don't crash the server.
+    }
   }
 
   private clearClockTimer(roomId: string): void {
-    const timer = this.clockTimers.get(roomId);
-    if (timer) {
-      clearTimeout(timer);
-      this.clockTimers.delete(roomId);
-    }
+    void this.timerScheduler.cancelClockTimer(roomId);
   }
 
   /**
@@ -2769,11 +2776,13 @@ export class GameService {
    * Also handles games where time already expired while the server was down.
    */
   async restoreClockTimers(): Promise<void> {
+    // BullMQ persists jobs in Redis — no restoration needed after restart
+    if (this.timerScheduler.isPersistent()) return;
+
     const rooms = await this.store.findActiveTimedRooms();
     let scheduled = 0;
 
     for (const room of rooms) {
-      if (this.clockTimers.has(room.id)) continue;
       this.scheduleClockTimer(this.deriveRoomStatus(room));
       scheduled++;
     }
@@ -2786,7 +2795,7 @@ export class GameService {
   // ─── First-Move Timers ──────────────────────────────────────────────
 
   private scheduleFirstMoveTimer(room: StoredMultiplayerRoom): void {
-    this.clearFirstMoveTimer(room.id);
+    void this.timerScheduler.cancelFirstMoveTimer(room.id);
 
     if (!room.firstMoveDeadline || !room.timeControl || room.status !== "active") {
       return;
@@ -2795,29 +2804,14 @@ export class GameService {
     const remainingMs = room.firstMoveDeadline.getTime() - Date.now();
     if (remainingMs <= 0) return;
 
-    const timer = setTimeout(async () => {
-      try {
-        await this.abortGameForFirstMoveTimeout(room.id);
-      } catch {
-        // Best-effort; don't crash the server.
-      }
-    }, remainingMs + 100);
-
-    timer.unref();
-    this.firstMoveTimers.set(room.id, timer);
+    void this.timerScheduler.scheduleFirstMoveTimer(room.id, remainingMs + 100);
   }
 
   private clearFirstMoveTimer(roomId: string): void {
-    const timer = this.firstMoveTimers.get(roomId);
-    if (timer) {
-      clearTimeout(timer);
-      this.firstMoveTimers.delete(roomId);
-    }
+    void this.timerScheduler.cancelFirstMoveTimer(roomId);
   }
 
-  private async abortGameForFirstMoveTimeout(roomId: string): Promise<void> {
-    this.firstMoveTimers.delete(roomId);
-
+  private async handleFirstMoveExpired(roomId: string): Promise<void> {
     await this.withLock(this.roomLockKey(roomId), async () => {
       const room = await this.store.getRoom(roomId);
       if (!room) return;
@@ -2924,6 +2918,13 @@ export class GameService {
     return run(0);
   }
 
+  async close(): Promise<void> {
+    this.stopMatchmakingSweep();
+    await this.timerScheduler.close();
+    await this.sweepScheduler.close();
+    await this.broadcaster.close();
+  }
+
   private withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
     return this.lockProvider.withLock(key, operation);
   }
@@ -2932,17 +2933,22 @@ export class GameService {
 import { getRedisClient } from "../config/redisClient";
 import { RedisLockProvider } from "./lockProvider";
 import { RedisMatchmakingStore } from "./matchmakingStore";
+import { RedisBroadcaster } from "./broadcaster";
+import { BullMQTimerScheduler, BullMQMatchmakingSweepScheduler } from "./timerQueue";
 
 function createGameService(): GameService {
   const redis = getRedisClient();
   if (redis) {
-    console.info("[game] Using Redis-backed matchmaking and locks.");
+    console.info("[game] Using Redis-backed matchmaking, locks, timers, and broadcasting.");
     return new GameService(
       new MongoGameRoomStore(),
       Math.random,
       GUEST_ABANDON_TIMEOUT_MS,
       new RedisMatchmakingStore(redis),
       new RedisLockProvider(redis),
+      new RedisBroadcaster(redis),
+      (handlers) => new BullMQTimerScheduler(redis, handlers),
+      (sweepFn) => new BullMQMatchmakingSweepScheduler(redis, sweepFn),
     );
   }
 

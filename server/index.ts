@@ -235,6 +235,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   forceExitTimer.unref();
 
   try {
+    await gameService.close();
     await closeWebSocketServer();
     await closeHttpServer();
     await disconnectFromDB();

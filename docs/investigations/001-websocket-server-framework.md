@@ -1,11 +1,12 @@
 # Investigation: WebSocket Server Framework
 
-**Status:** Pending
+**Status:** Blocked
 **Date:** 2026-03-28
+**Attempted:** 2026-04-13
 
 ## Context
 
-The server uses Express 4 + raw `ws` WebSocket library. As the game grows, WebSocket throughput and concurrent connection capacity become increasingly important. Investigated whether replacing Express with a faster alternative could meaningfully improve performance on a single VPS box.
+The server uses Express 5 + raw `ws` WebSocket library. As the game grows, WebSocket throughput and concurrent connection capacity become increasingly important. Investigated whether replacing Express with a faster alternative could meaningfully improve performance on a single VPS box.
 
 ## Options Considered
 
@@ -63,16 +64,36 @@ The real VPS bottlenecks are MongoDB queries, Redis lookups, and game logic CPU 
 
 ## Recommendation
 
-**ultimate-express + uWebSockets.js native WS** is the pragmatic choice:
-
-1. Swap `require("express")` to `require("ultimate-express")` — routes, middleware, everything keeps working
-2. Rewrite WS handling from `ws` to uWS native API (manageable since we already use raw `ws`, no socket.io abstractions to replicate)
-3. Result: ~5-8x more concurrent connections, ~10x WS throughput, minimal business logic changes
-
-The full Hono+Bun rewrite would yield only ~10-20% additional real-world capacity for 5-10x more effort and added risk with native addons (bcrypt, jimp, @aws-sdk).
+**ultimate-express + uWebSockets.js native WS** was the pragmatic choice on paper.
 
 Higher-leverage capacity improvements (independent of framework choice):
 
 - MongoDB query optimization / connection pooling
 - Moving hot game state to Redis
 - Horizontal scaling with Redis Pub/Sub (already planned in ADR #6)
+
+## 2026-04-13 Migration Attempt — Blocked
+
+Attempted the migration to `ultimate-express` + `ultimate-ws`. Found a fatal incompatibility:
+
+**`ultimate-express` + `mongoose` breaks HTTP routing.** After `mongoose.connect()` completes, all routes registered via `app.use(path, router)` silently stop matching and return 404. Routes registered directly with `app.get()` continue to work. This was proven by testing the same request before and after mongoose connects:
+
+- Before `mongoose.connect()`: routes match (503 / DB not ready)
+- After `mongoose.connect()`: routes 404 (gone from uWS route table)
+
+The root cause: `ultimate-express` uses uWebSockets.js's C++ router internally. This router appears to finalize/freeze its route table after certain I/O events. Mongoose's MongoDB driver (which uses `net.Socket` and DNS resolution) triggers this finalization, making all subsequently-dispatched Express Router middleware invisible to uWS.
+
+**Other issues discovered during the attempt:**
+
+1. `ultimate-express` cannot mount the same Express Router instance at two different base paths (it caches path info on the router). Workaround: function delegation `(req, res, next) => router(req, res, next)`.
+2. `ultimate-ws`'s TypeScript declarations use an incompatible `export =` form, requiring `require()` casts instead of `import`.
+3. `ultimate-express`'s `UltimateExpress` type is not assignable to `Express`/`Application` from `@types/express` due to differing `listen()` signatures. Requires `as any` casts at the bridge points.
+4. `@types/express@5` (pulled in by `@types/multer`) conflicts with ultimate-express's bundled `@types/express@4`, creating type mismatches for `Request`/`Response`/`Router` across module boundaries.
+5. `ultimate-ws`'s close event doesn't pass a `reason` Buffer (unlike `ws`), causing `reason.toString()` to crash.
+
+**Conclusion:** The ultimate-express path is not viable with our mongoose-based stack. Future options:
+
+- **Raw uWebSockets.js** (high effort): Replace Express entirely with uWS routing + a `GameSocket` abstraction. Requires rewriting all HTTP routes and middleware.
+- **Separate uWS process** for WebSockets only, with Redis Pub/Sub bridging game state between the Express API server and the uWS WS server. This is essentially the horizontal scaling path from ADR #6.
+- **Wait** for ultimate-express to fix the mongoose compatibility issue, or for the `ws` library to improve throughput (unlikely — the gap is architectural, not incremental).
+- **Re-evaluate when scale demands it.** The current Express + ws stack handles the current load fine. The 5-10K concurrent WS connection limit is far above current usage.

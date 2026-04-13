@@ -21,6 +21,7 @@
     "@sentry/node": "^10.48.0",
     "bcrypt": "^5.1.1",
     "better-auth": "^1.5.6",
+    "bullmq": "^5.73.5",
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
     "express-rate-limit": "^8.0.0",

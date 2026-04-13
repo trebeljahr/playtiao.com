@@ -301,7 +301,7 @@ test("game-aborted message is sent to both players with correct info", async () 
 
   // Access the private method via prototype to test abort behavior
   // We need to use (service as any) to access private method
-  await (service as any).abortGameForFirstMoveTimeout(gameId);
+  await (service as any).handleFirstMoveExpired(gameId);
 
   // Check alice's messages (she's the absent player - white, first to move)
   const aliceMessages = (aliceSocket as unknown as FakeSocket).parsedMessages;
@@ -343,7 +343,7 @@ test("abort does not fire if first move was already made", async () => {
   });
 
   // Try to abort - should be a no-op since lastMoveAt is now set
-  await (service as any).abortGameForFirstMoveTimeout(gameId);
+  await (service as any).handleFirstMoveExpired(gameId);
 
   // Game should still be active
   const snapshot = await service.getSnapshot(gameId);

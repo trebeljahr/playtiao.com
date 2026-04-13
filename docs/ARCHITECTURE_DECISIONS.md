@@ -261,3 +261,59 @@ Key design choices:
 - Tournament-specific UI (brackets, standings, match cards) is a significant client-side addition
 - The `tournamentService.ts` is the largest single service file (~1100 lines) — potential candidate for decomposition
 - Forfeit and auto-drop mechanics add complexity to the game lifecycle
+
+---
+
+## 12. Horizontal Scaling: Redis Pub/Sub + BullMQ
+
+> Related: [ADR #2 — Redis for Stateful Services](#2-redis-for-stateful-services), [ADR #6 — WebSocket Architecture](#6-websocket-architecture)
+
+**Context:** ADR #2 moved matchmaking and locks to Redis, enabling multi-instance deployments for stateless HTTP requests. However, three concerns remained single-instance only:
+
+1. **WebSocket broadcasting** — `broadcastSnapshot()` and lobby notifications only send to sockets on the local process. A player connected to instance A never receives moves published by instance B.
+2. **Timers** — Clock timers, guest abandon timers, and first-move timers use `setTimeout`, which is lost on restart and can't be shared across instances.
+3. **Background jobs** — The matchmaking sweep (`setInterval`) runs on every instance (wasteful races), and GDPR data exports use `setImmediate` (single-process only).
+
+**Decision:** Two new pluggable abstractions following the same interface + Redis/InMemory pattern established in ADR #2:
+
+### Broadcaster (Redis Pub/Sub)
+
+Interface `Broadcaster` with `publishRoom`, `publishLobby`, `publishLobbyAll` methods. Each instance subscribes to Redis Pub/Sub channels for rooms and players it has active WebSocket connections for. Messages include an instance UUID to prevent echo (a publisher doesn't relay its own messages back to itself).
+
+- Channels: `tiao:ws:room:{roomId}`, `tiao:ws:lobby:{playerId}`, `tiao:ws:lobby:all`
+- Local delivery is synchronous (no Redis round-trip for sockets on the publishing instance)
+- Subscribe/unsubscribe tied to connect/disconnect lifecycle in `GameService`
+
+### TimerScheduler (BullMQ)
+
+Interface `TimerScheduler` with schedule/cancel methods for each timer type. Three BullMQ queues with delayed jobs replace the three in-memory `setTimeout` Maps:
+
+- `tiao:timer:clock` — fires when a player's clock runs out
+- `tiao:timer:abandon` — fires 5 minutes after a guest disconnects
+- `tiao:timer:first-move` — fires when the first-move deadline passes
+
+Jobs use deterministic IDs (`clock:{roomId}`, `abandon:{roomId}:{playerId}`, `first-move:{roomId}`) so scheduling is idempotent and cancellation is a simple `queue.remove(jobId)`. Workers run in-process (no separate worker deployment needed). All handlers defensively re-verify the condition from the database before acting, making them safe for at-least-once delivery.
+
+### Background Jobs (BullMQ)
+
+- **Matchmaking sweep**: BullMQ repeatable job (every 5s) replaces `setInterval`. Only one instance picks up each occurrence — no duplicate matching races.
+- **GDPR data export**: BullMQ job replaces `setImmediate`. Any instance can process the export.
+
+**Why BullMQ:**
+
+| Alternative                       | Why not                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------- |
+| Custom Redis ZRANGEBYSCORE poller | Reinvents atomicity, retries, stalled-job recovery, and cleanup — all solved by BullMQ |
+| Agenda (MongoDB-based queues)     | Higher latency, lower throughput; Redis is already in the stack                        |
+| node-cron / setInterval           | In-memory only — exactly the problem being solved                                      |
+
+BullMQ adds ~2MB of dependencies, is well-maintained (5K+ GitHub stars), and has been used in production for background jobs since 2011 (originally as Bull, rewritten as BullMQ).
+
+**Consequences:**
+
+- Multi-instance deployment is now possible: spin up N API servers behind a load balancer, point all at the same Redis + MongoDB, and WebSocket broadcasts, timers, and background jobs work correctly across all instances
+- `restoreClockTimers()` becomes a no-op with BullMQ (jobs persist in Redis and survive restarts)
+- Single-instance deployments still work without Redis (InMemory fallbacks for all interfaces)
+- Redis becomes a hard requirement for multi-instance deployments (already was, via ADR #2)
+- Added dependency: `bullmq`
+- Graceful shutdown must close BullMQ workers and Redis Pub/Sub subscribers
