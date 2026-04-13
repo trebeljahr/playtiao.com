@@ -344,10 +344,20 @@ export function TiaoBoard({
       // the browser generating a synthetic click from the touch event —
       // some browsers/environments (e.g. Playwright) don't, so we call
       // the handler ourselves and suppress the click to avoid double-fires.
+      //
+      // Exception: if a mobile preview is active, tapping a piece should
+      // cancel the preview first — don't forward to the game logic or the
+      // piece gets selected for jumping while the preview stays visible.
       const piece = state.positions[pos.y]?.[pos.x];
       const hasActiveOrigin = !!activeOrigin;
 
       if (piece || hasActiveOrigin) {
+        if (mobilePreview && !hasActiveOrigin) {
+          e.preventDefault();
+          suppressClickRef.current = true;
+          setMobilePreview(null);
+          return;
+        }
         e.preventDefault();
         suppressClickRef.current = true;
         onPointClick?.(pos);
