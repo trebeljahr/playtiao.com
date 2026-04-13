@@ -92,7 +92,7 @@ async function request<T>(
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
   } catch {
-    throw new ApiError(0, "Could not reach the server. Make sure the backend is running.");
+    throw new ApiError(0, "Could not reach the server. Please try again later.");
   }
 
   const data = (await response.json().catch(() => ({}))) as {
@@ -103,7 +103,7 @@ async function request<T>(
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      data.message || "The request could not be completed.",
+      data.message || "Something went wrong.",
       data.code,
     );
   }
@@ -121,7 +121,7 @@ async function upload<T>(path: string, formData: FormData): Promise<T> {
       body: formData,
     });
   } catch {
-    throw new ApiError(0, "Could not reach the server. Make sure the backend is running.");
+    throw new ApiError(0, "Could not reach the server. Please try again later.");
   }
 
   const data = (await response.json().catch(() => ({}))) as {
@@ -132,7 +132,7 @@ async function upload<T>(path: string, formData: FormData): Promise<T> {
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      data.message || "The request could not be completed.",
+      data.message || "Something went wrong.",
       data.code,
     );
   }

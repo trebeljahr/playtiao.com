@@ -840,7 +840,28 @@
     "tryAgain": "Try again",
     "backToHome": "Back to Home",
     "genericError": "Something went wrong.",
-    "selectImage": "Please select an image file."
+    "selectImage": "Please select an image file.",
+    "connectionError": "Could not connect to the server. Please check your connection.",
+    "connectionRetrying": "Connection issue — retrying ({attempt}/{max})...",
+    "serverUnreachable": "Could not reach the server. Please try again later.",
+    "requestFailed": "The request could not be completed.",
+    "somethingWentWrongRetry": "Something went wrong. Please try again."
+  },
+  "resetPassword": {
+    "invalidLink": "Invalid link",
+    "invalidLinkDescription": "This password reset link is invalid or has expired.",
+    "goHome": "Go home",
+    "title": "Password reset",
+    "successDescription": "Your password has been updated. You can now sign in with your new password.",
+    "setNewPassword": "Set new password",
+    "setNewPasswordDescription": "Choose a new password for your account.",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordsDoNotMatch": "Passwords do not match.",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "resetFailed": "Failed to reset password.",
+    "resetting": "Resetting...",
+    "resetButton": "Reset password"
   },
   "notFound": {
     "title": "Page not found",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -9,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 export function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const t = useTranslations("resetPassword");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,15 +23,15 @@ export function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
         <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card/95 px-8 py-7 text-center shadow-[0_24px_70px_-40px_rgba(52,34,19,0.55)]">
-          <h1 className="font-display text-2xl">Invalid link</h1>
+          <h1 className="font-display text-2xl">{t("invalidLink")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This password reset link is invalid or has expired.
+            {t("invalidLinkDescription")}
           </p>
           <a
             href="/"
             className="mt-4 inline-block text-sm text-muted-foreground underline-offset-2 hover:underline"
           >
-            Go home
+            {t("goHome")}
           </a>
         </div>
       </div>
@@ -40,15 +42,15 @@ export function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
         <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card/95 px-8 py-7 text-center shadow-[0_24px_70px_-40px_rgba(52,34,19,0.55)]">
-          <h1 className="font-display text-2xl">Password reset</h1>
+          <h1 className="font-display text-2xl">{t("title")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Your password has been updated. You can now sign in with your new password.
+            {t("successDescription")}
           </p>
           <a
             href="/"
             className="mt-4 inline-block text-sm text-muted-foreground underline-offset-2 hover:underline"
           >
-            Go home
+            {t("goHome")}
           </a>
         </div>
       </div>
@@ -58,9 +60,9 @@ export function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
       <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card/95 px-8 py-7 shadow-[0_24px_70px_-40px_rgba(52,34,19,0.55)]">
-        <h1 className="font-display text-2xl">Set new password</h1>
+        <h1 className="font-display text-2xl">{t("setNewPassword")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose a new password for your account.
+          {t("setNewPasswordDescription")}
         </p>
         <form
           className="mt-4 space-y-3"
@@ -69,12 +71,12 @@ export function ResetPasswordPage() {
             setError(null);
 
             if (password !== confirmPassword) {
-              setError("Passwords do not match.");
+              setError(t("passwordsDoNotMatch"));
               return;
             }
 
             if (password.length < 8) {
-              setError("Password must be at least 8 characters.");
+              setError(t("passwordTooShort"));
               return;
             }
 
@@ -86,12 +88,12 @@ export function ResetPasswordPage() {
               });
 
               if (resetError) {
-                setError(resetError.message || "Failed to reset password.");
+                setError(resetError.message || t("resetFailed"));
               } else {
                 setDone(true);
               }
             } catch {
-              setError("Something went wrong. Please try again.");
+              setError(t("somethingWentWrongRetry"));
             } finally {
               setBusy(false);
             }
@@ -102,7 +104,7 @@ export function ResetPasswordPage() {
               htmlFor="new-password"
               className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
             >
-              New Password
+              {t("newPassword")}
             </label>
             <PasswordInput
               id="new-password"
@@ -122,7 +124,7 @@ export function ResetPasswordPage() {
               htmlFor="confirm-new-password"
               className="text-xs font-semibold uppercase tracking-wider text-[#7b6550]"
             >
-              Confirm Password
+              {t("confirmPassword")}
             </label>
             <PasswordInput
               id="confirm-new-password"
@@ -139,7 +141,7 @@ export function ResetPasswordPage() {
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Resetting..." : "Reset password"}
+            {busy ? t("resetting") : t("resetButton")}
           </Button>
         </form>
       </div>

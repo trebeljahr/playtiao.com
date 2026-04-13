@@ -840,7 +840,28 @@
     "tryAgain": "Intentar de nuevo",
     "backToHome": "Volver al inicio",
     "genericError": "Algo salió mal.",
-    "selectImage": "Por favor selecciona un archivo de imagen."
+    "selectImage": "Por favor selecciona un archivo de imagen.",
+    "connectionError": "No se pudo conectar al servidor. Por favor revisa tu conexión.",
+    "connectionRetrying": "Problema de conexión — reintentando ({attempt}/{max})...",
+    "serverUnreachable": "No se pudo contactar al servidor. Por favor inténtalo más tarde.",
+    "requestFailed": "No se pudo completar la solicitud.",
+    "somethingWentWrongRetry": "Algo salió mal. Por favor inténtalo de nuevo."
+  },
+  "resetPassword": {
+    "invalidLink": "Enlace inválido",
+    "invalidLinkDescription": "Este enlace para restablecer la contraseña es inválido o ha expirado.",
+    "goHome": "Ir al inicio",
+    "title": "Contraseña restablecida",
+    "successDescription": "Tu contraseña ha sido actualizada. Ahora puedes iniciar sesión con tu nueva contraseña.",
+    "setNewPassword": "Establecer nueva contraseña",
+    "setNewPasswordDescription": "Elige una nueva contraseña para tu cuenta.",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden.",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "resetFailed": "No se pudo restablecer la contraseña.",
+    "resetting": "Restableciendo...",
+    "resetButton": "Restablecer contraseña"
   },
   "notFound": {
     "title": "Página no encontrada",
