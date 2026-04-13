@@ -257,14 +257,14 @@ function Brand({
   compact = false,
   className,
 }: {
-  onClick: () => void;
+  onClick?: () => void;
   compact?: boolean;
   className?: string;
 }) {
   const tNav = useTranslations("nav");
   return (
-    <button
-      type="button"
+    <Link
+      href="/"
       onClick={onClick}
       className={cn(
         "flex items-center text-left transition-opacity hover:opacity-90",
@@ -289,7 +289,7 @@ function Brand({
       >
         Tiao
       </span>
-    </button>
+    </Link>
   );
 }
 
@@ -318,11 +318,6 @@ export function Navbar({
   const activeNavItemClasses =
     "bg-[rgba(255,248,232,0.94)] text-[#28170e] shadow-[0_12px_26px_-20px_rgba(98,68,31,0.38)] hover:translate-y-0 hover:bg-[rgba(255,248,232,0.94)] active:translate-y-0";
 
-  const handleNav = (path: string) => {
-    onCloseNav();
-    intlRouter.push(path);
-  };
-
   const iconClass = "mr-1.5 h-3.5 w-3.5 shrink-0 translate-y-[1px]";
   const iconProps = {
     className: iconClass,
@@ -339,8 +334,8 @@ export function Navbar({
   // listener; here we just navigate with the right URL hash.
   type NavItem = {
     label: string;
+    href: string;
     active: boolean;
-    onClick: () => void;
     badge: number;
     badgeTarget?: string;
     icon: React.ReactNode;
@@ -348,8 +343,8 @@ export function Navbar({
   const navItems: NavItem[] = [
     {
       label: t("lobby"),
+      href: "/",
       active: pathname === "/",
-      onClick: () => handleNav("/"),
       badge: unacknowledgedInvitationCount + unacknowledgedRematchCount,
       badgeTarget: "/#invitations",
       icon: (
@@ -363,8 +358,8 @@ export function Navbar({
       ? [
           {
             label: t("friends"),
+            href: "/friends",
             active: pathname === "/friends",
-            onClick: () => handleNav("/friends"),
             badge: unacknowledgedFriendRequestCount,
             badgeTarget: "/friends#incoming-friend-requests",
             icon: (
@@ -378,8 +373,8 @@ export function Navbar({
           },
           {
             label: t("myGames"),
+            href: "/games",
             active: pathname === "/games",
-            onClick: () => handleNav("/games"),
             badge: 0,
             icon: (
               <svg {...iconProps}>
@@ -390,8 +385,8 @@ export function Navbar({
           },
           {
             label: t("tournaments"),
+            href: "/tournaments",
             active: pathname?.startsWith("/tournament"),
-            onClick: () => handleNav("/tournaments"),
             badge: 0,
             icon: (
               <svg {...iconProps}>
@@ -405,8 +400,8 @@ export function Navbar({
           },
           {
             label: t("achievements"),
+            href: "/achievements",
             active: pathname === "/achievements",
-            onClick: () => handleNav("/achievements"),
             badge: 0,
             icon: (
               <svg {...iconProps}>
@@ -423,8 +418,8 @@ export function Navbar({
       ? [
           {
             label: t("shop"),
+            href: "/shop",
             active: pathname === "/shop",
-            onClick: () => handleNav("/shop"),
             badge: 0,
             icon: (
               <svg {...iconProps}>
@@ -438,8 +433,8 @@ export function Navbar({
       : []),
     {
       label: t("tutorial"),
+      href: "/tutorial",
       active: pathname === "/tutorial",
-      onClick: () => handleNav("/tutorial"),
       badge: 0,
       icon: (
         <svg {...iconProps}>
@@ -455,6 +450,7 @@ export function Navbar({
     target: string | undefined,
   ) => {
     if (!target) return;
+    event.preventDefault();
     event.stopPropagation();
     // Strip the hash so handleNav routes through next-intl, then re-apply
     // it via window.location so the hashchange listener on the destination
@@ -519,7 +515,7 @@ export function Navbar({
       onClick={(event) => event.stopPropagation()}
     >
       <div className="flex min-h-11 items-center pl-[4.15rem] pr-2 sm:pl-[4.2rem]">
-        <Brand compact className="shrink-0 -translate-y-[2px]" onClick={() => handleNav("/")} />
+        <Brand compact className="shrink-0 -translate-y-[2px]" onClick={onCloseNav} />
         <div className="ml-auto flex items-center gap-1">
           <LanguagePicker />
           <SoundToggle />
@@ -528,20 +524,22 @@ export function Navbar({
 
       <div className="mt-6 space-y-2.5 text-left">
         {navItems.map((item) => (
-          <Button
+          <Link
             key={item.label}
-            variant="ghost"
+            href={item.href}
             aria-current={item.active ? "page" : undefined}
             className={cn(
+              "inline-flex h-10 items-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200",
+              "text-foreground hover:-translate-y-px hover:bg-accent/50 hover:text-accent-foreground active:translate-y-0",
               navItemClasses,
               item.active ? cn(activeNavItemClasses, "pointer-events-none") : "",
             )}
-            onClick={item.active ? undefined : item.onClick}
+            onClick={item.active ? undefined : onCloseNav}
           >
             {item.icon}
             {item.label}
             {renderBadge(item)}
-          </Button>
+          </Link>
         ))}
       </div>
 
@@ -563,14 +561,18 @@ export function Navbar({
         <div className="mt-4 grid gap-2">
           {player?.kind === "account" ? (
             <>
-              <Button
-                variant="secondary"
-                className="w-full justify-start"
-                onClick={() => handleNav("/settings")}
+              <Link
+                href="/settings"
+                className={cn(
+                  "inline-flex h-10 items-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200",
+                  "bg-secondary text-secondary-foreground shadow-[0_16px_28px_-22px_rgba(92,66,35,0.42)] hover:-translate-y-0.5 hover:bg-secondary/92 active:translate-y-0",
+                  "w-full justify-start",
+                )}
+                onClick={onCloseNav}
               >
                 {settingsIcon}
                 {t("settings")}
-              </Button>
+              </Link>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-[#28170e]"

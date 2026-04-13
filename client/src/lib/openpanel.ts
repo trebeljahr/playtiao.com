@@ -45,7 +45,7 @@ function createInstance(disabled: boolean): OpenPanel {
     clientId: clientId ?? "disabled",
     apiUrl: apiUrl ?? "https://placeholder.invalid",
     trackScreenViews: true,
-    trackOutgoingLinks: true,
+    trackOutgoingLinks: false,
     trackAttributes: true,
     disabled,
   });
