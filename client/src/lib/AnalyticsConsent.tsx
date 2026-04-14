@@ -28,6 +28,10 @@ export const ANALYTICS_CONSENT_STORAGE_KEY = "tiao:analytics-consent";
 
 type AnalyticsConsentContextValue = {
   status: AnalyticsConsentStatus;
+  /** True once the provider has read localStorage. Before this the
+   * status is always "pending" — consumers should wait for hydration
+   * before rendering consent-dependent UI to avoid a flash. */
+  hydrated: boolean;
   /** True when the build actually ships OpenPanel config. Hides the
    * banner on dev builds and forks where analytics isn't wired up. */
   configured: boolean;
@@ -58,6 +62,7 @@ function writeStored(status: Exclude<AnalyticsConsentStatus, "pending">) {
 
 export function AnalyticsConsentProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AnalyticsConsentStatus>("pending");
+  const [hydrated, setHydrated] = useState(false);
 
   // Hydrate from localStorage on mount (client-only). If the user has
   // already granted consent in a previous session we flip the OpenPanel
@@ -66,6 +71,7 @@ export function AnalyticsConsentProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     const stored = readStored();
     setStatus(stored);
+    setHydrated(true);
     if (stored === "granted") {
       enableTracking();
     }
@@ -85,6 +91,7 @@ export function AnalyticsConsentProvider({ children }: { children: React.ReactNo
 
   const value: AnalyticsConsentContextValue = {
     status,
+    hydrated,
     configured: openPanelConfigured,
     grant,
     revoke,
@@ -106,6 +113,7 @@ export function AnalyticsConsentProvider({ children }: { children: React.ReactNo
  */
 const NOOP_CONSENT: AnalyticsConsentContextValue = {
   status: "pending",
+  hydrated: true,
   configured: false,
   grant: () => {},
   revoke: () => {},
