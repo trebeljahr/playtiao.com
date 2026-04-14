@@ -42,10 +42,20 @@ describe("BracketVisualization", () => {
     expect(screen.getByText("No bracket data available yet.")).toBeInTheDocument();
   });
 
-  it("renders round labels", () => {
-    const rounds = [makeRound({ label: "Quarterfinals" })];
+  it("renders round labels computed from position-from-end", () => {
+    // Component derives labels client-side from each round's index
+    // relative to the last round, so a 3-round bracket shows
+    // "Quarterfinals", "Semifinals", "Final" regardless of any label
+    // the server provided. The round.label field is effectively unused.
+    const rounds = [
+      makeRound({ roundIndex: 0, matches: [] }),
+      makeRound({ roundIndex: 1, matches: [] }),
+      makeRound({ roundIndex: 2, matches: [] }),
+    ];
     render(<BracketVisualization rounds={rounds} />);
     expect(screen.getByText("Quarterfinals")).toBeInTheDocument();
+    expect(screen.getByText("Semifinals")).toBeInTheDocument();
+    expect(screen.getByText("Final")).toBeInTheDocument();
   });
 
   it("renders a MatchCard for each match", () => {

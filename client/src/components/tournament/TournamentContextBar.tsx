@@ -7,14 +7,13 @@ export function TournamentContextBar({
 }: {
   tournamentId: string;
   tournamentName?: string;
-  roundLabel?: string;
 }) {
   const t = useTranslations("tournament");
 
   return (
     <div className="fixed top-3 right-3 z-200 flex items-center gap-2 rounded-2xl border border-amber-300/50 bg-amber-50/90 px-3 py-2 text-sm shadow-[0_8px_20px_-12px_rgba(180,140,60,0.3)] backdrop-blur-sm">
       <span className="text-xs font-semibold uppercase tracking-wider text-amber-600">
-        {t("title")}
+        {t("tournamentLabel")}
       </span>
       {tournamentName && (
         <span className="truncate text-amber-900 max-w-[10rem]">{tournamentName}</span>

@@ -24,10 +24,13 @@ export function MatchCard({
   match,
   currentPlayerId,
   featured,
+  roundLabel,
 }: {
   match: TournamentMatch;
   currentPlayerId?: string;
   featured?: boolean;
+  /** When provided, shown as a small label above the match (e.g., "Quarterfinals", "Round 1"). */
+  roundLabel?: string;
 }) {
   const router = useRouter();
   const t = useTranslations("tournament");
@@ -59,8 +62,15 @@ export function MatchCard({
         featured ? "border-amber-400/60 bg-amber-50/40" : "border-white/50 bg-white/60"
       }`}
     >
-      {/* Top row: status badge aligned right */}
-      <div className="mb-1 flex min-h-6 items-center justify-end">
+      {/* Top row: optional round label on the left, status/finish info on the right */}
+      <div className="mb-1 flex min-h-6 items-center justify-between gap-2">
+        {roundLabel ? (
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a07c4d]">
+            {roundLabel}
+          </span>
+        ) : (
+          <span />
+        )}
         {!isDone && (
           <Badge className={statusColor(match.status)}>{statusLabel(match.status)}</Badge>
         )}
