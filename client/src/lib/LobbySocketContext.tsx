@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useCallback } from "react";
 import type { AuthResponse, LobbyClientMessage } from "@shared";
 import { buildWebSocketUrl } from "./api";
 import { createReconnectScheduler } from "./reconnect";
@@ -124,9 +124,8 @@ export function LobbySocketProvider({
     };
   }, [auth]);
 
-  return (
-    <LobbySocketContext.Provider value={{ subscribe, sendMessage }}>
-      {children}
-    </LobbySocketContext.Provider>
-  );
+  // Memoize so consumers of useLobbyMessage don't re-subscribe every render.
+  const value = useMemo(() => ({ subscribe, sendMessage }), [subscribe, sendMessage]);
+
+  return <LobbySocketContext.Provider value={value}>{children}</LobbySocketContext.Provider>;
 }
