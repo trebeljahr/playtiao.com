@@ -1,6 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@500;600;700&display=swap")
-layer(base);
-
 @import "tailwindcss";
 
 @plugin '@tailwindcss/typography';
@@ -30,8 +27,8 @@ layer(base);
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  --font-sans: "Zen Kaku Gothic New", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Zen Old Mincho", ui-serif, serif;
+  --font-sans: var(--font-zen-kaku), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-zen-old-mincho), ui-serif, serif;
 
   --animate-float: float 10s ease-in-out infinite;
 
@@ -108,13 +105,13 @@ layer(base);
   body,
   button,
   input {
-    font-family: "Zen Kaku Gothic New", ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-zen-kaku), ui-sans-serif, system-ui, sans-serif;
   }
 
   h1,
   h2,
   h3 {
-    font-family: "Zen Old Mincho", ui-serif, serif;
+    font-family: var(--font-zen-old-mincho), ui-serif, serif;
   }
 
   a {

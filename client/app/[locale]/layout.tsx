@@ -1,10 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { Zen_Kaku_Gothic_New, Zen_Old_Mincho } from "next/font/google";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import { Providers } from "./providers";
 import "./globals.css";
+
+const zenKaku = Zen_Kaku_Gothic_New({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-zen-kaku",
+  display: "swap",
+});
+
+const zenOldMincho = Zen_Old_Mincho({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-zen-old-mincho",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -66,7 +81,11 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${zenKaku.variable} ${zenOldMincho.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
