@@ -14,7 +14,7 @@ import type { AuthDialogMode } from "@/components/Navbar";
 import { authClient } from "@/lib/auth-client";
 import { login as loginWithUsername, getPlayerIdentity } from "@/lib/api";
 import { isNetworkError, readableError, toastError } from "@/lib/errors";
-import { op } from "@/lib/openpanel";
+import { op, setAuthReady } from "@/lib/openpanel";
 import { resetBoardTheme } from "@/lib/useBoardTheme";
 import { resetActiveBadges } from "@/lib/useActiveBadge";
 import { setUser as setGlitchtipUser } from "@/lib/glitchtip";
@@ -134,6 +134,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...(player.email ? { email: player.email } : {}),
     });
   }, [auth?.player]);
+
+  // Unblock OpenPanel tracking once auth bootstrap has resolved. Before
+  // this point we can't tell whether an incoming request belongs to an
+  // anonymous guest or a logged-in user whose session cookie is still
+  // being hydrated, so firing anything would attribute events to the
+  // wrong profile. The consent provider also has to have granted —
+  // setAuthReady flips a flag and the tracking instance is only swapped
+  // in when both gates are satisfied.
+  useEffect(() => {
+    if (!authLoading) {
+      setAuthReady(true);
+    }
+  }, [authLoading]);
 
   // Sync GlitchTip user context so captured errors include playerId
   useEffect(() => {

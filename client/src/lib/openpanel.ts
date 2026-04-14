@@ -55,9 +55,29 @@ function createInstance(disabled: boolean): OpenPanel {
   });
 }
 
-// Start fully disabled. The consent provider flips this after reading
-// persisted consent or after the user accepts the banner.
+// Start fully disabled. The real instance is only constructed once
+// BOTH consent has been granted AND auth has resolved its first
+// round-trip. Firing events before auth resolves would attribute them
+// to an anonymous/device-level profile even when the user actually has
+// a valid session token waiting to be hydrated — which pollutes the
+// dashboard with phantom guest traffic.
 let instance: OpenPanel = createInstance(true);
+let consentGranted = false;
+let authReady = false;
+
+/** Swap in the real instance when both gates are satisfied. Idempotent. */
+function maybeEnable(): void {
+  if (!openPanelConfigured) return;
+  if (!consentGranted || !authReady) return;
+  if (!instance.options?.disabled) return; // already real
+  instance = createInstance(false);
+  if (typeof window !== "undefined") {
+    instance.setGlobalProperties({
+      environment: isProd ? "production" : "development",
+      app_version: process.env.APP_VERSION ?? "unknown",
+    });
+  }
+}
 
 /**
  * Stable reference exposed to callers. A Proxy that forwards every
@@ -79,19 +99,28 @@ export const op = new Proxy({} as OpenPanel, {
 });
 
 /**
- * Enable the real tracking instance. Idempotent. Called by the consent
- * provider when the user accepts the banner (or when persisted consent
- * from a previous session is found). No-op when the build isn't
+ * Record that the user has granted consent. The real instance is only
+ * swapped in once auth has ALSO completed its first round-trip, to
+ * avoid firing anonymous events for a user who actually has a valid
+ * session still being hydrated. Idempotent. No-op when the build isn't
  * configured for OpenPanel.
  */
 export function enableTracking(): void {
   if (!openPanelConfigured) return;
-  instance = createInstance(false);
-  if (typeof window !== "undefined") {
-    instance.setGlobalProperties({
-      environment: isProd ? "production" : "development",
-      app_version: process.env.APP_VERSION ?? "unknown",
-    });
+  consentGranted = true;
+  maybeEnable();
+}
+
+/**
+ * Signal that AuthContext has finished bootstrapping — either the user
+ * has been resolved to a logged-in PlayerIdentity or to an anonymous
+ * guest. Only after this flip does the openpanel instance start sending
+ * real events (assuming consent has also been granted).
+ */
+export function setAuthReady(ready: boolean): void {
+  authReady = ready;
+  if (ready) {
+    maybeEnable();
   }
 }
 
@@ -101,6 +130,7 @@ export function enableTracking(): void {
  * granted — it just resets the instance to the disabled stub.
  */
 export function disableTracking(): void {
+  consentGranted = false;
   try {
     instance.clear();
   } catch {
