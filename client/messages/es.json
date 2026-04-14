@@ -1091,7 +1091,13 @@
     "submitting": "Enviando...",
     "submitted": "Reporte enviado. Gracias por ayudar a mantener Tiao seguro.",
     "duplicate": "Ya has reportado a este jugador por este motivo.",
-    "error": "No se pudo enviar el reporte."
+    "error": "No se pudo enviar el reporte.",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "confirmHeading": "Por favor confirma",
+    "confirmBody": "Estás a punto de enviar un reporte contra {name}. Será visible para los moderadores. Los reportes falsos pueden resultar en acciones sobre tu propia cuenta.",
+    "confirmReasonLabel": "Motivo",
+    "confirmSubmit": "Sí, enviar reporte"
   },
   "adminReports": {
     "title": "Reportes de jugadores",
@@ -1110,6 +1116,11 @@
     "noReports": "No se encontraron reportes.",
     "dismiss": "Descartar y limpiar marca",
     "dismissing": "Descartando...",
-    "dismissed": "Reportes descartados."
+    "dismissed": "Reportes descartados.",
+    "showAll": "Mostrar todos reportados",
+    "showFlaggedOnly": "Solo marcados",
+    "noReportsAtAll": "No hay reportes en el sistema.",
+    "allReportsCount": "{count} jugador(es) con reportes",
+    "flaggedBadge": "Marcado"
   }
 }

@@ -51,30 +51,44 @@ describe("ReportPlayerButton", () => {
     expect(screen.getByText("Other")).toBeInTheDocument();
   });
 
-  it("disables submit when no reason is selected", () => {
+  it("disables Next when no reason is selected", () => {
     render(<ReportPlayerButton playerId="p1" displayName="alice" />);
     fireEvent.click(screen.getByTitle("Report player"));
-    const submitBtn = screen.getByText("Submit report");
-    expect(submitBtn).toBeDisabled();
+    const nextBtn = screen.getByText("Next");
+    expect(nextBtn).toBeDisabled();
   });
 
-  it("enables submit when a reason is selected", () => {
+  it("enables Next when a reason is selected", () => {
     render(<ReportPlayerButton playerId="p1" displayName="alice" />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Offensive or inappropriate username"));
-    const submitBtn = screen.getByText("Submit report");
-    expect(submitBtn).not.toBeDisabled();
+    const nextBtn = screen.getByText("Next");
+    expect(nextBtn).not.toBeDisabled();
   });
 
-  it("calls reportPlayer with correct args on submit", async () => {
+  it("goes to confirm step and calls reportPlayer on confirm", async () => {
     render(<ReportPlayerButton playerId="p1" displayName="alice" />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Harassment or toxic behavior"));
-    fireEvent.click(screen.getByText("Submit report"));
+    fireEvent.click(screen.getByText("Next"));
+    // Now on confirm step
+    expect(screen.getByText("Please confirm")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Yes, submit report"));
 
     await waitFor(() => {
       expect(mockReportPlayer).toHaveBeenCalledWith("p1", "harassment", undefined);
     });
+  });
+
+  it("back button returns from confirm step to choose step", () => {
+    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    fireEvent.click(screen.getByTitle("Report player"));
+    fireEvent.click(screen.getByText("Harassment or toxic behavior"));
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Please confirm")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Back"));
+    expect(screen.queryByText("Please confirm")).not.toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
   });
 
   it("shows textarea when 'Other' is selected", () => {
@@ -88,7 +102,7 @@ describe("ReportPlayerButton", () => {
     render(<ReportPlayerButton playerId="p1" displayName="alice" />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Other"));
-    const submitBtn = screen.getByText("Submit report");
-    expect(submitBtn).toBeDisabled();
+    const nextBtn = screen.getByText("Next");
+    expect(nextBtn).toBeDisabled();
   });
 });

@@ -736,6 +736,7 @@ export type FlaggedPlayer = {
   displayName: string;
   profilePicture?: string;
   reportCount: number;
+  flaggedForReview?: boolean;
 };
 
 export type PlayerReportEntry = {
@@ -746,8 +747,9 @@ export type PlayerReportEntry = {
   createdAt: string;
 };
 
-export function adminGetFlaggedPlayers() {
-  return request<{ players: FlaggedPlayer[] }>("/api/player/admin/reports");
+export function adminGetFlaggedPlayers(options?: { minReports?: number }) {
+  const qs = options?.minReports ? `?minReports=${options.minReports}` : "";
+  return request<{ players: FlaggedPlayer[] }>(`/api/player/admin/reports${qs}`);
 }
 
 export function adminGetPlayerReports(playerId: string) {

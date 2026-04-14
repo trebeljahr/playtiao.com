@@ -1091,7 +1091,13 @@
     "submitting": "Wird gesendet...",
     "submitted": "Meldung eingereicht. Danke, dass du Tiao sicher hältst.",
     "duplicate": "Du hast diesen Spieler bereits aus diesem Grund gemeldet.",
-    "error": "Meldung konnte nicht gesendet werden."
+    "error": "Meldung konnte nicht gesendet werden.",
+    "next": "Weiter",
+    "back": "Zurück",
+    "confirmHeading": "Bitte bestätigen",
+    "confirmBody": "Du bist dabei, eine Meldung gegen {name} einzureichen. Diese wird von Moderatoren geprüft. Falsche Meldungen können Folgen für dein eigenes Konto haben.",
+    "confirmReasonLabel": "Grund",
+    "confirmSubmit": "Ja, Meldung absenden"
   },
   "adminReports": {
     "title": "Spieler-Meldungen",
@@ -1110,6 +1116,11 @@
     "noReports": "Keine Meldungen gefunden.",
     "dismiss": "Verwerfen & Flag entfernen",
     "dismissing": "Wird verworfen...",
-    "dismissed": "Meldungen verworfen."
+    "dismissed": "Meldungen verworfen.",
+    "showAll": "Alle Gemeldeten anzeigen",
+    "showFlaggedOnly": "Nur markierte",
+    "noReportsAtAll": "Keine Meldungen im System.",
+    "allReportsCount": "{count} Spieler mit Meldungen",
+    "flaggedBadge": "Markiert"
   }
 }

@@ -27,15 +27,18 @@ export function AdminReportsPage() {
   const [flagged, setFlagged] = useState<FlaggedPlayer[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [reports, setReports] = useState<PlayerReportEntry[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const loadFlagged = useCallback(async () => {
+  const loadFlagged = useCallback(async (includeLowThreshold: boolean) => {
     setLoading(true);
     try {
-      const { players } = await adminGetFlaggedPlayers();
+      const { players } = await adminGetFlaggedPlayers(
+        includeLowThreshold ? { minReports: 1 } : undefined,
+      );
       setFlagged(players);
       setLoaded(true);
     } catch (error) {
@@ -44,6 +47,12 @@ export function AdminReportsPage() {
       setLoading(false);
     }
   }, []);
+
+  const toggleShowAll = useCallback(async () => {
+    const next = !showAll;
+    setShowAll(next);
+    await loadFlagged(next);
+  }, [showAll, loadFlagged]);
 
   const handleExpand = useCallback(
     async (playerId: string) => {
@@ -99,25 +108,49 @@ export function AdminReportsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {!loaded ? (
-            <Button onClick={loadFlagged} disabled={loading}>
+            <Button onClick={() => loadFlagged(showAll)} disabled={loading}>
               {loading ? t("loading") : t("loadFlagged")}
             </Button>
           ) : flagged.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-8">
-              <p className="text-sm text-muted-foreground">{t("noFlagged")}</p>
-              <Button variant="outline" size="sm" onClick={loadFlagged} disabled={loading}>
-                {t("refresh")}
-              </Button>
+              <p className="text-sm text-muted-foreground">
+                {showAll ? t("noReportsAtAll") : t("noFlagged")}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadFlagged(showAll)}
+                  disabled={loading}
+                >
+                  {t("refresh")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={toggleShowAll} disabled={loading}>
+                  {showAll ? t("showFlaggedOnly") : t("showAll")}
+                </Button>
+              </div>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {t("flaggedCount", { count: flagged.length })}
+                  {showAll
+                    ? t("allReportsCount", { count: flagged.length })
+                    : t("flaggedCount", { count: flagged.length })}
                 </p>
-                <Button variant="outline" size="sm" onClick={loadFlagged} disabled={loading}>
-                  {t("refresh")}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadFlagged(showAll)}
+                    disabled={loading}
+                  >
+                    {t("refresh")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={toggleShowAll} disabled={loading}>
+                    {showAll ? t("showFlaggedOnly") : t("showAll")}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-3">
                 {flagged.map((player, i) => (
@@ -135,7 +168,18 @@ export function AdminReportsPage() {
                           className="gap-3"
                         />
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                          {player.flaggedForReview && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                              {t("flaggedBadge")}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              player.reportCount >= 5
+                                ? "bg-red-100 text-red-700"
+                                : "bg-[#f2e8d9] text-[#6e5b48]"
+                            }`}
+                          >
                             {t("reportsCount", { count: player.reportCount })}
                           </span>
                           <svg

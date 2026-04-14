@@ -100,11 +100,25 @@ router.get("/admin/reports", async (req: Request, res: Response) => {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
 
+  // Optional ?minReports=N to include players below the 5-report auto-flag
+  // threshold. When omitted, defaults to flaggedForReview=true only (the
+  // classic "needs review now" list). minReports=1 gives the full tail so
+  // admins can catch patterns early.
+  const minReportsRaw = req.query.minReports as string | undefined;
+  const minReports = minReportsRaw ? parseInt(minReportsRaw, 10) : undefined;
+
+  const filter =
+    typeof minReports === "number" && minReports >= 1
+      ? { reportCount: { $gte: minReports } }
+      : { flaggedForReview: true };
+
   try {
-    const flagged = await GameAccount.find(
-      { flaggedForReview: true },
-      { displayName: 1, profilePicture: 1, reportCount: 1, flaggedForReview: 1 },
-    )
+    const flagged = await GameAccount.find(filter, {
+      displayName: 1,
+      profilePicture: 1,
+      reportCount: 1,
+      flaggedForReview: 1,
+    })
       .sort({ reportCount: -1 })
       .limit(100)
       .lean();
@@ -114,6 +128,7 @@ router.get("/admin/reports", async (req: Request, res: Response) => {
       displayName: a.displayName,
       profilePicture: a.profilePicture,
       reportCount: a.reportCount,
+      flaggedForReview: !!a.flaggedForReview,
     }));
 
     return res.status(200).json({ players });

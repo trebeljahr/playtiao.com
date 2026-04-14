@@ -1091,7 +1091,13 @@
     "submitting": "Submitting...",
     "submitted": "Report submitted. Thank you for helping keep Tiao safe.",
     "duplicate": "You have already reported this player for this reason.",
-    "error": "Unable to submit report right now."
+    "error": "Unable to submit report right now.",
+    "next": "Next",
+    "back": "Back",
+    "confirmHeading": "Please confirm",
+    "confirmBody": "You are about to submit a report against {name}. This will be visible to moderators. False reports may result in action on your own account.",
+    "confirmReasonLabel": "Reason",
+    "confirmSubmit": "Yes, submit report"
   },
   "adminReports": {
     "title": "Player Reports",
@@ -1110,6 +1116,11 @@
     "noReports": "No reports found.",
     "dismiss": "Dismiss & clear flag",
     "dismissing": "Dismissing...",
-    "dismissed": "Reports dismissed."
+    "dismissed": "Reports dismissed.",
+    "showAll": "Show all reported",
+    "showFlaggedOnly": "Flagged only",
+    "noReportsAtAll": "No reports in the system.",
+    "allReportsCount": "{count} player(s) with reports",
+    "flaggedBadge": "Flagged"
   }
 }

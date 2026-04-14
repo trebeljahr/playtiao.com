@@ -30,14 +30,22 @@ export function ReportPlayerButton({
 }: ReportPlayerButtonProps) {
   const t = useTranslations("report");
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"choose" | "confirm">("choose");
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
 
   function handleOpen() {
+    setStep("choose");
     setReason(null);
     setDetails("");
     setOpen(true);
+  }
+
+  function handleNext() {
+    if (!reason) return;
+    if (reason === "other" && !details.trim()) return;
+    setStep("confirm");
   }
 
   async function handleSubmit() {
@@ -83,57 +91,86 @@ export function ReportPlayerButton({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen} title={t("title", { name: displayName })}>
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
+        {step === "choose" ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">{t("description")}</p>
 
-          <div className="flex flex-col gap-2">
-            {REASONS.map((r) => (
-              <label
-                key={r}
-                className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors",
-                  reason === r
-                    ? "border-[#8b7356] bg-[#8b7356]/10"
-                    : "border-border hover:border-[#8b7356]/50",
-                )}
+            <div className="flex flex-col gap-2">
+              {REASONS.map((r) => (
+                <label
+                  key={r}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors",
+                    reason === r
+                      ? "border-[#8b7356] bg-[#8b7356]/10"
+                      : "border-border hover:border-[#8b7356]/50",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="report-reason"
+                    value={r}
+                    checked={reason === r}
+                    onChange={() => setReason(r)}
+                    className="accent-[#8b7356]"
+                  />
+                  {t(`reason_${r}`)}
+                </label>
+              ))}
+            </div>
+
+            {reason === "other" && (
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                placeholder={t("detailsPlaceholder")}
+                maxLength={500}
+                rows={3}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-[#8b7356] focus:outline-none focus:ring-1 focus:ring-[#8b7356]"
+              />
+            )}
+
+            <div className="mt-2 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleNext}
+                disabled={!reason || (reason === "other" && !details.trim())}
               >
-                <input
-                  type="radio"
-                  name="report-reason"
-                  value={r}
-                  checked={reason === r}
-                  onChange={() => setReason(r)}
-                  className="accent-[#8b7356]"
-                />
-                {t(`reason_${r}`)}
-              </label>
-            ))}
+                {t("next")}
+              </Button>
+            </div>
           </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">{t("confirmHeading")}</p>
+              <p className="mt-2 text-sm text-amber-800">
+                {t("confirmBody", { name: displayName })}
+              </p>
+              <div className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm">
+                <span className="font-medium">{t("confirmReasonLabel")}:</span>{" "}
+                {reason ? t(`reason_${reason}`) : ""}
+              </div>
+              {reason === "other" && details && (
+                <div className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-sm italic text-muted-foreground">
+                  &ldquo;{details}&rdquo;
+                </div>
+              )}
+            </div>
 
-          {reason === "other" && (
-            <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder={t("detailsPlaceholder")}
-              maxLength={500}
-              rows={3}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-[#8b7356] focus:outline-none focus:ring-1 focus:ring-[#8b7356]"
-            />
-          )}
-
-          <div className="mt-2 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleSubmit}
-              disabled={!reason || (reason === "other" && !details.trim()) || busy}
-            >
-              {busy ? t("submitting") : t("submit")}
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setStep("choose")} disabled={busy}>
+                {t("back")}
+              </Button>
+              <Button variant="danger" onClick={handleSubmit} disabled={busy}>
+                {busy ? t("submitting") : t("confirmSubmit")}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </Dialog>
     </>
   );

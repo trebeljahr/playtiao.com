@@ -21,6 +21,7 @@ import { AchievementCard } from "@/components/AchievementCard";
 import { MatchHistoryCard } from "@/components/game/MatchHistoryCard";
 import { UserBadge, type BadgeId, BADGE_DEFINITIONS } from "@/components/UserBadge";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
+import { ReportPlayerButton } from "@/components/ReportPlayerButton";
 import { useLocale, useTranslations } from "next-intl";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
@@ -219,6 +220,7 @@ export function PublicProfilePage() {
                           {tCommon("unfriend")}
                         </Button>
                       )}
+                      <ReportPlayerButton playerId={profileId} displayName={profile.displayName} />
                     </div>
                   )}
 
