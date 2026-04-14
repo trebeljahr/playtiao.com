@@ -1299,7 +1299,9 @@ router.delete("/account", async (req: Request, res: Response) => {
       } else if (game.status === "active") {
         // Use gameService to forfeit so the opponent gets a real-time WebSocket notification
         try {
-          await gameService.forfeitForPlayer(game.roomId, accountId);
+          await gameService.forfeitForPlayer(game.roomId, accountId, {
+            suppressAchievements: true,
+          });
           forfeitedGameIds.push(game.roomId);
         } catch {
           // Fallback: direct DB update if gameService fails

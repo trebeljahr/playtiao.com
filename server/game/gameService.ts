@@ -655,8 +655,18 @@ export class GameService {
   /**
    * Forfeit a game on behalf of a player (e.g. during account deletion).
    * Broadcasts the updated snapshot to all connected clients.
+   *
+   * When `suppressAchievements` is set, the opponent will not receive
+   * achievement notifications from this forfeit. Used by the account
+   * deletion flow so a user who forfeits N games on their way out doesn't
+   * spam their opponents with N "game won" / progression achievement
+   * notifications — those wins are unearned from the opponent's side.
    */
-  async forfeitForPlayer(gameId: string, playerId: string): Promise<void> {
+  async forfeitForPlayer(
+    gameId: string,
+    playerId: string,
+    options: { suppressAchievements?: boolean } = {},
+  ): Promise<void> {
     await this.withLock(this.roomLockKey(gameId), async () => {
       const room = await this.store.getRoom(gameId);
       if (!room) return;
@@ -670,7 +680,9 @@ export class GameService {
       const result = forfeitGame(derived.state, playerColor, "forfeit");
       if (!result.ok) return;
       derived.state = result.value;
-      const savedRoom = await this.saveRoom(derived);
+      const savedRoom = await this.saveRoom(derived, {
+        skipAchievements: options.suppressAchievements,
+      });
       void this.broadcastSnapshot(savedRoom);
     });
   }
@@ -1678,7 +1690,10 @@ export class GameService {
     return this.deriveRoomStatus(room);
   }
 
-  private async saveRoom(room: StoredMultiplayerRoom): Promise<StoredMultiplayerRoom> {
+  private async saveRoom(
+    room: StoredMultiplayerRoom,
+    options: { skipAchievements?: boolean } = {},
+  ): Promise<StoredMultiplayerRoom> {
     const previousStatus = room.status;
     const saved = this.deriveRoomStatus(await this.store.saveRoom(this.deriveRoomStatus(room)));
 
@@ -1791,11 +1806,15 @@ export class GameService {
     // Update Elo ratings when any multiplayer game finishes, then check achievements
     if (saved.status === "finished" && previousStatus !== "finished") {
       saved.ratingStatus = "pending";
-      void this.updateEloRatings(saved)
+      void this.updateEloRatings(saved, { skipAchievements: options.skipAchievements })
         .catch((err) => {
           console.error("[game] Elo update failed for room", saved.id, err);
         })
         .finally(() => {
+          // Skip achievement check when the caller asked to suppress it
+          // (e.g. account deletion forfeiting many games at once — the
+          // opponent shouldn't get a burst of unearned achievement pings).
+          if (options.skipAchievements) return;
           // Check achievements after ELO update so gamesPlayed is already incremented
           void checkGameAchievements({ room: saved }).catch((err) => {
             console.error("[game] Achievement check failed for room", saved.id, err);
@@ -1806,7 +1825,10 @@ export class GameService {
     return saved;
   }
 
-  private async updateEloRatings(room: StoredMultiplayerRoom): Promise<void> {
+  private async updateEloRatings(
+    room: StoredMultiplayerRoom,
+    options: { skipAchievements?: boolean } = {},
+  ): Promise<void> {
     const whitePlayer = room.seats.white;
     const blackPlayer = room.seats.black;
 
@@ -1865,9 +1887,12 @@ export class GameService {
     invalidatePlayerProfile(whitePlayer.playerId);
     invalidatePlayerProfile(blackPlayer.playerId);
 
-    // Check ranking-based achievements for both players
-    void this.checkRankingAchievements(whitePlayer.playerId, newRatingA);
-    void this.checkRankingAchievements(blackPlayer.playerId, newRatingB);
+    // Check ranking-based achievements for both players (unless the caller
+    // asked to suppress — see saveRoom for the rationale).
+    if (!options.skipAchievements) {
+      void this.checkRankingAchievements(whitePlayer.playerId, newRatingA);
+      void this.checkRankingAchievements(blackPlayer.playerId, newRatingB);
+    }
 
     await this.store.saveRoom(room);
 

@@ -60,6 +60,32 @@ test("a player can forfeit an active game and the opponent wins", async () => {
   assert.equal(getWinner(snapshot.state), "black");
 });
 
+test("forfeitForPlayer with suppressAchievements still forfeits the game", async () => {
+  // Verifies the plumbing of the new options param added for the account
+  // deletion flow — the game must still transition to finished with the
+  // correct winner when the caller asks to suppress opponent achievement
+  // notifications (used when a player self-deletes and forfeits many
+  // games at once, so their opponents don't get a burst of unearned
+  // achievement toasts).
+  const store = new InMemoryGameRoomStore();
+  const service = new GameService(store, () => 0);
+  const alice = createPlayer("alice");
+  const bob = createPlayer("bob");
+
+  const created = await service.createGame(alice);
+  await service.joinGame(created.gameId, bob);
+
+  // Alice self-deletes — server forfeits her games with suppression on.
+  await service.forfeitForPlayer(created.gameId, alice.playerId, {
+    suppressAchievements: true,
+  });
+
+  const snapshot = await service.getSnapshot(created.gameId);
+  assert.equal(snapshot.status, "finished");
+  // Alice was white (seatRandom=0 → white), so black wins.
+  assert.equal(getWinner(snapshot.state), "black");
+});
+
 test("cannot forfeit a game that is not active (waiting)", async () => {
   const store = new InMemoryGameRoomStore();
   const service = new GameService(store, () => 0);
