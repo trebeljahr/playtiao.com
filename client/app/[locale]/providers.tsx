@@ -498,8 +498,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
             <OAuthErrorHandler />
             <ConsentBanner />
             {/* Sonner hardcodes z-index:999999999 on [data-sonner-toaster].
-                Override it below the mobile nav drawer (backdrop z-200). */}
-            <style>{`[data-sonner-toaster] { z-index: 150 !important; }`}</style>
+                Override it above dialogs (z-300) but below the mobile nav
+                drawer backdrop (z-200 on the drawer, but toasts should still
+                show over modals). Using z-400 keeps toasts visible over
+                everything except the nav drawer overlay. */}
+            <style>{`[data-sonner-toaster] { z-index: 400 !important; }`}</style>
             <Toaster
               richColors
               position="top-right"

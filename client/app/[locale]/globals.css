@@ -122,29 +122,17 @@ layer(base);
     text-decoration: none;
   }
 
-  /* Global cursor policy: always show the OS default arrow, regardless of
-     element type or state. No pointer, no wait, no not-allowed — even on
-     buttons, links, disabled inputs, etc. Rico's request 2026-04-08. */
-  *,
-  *::before,
-  *::after {
-    cursor: default !important;
-  }
-  /* Inputs still need the text caret so users can tell where they're typing. */
-  input[type="text"],
-  input[type="search"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="url"],
-  input[type="tel"],
-  input[type="date"],
-  input[type="datetime-local"],
-  input[type="time"],
-  input:not([type]),
-  textarea,
-  [contenteditable="true"] {
-    cursor: text !important;
+  /* Interactive elements should show pointer cursor. Tailwind's preflight
+     resets button/summary cursors to `default`; restore pointer for all
+     clickable elements so the UI feels responsive. */
+  button,
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  [role="button"],
+  summary,
+  a[href] {
+    cursor: pointer;
   }
 }
 
