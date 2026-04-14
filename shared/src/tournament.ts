@@ -23,6 +23,10 @@ export type TournamentSettings = {
   visibility: TournamentVisibility;
   minPlayers: number;
   maxPlayers: number;
+  /** Board size for tournament games (default: 19) */
+  boardSize?: number;
+  /** Points needed to win each game (default: 10) */
+  scoreToWin?: number;
   /** Group size for groups-knockout format (3 or 4) */
   groupSize?: number;
   /** How many advance per group (default: top half) */
@@ -160,6 +164,8 @@ export type TournamentListItem = {
   playerCount: number;
   maxPlayers: number;
   timeControl: TimeControl;
+  boardSize: number;
+  scoreToWin: number;
   isFeatured: boolean;
   createdAt: string;
 };

@@ -54,6 +54,13 @@ export function useTournamentNextMatch(tournamentId: string | null) {
         ) {
           void refresh();
         }
+        // When a tournament game ends, the server processes the result and
+        // advances the bracket asynchronously. Refresh after a short delay
+        // so the "View tournament results" CTA appears without waiting for
+        // the next socket broadcast.
+        if (payload.type === "game-over") {
+          setTimeout(() => void refresh(), 500);
+        }
       },
       [tournamentId, refresh],
     ),

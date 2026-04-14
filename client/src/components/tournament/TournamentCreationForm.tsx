@@ -1,21 +1,10 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import type { TournamentFormat, TournamentSettings } from "@shared";
-import { TIME_CONTROL_PRESETS } from "@shared";
+import type { TournamentFormat, TournamentSettings, TimeControl } from "@shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-
-const TOURNAMENT_TC_PRESETS_BASE = [
-  ...TIME_CONTROL_PRESETS.filter((p) => p.initialMs >= 180_000), // 3 min+
-  {
-    label: "No limit",
-    labelKey: "noLimit" as const,
-    category: "Untimed",
-    initialMs: 0,
-    incrementMs: 0,
-  },
-];
+import { GameConfigPanel } from "@/components/game/GameConfigPanel";
 
 export function TournamentCreationForm({
   open,
@@ -30,12 +19,6 @@ export function TournamentCreationForm({
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
-  const tConfig = useTranslations("config");
-
-  const TOURNAMENT_TC_PRESETS = TOURNAMENT_TC_PRESETS_BASE.map((p) => ({
-    ...p,
-    label: "labelKey" in p ? t(p.labelKey) : p.label,
-  }));
 
   const FORMAT_OPTIONS: { value: TournamentFormat; label: string; description: string }[] = [
     {
@@ -57,7 +40,9 @@ export function TournamentCreationForm({
 
   const [step, setStep] = useState(0);
   const [format, setFormat] = useState<TournamentFormat>("single-elimination");
-  const [timeControlIdx, setTimeControlIdx] = useState(2); // Default: 5 min
+  const [boardSize, setBoardSize] = useState(19);
+  const [scoreToWin, setScoreToWin] = useState(10);
+  const [timeControl, setTimeControl] = useState<TimeControl>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(8);
@@ -66,10 +51,6 @@ export function TournamentCreationForm({
   const [groupSize, setGroupSize] = useState(4);
 
   function handleSubmit() {
-    const tc = TOURNAMENT_TC_PRESETS[timeControlIdx];
-    const timeControl =
-      tc.initialMs === 0 ? null : { initialMs: tc.initialMs, incrementMs: tc.incrementMs };
-
     const settings: TournamentSettings = {
       format,
       timeControl,
@@ -78,6 +59,8 @@ export function TournamentCreationForm({
       visibility,
       minPlayers: 2,
       maxPlayers,
+      ...(boardSize !== 19 ? { boardSize } : {}),
+      ...(scoreToWin !== 10 ? { scoreToWin } : {}),
       ...(format === "groups-knockout" ? { groupSize } : {}),
       ...(visibility === "private" && inviteCode ? { inviteCode } : {}),
     };
@@ -123,19 +106,19 @@ export function TournamentCreationForm({
 
         {step === 1 && (
           <div className="space-y-3">
-            <p className="text-sm font-medium">{tConfig("timeControl")}</p>
-            <div className="flex flex-wrap gap-2">
-              {TOURNAMENT_TC_PRESETS.map((tc, i) => (
-                <Button
-                  key={tc.label}
-                  variant={timeControlIdx === i ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTimeControlIdx(i)}
-                >
-                  {tc.label}
-                </Button>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">{t("gameSettingsHint")}</p>
+
+            <GameConfigPanel
+              mode="tournament"
+              boardSize={boardSize}
+              onBoardSizeChange={setBoardSize}
+              scoreToWin={scoreToWin}
+              onScoreToWinChange={setScoreToWin}
+              timeControl={timeControl}
+              onTimeControlChange={setTimeControl}
+              submitLabel=""
+              onSubmit={() => {}}
+            />
 
             <div>
               <label className="text-xs text-muted-foreground">{t("maxPlayers")}</label>

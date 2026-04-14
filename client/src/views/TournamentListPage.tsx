@@ -4,12 +4,13 @@ import type { TournamentSettings } from "@shared";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { Navbar } from "@/components/Navbar";
-import { Badge } from "@/components/ui/badge";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { TournamentCreationForm } from "@/components/tournament/TournamentCreationForm";
+import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { createTournament, ApiError } from "@/lib/api";
 import { toastError } from "@/lib/errors";
 
@@ -18,37 +19,8 @@ import { useTournamentList } from "@/lib/hooks/useTournamentList";
 import { useTranslations } from "next-intl";
 import { SkeletonBlock } from "@/components/ui/skeleton";
 
-function formatLabel(format: string, t: (key: string) => string): string {
-  switch (format) {
-    case "round-robin":
-      return t("roundRobin");
-    case "single-elimination":
-      return t("elimination");
-    case "groups-knockout":
-      return t("groupsKo");
-    default:
-      return format;
-  }
-}
-
-function statusColor(status: string): string {
-  switch (status) {
-    case "registration":
-      return "border-green-400 bg-green-50 text-green-700";
-    case "active":
-      return "border-blue-400 bg-blue-50 text-blue-700";
-    case "finished":
-      return "border-slate-300 bg-slate-50 text-slate-600";
-    case "cancelled":
-      return "border-red-300 bg-red-50 text-red-600";
-    default:
-      return "";
-  }
-}
-
 export function TournamentListPage() {
   const t = useTranslations("tournament");
-  const tCommon = useTranslations("common");
   const { auth, onOpenAuth, onLogout } = useAuth();
   const router = useRouter();
   const isAccount = auth?.player?.kind === "account";
@@ -93,7 +65,8 @@ export function TournamentListPage() {
       />
 
       <div className="mx-auto max-w-3xl px-4 pb-5 pt-20">
-        <div className="flex items-center justify-between mb-6">
+        <BackButton />
+        <div className="flex items-center justify-between mb-6 mt-2">
           <h1 className="font-display text-3xl font-bold">{t("title")}</h1>
           {isAccount && (
             <Button onClick={() => setCreateOpen(true)}>{t("createTournament")}</Button>
@@ -141,29 +114,10 @@ export function TournamentListPage() {
             ) : (
               displayList.map((item, index) => (
                 <AnimatedCard key={item.tournamentId} delay={index * 0.05}>
-                  <Card
-                    className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl"
+                  <TournamentCard
+                    item={item}
                     onClick={() => router.push(`/tournament/${item.tournamentId}`)}
-                  >
-                    <CardContent className="flex items-center justify-between gap-4 py-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{item.name}</span>
-                          <Badge className={statusColor(item.status)}>{item.status}</Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>{formatLabel(item.format, t)}</span>
-                          <span>
-                            {t("players", { count: item.playerCount, max: item.maxPlayers })}
-                          </span>
-                          <span>{t("by", { name: item.creatorDisplayName })}</span>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        {tCommon("view")}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  />
                 </AnimatedCard>
               ))
             )}

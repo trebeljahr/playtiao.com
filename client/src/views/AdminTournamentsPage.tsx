@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
-import { Badge } from "@/components/ui/badge";
+import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { isAdmin } from "@/lib/featureGate";
 import { adminListTournaments, adminSetTournamentFeatured } from "@/lib/api";
 import { toastError } from "@/lib/errors";
@@ -25,7 +25,6 @@ import { toastError } from "@/lib/errors";
  */
 export function AdminTournamentsPage() {
   const t = useTranslations("adminTournaments");
-  const tTournament = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const { auth } = useAuth();
   const router = useRouter();
@@ -103,49 +102,26 @@ export function AdminTournamentsPage() {
             ) : (
               <div className="space-y-2">
                 {tournaments.map((tournament) => (
-                  <div
+                  <TournamentCard
                     key={tournament.tournamentId}
-                    className="flex flex-col gap-2 rounded-xl border border-[#dcc7a2] bg-[#fffdf7] p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 text-left"
-                      onClick={() => router.push(`/tournament/${tournament.tournamentId}`)}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-semibold text-[#2b1e14]">
-                          {tournament.name}
-                        </span>
-                        {tournament.isFeatured && (
-                          <Badge className="border-amber-400 bg-amber-50 text-amber-700">
-                            {tTournament("featured")}
-                          </Badge>
-                        )}
-                        <Badge className="border-gray-300 bg-gray-50 text-gray-600">
-                          {tTournament(tournament.status)}
-                        </Badge>
-                        <Badge className="border-gray-300 bg-gray-50 text-gray-600">
-                          {tournament.visibility}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-[#7a6656]">
-                        {tTournament("players", {
-                          count: tournament.playerCount,
-                          max: tournament.maxPlayers,
-                        })}
-                        {" · "}
-                        {tTournament("by", { name: tournament.creatorDisplayName })}
-                      </p>
-                    </button>
-                    <Button
-                      variant={tournament.isFeatured ? "outline" : "default"}
-                      disabled={busyId === tournament.tournamentId}
-                      onClick={() => handleToggle(tournament.tournamentId, !tournament.isFeatured)}
-                      className="shrink-0"
-                    >
-                      {tournament.isFeatured ? t("unfeatureAction") : t("featureAction")}
-                    </Button>
-                  </div>
+                    item={tournament}
+                    onClick={() => router.push(`/tournament/${tournament.tournamentId}`)}
+                    showFeatured
+                    extra={
+                      <Button
+                        variant={tournament.isFeatured ? "outline" : "default"}
+                        size="sm"
+                        disabled={busyId === tournament.tournamentId}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggle(tournament.tournamentId, !tournament.isFeatured);
+                        }}
+                        className="shrink-0"
+                      >
+                        {tournament.isFeatured ? t("unfeatureAction") : t("featureAction")}
+                      </Button>
+                    }
+                  />
                 ))}
               </div>
             )}

@@ -1506,6 +1506,10 @@ export class TournamentService implements TournamentGameCallback {
             tournament.settings.timeControl,
             tournament.tournamentId,
             match.matchId,
+            {
+              boardSize: tournament.settings.boardSize,
+              scoreToWin: tournament.settings.scoreToWin,
+            },
           );
 
           match.roomId = room.id;
@@ -1742,6 +1746,8 @@ export class TournamentService implements TournamentGameCallback {
       playerCount: t.participants.length,
       maxPlayers: t.settings.maxPlayers,
       timeControl: t.settings.timeControl,
+      boardSize: t.settings.boardSize ?? 19,
+      scoreToWin: t.settings.scoreToWin ?? 10,
       isFeatured: t.isFeatured,
       createdAt: t.createdAt.toISOString(),
     }));

@@ -756,7 +756,7 @@ export function MultiplayerGamePage() {
       // Route the player to wherever the server's decision says they
       // should go — straight into the next game, to the match they're
       // waiting on (as a spectator), or to the tournament results view.
-      router.push(tournamentPostGame.route);
+      router.replace(tournamentPostGame.route);
       return;
     }
     const timer = setTimeout(() => {
@@ -1640,7 +1640,7 @@ export function MultiplayerGamePage() {
                               }
                               onClick={() => {
                                 cancelTournamentRedirect();
-                                router.push(tournamentPostGame.route);
+                                router.replace(tournamentPostGame.route);
                               }}
                             >
                               {tournamentPostGame.label}
@@ -1889,7 +1889,7 @@ export function MultiplayerGamePage() {
                   onClick={() => {
                     setGameOverDialogOpen(false);
                     cancelTournamentRedirect();
-                    router.push(tournamentPostGame.route);
+                    router.replace(tournamentPostGame.route);
                   }}
                 >
                   {tournamentPostGame.label}

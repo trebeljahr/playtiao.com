@@ -9,7 +9,7 @@ export function useTournamentList(
 ) {
   const [publicTournaments, setPublicTournaments] = useState<TournamentListItem[]>([]);
   const [myTournaments, setMyTournaments] = useState<TournamentListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(
     async (opts?: { silent?: boolean }) => {

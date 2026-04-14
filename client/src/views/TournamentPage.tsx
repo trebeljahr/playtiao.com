@@ -6,6 +6,7 @@ import type { TournamentSnapshot } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
+import { GameConfigBadge } from "@/components/game/GameConfigBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -149,7 +150,9 @@ export function TournamentPage() {
       />
 
       <div className="mx-auto max-w-5xl px-4 pb-5 pt-20 space-y-6">
-        <BackButton />
+        <div className="mb-2">
+          <BackButton />
+        </div>
         {/* Header */}
         <div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -160,12 +163,20 @@ export function TournamentPage() {
           {tournament.description && (
             <p className="text-sm text-muted-foreground mt-1">{tournament.description}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("players", {
-              count: tournament.participants.length,
-              max: tournament.settings.maxPlayers,
-            })}
-          </p>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+            <span>
+              {t("players", {
+                count: tournament.participants.length,
+                max: tournament.settings.maxPlayers,
+              })}
+            </span>
+            <GameConfigBadge
+              boardSize={tournament.settings.boardSize ?? 19}
+              scoreToWin={tournament.settings.scoreToWin ?? 10}
+              timeControl={tournament.settings.timeControl}
+              showAll
+            />
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -224,19 +235,26 @@ export function TournamentPage() {
               {t("startTournament")}
             </Button>
           )}
-          {isAdmin && tournament.status === "registration" && (
+          {isAdmin &&
+            tournament.status === "registration" &&
+            tournament.participants.length >= tournament.settings.minPlayers && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  handleAction(() => randomizeTournamentSeeding(tournament.tournamentId))
+                }
+              >
+                {t("shuffleOrder")}
+              </Button>
+            )}
+          {isAdmin && tournament.status !== "finished" && tournament.status !== "cancelled" && (
             <Button
               variant="outline"
               disabled={busy}
-              onClick={() =>
-                handleAction(() => randomizeTournamentSeeding(tournament.tournamentId))
-              }
+              onClick={() => setCancelDialogOpen(true)}
+              className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-400"
             >
-              {t("randomizeSeeds")}
-            </Button>
-          )}
-          {isAdmin && tournament.status !== "finished" && tournament.status !== "cancelled" && (
-            <Button variant="outline" disabled={busy} onClick={() => setCancelDialogOpen(true)}>
               {t("cancelTournament")}
             </Button>
           )}

@@ -195,6 +195,7 @@ export class GameService {
     timeControl: TimeControl,
     tournamentId: string,
     matchId: string,
+    gameSettings?: { boardSize?: number; scoreToWin?: number },
   ): Promise<StoredMultiplayerRoom> {
     const tc = timeControl ?? null;
     const clockMs = tc ? { white: tc.initialMs, black: tc.initialMs } : null;
@@ -213,7 +214,7 @@ export class GameService {
         id: this.generateRoomId(),
         roomType: "tournament",
         status: "waiting",
-        state: createInitialGameState(),
+        state: createInitialGameState(gameSettings),
         rematch: null,
         takeback: null,
         seats: this.assignSeats(toSlim(player1), toSlim(player2)),

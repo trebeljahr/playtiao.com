@@ -24,6 +24,7 @@ import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
 import { scrollToAndWiggle } from "@/lib/scroll-to-and-wiggle";
 import { useTournamentList } from "@/lib/hooks/useTournamentList";
+import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,6 @@ export function LobbyPage() {
     true,
   );
 
-  const tTournament = useTranslations("tournament");
   const { publicTournaments, myTournaments, loading: tournamentsLoading } = useTournamentList(auth);
   const lobbyTournaments = useMemo(() => {
     // Merge and deduplicate, preferring "my" entries
@@ -855,52 +855,12 @@ export function LobbyPage() {
                       </p>
                     )}
                     {lobbyTournaments.map((item) => (
-                      <div
+                      <TournamentCard
                         key={item.tournamentId}
-                        className="flex items-center justify-between rounded-2xl border border-[#dcc7a2] bg-[#fffdf7] p-4 shadow-xs hover:border-[#b98d49] transition-colors group cursor-pointer"
+                        item={item}
                         onClick={() => router.push(`/tournament/${item.tournamentId}`)}
-                      >
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-lg text-[#2b1e14] truncate">
-                              {item.name}
-                            </p>
-                            {item.isFeatured && (
-                              <Badge className="shrink-0 border-amber-400 bg-amber-50 text-amber-700">
-                                {tTournament("featured")}
-                              </Badge>
-                            )}
-                            <Badge
-                              className={cn(
-                                "shrink-0",
-                                item.status === "registration"
-                                  ? "border-green-400 bg-green-50 text-green-700"
-                                  : "border-blue-400 bg-blue-50 text-blue-700",
-                              )}
-                            >
-                              {tTournament(item.status)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-[#7a6656]">
-                            {tTournament("players", {
-                              count: item.playerCount,
-                              max: item.maxPlayers,
-                            })}
-                            {" · "}
-                            {tTournament("by", { name: item.creatorDisplayName })}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="shrink-0 shadow-xs group-hover:scale-105 transition-transform"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/tournament/${item.tournamentId}`);
-                          }}
-                        >
-                          {tc("view")}
-                        </Button>
-                      </div>
+                        showFeatured
+                      />
                     ))}
                   </CardContent>
                 </PaperCard>

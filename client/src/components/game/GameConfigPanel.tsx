@@ -186,11 +186,13 @@ export function GameConfigPanel({
         />
       )}
 
-      <div className="border-t border-[#dbc6a2] pt-4">
-        <Button className="w-full" onClick={onSubmit} disabled={busy}>
-          {busy ? tCommon("creating") : submitLabel}
-        </Button>
-      </div>
+      {submitLabel && (
+        <div className="border-t border-[#dbc6a2] pt-4">
+          <Button className="w-full" onClick={onSubmit} disabled={busy}>
+            {busy ? tCommon("creating") : submitLabel}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
