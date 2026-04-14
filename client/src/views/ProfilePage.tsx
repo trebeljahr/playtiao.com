@@ -166,7 +166,7 @@ function DataExportCard() {
   const active = exports?.find(
     (e) => e.status === "pending" || e.status === "running" || e.status === "ready",
   );
-  const hasActive = Boolean(active);
+  const isPreparing = active?.status === "pending" || active?.status === "running";
 
   return (
     <Card>
@@ -186,11 +186,7 @@ function DataExportCard() {
                     expiresAt: new Date(active.expiresAt).toLocaleDateString(),
                   })}
                 </p>
-                <Button
-                  type="button"
-                  onClick={() => handleDownload(active.id)}
-                  className="w-full"
-                >
+                <Button type="button" onClick={() => handleDownload(active.id)} className="w-full">
                   {t("download")}
                 </Button>
               </div>
@@ -202,7 +198,7 @@ function DataExportCard() {
         <Button
           type="button"
           onClick={handleRequest}
-          disabled={busy || hasActive}
+          disabled={busy || isPreparing}
           className="w-full"
         >
           {busy ? tCommon("saving") : t("request")}

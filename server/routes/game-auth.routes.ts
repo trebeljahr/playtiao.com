@@ -25,6 +25,7 @@ import { profilePictureUpload } from "../middleware/multerUploadMiddleware";
 import { authRateLimiter } from "../middleware/rateLimiter";
 import { deleteOpenPanelProfile, identify, track } from "../analytics/openpanel";
 import {
+  deleteExport,
   enqueueExport,
   getActiveExportForAccount,
   getExportDownloadUrl,
@@ -1449,17 +1450,22 @@ router.post("/account/exports", async (req: Request, res: Response) => {
     const account = await requireAccount(req, res);
     if (!account) return;
 
-    // One active request at a time. Forces users to delete/expire the
-    // previous export before starting another — basic abuse prevention
-    // and keeps storage bounded.
+    // At most one in-flight (pending/running) export at a time. If a
+    // previous export is already ready, delete it so the user gets fresh
+    // data — GDPR art. 15 right of access should always reflect current
+    // state, not stale snapshots.
     const existing = await getActiveExportForAccount(String(account._id));
     if (existing) {
-      return res.status(409).json({
-        code: "EXPORT_ALREADY_ACTIVE",
-        message: "You already have an active export request.",
-        exportId: String(existing._id),
-        status: existing.status,
-      });
+      if (existing.status === "ready") {
+        await deleteExport(String(existing._id));
+      } else {
+        return res.status(409).json({
+          code: "EXPORT_ALREADY_ACTIVE",
+          message: "An export is already being prepared.",
+          exportId: String(existing._id),
+          status: existing.status,
+        });
+      }
     }
 
     const request = await enqueueExport(String(account._id));
