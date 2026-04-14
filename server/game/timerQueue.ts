@@ -111,9 +111,11 @@ export class InMemoryTimerScheduler implements TimerScheduler {
 
 // ─── BullMQTimerScheduler ──────────────────────────────────────────────
 
-const CLOCK_QUEUE = "tiao:timer:clock";
-const ABANDON_QUEUE = "tiao:timer:abandon";
-const FIRST_MOVE_QUEUE = "tiao:timer:first-move";
+// BullMQ forbids `:` in queue names since it's the Redis key separator.
+// Use `-` instead.
+const CLOCK_QUEUE = "tiao-timer-clock";
+const ABANDON_QUEUE = "tiao-timer-abandon";
+const FIRST_MOVE_QUEUE = "tiao-timer-first-move";
 
 export class BullMQTimerScheduler implements TimerScheduler {
   private readonly clockQueue: Queue;
@@ -266,7 +268,7 @@ export class InMemoryMatchmakingSweepScheduler implements MatchmakingSweepSchedu
   }
 }
 
-const SWEEP_QUEUE = "tiao:matchmaking-sweep";
+const SWEEP_QUEUE = "tiao-matchmaking-sweep";
 
 export class BullMQMatchmakingSweepScheduler implements MatchmakingSweepScheduler {
   private readonly queue: Queue;
@@ -328,7 +330,7 @@ export class InMemoryExportScheduler implements ExportJobScheduler {
   async close(): Promise<void> {}
 }
 
-const EXPORT_QUEUE = "tiao:data-export";
+const EXPORT_QUEUE = "tiao-data-export";
 
 export class BullMQExportScheduler implements ExportJobScheduler {
   private readonly queue: Queue;
