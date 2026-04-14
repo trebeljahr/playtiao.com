@@ -976,7 +976,10 @@
     "cancellingSubscription": "Cancels on {date}",
     "pastDueSubscription": "Payment failed — update billing",
     "cancelSubscription": "Cancel",
+    "cancelConfirmTitle": "Cancel subscription?",
     "cancelConfirm": "Are you sure you want to cancel your subscription? Your badge will remain active until the end of the current billing period.",
+    "cancelKeep": "Keep subscription",
+    "cancelConfirmAction": "Cancel subscription",
     "subscriptionCancelled": "Subscription cancelled. Your badge remains active until {date}."
   },
   "legalFooter": {

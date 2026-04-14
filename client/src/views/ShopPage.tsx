@@ -11,6 +11,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from "@/component
 import { PaperCard } from "@/components/ui/paper-card";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { SkeletonBlock, SkeletonPage } from "@/components/ui/skeleton";
 import { PageLayout } from "@/components/PageLayout";
 import { BackButton } from "@/components/BackButton";
@@ -125,6 +126,7 @@ export function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [buyingItem, setBuyingItem] = useState<string | null>(null);
   const [cancellingItem, setCancellingItem] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null);
 
   const isAccount = auth?.player.kind === "account";
 
@@ -329,14 +331,15 @@ export function ShopPage() {
     }
   }
 
-  async function handleCancel(sub: Subscription) {
-    if (!confirm(t("cancelConfirm"))) return;
-
+  async function confirmCancel() {
+    const sub = cancelTarget;
+    if (!sub) return;
     setCancellingItem(sub.subscriptionId);
     try {
       const res = await cancelSubscription(sub.subscriptionId);
       const date = new Date(res.currentPeriodEnd).toLocaleDateString();
       toast.success(t("subscriptionCancelled", { date }));
+      setCancelTarget(null);
       void fetchCatalog(true);
     } catch (error) {
       toastError(error);
@@ -501,7 +504,7 @@ export function ShopPage() {
                               variant="ghost"
                               size="sm"
                               className="text-xs text-red-600 hover:text-red-700"
-                              onClick={() => handleCancel(sub)}
+                              onClick={() => setCancelTarget(sub)}
                               disabled={cancellingItem === sub.subscriptionId}
                             >
                               {t("cancelSubscription")}
@@ -675,6 +678,36 @@ export function ShopPage() {
           </CardContent>
         </PaperCard>
       </AnimatedCard>
+
+      <Dialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null);
+        }}
+        title={t("cancelConfirmTitle")}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">{t("cancelConfirm")}</p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setCancelTarget(null)}
+              disabled={cancellingItem === cancelTarget?.subscriptionId}
+            >
+              {t("cancelKeep")}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmCancel}
+              disabled={cancellingItem === cancelTarget?.subscriptionId}
+            >
+              {cancellingItem === cancelTarget?.subscriptionId
+                ? t("processing")
+                : t("cancelConfirmAction")}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </PageLayout>
   );
 }

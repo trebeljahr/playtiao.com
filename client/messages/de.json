@@ -976,7 +976,10 @@
     "cancellingSubscription": "Endet am {date}",
     "pastDueSubscription": "Zahlung fehlgeschlagen — Zahlungsdaten aktualisieren",
     "cancelSubscription": "Kündigen",
+    "cancelConfirmTitle": "Abonnement kündigen?",
     "cancelConfirm": "Möchtest du dein Abonnement wirklich kündigen? Dein Abzeichen bleibt bis zum Ende des aktuellen Abrechnungszeitraums aktiv.",
+    "cancelKeep": "Abonnement behalten",
+    "cancelConfirmAction": "Abonnement kündigen",
     "subscriptionCancelled": "Abonnement gekündigt. Dein Abzeichen bleibt bis zum {date} aktiv."
   },
   "legalFooter": {

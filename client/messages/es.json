@@ -976,7 +976,10 @@
     "cancellingSubscription": "Se cancela el {date}",
     "pastDueSubscription": "Pago fallido — actualizar datos de pago",
     "cancelSubscription": "Cancelar",
+    "cancelConfirmTitle": "¿Cancelar suscripción?",
     "cancelConfirm": "¿Seguro que quieres cancelar tu suscripción? Tu insignia permanecerá activa hasta el final del período de facturación actual.",
+    "cancelKeep": "Mantener suscripción",
+    "cancelConfirmAction": "Cancelar suscripción",
     "subscriptionCancelled": "Suscripción cancelada. Tu insignia permanece activa hasta el {date}."
   },
   "legalFooter": {
