@@ -95,11 +95,9 @@ function DataExportCard() {
   const [exports, setExports] = useState<UserExportRow[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const loadedRef = useRef(false);
 
   // Only real accounts have export rows — guests never hit the endpoint.
-  // This is the fix for the background 401 loop: previously an unauthenticated
-  // or just-logged-out visitor landing on /settings would fire the initial
-  // GET once per mount (or once per HMR reload in dev) and get a 401.
   const isAccount = auth?.player.kind === "account";
 
   const load = useCallback(async () => {
@@ -112,9 +110,13 @@ function DataExportCard() {
     }
   }, [isAccount]);
 
+  // Load exports exactly once when the component mounts and auth is ready.
+  // Subsequent updates come via the websocket `export-update` message below.
   useEffect(() => {
+    if (!isAccount || loadedRef.current) return;
+    loadedRef.current = true;
     void load();
-  }, [load]);
+  }, [isAccount, load]);
 
   // Server pushes `export-update` on the lobby socket whenever a row
   // transitions state (pending → running → ready/failed). Splice the
