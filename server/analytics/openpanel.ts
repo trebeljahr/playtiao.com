@@ -195,13 +195,28 @@ export async function exportOpenPanelEvents(profileId: string): Promise<Record<s
         data: Record<string, unknown>[];
       };
 
-      // Filter to production events only so dev testing noise stays out
-      // of the user's data export.
-      const prodEvents = body.data.filter(
-        (evt) =>
-          (evt.properties as Record<string, unknown> | undefined)?.environment !== "development",
-      );
-      allEvents.push(...prodEvents);
+      // Filter out dev/test events and strip internal fields that aren't
+      // the user's personal data. The projectId check catches events from
+      // dev OpenPanel projects (e.g. "playtiaocom-dev"); the environment
+      // check catches prod-project events tagged as development.
+      for (const evt of body.data) {
+        const pid = evt.projectId as string | undefined;
+        if (pid && /[-_]dev/i.test(pid)) continue;
+        const env = (evt.properties as Record<string, unknown> | undefined)?.environment;
+        if (env === "development") continue;
+
+        allEvents.push({
+          name: evt.name,
+          createdAt: evt.createdAt,
+          path: evt.path,
+          duration: evt.duration,
+          country: evt.country,
+          city: evt.city,
+          os: evt.os,
+          browser: evt.browser,
+          ...(evt.properties ? { properties: evt.properties } : {}),
+        });
+      }
 
       if (page >= body.meta.pages) break;
       page++;
