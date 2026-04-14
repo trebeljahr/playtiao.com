@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
-import { GamePanelBrand, AnimatedScoreTile, type AnimatedScoreTilePlayerInfo } from "./GameShared";
+import { GamePanelBrand } from "./GameShared";
+import { AnimatedScoreTile, type AnimatedScoreTilePlayerInfo } from "./AnimatedScoreTile";
 import { formatClockTime } from "./GameClock";
 import { cn } from "@/lib/utils";
 

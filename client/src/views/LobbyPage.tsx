@@ -606,7 +606,7 @@ export function LobbyPage() {
         </section>
 
         {(auth || authLoading) && (
-          <section className="grid grid-cols-1 gap-6 md:mt-8 md:grid-cols-2">
+          <section className="grid grid-cols-1 gap-6 md:mt-8 lg:grid-cols-2">
             {authLoading || !multiplayerGamesLoaded ? (
               <>
                 <SkeletonCard />
@@ -767,7 +767,7 @@ export function LobbyPage() {
           </section>
         )}
 
-        <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <AnimatedCard delay={0.2} className="flex flex-col">
             <PaperCard className="overflow-hidden shadow-lg flex-1">
               <CardHeader className="pb-3">

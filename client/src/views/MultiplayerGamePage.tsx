@@ -15,7 +15,6 @@ import { TiaoBoard } from "@/components/game/TiaoBoard";
 import { RematchInviteCard } from "@/components/game/RematchInviteCard";
 import {
   GamePanelBrand,
-  AnimatedScoreTile,
   translatePlayerColor,
   HourglassSpinner,
   RoomCodeCopyPill,
@@ -23,6 +22,7 @@ import {
   SpectateButton,
   EmptySeatAvatar,
 } from "@/components/game/GameShared";
+import { AnimatedScoreTile } from "@/components/game/AnimatedScoreTile";
 import { useMultiplayerGame } from "@/lib/hooks/useMultiplayerGame";
 import { useSocialData } from "@/lib/hooks/useSocialData";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";

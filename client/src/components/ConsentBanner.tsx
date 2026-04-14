@@ -55,6 +55,17 @@ export function ConsentBanner() {
   // track a `dismissed` flag and delay unmount until the transition ends.
   const [dismissed, setDismissed] = useState(false);
 
+  // Detect external status changes (e.g. logging into an account that
+  // already accepted consent) while the banner is visible, and animate
+  // out before unmounting.
+  useEffect(() => {
+    if (!visible || status === "pending") return;
+    setVisible(false);
+    setDismissed(true);
+    const id = setTimeout(() => setDismissed(false), 300);
+    return () => clearTimeout(id);
+  }, [visible, status]);
+
   function handleGrant() {
     setVisible(false);
     setDismissed(true);
