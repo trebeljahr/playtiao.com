@@ -238,15 +238,125 @@ html [data-sonner-toast][data-styled="true"] [data-button]:active {
 @keyframes banner-in {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.95) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-banner-in {
+  animation: banner-in 0.5s ease-out both;
+}
+
+/* Dialog backdrop + content entrance */
+@keyframes dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-dialog-backdrop {
+  animation: dialog-backdrop-in 0.18s ease-out both;
+}
+.animate-dialog-content {
+  animation: dialog-content-in 0.18s ease-out both;
+}
+
+/* Status pill slide-in (game page badges) */
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-pill-in {
+  animation: pill-in 0.2s ease-out both;
+}
+
+/* Rating value pop */
+@keyframes rating-pop {
+  from {
+    transform: scale(1.15);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.animate-rating-pop {
+  animation: rating-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Rating delta badge entrance */
+@keyframes rating-delta-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
   }
   to {
     opacity: 1;
     transform: scale(1);
   }
 }
-.animate-banner-in {
-  animation: banner-in 0.5s ease-out both;
+.animate-rating-delta-in {
+  animation: rating-delta-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Nav drawer + backdrop */
+@keyframes nav-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes nav-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-nav-backdrop-in {
+  animation: nav-backdrop-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-nav-drawer-in {
+  animation: nav-drawer-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Language picker dropdown */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(var(--dropdown-origin-y, -6px));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-dropdown-in {
+  animation: dropdown-in 0.15s ease-out both;
 }
 
 @keyframes ping-slow {

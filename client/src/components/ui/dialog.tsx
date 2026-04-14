@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -73,19 +72,14 @@ export function Dialog({
   }
 
   return (
-    <motion.div
-      className="fixed inset-0 z-300 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-xs"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+    <div
+      className="animate-dialog-backdrop fixed inset-0 z-300 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-xs"
       onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.18 }}
+      <div
         className={cn(
-          "w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-[1.75rem] border border-white/70 bg-card p-6 text-card-foreground shadow-[0_34px_80px_-36px_rgba(63,37,17,0.45)]",
+          "animate-dialog-content w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-[1.75rem] border border-white/70 bg-card p-6 text-card-foreground shadow-[0_34px_80px_-36px_rgba(63,37,17,0.45)]",
           className,
         )}
         onClick={(event) => event.stopPropagation()}
@@ -120,7 +114,7 @@ export function Dialog({
           ) : null}
         </div>
         {children}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

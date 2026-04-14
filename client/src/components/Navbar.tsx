@@ -1,12 +1,11 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import type { AuthResponse } from "@shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSocialNotifications } from "@/lib/SocialNotificationsContext";
-import { useToggleSound } from "@/lib/useSoundPreference";
 import { ThemePicker } from "@/components/game/ThemePicker";
 import { canSeeShop } from "@/lib/featureGate";
 import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
@@ -16,6 +15,12 @@ import {
   usePathname as useIntlPathname,
 } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+
+// Lazy-load SoundToggle so framer-motion isn't in the initial bundle.
+// It only renders inside the nav drawer, which the user must open first.
+const SoundToggle = lazy(() =>
+  import("@/components/SoundToggle").then((m) => ({ default: m.SoundToggle })),
+);
 
 export type AuthDialogMode = "login" | "signup";
 type NavbarProps = {
@@ -27,126 +32,39 @@ type NavbarProps = {
   onLogout: () => void;
 };
 
-const navMotionTransition = {
-  duration: 0.24,
-  ease: [0.22, 1, 0.36, 1],
-} as const;
+const navTransition = "transition-all duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
 
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
     <span className="relative block h-4 w-5">
-      <motion.span
-        className="absolute left-0 h-[2px] w-5 rounded-full bg-current"
-        initial={false}
-        animate={{
-          top: open ? 7 : 0,
-          rotate: open ? 45 : 0,
-        }}
-        transition={navMotionTransition}
+      <span
+        className={cn(
+          "absolute left-0 h-[2px] w-5 rounded-full bg-current origin-center",
+          navTransition,
+        )}
+        style={{ top: open ? 7 : 0, transform: open ? "rotate(45deg)" : "rotate(0)" }}
       />
-      <motion.span
-        className="absolute left-0 top-[7px] h-[2px] w-5 rounded-full bg-current"
-        initial={false}
-        animate={{
-          opacity: open ? 0 : 1,
-          scaleX: open ? 0.45 : 1,
-        }}
-        transition={navMotionTransition}
+      <span
+        className={cn(
+          "absolute left-0 top-[7px] h-[2px] w-5 rounded-full bg-current origin-center",
+          navTransition,
+        )}
+        style={{ opacity: open ? 0 : 1, transform: open ? "scaleX(0.45)" : "scaleX(1)" }}
       />
-      <motion.span
-        className="absolute left-0 h-[2px] w-5 rounded-full bg-current"
-        initial={false}
-        animate={{
-          top: open ? 7 : 14,
-          rotate: open ? -45 : 0,
-        }}
-        transition={navMotionTransition}
+      <span
+        className={cn(
+          "absolute left-0 h-[2px] w-5 rounded-full bg-current origin-center",
+          navTransition,
+        )}
+        style={{ top: open ? 7 : 14, transform: open ? "rotate(-45deg)" : "rotate(0)" }}
       />
     </span>
   );
 }
 
-function SoundToggle() {
-  const t = useTranslations("nav");
-  const [enabled, toggle] = useToggleSound();
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="relative flex h-8 w-8 items-center justify-center rounded-full text-[#6e5b48] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[#28170e]"
-      aria-label={enabled ? t("muteSounds") : t("unmuteSounds")}
-    >
-      <motion.svg
-        key={enabled ? "on" : "off"}
-        viewBox="0 0 20 20"
-        fill="none"
-        className="h-[18px] w-[18px]"
-        initial={{ scale: 0.7, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 500, damping: 25 }}
-      >
-        {enabled ? (
-          <>
-            <path
-              d="M10 3.5L5.5 7H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2.5L10 16.5V3.5Z"
-              fill="currentColor"
-            />
-            <motion.path
-              d="M13 7.5c.8.7 1.25 1.6 1.25 2.5s-.45 1.8-1.25 2.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-            />
-            <motion.path
-              d="M15 5.5c1.4 1.2 2.25 2.8 2.25 4.5s-.85 3.3-2.25 4.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.2 }}
-            />
-          </>
-        ) : (
-          <>
-            <path
-              d="M10 3.5L5.5 7H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2.5L10 16.5V3.5Z"
-              fill="currentColor"
-              opacity="0.5"
-            />
-            <motion.line
-              x1="13"
-              y1="7.5"
-              x2="17.5"
-              y2="12.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.2 }}
-            />
-            <motion.line
-              x1="17.5"
-              y1="7.5"
-              x2="13"
-              y2="12.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
-            />
-          </>
-        )}
-      </motion.svg>
-    </button>
-  );
+/** Placeholder shown while lazy SoundToggle loads */
+function SoundToggleSkeleton() {
+  return <span className="h-8 w-8" />;
 }
 
 const localeLabels: Record<string, string> = {
@@ -217,37 +135,32 @@ function LanguagePicker() {
           />
         </svg>
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: openAbove ? 6 : -6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: openAbove ? 6 : -6 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className={cn(
-              "absolute right-0 z-210 min-w-34 overflow-hidden rounded-xl border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.97)] py-1 shadow-[0_12px_28px_-10px_rgba(99,67,28,0.35)] backdrop-blur-sm",
-              openAbove ? "bottom-full mb-1.5" : "top-full mt-1.5",
-            )}
-          >
-            {routing.locales.map((loc) => (
-              <button
-                key={loc}
-                type="button"
-                onClick={() => handleSelect(loc)}
-                className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
-                  loc === locale
-                    ? "bg-[rgba(175,142,93,0.14)] font-semibold text-[#28170e]"
-                    : "text-[#6e5b48] hover:bg-[rgba(0,0,0,0.04)] hover:text-[#28170e]",
-                )}
-              >
-                <span className="text-xs uppercase tracking-wider opacity-60">{loc}</span>
-                <span>{localeLabels[loc] ?? loc}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <div
+          className={cn(
+            "animate-dropdown-in absolute right-0 z-210 min-w-34 overflow-hidden rounded-xl border border-[#af8e5d]/35 bg-[rgba(255,248,232,0.97)] py-1 shadow-[0_12px_28px_-10px_rgba(99,67,28,0.35)] backdrop-blur-sm",
+            openAbove ? "bottom-full mb-1.5" : "top-full mt-1.5",
+          )}
+          style={{ "--dropdown-origin-y": openAbove ? "6px" : "-6px" } as React.CSSProperties}
+        >
+          {routing.locales.map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              onClick={() => handleSelect(loc)}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                loc === locale
+                  ? "bg-[rgba(175,142,93,0.14)] font-semibold text-[#28170e]"
+                  : "text-[#6e5b48] hover:bg-[rgba(0,0,0,0.04)] hover:text-[#28170e]",
+              )}
+            >
+              <span className="text-xs uppercase tracking-wider opacity-60">{loc}</span>
+              <span>{localeLabels[loc] ?? loc}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -507,18 +420,17 @@ export function Navbar({
   );
 
   const drawerContent = (
-    <motion.aside
-      initial={false}
-      animate={{ x: navOpen ? 0 : -36, opacity: navOpen ? 1 : 0 }}
-      transition={navMotionTransition}
-      className="absolute left-0 top-0 h-full w-full max-w-[20.6rem] overflow-y-auto border-r border-[#b69261]/24 bg-[linear-gradient(180deg,rgba(251,238,210,0.985),rgba(239,213,161,0.975))] px-4 py-3 text-[#2b1a10] shadow-[0_30px_80px_-28px_rgba(95,59,21,0.34)]"
+    <aside
+      className="animate-nav-drawer-in absolute left-0 top-0 h-full w-full max-w-[20.6rem] overflow-y-auto border-r border-[#b69261]/24 bg-[linear-gradient(180deg,rgba(251,238,210,0.985),rgba(239,213,161,0.975))] px-4 py-3 text-[#2b1a10] shadow-[0_30px_80px_-28px_rgba(95,59,21,0.34)]"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="flex min-h-11 items-center pl-[4.15rem] pr-2 sm:pl-[4.2rem]">
         <Brand compact className="shrink-0 -translate-y-[2px]" onClick={onCloseNav} />
         <div className="ml-auto flex items-center gap-1">
           <LanguagePicker />
-          <SoundToggle />
+          <Suspense fallback={<SoundToggleSkeleton />}>
+            <SoundToggle />
+          </Suspense>
         </div>
       </div>
 
@@ -650,7 +562,7 @@ export function Navbar({
 
         <p className="tracking-wide">v{process.env.APP_VERSION}</p>
       </div>
-    </motion.aside>
+    </aside>
   );
 
   return (
@@ -665,20 +577,14 @@ export function Navbar({
         <HamburgerIcon open={navOpen} />
       </button>
 
-      <AnimatePresence>
-        {navOpen && (
-          <motion.div
-            className="fixed inset-0 z-200 bg-[rgba(15,11,8,0.5)] backdrop-blur-xs"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={navMotionTransition}
-            onClick={onCloseNav}
-          >
-            {drawerContent}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {navOpen && (
+        <div
+          className="animate-nav-backdrop-in fixed inset-0 z-200 bg-[rgba(15,11,8,0.5)] backdrop-blur-xs"
+          onClick={onCloseNav}
+        >
+          {drawerContent}
+        </div>
+      )}
     </>
   );
 }

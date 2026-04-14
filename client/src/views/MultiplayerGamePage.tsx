@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { PlayerColor, Position } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
@@ -119,26 +118,25 @@ function AnimatedRatingChange({
   return (
     <div className="flex items-center justify-start gap-3 py-2 mb-2">
       <span className="text-sm text-[#6e5b48]">{label}:</span>
-      <motion.span
-        className="font-display text-2xl font-bold text-[#2b1e14]"
-        animate={animDone ? { scale: [1.15, 1] } : {}}
-        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+      <span
+        className={cn(
+          "font-display text-2xl font-bold text-[#2b1e14]",
+          animDone && "animate-rating-pop",
+        )}
       >
         {displayValue}
-      </motion.span>
+      </span>
       {roundedDelta !== 0 && (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={animDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+        <span
           className={cn(
             "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
             roundedDelta > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600",
+            animDone ? "animate-rating-delta-in" : "opacity-0 scale-50",
           )}
         >
           {roundedDelta > 0 ? "+" : ""}
           {roundedDelta}
-        </motion.span>
+        </span>
       )}
     </div>
   );
@@ -1249,10 +1247,8 @@ export function MultiplayerGamePage() {
                     </div>
                     <div className="flex min-w-0 shrink justify-end">
                       {isReviewMode && multiplayerSnapshot && reviewMoveIndex !== null ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-1 py-1 shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
+                        <div
+                          className="animate-pill-in flex items-center rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-1 py-1 shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
                           data-testid="review-nav-buttons"
                         >
                           <MoveListNavButtons
@@ -1260,76 +1256,52 @@ export function MultiplayerGamePage() {
                             currentMoveIndex={reviewMoveIndex}
                             onSelectMove={setReviewMoveIndex}
                           />
-                        </motion.div>
+                        </div>
                       ) : multiplayerSnapshot && connectionState !== "connected" ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
-                        >
+                        <div className="animate-pill-in flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm">
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           {connectionState === "connecting" ? t("connecting") : t("reconnecting")}
-                        </motion.div>
+                        </div>
                       ) : isAwaitingFirstMove && multiplayerYourTurn ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#c9a84c] bg-[#fffbeb]/96 px-3 py-2 text-sm font-semibold text-[#8b6914] shadow-[0_16px_28px_-22px_rgba(139,105,20,0.42)] backdrop-blur-sm"
-                        >
+                        <div className="animate-pill-in flex items-center gap-2 rounded-full border border-[#c9a84c] bg-[#fffbeb]/96 px-3 py-2 text-sm font-semibold text-[#8b6914] shadow-[0_16px_28px_-22px_rgba(139,105,20,0.42)] backdrop-blur-sm">
                           <span className="font-mono tabular-nums text-base">
                             {formatClockTime(firstMoveCountdownMs)}
                           </span>
                           <span>{t("toMakeFirstMove")}</span>
-                        </motion.div>
+                        </div>
                       ) : isAwaitingFirstMove && multiplayerWaitingOnOpponent ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm"
-                        >
+                        <div className="animate-pill-in flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm">
                           <HourglassSpinner className="text-[#7b5f3f]" />
                           <span className="font-mono tabular-nums">
                             {formatClockTime(firstMoveCountdownMs)}
                           </span>
                           <span>{t("opponentsFirstMove")}</span>
-                        </motion.div>
+                        </div>
                       ) : multiplayerYourTurn ? (
                         <div className="flex items-center gap-2">
                           {hasClock && (
                             <InlineClockBadge timeMs={activeClockMs} className="ml-0 text-base" />
                           )}
-                          <motion.div
-                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur-sm"
-                          >
+                          <div className="animate-pill-in flex items-center whitespace-nowrap rounded-full border border-[#b8cc8f] bg-[#f7fce9]/96 px-3 py-2 text-sm font-semibold text-[#56703f] shadow-[0_16px_28px_-22px_rgba(63,92,32,0.42)] backdrop-blur-sm">
                             {t("yourMove")}
-                          </motion.div>
+                          </div>
                         </div>
                       ) : multiplayerWaitingOnOpponent ? (
                         <div className="flex items-center gap-2 min-w-0">
                           {hasClock && yourClockMs != null && (
                             <InlineClockBadge timeMs={yourClockMs} className="ml-0 text-base" />
                           )}
-                          <motion.div
-                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm min-w-0"
-                          >
+                          <div className="animate-pill-in flex items-center gap-2 rounded-full border border-[#d8c29c] bg-[#fff8ee]/96 px-3 py-2 text-sm font-semibold text-[#5d4732] shadow-[0_16px_28px_-22px_rgba(67,45,24,0.5)] backdrop-blur-sm min-w-0">
                             <HourglassSpinner className="shrink-0 text-[#7b5f3f]" />
                             <span className="truncate">{t("waitingForOpponent")}</span>
-                          </motion.div>
+                          </div>
                         </div>
                       ) : isSpectator && multiplayerSnapshot?.status === "active" ? (
                         <div className="flex items-center gap-2">
                           {hasClock && (
                             <InlineClockBadge timeMs={activeClockMs} className="ml-0 text-base" />
                           )}
-                          <motion.div
-                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className="flex items-center gap-2 rounded-full border border-[#c4b5d4] bg-[#f5f0fc]/96 px-3 py-2 text-sm font-semibold text-[#5a4570] shadow-[0_16px_28px_-22px_rgba(90,69,112,0.42)] backdrop-blur-sm"
-                          >
+                          <div className="animate-pill-in flex items-center gap-2 rounded-full border border-[#c4b5d4] bg-[#f5f0fc]/96 px-3 py-2 text-sm font-semibold text-[#5a4570] shadow-[0_16px_28px_-22px_rgba(90,69,112,0.42)] backdrop-blur-sm">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="14"
@@ -1345,7 +1317,7 @@ export function MultiplayerGamePage() {
                               <circle cx="12" cy="12" r="3" />
                             </svg>
                             {t("spectating")}
-                          </motion.div>
+                          </div>
                         </div>
                       ) : null}
                     </div>

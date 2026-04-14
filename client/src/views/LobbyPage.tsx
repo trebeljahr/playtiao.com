@@ -1,6 +1,5 @@
 "use client";
 import { useState, useMemo, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { TIME_CONTROL_PRESETS, type PlayerColor } from "@shared";
@@ -184,18 +183,16 @@ export function LobbyPage() {
   const guestGameCount = multiplayerGames.active.length + multiplayerGames.finished.length;
   const guestGamesRemaining = GUEST_GAME_LIMIT - guestGameCount;
   const [guestLimitDialogOpen, setGuestLimitDialogOpen] = useState(false);
-  // Initialize tutorial state SYNCHRONOUSLY from localStorage so the banner
-  // doesn't "jump in" after first paint. The previous pattern was to start
-  // with `false` and flip it inside a useEffect, which caused a visible
-  // flash where the page rendered without the banner, then the effect
-  // fired after mount and the banner appeared from the top. Reading the
-  // flag inside a lazy useState initializer means the very first client
-  // Start with SSR-safe defaults (banner visible, tutorial needed) so the
-  // server and client first render always agree. The useEffect below reads
-  // localStorage / auth on mount and corrects the state immediately,
-  // avoiding a hydration mismatch.
-  const [showTutorialBanner, setShowTutorialBanner] = useState(true);
+  // Tutorial state starts unknown (`null`) until the first useEffect
+  // hydrates from localStorage / auth. This avoids the flash where the
+  // banner renders on the SSR-default and then disappears once the
+  // effect reads the real value. While `tutorialHydrated` is false we
+  // simply don't render the banner section at all — returning users
+  // never see it flash, and new users get a smooth motion entrance
+  // once hydration confirms the banner is needed.
+  const [showTutorialBanner, setShowTutorialBanner] = useState(false);
   const [needsTutorial, setNeedsTutorial] = useState(true);
+  const [tutorialHydrated, setTutorialHydrated] = useState(false);
   const [matchmakingGateOpen, setMatchmakingGateOpen] = useState(false);
   const [pendingMatchmakingNav, setPendingMatchmakingNav] = useState<string | null>(null);
 
@@ -209,6 +206,7 @@ export function LobbyPage() {
     const completed = Boolean(seenViaAccount || seenViaLocal);
     setShowTutorialBanner(!completed);
     setNeedsTutorial(!completed);
+    setTutorialHydrated(true);
   }, [auth]);
 
   function handleMatchmakingClick(nav: string) {
@@ -375,14 +373,11 @@ export function LobbyPage() {
       />
 
       <main className="mx-auto flex max-w-7xl flex-col px-4 pb-12 pt-16 sm:px-6 lg:px-8 lg:pt-20">
-        {/* Banner Section — hidden for users who completed the tutorial */}
-        {showTutorialBanner && (
+        {/* Banner Section — hidden until hydrated, then shown only for
+            users who haven't completed the tutorial yet. */}
+        {tutorialHydrated && showTutorialBanner && (
           <section className="relative flex flex-col items-center justify-center py-4 text-center sm:py-12">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-2 sm:gap-4"
-            >
+            <div className="animate-banner-in flex flex-col items-center gap-2 sm:gap-4">
               <span className="flex h-16 w-16 items-center justify-center rounded-3xl border-2 border-[#f6e8cf]/55 bg-[linear-gradient(180deg,#faefd8,#ecd4a6)] font-display text-4xl text-[#25170d] shadow-[0_32px_64px_-24px_rgba(37,23,13,0.85)] sm:h-24 sm:w-24 sm:rounded-[2.5rem] sm:text-6xl">
                 跳
               </span>
@@ -399,7 +394,7 @@ export function LobbyPage() {
               >
                 {t("learnToPlay")}
               </Button>
-            </motion.div>
+            </div>
           </section>
         )}
 
