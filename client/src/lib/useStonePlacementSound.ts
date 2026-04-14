@@ -47,7 +47,11 @@ export function useStonePlacementSound(state: GameState | null) {
     const jumpStepAdded =
       previousJumpLength.current !== null && nextJumpLength > previousJumpLength.current;
 
-    if ((pieceAdded || jumpStepAdded) && soundEnabled) {
+    // A jump was confirmed when pendingJump transitions from non-empty to empty.
+    const jumpConfirmed =
+      previousJumpLength.current !== null && previousJumpLength.current > 0 && nextJumpLength === 0;
+
+    if ((pieceAdded || jumpStepAdded || jumpConfirmed) && soundEnabled) {
       playMoveSound();
     }
 
