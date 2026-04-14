@@ -8,6 +8,7 @@ import {
   adminGrantAchievement,
   adminRevokeAchievement,
   getPlayerAchievementIds,
+  getPlayerAchievementIdsBatch,
 } from "../game/achievementService";
 import { tournamentService } from "../game/tournamentService";
 import { trackRevenue, openPanelEnabled } from "../analytics/openpanel";
@@ -39,17 +40,19 @@ router.get("/users/search", async (req: Request, res: Response) => {
       .limit(20)
       .lean();
 
-    const users = await Promise.all(
-      accounts.map(async (account: any) => ({
-        playerId: String(account._id),
-        displayName: account.displayName,
-        profilePicture: account.profilePicture,
-        badges: account.badges ?? [],
-        activeBadges: account.activeBadges ?? [],
-        unlockedThemes: account.unlockedThemes ?? [],
-        achievements: await getPlayerAchievementIds(String(account._id)),
-      })),
-    );
+    // Batch-fetch achievements for all accounts in one query instead of N.
+    const playerIds = accounts.map((a: any) => String(a._id));
+    const achievementsByPlayer = await getPlayerAchievementIdsBatch(playerIds);
+
+    const users = accounts.map((account: any) => ({
+      playerId: String(account._id),
+      displayName: account.displayName,
+      profilePicture: account.profilePicture,
+      badges: account.badges ?? [],
+      activeBadges: account.activeBadges ?? [],
+      unlockedThemes: account.unlockedThemes ?? [],
+      achievements: achievementsByPlayer.get(String(account._id)) ?? [],
+    }));
 
     return res.status(200).json({ users });
   } catch (error) {

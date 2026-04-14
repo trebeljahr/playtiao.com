@@ -131,6 +131,27 @@ export async function getPlayerAchievementIds(playerId: string): Promise<string[
   return docs.map((d) => d.achievementId);
 }
 
+/**
+ * Batch variant: fetch achievement IDs for many players in a single query.
+ * Returns a Map<playerId, achievementIds[]> where players with no
+ * achievements map to an empty array.
+ */
+export async function getPlayerAchievementIdsBatch(
+  playerIds: string[],
+): Promise<Map<string, string[]>> {
+  const result = new Map<string, string[]>();
+  for (const id of playerIds) result.set(id, []);
+  if (playerIds.length === 0) return result;
+  const docs = await Achievement.find({ playerId: { $in: playerIds } })
+    .select("playerId achievementId")
+    .lean();
+  for (const d of docs) {
+    const list = result.get(String(d.playerId));
+    if (list) list.push(d.achievementId);
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Event: Game Completed (multiplayer)
 // ---------------------------------------------------------------------------
