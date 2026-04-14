@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import type { AuthResponse, PlayerIdentity } from "@shared";
 import type { AuthDialogMode } from "@/components/Navbar";
 import { authClient } from "@/lib/auth-client";
@@ -411,39 +419,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const value: AuthContextValue = {
-    auth,
-    authLoading,
-    appError,
-    authDialogOpen,
-    authDialogForced,
-    authDialogMode,
-    authBusy,
-    authDialogError,
-    loginEmail,
-    loginPassword,
-    signupDisplayName,
-    signupEmail,
-    signupPassword,
-    signupConfirmPassword,
-    setAuth,
-    setAuthDialogOpen,
-    setAuthDialogMode,
-    setAuthDialogError,
-    setLoginEmail,
-    setLoginPassword,
-    setSignupDisplayName,
-    setSignupEmail,
-    setSignupPassword,
-    setSignupConfirmPassword,
-    applyAuth,
-    onOpenAuth,
-    handleLoginSubmit,
-    handleSignupSubmit,
-    handleForgotPassword,
-    handleOAuthSignIn,
-    onLogout,
-  };
+  // Memoize so consumers subscribed via useContext don't re-render on every
+  // render of AuthProvider — only when one of the actual values changes.
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      auth,
+      authLoading,
+      appError,
+      authDialogOpen,
+      authDialogForced,
+      authDialogMode,
+      authBusy,
+      authDialogError,
+      loginEmail,
+      loginPassword,
+      signupDisplayName,
+      signupEmail,
+      signupPassword,
+      signupConfirmPassword,
+      setAuth,
+      setAuthDialogOpen,
+      setAuthDialogMode,
+      setAuthDialogError,
+      setLoginEmail,
+      setLoginPassword,
+      setSignupDisplayName,
+      setSignupEmail,
+      setSignupPassword,
+      setSignupConfirmPassword,
+      applyAuth,
+      onOpenAuth,
+      handleLoginSubmit,
+      handleSignupSubmit,
+      handleForgotPassword,
+      handleOAuthSignIn,
+      onLogout,
+    }),
+    [
+      auth,
+      authLoading,
+      appError,
+      authDialogOpen,
+      authDialogForced,
+      authDialogMode,
+      authBusy,
+      authDialogError,
+      loginEmail,
+      loginPassword,
+      signupDisplayName,
+      signupEmail,
+      signupPassword,
+      signupConfirmPassword,
+      applyAuth,
+      onOpenAuth,
+      handleLoginSubmit,
+      handleSignupSubmit,
+      handleForgotPassword,
+      handleOAuthSignIn,
+      onLogout,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

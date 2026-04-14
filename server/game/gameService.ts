@@ -719,10 +719,24 @@ export class GameService {
     }
   }
 
+  /** Batch-resolve profiles for every seated player across a list of rooms. */
+  private async resolveProfilesForRooms(
+    rooms: StoredMultiplayerRoom[],
+  ): Promise<Map<string, CachedPlayerProfile>> {
+    const ids = new Set<string>();
+    for (const room of rooms) {
+      if (room.seats.white) ids.add(room.seats.white.playerId);
+      if (room.seats.black) ids.add(room.seats.black.playerId);
+    }
+    return ids.size > 0 ? getPlayerProfiles([...ids]) : new Map();
+  }
+
   async listGames(player: PlayerIdentity): Promise<MultiplayerGamesIndex> {
     const rooms = await this.store.listRoomsForPlayer(player.playerId);
+    // Batch-resolve all profiles in one query instead of N per-room fetches.
+    const profiles = await this.resolveProfilesForRooms(rooms);
     const summaries = await Promise.all(
-      rooms.map((room) => this.toSummary(this.deriveRoomStatus(room), player.playerId)),
+      rooms.map((room) => this.toSummary(this.deriveRoomStatus(room), player.playerId, profiles)),
     );
 
     return {
@@ -739,8 +753,9 @@ export class GameService {
     const rooms = await this.store.listFinishedRoomsForPlayer(playerId, limit + 1, beforeDate);
     const hasMore = rooms.length > limit;
     const trimmed = hasMore ? rooms.slice(0, limit) : rooms;
+    const profiles = await this.resolveProfilesForRooms(trimmed);
     const games = await Promise.all(
-      trimmed.map((room) => this.toSummary(this.deriveRoomStatus(room), playerId)),
+      trimmed.map((room) => this.toSummary(this.deriveRoomStatus(room), playerId, profiles)),
     );
     return { games, hasMore };
   }
