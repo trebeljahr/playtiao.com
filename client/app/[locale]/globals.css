@@ -159,6 +159,22 @@
 [data-sonner-toast] {
   cursor: default;
 }
+/* On mobile, sonner stretches the toaster container full-width and ignores
+   the configured top-right anchor, which makes wide toasts overlap the
+   top-left navbar hamburger (fixed at left-3 top-3, 44px wide). Pin the
+   toaster to the right and reserve ~64px on the left for the hamburger
+   so toasts wrap their content vertically instead of growing into it. */
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-y-position="top"] {
+    left: 64px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+  [data-sonner-toaster] [data-sonner-toast] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
 /* Move sonner's close X from its default top-left corner to the top-right
    so it doesn't collide with the avatar in our custom toast content.
    Sonner's own rule sets --toast-close-button-start/end on
