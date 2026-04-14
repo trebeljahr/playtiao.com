@@ -106,10 +106,21 @@ export function trackRevenue(
   amount: number,
   properties: TrackProperties & { currency: string },
 ): void {
-  if (!openPanelEnabled) return;
-  void instance.revenue(amount, properties).catch((err) => {
-    console.error("[openpanel] trackRevenue failed:", err);
-  });
+  if (!openPanelEnabled) {
+    console.info(`[openpanel] trackRevenue skipped (disabled): amount=${amount}`);
+    return;
+  }
+  console.info(
+    `[openpanel] trackRevenue sending: amount=${amount} currency=${properties.currency} profileId=${(properties as { profileId?: string }).profileId ?? "none"}`,
+  );
+  void instance
+    .revenue(amount, properties)
+    .then(() => {
+      console.info("[openpanel] trackRevenue sent successfully");
+    })
+    .catch((err) => {
+      console.error("[openpanel] trackRevenue failed:", err);
+    });
 }
 
 /**

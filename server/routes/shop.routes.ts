@@ -416,13 +416,18 @@ router.post(
             }
 
             // Revenue event — fire for every successful checkout, whether
-            // subscription or one-off. Stripe gives the amount in minor
-            // units (cents), so divide for the human-readable figure the
-            // OpenPanel revenue dashboard expects. amount_total can be
-            // null for subscriptions created with a zero-invoice upfront;
-            // skip when so.
+            // subscription or one-off. OpenPanel's __revenue parser stores
+            // the raw number we send without any cents→dollars conversion,
+            // and their e-commerce docs pass Stripe's `session.amount_total`
+            // directly — which is in minor units. So we match that contract
+            // and pass the raw cents. amount_total can be null for
+            // subscriptions created with a zero-invoice upfront; skip then.
             if (typeof session.amount_total === "number" && session.amount_total > 0) {
-              trackRevenue(session.amount_total / 100, {
+              const amount = session.amount_total;
+              console.info(
+                `[shop] Firing revenue event: amount=${amount} currency=${session.currency} player=${playerId} item=${itemType}/${itemId}`,
+              );
+              trackRevenue(amount, {
                 profileId: playerId,
                 currency: (session.currency ?? "usd").toUpperCase(),
                 item_type: itemType,

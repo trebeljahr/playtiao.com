@@ -275,8 +275,10 @@ router.post("/dev-test-revenue", async (req: Request, res: Response) => {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
 
+  // Amount is in MINOR UNITS (cents) to match what the real shop webhook
+  // sends. Default to 1234 cents ($12.34) for a quick sanity check.
   const { amount, currency } = req.body as { amount?: number; currency?: string };
-  const finalAmount = typeof amount === "number" && amount > 0 ? amount : 1.23;
+  const finalAmount = typeof amount === "number" && amount > 0 ? amount : 1234;
   const finalCurrency = (currency ?? "USD").toUpperCase();
 
   if (!openPanelEnabled) {
@@ -286,6 +288,9 @@ router.post("/dev-test-revenue", async (req: Request, res: Response) => {
     });
   }
 
+  console.info(
+    `[admin] Firing synthetic revenue event: amount=${finalAmount} currency=${finalCurrency} player=${admin._id}`,
+  );
   trackRevenue(finalAmount, {
     profileId: String(admin._id),
     currency: finalCurrency,
@@ -296,7 +301,7 @@ router.post("/dev-test-revenue", async (req: Request, res: Response) => {
 
   return res.status(200).json({
     ok: true,
-    message: `Fired synthetic revenue event: ${finalAmount} ${finalCurrency}`,
+    message: `Fired synthetic revenue event: ${finalAmount} minor units (${finalCurrency})`,
   });
 });
 
