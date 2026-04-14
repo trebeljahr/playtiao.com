@@ -1,6 +1,18 @@
 import { Queue, Worker } from "bullmq";
 import type { Redis } from "ioredis";
 
+// BullMQ Workers do blocking commands (BRPOPLPUSH, etc.) that don't tolerate
+// the default ioredis retry policy. The shared Redis client is configured with
+// `maxRetriesPerRequest: 3` for fail-fast semantics in the rest of the app, so
+// each BullMQ scheduler duplicates the connection here with the BullMQ-required
+// options instead of mutating the shared client.
+function duplicateForBullMQ(redis: Redis): Redis {
+  return redis.duplicate({
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
+}
+
 // ─── Handler callbacks provided by GameService ─────────────────────────
 
 export type TimerHandlers = {
@@ -124,13 +136,16 @@ export class BullMQTimerScheduler implements TimerScheduler {
   private readonly clockWorker: Worker;
   private readonly abandonWorker: Worker;
   private readonly firstMoveWorker: Worker;
+  private readonly workerConnection: Redis;
 
   constructor(redis: Redis, handlers: TimerHandlers) {
-    const connection = { connection: redis };
+    this.workerConnection = duplicateForBullMQ(redis);
+    const queueConnection = { connection: redis };
+    const workerConnection = { connection: this.workerConnection };
 
-    this.clockQueue = new Queue(CLOCK_QUEUE, connection);
-    this.abandonQueue = new Queue(ABANDON_QUEUE, connection);
-    this.firstMoveQueue = new Queue(FIRST_MOVE_QUEUE, connection);
+    this.clockQueue = new Queue(CLOCK_QUEUE, queueConnection);
+    this.abandonQueue = new Queue(ABANDON_QUEUE, queueConnection);
+    this.firstMoveQueue = new Queue(FIRST_MOVE_QUEUE, queueConnection);
 
     this.clockWorker = new Worker(
       CLOCK_QUEUE,
@@ -138,7 +153,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
         const { roomId, expectedTurn } = job.data as { roomId: string; expectedTurn: string };
         await handlers.onClockExpired(roomId, expectedTurn);
       },
-      { ...connection, concurrency: 1 },
+      { ...workerConnection, concurrency: 1 },
     );
 
     this.abandonWorker = new Worker(
@@ -147,7 +162,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
         const { roomId, playerId } = job.data as { roomId: string; playerId: string };
         await handlers.onAbandonExpired(roomId, playerId);
       },
-      { ...connection, concurrency: 1 },
+      { ...workerConnection, concurrency: 1 },
     );
 
     this.firstMoveWorker = new Worker(
@@ -156,7 +171,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
         const { roomId } = job.data as { roomId: string };
         await handlers.onFirstMoveExpired(roomId);
       },
-      { ...connection, concurrency: 1 },
+      { ...workerConnection, concurrency: 1 },
     );
   }
 
@@ -232,6 +247,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
       this.abandonQueue.close(),
       this.firstMoveQueue.close(),
     ]);
+    await this.workerConnection.quit();
   }
 }
 
@@ -273,16 +289,17 @@ const SWEEP_QUEUE = "tiao-matchmaking-sweep";
 export class BullMQMatchmakingSweepScheduler implements MatchmakingSweepScheduler {
   private readonly queue: Queue;
   private readonly worker: Worker;
+  private readonly workerConnection: Redis;
 
   constructor(redis: Redis, sweepFn: () => Promise<void>) {
-    const connection = { connection: redis };
-    this.queue = new Queue(SWEEP_QUEUE, connection);
+    this.workerConnection = duplicateForBullMQ(redis);
+    this.queue = new Queue(SWEEP_QUEUE, { connection: redis });
     this.worker = new Worker(
       SWEEP_QUEUE,
       async () => {
         await sweepFn();
       },
-      { ...connection, concurrency: 1 },
+      { connection: this.workerConnection, concurrency: 1 },
     );
   }
 
@@ -306,6 +323,7 @@ export class BullMQMatchmakingSweepScheduler implements MatchmakingSweepSchedule
   async close(): Promise<void> {
     await this.worker.close();
     await this.queue.close();
+    await this.workerConnection.quit();
   }
 }
 
@@ -335,17 +353,18 @@ const EXPORT_QUEUE = "tiao-data-export";
 export class BullMQExportScheduler implements ExportJobScheduler {
   private readonly queue: Queue;
   private readonly worker: Worker;
+  private readonly workerConnection: Redis;
 
   constructor(redis: Redis, runFn: (requestId: string) => Promise<void>) {
-    const connection = { connection: redis };
-    this.queue = new Queue(EXPORT_QUEUE, connection);
+    this.workerConnection = duplicateForBullMQ(redis);
+    this.queue = new Queue(EXPORT_QUEUE, { connection: redis });
     this.worker = new Worker(
       EXPORT_QUEUE,
       async (job) => {
         const { requestId } = job.data as { requestId: string };
         await runFn(requestId);
       },
-      { ...connection, concurrency: 1 },
+      { connection: this.workerConnection, concurrency: 1 },
     );
   }
 
@@ -363,5 +382,6 @@ export class BullMQExportScheduler implements ExportJobScheduler {
   async close(): Promise<void> {
     await this.worker.close();
     await this.queue.close();
+    await this.workerConnection.quit();
   }
 }
