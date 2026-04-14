@@ -102,7 +102,11 @@ function parseSessionCookie(setCookieHeader) {
 
 async function signUpBot(index) {
   const name = `${NAME_PREFIX}-bot-${String(index).padStart(3, "0")}`;
-  const email = `${name}@seed.local`;
+  // `.invalid` TLD is reserved by RFC 2606 for addresses that must never
+  // reach real mail infrastructure. Paired with the @tiao-seed.invalid
+  // skip check in server/auth/email.ts, this guarantees seed signups
+  // never burn through Resend quota.
+  const email = `${name}@tiao-seed.invalid`;
   const password = "SeedBot1!";
 
   // Bot signup — if the account already exists, the endpoint returns 400;

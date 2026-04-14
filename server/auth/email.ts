@@ -16,6 +16,17 @@ function extractFirstUrl(html: string): string | null {
 }
 
 async function send(to: string, subject: string, html: string): Promise<void> {
+  // Seed/test accounts use @tiao-seed.invalid emails — skip Resend entirely
+  // so dev seeding scripts don't burn through the monthly email quota. The
+  // seed tournament script creates dozens of bot accounts at a time.
+  // `.invalid` is reserved per RFC 2606 so these addresses are guaranteed
+  // to never reach a real mail server even if the skip check fails.
+  // `@seed.local` is the legacy pattern kept here as a safety net for any
+  // older seed accounts still in the database.
+  if (to.endsWith("@tiao-seed.invalid") || to.endsWith("@seed.local")) {
+    return;
+  }
+
   if (!resend) {
     const url = extractFirstUrl(html);
     console.info(
