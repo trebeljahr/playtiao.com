@@ -20,7 +20,13 @@ export function CopyGameIdButton({ gameId, variant = "ghost", className }: CopyG
   }, []);
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(gameId);
+    // Best-effort copy — the Clipboard API throws in insecure contexts
+    // (http://) and when the user denies permission. We optimistically
+    // flip to "copied" and roll back on failure so the button never
+    // leaves a half-confused state if the copy didn't land.
+    navigator.clipboard.writeText(gameId).catch(() => {
+      setCopied(false);
+    });
     setCopied(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => setCopied(false), 1800);

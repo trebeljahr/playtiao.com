@@ -219,9 +219,14 @@ export function TournamentPage() {
                 variant="outline"
                 onClick={() => {
                   const url = `${window.location.origin}/tournament/${tournament.tournamentId}?code=${tournament.settings.inviteCode}`;
-                  navigator.clipboard.writeText(url).then(() => {
-                    toast.success(t("inviteLinkCopied"));
-                  });
+                  navigator.clipboard
+                    .writeText(url)
+                    .then(() => {
+                      toast.success(t("inviteLinkCopied"));
+                    })
+                    .catch(() => {
+                      toast.error(t("inviteLinkCopyFailed"));
+                    });
                 }}
               >
                 {t("copyInviteLink")}
