@@ -21,12 +21,15 @@ process.env.S3_PUBLIC_URL ??= "https://assets.test.local";
 type AsyncFn = (...args: unknown[]) => Promise<unknown>;
 const stubGetSession = mock.fn<AsyncFn>(() => Promise.resolve(null));
 const stubFindById = mock.fn<AsyncFn>(() => Promise.resolve(null));
+const stubLookupBetterAuthUser = mock.fn<AsyncFn>(() => Promise.resolve(null));
 
 // ---------------------------------------------------------------------------
-// Patch auth and GameAccount BEFORE sessionHelper is loaded so it picks
-// up the stubs via its own require() calls.
+// Patch auth, GameAccount and the better-auth user lookup BEFORE
+// sessionHelper is loaded so it picks up the stubs via its own require()
+// calls.
 // ---------------------------------------------------------------------------
 import * as authModule from "../auth/auth";
+import * as betterAuthUserLookupModule from "../auth/betterAuthUserLookup";
 import GameAccount from "../models/GameAccount";
 
 // Patch auth.api.getSession
@@ -35,6 +38,13 @@ import GameAccount from "../models/GameAccount";
     getSession: (...args: unknown[]) => stubGetSession(...args),
   },
 };
+
+// Patch the bearer token user lookup.  sessionHelper imports this
+// module as a namespace (`import * as betterAuthUserLookup`) so that
+// overwriting the named export here affects the call site.
+(betterAuthUserLookupModule as Record<string, unknown>).lookupBetterAuthUser = (
+  ...args: unknown[]
+) => stubLookupBetterAuthUser(...args);
 
 // Patch GameAccount.findById
 (GameAccount as unknown as Record<string, unknown>).findById = (...args: unknown[]) =>
@@ -49,6 +59,7 @@ import {
   requireAccount,
   requireAdmin,
 } from "../auth/sessionHelper";
+import { createSessionToken } from "../auth/desktopSessionManager";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,8 +120,10 @@ function makeGameAccount(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   stubGetSession.mock.resetCalls();
   stubFindById.mock.resetCalls();
+  stubLookupBetterAuthUser.mock.resetCalls();
   stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
   stubFindById.mock.mockImplementation(() => Promise.resolve(null));
+  stubLookupBetterAuthUser.mock.mockImplementation(() => Promise.resolve(null));
 });
 
 // ---- getPlayerFromRequest ------------------------------------------------
@@ -172,6 +185,99 @@ describe("getPlayerFromRequest", () => {
     assert.equal(result.rating, 1600);
     // isAdmin false should not be spread into the identity
     assert.equal(result.isAdmin, undefined);
+  });
+});
+
+// ---- getPlayerFromRequest — bearer token fallback (desktop) --------------
+
+describe("getPlayerFromRequest bearer token fallback", () => {
+  test("returns null when there is no cookie session and no Authorization header", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    const result = await getPlayerFromRequest(fakeRequest());
+    assert.equal(result, null);
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
+  });
+
+  test("returns null when bearer token is invalid (no lookup performed)", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    const result = await getPlayerFromRequest(
+      fakeRequest({ authorization: "Bearer not-a-valid-token" }),
+    );
+    assert.equal(result, null);
+    // Invalid token short-circuits before the DB lookup runs.
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
+  });
+
+  test("returns null when bearer token is valid but user lookup returns null", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    stubLookupBetterAuthUser.mock.mockImplementation(() => Promise.resolve(null));
+    const token = createSessionToken("deleted-user");
+    const result = await getPlayerFromRequest(fakeRequest({ authorization: `Bearer ${token}` }));
+    assert.equal(result, null);
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 1);
+    // The userId extracted from the token should have been passed through.
+    assert.equal(stubLookupBetterAuthUser.mock.calls[0].arguments[0], "deleted-user");
+  });
+
+  test("returns a full account identity when bearer token + lookup succeed", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    stubLookupBetterAuthUser.mock.mockImplementation(() =>
+      Promise.resolve({
+        id: "user-bearer",
+        name: "desktopuser",
+        email: "desktop@example.com",
+        image: "https://example.com/d.png",
+        isAnonymous: null,
+        displayName: null,
+      }),
+    );
+    stubFindById.mock.mockImplementation(() =>
+      Promise.resolve(makeGameAccount({ _id: "user-bearer", displayName: "desktopuser" })),
+    );
+
+    const token = createSessionToken("user-bearer");
+    const result = await getPlayerFromRequest(fakeRequest({ authorization: `Bearer ${token}` }));
+
+    assert.ok(result);
+    assert.equal(result.kind, "account");
+    assert.equal(result.playerId, "user-bearer");
+    assert.equal(result.displayName, "desktopuser");
+    assert.equal(result.email, "desktop@example.com");
+  });
+
+  test("cookie session wins over a bearer token — lookup not called when session exists", async () => {
+    stubGetSession.mock.mockImplementation(() =>
+      Promise.resolve(
+        makeSession({
+          id: "user-cookie",
+          name: "webuser",
+          email: "web@example.com",
+        }),
+      ),
+    );
+    stubFindById.mock.mockImplementation(() => Promise.resolve(makeGameAccount()));
+    // Bearer lookup would return a DIFFERENT user — make sure it's never called.
+    stubLookupBetterAuthUser.mock.mockImplementation(() =>
+      Promise.resolve({
+        id: "user-bearer",
+        name: "bearer",
+        email: "bearer@example.com",
+      }),
+    );
+
+    const token = createSessionToken("user-bearer");
+    const result = await getPlayerFromRequest(fakeRequest({ authorization: `Bearer ${token}` }));
+
+    assert.ok(result);
+    assert.equal(result.playerId, "user-cookie");
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
+  });
+
+  test("non-Bearer Authorization headers are ignored (Basic/Digest/etc)", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    const result = await getPlayerFromRequest(fakeRequest({ authorization: "Basic dXNlcjpwYXNz" }));
+    assert.equal(result, null);
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
   });
 });
 

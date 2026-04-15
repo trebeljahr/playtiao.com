@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 import { Types, HydratedDocument } from "mongoose";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
+import { extractBearerUserId } from "./desktopSessionManager";
+import * as betterAuthUserLookup from "./betterAuthUserLookup";
 import GameAccount, { IGameAccount } from "../models/GameAccount";
 import Achievement from "../models/Achievement";
 import { ACHIEVEMENT_BADGE_MAP } from "../config/badgeRewards";
@@ -108,11 +110,31 @@ async function toPlayerIdentity(
 }
 
 export async function getPlayerFromRequest(req: Request): Promise<PlayerIdentity | null> {
+  // 1. Cookie-based session (web + same-origin requests).
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });
-  if (!session) return null;
-  return toPlayerIdentity(session.user, req);
+  if (session) {
+    return toPlayerIdentity(session.user, req);
+  }
+
+  // 2. Bearer-token fallback for desktop Electron sessions.  When the
+  //    request is missing a valid better-auth cookie we check for an
+  //    Authorization: Bearer header minted by /api/auth/desktop/exchange.
+  //    This path is skipped entirely for web users (who always have a
+  //    cookie set by better-auth on the frontend origin).
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const userId = extractBearerUserId(authHeader);
+  if (!userId) return null;
+
+  // Look up the better-auth user record to get name/email/image so the
+  // same toPlayerIdentity function can build a PlayerIdentity for either
+  // auth path.  `betterAuthUserLookup` is imported as a namespace so
+  // tests can monkey-patch it without needing a DB connection.
+  const user = await betterAuthUserLookup.lookupBetterAuthUser(userId);
+  if (!user) return null;
+  return toPlayerIdentity(user, req);
 }
 
 export async function getPlayerFromUpgradeRequest(
