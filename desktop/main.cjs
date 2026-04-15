@@ -35,6 +35,7 @@ const {
   DEEP_LINK_SCHEME,
 } = require("./src/deepLink.cjs");
 const { initAnalytics, track, setEnabled: setAnalyticsEnabled } = require("./src/analytics.cjs");
+const { maybeInitUpdater } = require("./src/updater.cjs");
 
 // Privileged scheme registration MUST run before app.whenReady() —
 // at startup Chromium builds its protocol table from whatever has
@@ -153,6 +154,10 @@ function bootstrap() {
   win.webContents.once("did-finish-load", () => {
     flushPendingDeepLinks();
   });
+
+  // Auto-updater is installed but gated behind TIAO_ENABLE_UPDATER=1
+  // until the first signed macOS build — see src/updater.cjs.
+  maybeInitUpdater();
 }
 
 /**

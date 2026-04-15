@@ -15,6 +15,9 @@
     "package:all": "electron-builder -mwl",
     "release": "./scripts/release.sh"
   },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "electron": "^36.0.0",
@@ -100,6 +103,12 @@
           "tiao"
         ]
       }
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "trebeljahr",
+      "repo": "tiao",
+      "releaseType": "draft"
+    }
   }
 }
