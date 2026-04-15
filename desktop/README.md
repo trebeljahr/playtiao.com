@@ -314,6 +314,8 @@ defense-in-depth on top.
 
 ## Common gotchas
 
+Operational problems you hit while developing or shipping today.
+
 - **"Tiao couldn't load its app files."** You forgot `npm run dev:build-client`.
   The `dev:ensure-bundle` preflight will auto-build if the bundle is missing,
   but a stale `client-bundle/` (e.g. from a branch switch) won't trigger it —
@@ -321,7 +323,7 @@ defense-in-depth on top.
 - **Main process changes don't take effect.** There's no hot reload for main.
   Kill the app and re-run `npm run dev`.
 - **Renderer changes don't take effect.** Re-run `npm run dev:build-client` and
-  `Cmd+R` in the Electron window.
+  `Cmd+R` in the Electron window. (Or use HMR mode — see above.)
 - **OAuth silently hangs.** Deep-link delivery differs per OS — on macOS it's
   `open-url`, on Windows/Linux it's `second-instance`. If you're running an
   unsigned dev build, the OS protocol registration may be pointing at a stale
@@ -333,3 +335,180 @@ defense-in-depth on top.
 - **Universal binary is huge.** Yes — one binary containing both arm64 and x64
   code is roughly the sum of the two. If you need a smaller download, change
   `build.mac.target.arch` back to `["arm64", "x64"]` for split builds.
+
+## Future considerations
+
+Things that aren't problems **today** but will bite the moment you touch a
+nearby feature. Read this before Phase 3b work, before the first signed
+release, and before adding any new native dependency.
+
+### macOS code signing & notarization
+
+The biggest looming piece of work. Phase 3a ships unsigned dmgs, which is
+fine for internal testing but means:
+
+- End users see "Tiao is damaged and can't be opened" on first launch
+  (Gatekeeper quarantine) and have to right-click → Open.
+- `electron-updater` **cannot** apply updates to an unsigned app. Even if
+  the updater downloads a new version, `quitAndInstall` fails silently.
+- The app can't be distributed via the Mac App Store.
+
+What's needed:
+
+1. **Apple Developer Program** membership ($99/year).
+2. **Developer ID Application** certificate exported as a `.p12` file,
+   referenced via `CSC_LINK` (base64 data URL or file path) and
+   `CSC_KEY_PASSWORD` env vars.
+3. **Notarization credentials**: `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`
+   (generated at appleid.apple.com, NOT your real password), `APPLE_TEAM_ID`.
+   The secret hooks are already in `.github/workflows/desktop-release.yml`
+   and `desktop/scripts/release.sh` — just populate them.
+4. **Flip the hardened runtime flags** in `desktop/package.json`:
+
+   ```json
+   "mac": {
+     "hardenedRuntime": true,
+     "gatekeeperAssess": true
+   }
+   ```
+
+   Apple's notary service **rejects** signed apps that don't have
+   hardenedRuntime enabled. Leaving them false alongside signing creds
+   will fail every build at the notarize step with a confusing error.
+
+5. **Entitlements file** (`build/entitlements.mac.plist`) — at minimum:
+
+   ```xml
+   <key>com.apple.security.cs.allow-jit</key><true/>
+   <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+   <key>com.apple.security.cs.disable-library-validation</key><true/>
+   ```
+
+   Required because Electron's V8 uses JIT. The unsigned-memory flag is
+   specifically needed for `steamworks.js` and any other native module
+   whose libraries weren't signed by Apple.
+
+Budget at least **a full day** for the first signed build — the first
+notarization round-trip almost always fails on something, and the error
+messages are famously unhelpful.
+
+### Auto-updater requires signed builds
+
+Currently gated behind `TIAO_ENABLE_UPDATER=1` in `src/updater.cjs` for
+exactly this reason. The gate flips off in the same commit that lands
+macOS signing. Until then:
+
+- CI can build unsigned dmgs and attach to GitHub Releases
+- End users download and install manually
+- No auto-update notifications, no "Restart to install" dialog
+
+Windows and Linux auto-update are less finicky (Windows Squirrel handles
+unsigned builds with SmartScreen warnings, Linux AppImages don't
+auto-update natively at all — they need `AppImageUpdate` integration).
+
+### Native modules and the Electron ABI
+
+`steamworks.js` is the first native dependency in the desktop package.
+Any future native dep (`better-sqlite3`, `sharp`, `serialport`, etc.)
+will need the same two pieces of wiring:
+
+1. **`asarUnpack`** in `build.asarUnpack` — native `.node` files can't
+   be loaded from inside the `app.asar` archive. electron-builder extracts
+   them to `app.asar.unpacked/` at package time so `require()` works.
+2. **Electron ABI match** — `@npm install` gets the `*.node` compiled
+   for your **system** Node version, but Electron ships a **different**
+   Node internally. Symptom: "Module was compiled against a different
+   Node.js version" on app start. Fix: `@electron/rebuild` or the
+   per-platform prebuilds supplied by the package itself.
+
+   `steamworks.js` ships prebuilds for each platform, so it "just
+   works." Packages without prebuilds need explicit rebuild in
+   postinstall.
+
+If a native dep breaks the packaged build but works in dev, the problem
+is almost always one of these two.
+
+### macOS permissions (TCC)
+
+Tiao doesn't use camera, microphone, contacts, calendar, or screen
+recording **today**. The moment any of those are added:
+
+- `Info.plist` needs a matching `NS<Feature>UsageDescription` string
+  explaining why the app wants access. electron-builder lets you set
+  these via `build.mac.extendInfo` in `package.json`.
+- `build/entitlements.mac.plist` needs the matching
+  `com.apple.security.device.<feature>` entitlement.
+- Without both, the app either fails silently or gets **killed** by
+  macOS with no user-facing error.
+
+The combinations that specifically come up for a game:
+
+| Feature                         | Info.plist key                      | Entitlement                                         |
+| ------------------------------- | ----------------------------------- | --------------------------------------------------- |
+| Microphone (voice chat)         | `NSMicrophoneUsageDescription`      | `com.apple.security.device.audio-input`             |
+| Screen recording (replays)      | `NSScreenCaptureDescription`        | `com.apple.security.device.screen-capture`          |
+| Full disk access (save exports) | `NSDocumentsFolderUsageDescription` | `com.apple.security.files.user-selected.read-write` |
+
+### Window state restoration
+
+Every launch creates a fresh 1280×800 window centered on screen — resize
+and move state is lost on quit. The user-visible fix is to remember
+position/size across launches:
+
+```bash
+npm install electron-window-state
+```
+
+Then in `src/window.cjs`, wrap the `new BrowserWindow({...})` call with
+`windowStateKeeper({ defaultWidth: 1280, defaultHeight: 800 })`. Small
+quality-of-life win, not critical, not a regression — just the kind of
+polish users expect from a "real" desktop app.
+
+### Tray icon template images
+
+If Tiao ever grows a menu bar icon (for "game invite arrived", "friend
+came online", background pending-move badge) — the asset must be a
+**template image**:
+
+- Filename: `iconTemplate.png` (the `Template` suffix is load-bearing —
+  macOS looks for it)
+- Content: black silhouette on transparent background
+- Size: 16×16 pt (32×32 px for Retina)
+
+macOS automatically inverts the colors in dark mode and renders the
+icon white. Use a colored PNG and it looks wrong in one of the two
+modes. No equivalent convention on Windows/Linux — they want real
+colored icons.
+
+### Spellcheck dictionaries
+
+Electron's built-in spellcheck only enables `en-US` by default. For a
+multi-locale app like Tiao (en/de/es), call
+`session.setSpellCheckerLanguages([...])` on window creation when the
+user's locale changes. Relevant once there's any user-editable text
+(display name, bio, chat) in non-English locales — currently moot
+because there's no chat and display name editing is English-only in
+the web path too.
+
+### Safari deep-link delivery on older macOS
+
+The `tiao://` URL scheme works reliably on macOS 12+ via `open-url`.
+On **macOS 10.15 and older**, Safari needs an explicit
+`LSMinimumSystemVersion` in `Info.plist` to register custom schemes
+at all, and the delivery can lag or drop silently. Either drop support
+for 10.15 (Chromium already dropped it anyway — Electron 27+ requires
+macOS 11) or test the deep-link path on those older versions
+specifically.
+
+### Single-window assumption in bootstrap
+
+`bootstrap()` in `main.cjs` currently re-registers IPC handlers,
+initializes analytics, and calls `loadPersistedToken()` every time
+it's invoked. It's called once on `whenReady` and once from the
+`activate` handler on macOS (when the dock icon is clicked with no
+windows open). Today that's fine because both calls happen sequentially
+and the handlers are idempotent, but adding a second BrowserWindow (a
+settings window, a game-over modal, a tray-spawned quick-game window)
+means auditing every `registerX()` call for idempotency, or splitting
+bootstrap into "once per app" and "once per window" phases. Worth
+knowing before Phase 3b.
