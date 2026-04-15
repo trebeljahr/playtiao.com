@@ -15,11 +15,77 @@ import { connectToDB, disconnectFromDB } from "./db";
 import { gameService, GameServiceError } from "./game/gameService";
 import { getPlayerFromUpgradeRequest } from "./auth/sessionHelper";
 import { ClientToServerMessage } from "../shared/src";
+import { createLogger } from "./lib/logger";
+
+const log = createLogger("ws");
+const serverLog = createLogger("http");
 
 const server = createServer(app);
 const websocketServer = new WebSocketServer({ server });
 const WEBSOCKET_PATHS = new Set(["/", "/ws", "/api/ws", "/api/ws/lobby"]);
 const SOCKET_PING_INTERVAL_MS = 1000 * 10;
+
+// ─── WebSocket upgrade rate limit ────────────────────────────────────
+//
+// In-memory fixed-window counter per source IP. This is per-instance by
+// design — for DoS prevention a per-instance bucket is fine (an attacker
+// hitting all instances uniformly is bounded by load-balancer capacity
+// anyway, and an attacker hitting one instance gets throttled here).
+//
+// The limit is intentionally generous: a legitimate user with a few tabs
+// open and a flaky connection might legitimately reconnect several times
+// a minute. 120 upgrades/minute/IP gives us ~2/s which is well below any
+// flood but far above normal usage.
+//
+// Tests bypass the limiter entirely (NODE_ENV=test).
+
+const WS_UPGRADES_PER_MINUTE = 120;
+const WS_RATE_WINDOW_MS = 60_000;
+const wsUpgradeCounts = new Map<string, number>();
+const wsRateLimitEnabled = process.env.NODE_ENV !== "test";
+
+const wsRateWindowTimer = setInterval(() => wsUpgradeCounts.clear(), WS_RATE_WINDOW_MS);
+wsRateWindowTimer.unref();
+
+function checkWsUpgradeRate(ip: string): boolean {
+  if (!wsRateLimitEnabled) return true;
+  const next = (wsUpgradeCounts.get(ip) ?? 0) + 1;
+  wsUpgradeCounts.set(ip, next);
+  return next <= WS_UPGRADES_PER_MINUTE;
+}
+
+// ─── Server-level error listeners ────────────────────────────────────
+//
+// Without these, an error emitted on the HTTP server or the WebSocket
+// server object (not a specific socket) bubbles up as an unhandled
+// `error` event and crashes the process. The crash guard would catch
+// an uncaughtException but not an EventEmitter error thrown from a
+// synchronous event listener path — so we catch them here explicitly.
+//
+// - `server.on("error")` fires on listen failures (EADDRINUSE, etc.)
+//   and some low-level socket accept errors.
+// - `server.on("clientError")` fires when a connecting client sends a
+//   malformed HTTP request before any route handler exists.
+// - `websocketServer.on("error")` fires on WebSocket-level issues that
+//   aren't tied to a specific `ws` client (protocol errors during
+//   upgrade, handshake failures, etc.).
+
+server.on("error", (err: Error) => {
+  serverLog.error("http server error", err);
+});
+
+server.on("clientError", (err: Error, socket) => {
+  serverLog.warn("http client error", { message: err.message });
+  try {
+    socket.destroy();
+  } catch {
+    /* already torn down */
+  }
+});
+
+websocketServer.on("error", (err: Error) => {
+  log.error("websocket server error", err);
+});
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
@@ -49,11 +115,31 @@ websocketServer.on("connection", (socket, request) => {
   const url = new URL(request.url || "/ws", baseUrl);
   const gameId = url.searchParams.get("gameId")?.trim().toUpperCase();
 
-  console.info(`[ws] incoming connection: ${url.pathname}${gameId ? `?gameId=${gameId}` : ""}`);
+  // Rate-limit upgrades per source IP. The handshake already completed
+  // at this point (ws library auto-handles upgrades when attached to the
+  // http server), but closing immediately is still far cheaper than
+  // letting a flood of idle sockets pile up in `lobbyConnections` or
+  // hold references to player identities. For a real DoS-hardened
+  // setup you'd want to reject before the handshake via
+  // `noServer: true` + manual `server.on("upgrade")`; this is the
+  // smaller, lower-risk first pass.
+  const remoteIp =
+    (request.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ?? "") ||
+    request.socket.remoteAddress ||
+    "unknown";
+  if (!checkWsUpgradeRate(remoteIp)) {
+    log.warn("upgrade rate limit exceeded", { ip: remoteIp });
+    socket.close(1008, "rate limit");
+    return;
+  }
+
+  log.info("incoming connection", { path: url.pathname, gameId: gameId ?? null });
 
   const pingInterval = setInterval(() => {
     if (!isAlive) {
-      console.warn(`[ws] client ${gameId || "unknown"} failed to respond to ping, terminating.`);
+      log.warn("client failed to respond to ping, terminating", {
+        gameId: gameId ?? "unknown",
+      });
       return socket.terminate();
     }
 
@@ -69,15 +155,17 @@ websocketServer.on("connection", (socket, request) => {
 
   socket.on("close", (code, reason) => {
     clearInterval(pingInterval);
-    console.info(
-      `[ws] closed ${gameId || "unknown"}: code=${code}, reason=${reason.toString() || "none"}`,
-    );
+    log.info("closed", {
+      gameId: gameId ?? "unknown",
+      code,
+      reason: reason.toString() || "none",
+    });
     void gameService.disconnect(socket);
   });
 
   socket.on("error", (error) => {
     clearInterval(pingInterval);
-    console.error(`[ws] error ${gameId || "unknown"}:`, error);
+    log.error("socket error", error, { gameId: gameId ?? "unknown" });
     void gameService.disconnect(socket);
   });
 
