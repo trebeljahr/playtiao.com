@@ -302,14 +302,38 @@ const colors = [];
 // font-response mock file. The first instance is not delayed.
 const FONT_STAGGER_S = parallelMode ? 8 : 0;
 
-// The tsx cold-compile of server/index.ts takes ~30-40s on first run
-// after `npm install` (it imports better-auth, mongoose, BullMQ, the
-// full game service module graph, etc.). In parallel mode two server
-// processes are fighting for CPU so each takes even longer. The
-// default 30s wait-for-port window is too tight. Bump to 120s in
-// parallel mode so clients don't give up before their paired server
-// finishes booting.
+// The tsx cold-compile of server/index.ts takes ~14 s on first run
+// (it imports better-auth, mongoose, BullMQ, the full game service
+// module graph, etc.). In parallel mode two server processes are
+// fighting for CPU so each takes even longer. The default 30 s
+// wait-for-port window is too tight. Bump to 120 s in parallel mode
+// so clients don't give up before their paired server finishes
+// booting.
 const waitTimeout = parallelMode ? 120 : 30;
+
+// Call node/tsx DIRECTLY instead of wrapping through `npm --prefix
+// <pkg> run dev` → which itself goes through npm → bash → script
+// runner → nodemon → tsx. Each wrapper layer adds ~1–2 s of process
+// spawn + script parsing overhead. Invoking the runtime directly
+// skips all of it.
+//
+// Server: `node --watch --import tsx index.ts` with cwd=server/.
+// `--watch` is Node's built-in file-watch restarter (replaces
+// nodemon) and is stable in Node 22+. `--import tsx` registers the
+// tsx ESM loader so TypeScript files transpile on the fly.
+//
+// Client: `node server.mjs` with cwd=client/ — the client's own
+// custom Next.js server wrapper (runtime API proxying for OpenPanel +
+// GlitchTip), invoked directly instead of via its `dev` npm script.
+//
+// Both commands `cd` into their respective package dirs first so
+// that relative filesystem paths (the server's .env loader, the
+// client's public/ dir resolver) continue to find the right files.
+const SERVER_NODE_OPTS = "NODE_ENV=development NODE_OPTIONS='--no-deprecation --no-warnings'";
+const serverCmd = (sPort) =>
+  `cd server && ${SERVER_NODE_OPTS} PORT=${sPort} node --watch --import tsx index.ts`;
+const clientCmd = (cPort, sPort) =>
+  `cd client && PORT=${cPort} API_PORT=${sPort} NEXT_PUBLIC_API_PORT=${sPort} node server.mjs`;
 
 for (let i = 0; i < clientPorts.length; i++) {
   const cPort = clientPorts[i];
@@ -318,9 +342,9 @@ for (let i = 0; i < clientPorts.length; i++) {
   const stagger = i > 0 && parallelMode ? `sleep ${i * FONT_STAGGER_S} && ` : "";
 
   processes.push(
-    `"node scripts/wait-for-port.mjs ${sPort} ${waitTimeout} && ${stagger}PORT=${cPort} API_PORT=${sPort} NEXT_PUBLIC_API_PORT=${sPort} npm --prefix client run dev"`,
+    `"node scripts/wait-for-port.mjs ${sPort} ${waitTimeout} && ${stagger}${clientCmd(cPort, sPort)}"`,
   );
-  processes.push(`"PORT=${sPort} npm --prefix server run dev"`);
+  processes.push(`"${serverCmd(sPort)}"`);
 
   names.push(`client${suffix}`);
   names.push(`server${suffix}`);
