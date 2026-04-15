@@ -15,9 +15,14 @@ test.describe("Authentication flows", () => {
     const username = `logintest_${Math.random().toString(36).slice(2, 7)}`;
     await signUpViaUI(page, username, "testpass123");
 
-    // Logout
+    // Logout — the auth context does a full page reload via
+    // window.location.assign("/") after signing out. Wait for that
+    // navigation to land (the "Sign up" button only re-appears in the
+    // drawer once the guest session is active) before logging back in.
     await page.click('[aria-label="Open navigation"]');
     await page.click('button:has-text("Logout")');
+    await page.waitForLoadState("load");
+    await expect(page.locator('button:has-text("Create a game")')).toBeVisible();
 
     // Login again
     await signInViaUI(page, username, "testpass123");

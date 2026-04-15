@@ -1,10 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const E2E_MONGO_URI = "mongodb://127.0.0.1:27018/tiao-e2e";
-const E2E_SERVER_PORT = "5006";
-const E2E_CLIENT_PORT = "3001";
-const E2E_REDIS_PORT = "6380";
-const E2E_MINIO_PORT = "9002";
+const E2E_SERVER_PORT = process.env.E2E_SERVER_PORT || "5006";
+const E2E_CLIENT_PORT = process.env.E2E_CLIENT_PORT || "3001";
+const E2E_REDIS_PORT = process.env.E2E_REDIS_PORT || "6380";
+const E2E_MINIO_PORT = process.env.E2E_MINIO_PORT || "9002";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,14 +15,19 @@ export default defineConfig({
   reporter: "html",
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
+  // Next.js dev server compiles pages on first request; first navigation
+  // into a new route can easily take 20-30s. Keep the per-test timeout
+  // generous so a slow cold compile doesn't fail the test.
+  timeout: 90_000,
   expect: {
     timeout: 10_000,
   },
   use: {
     baseURL: `http://localhost:${E2E_CLIENT_PORT}`,
     trace: "on-first-retry",
+    screenshot: "only-on-failure",
     actionTimeout: 10_000,
-    navigationTimeout: 45_000,
+    navigationTimeout: 60_000,
   },
   projects: [
     {

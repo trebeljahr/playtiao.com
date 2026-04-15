@@ -1,13 +1,15 @@
 import { expect, Page } from "@playwright/test";
 
 /**
- * Wait for the app loading screen ("Opening Tiao") to disappear.
- * The AppShell shows a loading screen while auth bootstraps (creating
- * an anonymous guest session on first visit). Call this after page.goto()
- * when the test doesn't sign up/in (which already waits for the API).
+ * Wait for the nav hamburger button to be present — it's rendered on
+ * every page (lobby, game, etc.) once React has hydrated, so it's a
+ * reliable "app is ready" signal. Call this after page.goto() when the
+ * test doesn't sign up/in (which already waits for the API).
  */
 export async function waitForAppReady(page: Page) {
-  await expect(page.locator("text=Opening Tiao")).not.toBeVisible({ timeout: 20000 });
+  await expect(page.locator('[aria-label="Open navigation"]')).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 /**
@@ -66,47 +68,55 @@ export async function signUpViaAPI(page: Page, username: string, password: strin
   }
 
   // Navigate to the lobby so the page is ready for interaction
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
 }
 
 /**
  * Opens the nav drawer (hamburger menu) and clicks "Sign up",
- * fills in the form, and submits. Waits for the signup API to succeed.
- * Use signUpViaAPI for faster non-auth tests.
+ * fills in the form, and submits. Waits for the signup to settle by
+ * observing the auth dialog closing — more reliable than
+ * waitForResponse, which raced with better-auth's internal request
+ * chain. Use signUpViaAPI for faster non-auth tests.
  */
 export async function signUpViaUI(page: Page, username: string, password: string, email?: string) {
   const testEmail = email || `${username}@test.tiao.local`;
 
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
   await page.click('[aria-label="Open navigation"]');
-  await page.click('button:has-text("Sign up")');
+  // Scope to the nav drawer so we don't accidentally match the dialog
+  // mode-switcher's "Sign up" button once the dialog is open.
+  await page.locator("aside").getByRole("button", { name: "Sign up" }).click();
   await page.fill("#signup-display-name", username);
   await page.fill("#signup-email", testEmail);
-  await page.fill("#signup-password", password);
-  await page.fill("#signup-confirm-password", password);
-  const responsePromise = page.waitForResponse(
-    (resp) => resp.url().includes("/api/auth/sign-up/email") && resp.ok(),
-  );
-  await page.click('button:has-text("Create account")');
-  await responsePromise;
+  await page.fill("#signup-new-password", password);
+  await page.fill("#signup-confirm-new-password", password);
+  await page.getByRole("button", { name: /Create account|Creating/ }).click();
+  // The auth dialog closes when signup succeeds — use the heading that
+  // only renders while the dialog is open as the "still busy" signal.
+  await expect(page.getByRole("heading", { name: "Create account" })).toHaveCount(0, {
+    timeout: 20_000,
+  });
 }
 
 /**
- * Opens the nav drawer and clicks "Log in",
- * fills in credentials and submits. Waits for login API to succeed.
+ * Opens the nav drawer and clicks "Log in", fills in credentials and
+ * submits. Waits for the dialog to close rather than a specific response
+ * so the helper is resilient to transport/redirect details.
  */
 export async function signInViaUI(page: Page, usernameOrEmail: string, password: string) {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
   await page.click('[aria-label="Open navigation"]');
-  await page.click('button:has-text("Log in")');
+  // Scope to the nav drawer — the dialog also has a "Log in" mode button.
+  await page.locator("aside").getByRole("button", { name: "Log in" }).click();
   await page.fill("#login-email", usernameOrEmail);
   await page.fill("#login-password", password);
-  const responsePromise = page.waitForResponse(
-    (resp) => resp.url().includes("/api/player/login") && resp.ok(),
-  );
-  await page.click('button[type="submit"]:has-text("Log in")');
-  await responsePromise;
+  await page.locator("#tiao-login-form").getByRole("button", { name: "Log in" }).click();
+  // Wait for the login dialog heading to disappear — happens on
+  // successful login (applyAuth → setAuthDialogOpen(false)).
+  await expect(page.getByRole("heading", { name: "Log in" })).toHaveCount(0, {
+    timeout: 20_000,
+  });
 }

@@ -4,8 +4,8 @@ import { waitForAppReady } from "./helpers";
 // Text fragments from client/messages/en.json — kept short and distinctive
 // so a minor copy tweak won't immediately break the suite.
 const WELCOME_INTRO = 'Tiao (跳, Chinese for "jump")';
-const PLACE_DESC_FRAGMENT = "Place a white piece anywhere on the board";
-const CHAIN_DESC_FRAGMENT = "Chain captures for a devastating combo";
+const PLACE_DESC_FRAGMENT = "place a new piece on an empty spot";
+const CHAIN_DESC_FRAGMENT = "Chained captures make for devastating combos";
 const CHAIN_DESC_DROPPED = "You can also stop early if you prefer.";
 
 test.describe("Tutorial overlay + description flow", () => {

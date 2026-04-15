@@ -9,7 +9,7 @@ test.describe("Navbar active link attributes", () => {
     await page.click('[aria-label="Open navigation"]');
 
     // Find the nav link that has aria-current="page"
-    const activeLink = page.locator('button[aria-current="page"]');
+    const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
 
     // The active link should NOT have a disabled attribute
@@ -25,12 +25,12 @@ test.describe("Navbar active link attributes", () => {
     await page.click('[aria-label="Open navigation"]');
 
     // The active link should be visible
-    const activeLink = page.locator('button[aria-current="page"]');
+    const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
 
-    // Other nav buttons inside the drawer should NOT have aria-current
-    const navButtons = page.locator("aside button:not([aria-current])");
-    const count = await navButtons.count();
+    // Other nav links inside the drawer should NOT have aria-current
+    const navLinks = page.locator("aside a:not([aria-current])");
+    const count = await navLinks.count();
     expect(count).toBeGreaterThan(0);
   });
 
@@ -39,7 +39,7 @@ test.describe("Navbar active link attributes", () => {
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
 
-    const activeLink = page.locator('button[aria-current="page"]');
+    const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
 
     // Should not be disabled
@@ -52,7 +52,7 @@ test.describe("Navbar active link attributes", () => {
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
 
-    const activeLink = page.locator('button[aria-current="page"]');
+    const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
 
     // Should not be disabled
