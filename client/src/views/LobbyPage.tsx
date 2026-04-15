@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { TIME_CONTROL_PRESETS, type PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
 import { safeLocalStorage } from "@/lib/safeLocalStorage";
+import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
+import { DesktopOfflineLobby } from "@/components/DesktopOfflineLobby";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -38,7 +40,28 @@ import {
 import { toastError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/skeleton";
 
+/**
+ * Top-level entry point.  In the desktop Electron build, when we're
+ * currently offline, swap the whole LobbyPage out for the minimal
+ * DesktopOfflineLobby dashboard — otherwise the heavy hooks below
+ * (useGamesIndex / useSocialData / useTournamentList / useLobbyMessage)
+ * all fail hard with toasts and empty panels because the backend is
+ * unreachable.  Web and online desktop clients see the normal lobby.
+ */
 export function LobbyPage() {
+  const isOnline = useOnlineStatus();
+  const isElectron =
+    typeof window !== "undefined" &&
+    (window as unknown as { electron?: { isElectron?: boolean } }).electron?.isElectron === true;
+
+  if (isElectron && !isOnline) {
+    return <DesktopOfflineLobby />;
+  }
+
+  return <OnlineLobbyPage />;
+}
+
+function OnlineLobbyPage() {
   const { auth, authLoading, onOpenAuth, onLogout } = useAuth();
   const isGuest = !auth || auth.player.kind === "guest";
   const router = useRouter();

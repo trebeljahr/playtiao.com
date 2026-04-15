@@ -1138,5 +1138,31 @@
     "description": "Füge Tiao zu deinem Startbildschirm hinzu für ein schnelleres Vollbild-Erlebnis.",
     "install": "Installieren",
     "dismiss": "Später"
+  },
+  "desktop": {
+    "offline": {
+      "banner": "Du bist offline. Nur lokale Spiele sind verfügbar.",
+      "reconnecting": "Verbindung wird wiederhergestellt…",
+      "retryNow": "Jetzt neu versuchen"
+    },
+    "lobby": {
+      "offlineTitle": "Offline-Modus",
+      "offlineSubtitle": "Spiele lokal, fordere den Computer heraus oder mach das Tutorial.",
+      "localSubtitle": "Zwei Spieler am selben Gerät.",
+      "computerSubtitle": "Spiele gegen die integrierte KI — funktioniert ohne Netzwerk.",
+      "tutorialSubtitle": "Lerne die Regeln Schritt für Schritt.",
+      "legalSubtitle": "Datenschutzerklärung und Impressum.",
+      "localTitle": "Lokal zu zweit",
+      "computerTitle": "Gegen den Computer",
+      "tutorialTitle": "Tutorial",
+      "legalTitle": "Datenschutz & Impressum"
+    },
+    "auth": {
+      "signInExternal": "Über Browser anmelden",
+      "externalExplainer": "Wir öffnen deinen Standardbrowser für OAuth. Komm zurück, wenn du fertig bist."
+    },
+    "error": {
+      "appUrlMissing": "App-Dateien nicht gefunden. Bitte installiere Tiao neu."
+    }
   }
 }

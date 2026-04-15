@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import { Providers } from "./providers";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import "./globals.css";
 
 const zenKaku = Zen_Kaku_Gothic_New({
@@ -88,6 +89,7 @@ export default async function RootLayout({
     >
       <body>
         <NextIntlClientProvider messages={messages}>
+          <OfflineBanner />
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>

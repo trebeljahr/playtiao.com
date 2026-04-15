@@ -1138,5 +1138,31 @@
     "description": "Añade Tiao a tu pantalla de inicio para una experiencia más rápida a pantalla completa.",
     "install": "Instalar",
     "dismiss": "Ahora no"
+  },
+  "desktop": {
+    "offline": {
+      "banner": "Estás sin conexión. Solo están disponibles las partidas locales.",
+      "reconnecting": "Reconectando…",
+      "retryNow": "Reintentar ahora"
+    },
+    "lobby": {
+      "offlineTitle": "Modo sin conexión",
+      "offlineSubtitle": "Juega una partida local, desafía al ordenador o haz el tutorial.",
+      "localSubtitle": "Dos jugadores en el mismo dispositivo.",
+      "computerSubtitle": "Juega contra la IA integrada — funciona sin conexión.",
+      "tutorialSubtitle": "Aprende las reglas paso a paso.",
+      "legalSubtitle": "Política de privacidad y aviso legal.",
+      "localTitle": "Local para dos",
+      "computerTitle": "Contra el ordenador",
+      "tutorialTitle": "Tutorial",
+      "legalTitle": "Privacidad y aviso legal"
+    },
+    "auth": {
+      "signInExternal": "Iniciar sesión en el navegador",
+      "externalExplainer": "Abriremos tu navegador predeterminado para OAuth. Vuelve cuando termines."
+    },
+    "error": {
+      "appUrlMissing": "No se encontraron los archivos de la app. Por favor, reinstala Tiao."
+    }
   }
 }

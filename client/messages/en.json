@@ -1138,5 +1138,31 @@
     "description": "Add Tiao to your home screen for a faster, full-screen experience.",
     "install": "Install",
     "dismiss": "Not now"
+  },
+  "desktop": {
+    "offline": {
+      "banner": "You're offline. Only local games are available.",
+      "reconnecting": "Reconnecting…",
+      "retryNow": "Retry now"
+    },
+    "lobby": {
+      "offlineTitle": "Offline mode",
+      "offlineSubtitle": "Play a local game, challenge the computer, or run through the tutorial.",
+      "localSubtitle": "Two players sharing the same device.",
+      "computerSubtitle": "Play against the built-in AI — works without a network connection.",
+      "tutorialSubtitle": "Learn the rules step by step.",
+      "legalSubtitle": "Privacy policy and imprint.",
+      "localTitle": "Local 2-player",
+      "computerTitle": "Computer opponent",
+      "tutorialTitle": "Tutorial",
+      "legalTitle": "Privacy & imprint"
+    },
+    "auth": {
+      "signInExternal": "Sign in via browser",
+      "externalExplainer": "We'll open your default browser for OAuth. Come back when you're done."
+    },
+    "error": {
+      "appUrlMissing": "Couldn't find the bundled app files. Please reinstall Tiao."
+    }
   }
 }
