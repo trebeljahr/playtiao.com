@@ -2718,12 +2718,33 @@ export class GameService {
     return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
   }
 
+  /**
+   * Swallow errors from a fire-and-forget timer-scheduler call so a bad
+   * schedule (malformed jobId, transient Redis hiccup, BullMQ validation
+   * failure, etc.) never bubbles out as an unhandled rejection and kills
+   * the server. The crash guard would catch it as a last resort anyway,
+   * but logging here gives us the specific timer context.
+   */
+  private runTimerOp(promise: Promise<unknown>, op: string, roomId: string): void {
+    promise.catch((err) => {
+      console.error(`[timer] ${op} failed for room ${roomId}:`, err);
+    });
+  }
+
   private startAbandonTimer(roomId: string, playerId: string): void {
-    void this.timerScheduler.scheduleAbandonTimer(roomId, playerId, this.abandonTimeoutMs);
+    this.runTimerOp(
+      this.timerScheduler.scheduleAbandonTimer(roomId, playerId, this.abandonTimeoutMs),
+      "scheduleAbandonTimer",
+      roomId,
+    );
   }
 
   private clearAbandonTimer(roomId: string, playerId: string): void {
-    void this.timerScheduler.cancelAbandonTimer(roomId, playerId);
+    this.runTimerOp(
+      this.timerScheduler.cancelAbandonTimer(roomId, playerId),
+      "cancelAbandonTimer",
+      roomId,
+    );
   }
 
   private async handleAbandonExpired(roomId: string, playerId: string): Promise<void> {
@@ -2755,7 +2776,7 @@ export class GameService {
   // ─── Clock Timers ────────────────────────────────────────────────────
 
   private scheduleClockTimer(room: StoredMultiplayerRoom): void {
-    void this.timerScheduler.cancelClockTimer(room.id);
+    this.runTimerOp(this.timerScheduler.cancelClockTimer(room.id), "cancelClockTimer", room.id);
 
     if (
       !room.clockMs ||
@@ -2773,7 +2794,11 @@ export class GameService {
     if (remainingMs <= 0) return;
 
     // Small buffer (+100ms) to avoid race conditions
-    void this.timerScheduler.scheduleClockTimer(room.id, remainingMs + 100, currentPlayer);
+    this.runTimerOp(
+      this.timerScheduler.scheduleClockTimer(room.id, remainingMs + 100, currentPlayer),
+      "scheduleClockTimer",
+      room.id,
+    );
   }
 
   private async handleClockExpired(roomId: string, _expectedTurn: string): Promise<void> {
@@ -2808,7 +2833,7 @@ export class GameService {
   }
 
   private clearClockTimer(roomId: string): void {
-    void this.timerScheduler.cancelClockTimer(roomId);
+    this.runTimerOp(this.timerScheduler.cancelClockTimer(roomId), "cancelClockTimer", roomId);
   }
 
   /**
@@ -2836,7 +2861,11 @@ export class GameService {
   // ─── First-Move Timers ──────────────────────────────────────────────
 
   private scheduleFirstMoveTimer(room: StoredMultiplayerRoom): void {
-    void this.timerScheduler.cancelFirstMoveTimer(room.id);
+    this.runTimerOp(
+      this.timerScheduler.cancelFirstMoveTimer(room.id),
+      "cancelFirstMoveTimer",
+      room.id,
+    );
 
     if (!room.firstMoveDeadline || !room.timeControl || room.status !== "active") {
       return;
@@ -2845,11 +2874,19 @@ export class GameService {
     const remainingMs = room.firstMoveDeadline.getTime() - Date.now();
     if (remainingMs <= 0) return;
 
-    void this.timerScheduler.scheduleFirstMoveTimer(room.id, remainingMs + 100);
+    this.runTimerOp(
+      this.timerScheduler.scheduleFirstMoveTimer(room.id, remainingMs + 100),
+      "scheduleFirstMoveTimer",
+      room.id,
+    );
   }
 
   private clearFirstMoveTimer(roomId: string): void {
-    void this.timerScheduler.cancelFirstMoveTimer(roomId);
+    this.runTimerOp(
+      this.timerScheduler.cancelFirstMoveTimer(roomId),
+      "cancelFirstMoveTimer",
+      roomId,
+    );
   }
 
   private async handleFirstMoveExpired(roomId: string): Promise<void> {
