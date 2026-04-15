@@ -1,0 +1,14 @@
+# Electron build artifacts
+dist/
+out/
+
+# Copied Next.js static export (built from ../client/.next-desktop/)
+client-bundle/
+
+# Signing credentials (never commit)
+.env.release
+
+# Node / OS
+node_modules/
+*.log
+.DS_Store

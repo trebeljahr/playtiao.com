@@ -1,0 +1,20 @@
+{
+  "name": "tiao-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron wrapper for the Tiao desktop app — Phase 3a standalone build.",
+  "main": "main.cjs",
+  "engines": {
+    "node": "24.14.x"
+  },
+  "scripts": {
+    "dev": "electron .",
+    "dev:build-client": "npm --prefix ../client run build:desktop && rm -rf client-bundle && cp -R ../client/.next-desktop/. client-bundle",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "electron": "^36.0.0",
+    "typescript": "^5.8.3"
+  }
+}

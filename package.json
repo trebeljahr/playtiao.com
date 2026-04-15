@@ -7,7 +7,7 @@
     "node": "24.14.x"
   },
   "scripts": {
-    "postinstall": "npm --prefix client install && npm --prefix server install && npm --prefix docs-site install",
+    "postinstall": "npm --prefix client install && npm --prefix server install && npm --prefix docs-site install && (test \"$SKIP_DESKTOP\" = \"1\" || npm --prefix desktop install)",
     "build": "concurrently --kill-others-on-fail -n client,server -c blue,green \"npm:build:client\" \"npm:build:server\"",
     "build:client": "npm --prefix client run build",
     "build:server": "npm --prefix server run build",
