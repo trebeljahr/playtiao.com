@@ -77,12 +77,53 @@ tiao/
 ├── client/          React + Next.js + Tailwind frontend
 ├── server/          Express + WebSocket backend
 ├── shared/          Pure TypeScript game engine + protocol types
+├── desktop/         Electron wrapper (Phase 3a — standalone + Steam)
 ├── e2e/             Playwright end-to-end tests
 ├── docs/            Markdown documentation
 └── docs-site/       Docusaurus documentation site
 ```
 
 The game engine (`shared/src/tiao.ts`) is a set of pure functions with no side effects — both the server and client use it to validate and apply moves.
+
+## Desktop app
+
+Phase 3a wraps the web client in an Electron shell for macOS / Windows / Linux distribution via itch.io and (Phase 3b) Steam. The Electron main process loads a static export of `client/` from a custom `app://tiao/` protocol handler; API calls go to whatever `TIAO_API_URL` points at (default: `http://localhost:5005` in dev, `https://api.playtiao.com` in packaged builds). See [docs/investigations/016-cross-platform-distribution.md](docs/investigations/016-cross-platform-distribution.md) and ADR #13 for the full context.
+
+```bash
+# One-stop dev command: starts the Express backend on a random free
+# port (Redis-shared state with any other `npm run dev` on the same
+# machine), rebuilds the Electron client-bundle against that port,
+# then launches Electron.
+npm run dev:desktop
+
+# Point at the live api.playtiao.com backend instead of a local one:
+npm run dev:desktop:prod
+
+# Package installers for the host platform (unsigned, for alpha testing):
+cd desktop && npm run package
+
+# Steam variant (requires a running Steam client; uses Valve's public
+# Spacewar test app 480 until a real Tiao appid is provisioned):
+cd desktop && npm run package:steam
+```
+
+### Gated subsystems
+
+Four env vars flip on specific subsystems. All are unset by default so standard dev is quiet:
+
+| Env var | Effect |
+|---|---|
+| `TIAO_API_URL` | Override the API base URL at launch (runtime, no rebuild) |
+| `STEAM_BUILD=true` | Initialize Steamworks at bootstrap via `desktop/src/steam.cjs` |
+| `TIAO_ENABLE_UPDATER=1` | Turn on electron-updater polling against GitHub Releases (gated until macOS signing lands) |
+| `TIAO_GLITCHTIP_DSN_DESKTOP` | Enable main-process crash reporting (gated until a desktop GlitchTip project is provisioned) |
+
+### Desktop-specific docs
+
+- `desktop/README.md` — build / package / signing walkthrough
+- `desktop/src/steam.cjs` — Steamworks integration points (Phase 3b scaffold)
+- `desktop/src/glitchtip.cjs` — main-process crash reporting wrapper
+- `.github/workflows/desktop-release.yml` — CI matrix for unsigned Win/macOS/Linux builds
 
 ## Documentation
 

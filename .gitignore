@@ -43,6 +43,9 @@ client/public/swe-worker-*.js
 **/.env.development.local
 **/.env.test.local
 **/.env.production.local
+# per-machine overrides read by docker-compose.dev-traefik.yml
+# (OAuth creds, GlitchTip DSN, etc.) — never commit
+**/.env.docker
 
 # vercel
 **/.vercel

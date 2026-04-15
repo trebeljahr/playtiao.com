@@ -35,6 +35,10 @@
     "dev:infra": "docker-compose -f docker-compose.dev.yml up -d",
     "dev:infra:stop": "docker-compose -f docker-compose.dev.yml down",
     "dev:infra:reset": "docker-compose -f docker-compose.dev.yml down -v",
+    "dev:docker": "docker-compose -f docker-compose.dev.yml -f docker-compose.dev-traefik.yml up -d --build",
+    "dev:docker:logs": "docker-compose -f docker-compose.dev.yml -f docker-compose.dev-traefik.yml logs -f tiao-client tiao-server traefik",
+    "dev:docker:stop": "docker-compose -f docker-compose.dev.yml -f docker-compose.dev-traefik.yml down",
+    "dev:docker:rebuild": "docker-compose -f docker-compose.dev.yml -f docker-compose.dev-traefik.yml build --no-cache tiao-client tiao-server",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
