@@ -620,7 +620,7 @@
     "category_secret": "Secret",
     "text": {
       "first-move_name": "First Move",
-      "first-move_desc": "Play your first game.",
+      "first-move_desc": "Make your first move in a multiplayer game.",
       "getting-started_name": "Getting the Hang of It",
       "getting-started_desc": "Play 5 games.",
       "regular_name": "Table Regular",

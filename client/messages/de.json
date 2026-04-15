@@ -620,7 +620,7 @@
     "category_secret": "Geheim",
     "text": {
       "first-move_name": "Erster Zug",
-      "first-move_desc": "Spiele dein erstes Spiel.",
+      "first-move_desc": "Mache deinen ersten Zug in einem Mehrspielerspiel.",
       "getting-started_name": "Langsam wird's was",
       "getting-started_desc": "Spiele 5 Spiele.",
       "regular_name": "Stammgast",

@@ -194,8 +194,10 @@ export async function onGameCompleted(ctx: GameCompletedContext): Promise<void> 
     const gamesPlayed = account.rating?.overall?.gamesPlayed ?? 0;
 
     // ── Games Played progression ──
+    // Note: "first-move" is NOT triggered here — it fires the moment a player
+    // makes their first turn-completing move, not at game end. See
+    // `onFirstMoveMade` and its call site in gameService.applyAction.
     const gamesThresholds: [string, number][] = [
-      ["first-move", 1],
       ["getting-started", 5],
       ["regular", 10],
       ["centurion", 100],
@@ -315,6 +317,14 @@ export async function onGameCompleted(ctx: GameCompletedContext): Promise<void> 
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Event: First Move Made (multiplayer, fires on first turn-completing move)
+// ---------------------------------------------------------------------------
+
+export async function onFirstMoveMade(playerId: string): Promise<void> {
+  void grant(playerId, "first-move");
 }
 
 // ---------------------------------------------------------------------------

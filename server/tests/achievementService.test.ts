@@ -72,8 +72,9 @@ describe("Achievement definitions", () => {
   });
 
   test("progressive achievements have thresholds", () => {
+    // "first-move" is intentionally excluded — it's binary (fires on the
+    // player's first move in a multiplayer game), not progression-based.
     const progressiveIds = [
-      "first-move",
       "getting-started",
       "regular",
       "centurion",
@@ -92,6 +93,12 @@ describe("Achievement definitions", () => {
         `${id} should have a positive threshold`,
       );
     }
+  });
+
+  test("first-move has no threshold (fires on first move, not game count)", () => {
+    const def = getAchievementById("first-move");
+    assert.ok(def);
+    assert.equal(def.threshold, undefined);
   });
 
   test("secret achievements are all in the secret category", () => {
@@ -145,7 +152,8 @@ describe("Achievement definitions", () => {
   });
 
   test("game-count thresholds are in ascending order", () => {
-    const gameAchievements = ["first-move", "getting-started", "regular", "centurion", "veteran"];
+    // "first-move" is intentionally excluded — it no longer has a threshold.
+    const gameAchievements = ["getting-started", "regular", "centurion", "veteran"];
     let prevThreshold = 0;
     for (const id of gameAchievements) {
       const def = getAchievementById(id)!;

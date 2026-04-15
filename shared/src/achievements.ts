@@ -42,11 +42,10 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
   {
     id: "first-move",
     name: "First Move",
-    description: "Play your first game.",
+    description: "Make your first move in a multiplayer game.",
     category: "games",
     tier: "bronze",
     secret: false,
-    threshold: 1,
     order: 0,
   },
   {

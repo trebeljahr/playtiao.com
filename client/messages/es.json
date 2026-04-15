@@ -620,7 +620,7 @@
     "category_secret": "Secreto",
     "text": {
       "first-move_name": "Primer movimiento",
-      "first-move_desc": "Juega tu primera partida.",
+      "first-move_desc": "Haz tu primer movimiento en una partida multijugador.",
       "getting-started_name": "Agarrando el ritmo",
       "getting-started_desc": "Juega 5 partidas.",
       "regular_name": "Cliente habitual",

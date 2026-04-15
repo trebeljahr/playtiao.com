@@ -69,6 +69,7 @@ import GameAccount from "../models/GameAccount";
 import {
   onGameCompleted as checkGameAchievements,
   onEloUpdated as checkEloAchievements,
+  onFirstMoveMade as checkFirstMoveAchievement,
   onPieceCaptured as checkPieceCapturedAchievement,
   onSpectateStarted as checkSpectateAchievement,
   setAchievementNotifier,
@@ -1212,6 +1213,31 @@ export class GameService {
       this.scheduleClockTimer(savedRoom);
 
       await this.broadcastSnapshot(savedRoom);
+
+      // First Move achievement: fire as soon as a player makes their first
+      // turn-completing move in this room, not at game end. Turn-completing
+      // moves are place-piece and confirm-jump (jump-piece mid-chain doesn't
+      // count). We gate on "the player had no prior put/jump entries in the
+      // history BEFORE this move" so grant() only runs once per player per
+      // game rather than on every move forever.
+      //
+      // Skip when Mongoose isn't connected (unit tests with no DB) so we
+      // never schedule async DB work that triggers an unhandledRejection
+      // after the test ends.
+      if (
+        (message.type === "place-piece" || message.type === "confirm-jump") &&
+        mongoose.connection.readyState === 1 &&
+        !room.state.history.some(
+          (t) => (t.type === "put" || t.type === "jump") && t.color === playerColor,
+        )
+      ) {
+        const seat = playerColor === "white" ? savedRoom.seats.white : savedRoom.seats.black;
+        if (seat?.kind === "account") {
+          void checkFirstMoveAchievement(seat.playerId).catch((err) => {
+            console.error("[achievement] onFirstMoveMade failed", err);
+          });
+        }
+      }
 
       // First Blood achievement: fire as soon as a player captures a piece,
       // not at game end. Score increments only on confirm-jump.
