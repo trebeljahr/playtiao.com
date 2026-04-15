@@ -237,7 +237,7 @@ function proxyWebSocketUpgrade(req, socket, head) {
   proxyReq.end();
 }
 
-const app = next({ dev });
+const app = next({ dev, port });
 const handle = app.getRequestHandler();
 
 await app.prepare();
