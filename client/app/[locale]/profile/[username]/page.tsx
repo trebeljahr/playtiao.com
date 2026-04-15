@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicProfilePage } from "@/views/PublicProfilePage";
+import { DESKTOP_SPA_PARAM_VALUE } from "@/lib/desktopPathParam";
 
 type Props = { params: Promise<{ locale: string; username: string }> };
+
+// See the matching constant in /app/[locale]/game/[gameId]/page.tsx —
+// controls the web/desktop split for the shareable dynamic routes.
+const IS_DESKTOP_BUILD = process.env.NEXT_PUBLIC_PLATFORM === "desktop";
 
 async function fetchPublicProfile(username: string) {
   if (process.env.NODE_ENV === "development") return null;
@@ -21,10 +26,29 @@ async function fetchPublicProfile(username: string) {
   }
 }
 
+/** See the twin function in /app/[locale]/game/[gameId]/page.tsx. */
+export function generateStaticParams() {
+  if (IS_DESKTOP_BUILD) return [{ username: DESKTOP_SPA_PARAM_VALUE }];
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, username } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "og" });
+
+  // Desktop static export: static fallback metadata only. See the
+  // matching /game/[gameId]/page.tsx branch for the reasoning.
+  if (IS_DESKTOP_BUILD) {
+    const title = t("publicProfileTitle", { name: "" }).trim() || "Tiao";
+    const description = t("siteDescription");
+    return {
+      title,
+      description,
+      openGraph: { title, description },
+    };
+  }
+
   const profile = await fetchPublicProfile(username);
 
   const name = profile?.displayName ?? username;

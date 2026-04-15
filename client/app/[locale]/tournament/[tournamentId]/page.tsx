@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { TournamentPage } from "@/views/TournamentPage";
+import { DESKTOP_SPA_PARAM_VALUE } from "@/lib/desktopPathParam";
 
 type Props = { params: Promise<{ locale: string; tournamentId: string }> };
+
+// See the matching constant in /app/[locale]/game/[gameId]/page.tsx —
+// controls the web/desktop split for the shareable dynamic routes.
+const IS_DESKTOP_BUILD = process.env.NEXT_PUBLIC_PLATFORM === "desktop";
 
 async function fetchTournament(tournamentId: string) {
   if (process.env.NODE_ENV === "development") return null;
@@ -31,10 +36,29 @@ const FORMAT_LABELS: Record<string, string> = {
   "groups-knockout": "Groups + Knockout",
 };
 
+/** See the twin function in /app/[locale]/game/[gameId]/page.tsx. */
+export function generateStaticParams() {
+  if (IS_DESKTOP_BUILD) return [{ tournamentId: DESKTOP_SPA_PARAM_VALUE }];
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, tournamentId } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "og" });
+
+  // Desktop static export: static fallback metadata only. See the
+  // matching /game/[gameId]/page.tsx branch for the reasoning.
+  if (IS_DESKTOP_BUILD) {
+    const title = t("tournamentsTitle");
+    const description = t("tournamentsDescription");
+    return {
+      title,
+      description,
+      openGraph: { title, description },
+    };
+  }
+
   const tournament = await fetchTournament(tournamentId);
 
   if (!tournament) {

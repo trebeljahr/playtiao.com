@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { resolveDynamicParam } from "@/lib/desktopPathParam";
 import { toast } from "sonner";
 import type { PlayerColor, Position } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
@@ -151,7 +152,12 @@ export function MultiplayerGamePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ gameId: string }>();
-  const gameId = params?.gameId;
+  // resolveDynamicParam is a no-op on the web (returns params.gameId
+  // unchanged). In the desktop Electron build the static export
+  // bakes a single __spa__ placeholder HTML file for this route and
+  // the protocol handler serves it for every /game/<X> path, so we
+  // must read the real gameId from the live URL at runtime.
+  const gameId = resolveDynamicParam("game", params?.gameId);
   const [navOpen, setNavOpen] = useState(false);
 
   const websocketDebugEnabled = searchParams?.has("wsDebug") ?? false;
@@ -369,13 +375,16 @@ export function MultiplayerGamePage() {
 
   useEffect(() => {
     if (!auth || !gameId || !readyToJoin) return;
+    // Capture into a locally-scoped const so TypeScript's narrowing
+    // survives the closure boundary into the async IIFE below.
+    const resolvedGameId = gameId;
 
     let cancelled = false;
     async function loadGame() {
       setMultiplayerBusy(true);
       try {
         const fetchGame = spectateOnly ? getMultiplayerGame : accessMultiplayerGame;
-        const response = await fetchGame(gameId);
+        const response = await fetchGame(resolvedGameId);
 
         if (!cancelled) {
           connectToRoom(response.snapshot);

@@ -4,6 +4,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { TournamentSnapshot } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
+import { resolveDynamicParam } from "@/lib/desktopPathParam";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { GameConfigBadge } from "@/components/game/GameConfigBadge";
@@ -38,7 +39,9 @@ export function TournamentPage() {
   const { auth, onOpenAuth, onLogout } = useAuth();
   const params = useParams<{ tournamentId: string }>();
   const searchParams = useSearchParams();
-  const tournamentId = params?.tournamentId;
+  // See `resolveDynamicParam` for why this fallback exists (desktop
+  // Electron serves a single `__spa__` shell HTML for /tournament/*).
+  const tournamentId = resolveDynamicParam("tournament", params?.tournamentId);
   const inviteCodeFromUrl = searchParams?.get("code") ?? null;
   const router = useRouter();
   const playerId = auth?.player?.playerId;

@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { MultiplayerGamePage } from "@/views/MultiplayerGamePage";
+import { DESKTOP_SPA_PARAM_VALUE } from "@/lib/desktopPathParam";
 
 type Props = { params: Promise<{ locale: string; gameId: string }> };
+
+// Set by client/next.config.desktop.mjs at build time. Controls the
+// two cross-build conditionals below so the same source file produces
+// a full SSR-ready route for web AND a single placeholder HTML for
+// the desktop static export.
+const IS_DESKTOP_BUILD = process.env.NEXT_PUBLIC_PLATFORM === "desktop";
 
 /** Server-side fetch to the backend for public game OG metadata.
  *  Skipped in dev to avoid blocking page loads with server-to-server HTTP. */
@@ -32,10 +39,37 @@ async function fetchGameOg(gameId: string) {
   }
 }
 
+/**
+ * Desktop builds pre-render a single placeholder HTML file for this
+ * dynamic route. The placeholder is served for every /game/<X> URL
+ * by the Electron app:// protocol handler, and the view component
+ * reads the real gameId from window.location.pathname at runtime
+ * (see `resolveDynamicParam`).
+ */
+export function generateStaticParams() {
+  if (IS_DESKTOP_BUILD) return [{ gameId: DESKTOP_SPA_PARAM_VALUE }];
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, gameId } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "og" });
+
+  // Desktop static export: no per-game OG fetch. The Electron shell
+  // serves one placeholder HTML for every /game/* URL, so per-game
+  // metadata is both impossible (no unique file to attach it to) and
+  // pointless (desktop app users don't share from the preview).
+  if (IS_DESKTOP_BUILD) {
+    const title = t("gameTitle", { gameId: "" }).trim() || "Tiao";
+    const description = t("siteDescription");
+    return {
+      title,
+      description,
+      openGraph: { title, description },
+    };
+  }
+
   const game = await fetchGameOg(gameId);
 
   const id = gameId.toUpperCase();

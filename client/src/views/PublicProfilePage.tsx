@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { resolveDynamicParam } from "@/lib/desktopPathParam";
 import { BackButton } from "@/components/BackButton";
 import { PageLayout } from "@/components/PageLayout";
 import { CardContent } from "@/components/ui/card";
@@ -34,6 +35,9 @@ export function PublicProfilePage() {
   const { auth } = useAuth();
   const router = useRouter();
   const params = useParams<{ username: string }>();
+  // See `resolveDynamicParam` for why this fallback exists (desktop
+  // Electron serves a single `__spa__` shell HTML for /profile/*).
+  const username = resolveDynamicParam("profile", params?.username);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +74,10 @@ export function PublicProfilePage() {
   }, [profileId, isOwnProfile, isAccount, social.socialOverview]);
 
   useEffect(() => {
-    if (!params?.username) return;
+    if (!username) return;
     setLoading(true);
     setError(null);
-    const decoded = decodeURIComponent(params.username);
+    const decoded = decodeURIComponent(username);
     getPublicProfile(decoded)
       .then((res) => {
         setProfile(res.profile);
@@ -90,14 +94,14 @@ export function PublicProfilePage() {
     getPlayerAchievements(decoded)
       .then((res) => setPlayerAchievements(res.achievements))
       .catch(() => {});
-  }, [params?.username]);
+  }, [username]);
 
   const handleLoadMore = async () => {
-    if (!params?.username || matchLoading || !matchHasMore) return;
+    if (!username || matchLoading || !matchHasMore) return;
     setMatchLoading(true);
     const lastGame = matchHistory[matchHistory.length - 1];
     try {
-      const res = await getPlayerMatchHistory(decodeURIComponent(params.username), {
+      const res = await getPlayerMatchHistory(decodeURIComponent(username), {
         before: lastGame.updatedAt,
       });
       setMatchHistory((prev) => [...prev, ...res.games]);
