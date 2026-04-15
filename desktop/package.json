@@ -10,11 +10,96 @@
   "scripts": {
     "dev": "electron .",
     "dev:build-client": "npm --prefix ../client run build:desktop && rm -rf client-bundle && cp -R ../client/.next-desktop/. client-bundle",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "package": "electron-builder",
+    "package:all": "electron-builder -mwl",
+    "release": "./scripts/release.sh"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "electron": "^36.0.0",
+    "electron-builder": "^25.0.0",
     "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "site.playtiao.desktop",
+    "productName": "Tiao",
+    "copyright": "Copyright © 2026 Tiao contributors",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "src/**/*.cjs",
+      "package.json",
+      "!node_modules/.cache/**",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "client-bundle",
+        "to": "client-bundle",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.board-games",
+      "icon": "assets/icon.png",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Game",
+      "icon": "assets/icon.png",
+      "synopsis": "A beautiful abstract strategy board game.",
+      "description": "Play Tiao online or offline — local 2-player, AI opponent, tutorial, and multiplayer when connected."
+    },
+    "protocols": [
+      {
+        "name": "Tiao",
+        "schemes": [
+          "tiao"
+        ]
+      }
+    ]
   }
 }
