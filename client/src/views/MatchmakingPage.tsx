@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MultiplayerSnapshot, TimeControl } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -53,8 +54,7 @@ export function MatchmakingPage() {
     // still need to enforce the gate so no un-tutored player ever ends up in
     // the queue.
     const seenViaAccount = auth.player.kind === "account" && auth.player.hasSeenTutorial;
-    const seenViaLocal =
-      typeof window !== "undefined" && localStorage.getItem("tiao:knowsHowToPlay");
+    const seenViaLocal = Boolean(safeLocalStorage.getItem("tiao:knowsHowToPlay"));
     if (!seenViaAccount && !seenViaLocal) {
       const next = `/matchmaking${typeof window !== "undefined" ? window.location.search : ""}`;
       router.replace(`/tutorial?from=matchmaking&next=${encodeURIComponent(next)}`);

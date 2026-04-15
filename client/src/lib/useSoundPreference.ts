@@ -1,9 +1,10 @@
 import { useSyncExternalStore, useCallback } from "react";
+import { safeLocalStorage } from "./safeLocalStorage";
 
 const STORAGE_KEY = "tiao:soundEnabled";
 
 function getSnapshot(): boolean {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = safeLocalStorage.getItem(STORAGE_KEY);
   return stored === null ? true : stored === "1";
 }
 
@@ -34,7 +35,7 @@ export function useToggleSound(): [boolean, () => void] {
   const enabled = useSoundEnabled();
   const toggle = useCallback(() => {
     const next = !getSnapshot();
-    localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    safeLocalStorage.setItem(STORAGE_KEY, next ? "1" : "0");
     emitChange();
   }, []);
   return [enabled, toggle];

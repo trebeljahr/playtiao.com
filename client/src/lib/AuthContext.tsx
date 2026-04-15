@@ -17,6 +17,7 @@ import { isNetworkError, readableError, toastError } from "@/lib/errors";
 import { op, setAuthReady } from "@/lib/openpanel";
 import { resetBoardTheme } from "@/lib/useBoardTheme";
 import { resetActiveBadges } from "@/lib/useActiveBadge";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 import { setUser as setGlitchtipUser } from "@/lib/glitchtip";
 
 export interface AuthContextValue {
@@ -385,11 +386,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // localStorage synchronously on mount — sees the cleared state from
     // the very first render on the new page. No "jump in" of the tutorial
     // banner after the page paints.
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("tiao:knowsHowToPlay");
-      resetBoardTheme();
-      resetActiveBadges();
-    }
+    safeLocalStorage.removeItem("tiao:knowsHowToPlay");
+    resetBoardTheme();
+    resetActiveBadges();
 
     // Order matters for the rest: do the server-side signout + new-guest
     // session dance while React state is still "logged in", then navigate

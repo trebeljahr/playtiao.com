@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { PlayerColor, Position } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -242,7 +243,7 @@ export function MultiplayerGamePage() {
     // for someone who never saw the rules.
     const runStandardIntroCheck = () => {
       const needsIntro =
-        !auth.player.hasSeenTutorial && !localStorage.getItem("tiao:knowsHowToPlay");
+        !auth.player.hasSeenTutorial && !safeLocalStorage.getItem("tiao:knowsHowToPlay");
       if (needsIntro) {
         setRulesIntroOpen(true);
         // readyToJoin stays false until the modal is dismissed
@@ -1106,7 +1107,7 @@ export function MultiplayerGamePage() {
               type="button"
               className="text-center text-sm text-[#6e5b48] underline underline-offset-4 hover:text-[#2b1e14] transition-colors"
               onClick={() => {
-                localStorage.setItem("tiao:knowsHowToPlay", "1");
+                safeLocalStorage.setItem("tiao:knowsHowToPlay", "1");
                 setRulesIntroOpen(false);
                 setReadyToJoin(true);
               }}
@@ -1118,7 +1119,7 @@ export function MultiplayerGamePage() {
             <Button
               variant="outline"
               onClick={() => {
-                localStorage.setItem("tiao:knowsHowToPlay", "1");
+                safeLocalStorage.setItem("tiao:knowsHowToPlay", "1");
                 setRulesIntroOpen(false);
                 setReadyToJoin(true);
               }}
@@ -1803,9 +1804,14 @@ export function MultiplayerGamePage() {
                                   scoreToWin: multiplayerSnapshot.state.scoreToWin,
                                 },
                               );
-                              void navigator.clipboard.writeText(notation).then(() => {
-                                toast.success(t("gameNotationCopied"));
-                              });
+                              navigator.clipboard
+                                .writeText(notation)
+                                .then(() => {
+                                  toast.success(t("gameNotationCopied"));
+                                })
+                                .catch(() => {
+                                  toast.error(t("gameNotationCopyFailed"));
+                                });
                             }}
                           >
                             {t("copyGameNotation")}

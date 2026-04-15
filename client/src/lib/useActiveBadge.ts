@@ -1,5 +1,6 @@
 import { useSyncExternalStore, useCallback } from "react";
 import type { BadgeId } from "@/components/UserBadge";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 
 const STORAGE_KEY = "tiao:activeBadges";
 
@@ -9,7 +10,7 @@ const STORAGE_KEY = "tiao:activeBadges";
 
 /** Returns the stored active badge IDs as a JSON array string, or null. */
 function getSnapshot(): string | null {
-  return localStorage.getItem(STORAGE_KEY);
+  return safeLocalStorage.getItem(STORAGE_KEY);
 }
 
 function getServerSnapshot(): string | null {
@@ -72,9 +73,9 @@ export function useSetActiveBadges(): [string[], (ids: BadgeId[]) => void] {
 
   const setActiveBadges = useCallback((ids: BadgeId[]) => {
     if (ids.length === 0) {
-      localStorage.removeItem(STORAGE_KEY);
+      safeLocalStorage.removeItem(STORAGE_KEY);
     } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      safeLocalStorage.setJson(STORAGE_KEY, ids);
     }
     emitChange();
   }, []);
@@ -84,6 +85,6 @@ export function useSetActiveBadges(): [string[], (ids: BadgeId[]) => void] {
 
 /** Clear all active badges from localStorage and notify subscribers. */
 export function resetActiveBadges(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  safeLocalStorage.removeItem(STORAGE_KEY);
   emitChange();
 }

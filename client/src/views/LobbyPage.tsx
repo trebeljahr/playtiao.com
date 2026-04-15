@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { TIME_CONTROL_PRESETS, type PlayerColor } from "@shared";
 import { useAuth } from "@/lib/AuthContext";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -208,7 +209,7 @@ export function LobbyPage() {
     // would briefly see the banner while `auth` is still null.
     if (authLoading) return;
     const seenViaAccount = auth?.player.kind === "account" && auth.player.hasSeenTutorial;
-    const seenViaLocal = Boolean(localStorage.getItem("tiao:knowsHowToPlay"));
+    const seenViaLocal = Boolean(safeLocalStorage.getItem("tiao:knowsHowToPlay"));
     const completed = Boolean(seenViaAccount || seenViaLocal);
     setShowTutorialBanner(!completed);
     setNeedsTutorial(!completed);
@@ -225,7 +226,7 @@ export function LobbyPage() {
   }
 
   function handleMatchmakingKnowHowToPlay() {
-    localStorage.setItem("tiao:knowsHowToPlay", "1");
+    safeLocalStorage.setItem("tiao:knowsHowToPlay", "1");
     setNeedsTutorial(false);
     setShowTutorialBanner(false);
     setMatchmakingGateOpen(false);

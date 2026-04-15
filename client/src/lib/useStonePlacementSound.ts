@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { GameState } from "@shared";
 import { useSoundEnabled } from "./useSoundPreference";
+import { safeLocalStorage } from "./safeLocalStorage";
 
 function countPieces(state: GameState) {
   return state.positions.reduce(
@@ -21,7 +22,7 @@ function playMoveSound() {
 
 /** Play the move sound if the user has sound enabled. Usable outside React. */
 export function playMoveSoundIfEnabled() {
-  const stored = localStorage.getItem("tiao:soundEnabled");
+  const stored = safeLocalStorage.getItem("tiao:soundEnabled");
   const enabled = stored === null ? true : stored === "1";
   if (enabled) playMoveSound();
 }

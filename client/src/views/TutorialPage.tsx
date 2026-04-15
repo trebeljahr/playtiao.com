@@ -10,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { markTutorialComplete } from "@/lib/api";
 import { op } from "@/lib/openpanel";
 import { cn } from "@/lib/utils";
+import { safeLocalStorage } from "@/lib/safeLocalStorage";
 import { InteractiveMiniBoard } from "@/components/tutorial/InteractiveMiniBoard";
 import { getTutorialSteps } from "@/components/tutorial/tutorialSteps";
 
@@ -180,7 +181,7 @@ function TutorialPageInner() {
     // gating for why. Both the tutorial-completed path and the explicit "I've
     // played before" path write this key so the rules-intro modal stays hidden
     // for users who have committed one way or the other.
-    localStorage.setItem("tiao:knowsHowToPlay", "1");
+    safeLocalStorage.setItem("tiao:knowsHowToPlay", "1");
 
     op.track("tutorial_finished", {
       steps_completed: completedSteps.size,
