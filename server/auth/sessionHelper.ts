@@ -139,12 +139,31 @@ export async function getPlayerFromRequest(req: Request): Promise<PlayerIdentity
 
 export async function getPlayerFromUpgradeRequest(
   request: IncomingMessage,
+  options: { bearerUserId?: string | null } = {},
 ): Promise<PlayerIdentity | null> {
+  // 1. Cookie-based session (web clients where the browser upgrade
+  //    request carries the better-auth session cookie).
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(request.headers),
   });
-  if (!session) return null;
-  return toPlayerIdentity(session.user);
+  if (session) {
+    return toPlayerIdentity(session.user);
+  }
+
+  // 2. Bearer-token fallback for desktop Electron clients.
+  //    WebSocket upgrade requests from browser APIs cannot set custom
+  //    headers, so the desktop renderer puts the bearer token in a
+  //    `?token=` query param.  The caller in server/index.ts validates
+  //    the token synchronously (HMAC check, no DB hit) via
+  //    desktopSessionManager.verifySessionToken, and passes the
+  //    extracted userId here via `options.bearerUserId` so we don't
+  //    re-parse the URL.
+  if (options.bearerUserId) {
+    const user = await betterAuthUserLookup.lookupBetterAuthUser(options.bearerUserId);
+    if (user) return toPlayerIdentity(user);
+  }
+
+  return null;
 }
 
 export async function requireAccount(req: Request, res: Response) {

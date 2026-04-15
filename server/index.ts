@@ -10,10 +10,12 @@ installCrashGuard();
 import { createServer } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import app from "./app";
-import { FRONTEND_URL, PORT } from "./config/envVars";
+import { PORT } from "./config/envVars";
 import { connectToDB, disconnectFromDB } from "./db";
 import { gameService, GameServiceError } from "./game/gameService";
 import { getPlayerFromUpgradeRequest } from "./auth/sessionHelper";
+import { verifySessionToken } from "./auth/desktopSessionManager";
+import { isAllowedOrigin } from "./lib/wsOrigin";
 import { ClientToServerMessage } from "../shared/src";
 import { createLogger } from "./lib/logger";
 
@@ -87,21 +89,10 @@ websocketServer.on("error", (err: Error) => {
   log.error("websocket server error", err);
 });
 
-function isAllowedOrigin(origin: string | undefined): boolean {
-  if (!origin) return false;
-  if (!FRONTEND_URL) return true; // dev mode — allow all
-  try {
-    const allowed = new URL(FRONTEND_URL).origin;
-    const incoming = new URL(origin).origin;
-    if (incoming === allowed) return true;
-    // Allow any localhost origin in development (e2e tests use a different port)
-    if (incoming.match(/^https?:\/\/localhost(:\d+)?$/) && allowed.includes("localhost"))
-      return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
+// Note: isAllowedOrigin is imported from ./lib/wsOrigin — extracted to
+// its own module for unit testability and so the desktop token
+// exception (commit 2 of desktop-electron-phase3a) can branch on the
+// { hasValidDesktopToken } option without bloating this file.
 
 function sendJson(socket: WebSocket, payload: unknown): void {
   if (socket.readyState === WebSocket.OPEN) {
@@ -132,6 +123,15 @@ websocketServer.on("connection", (socket, request) => {
     socket.close(1008, "rate limit");
     return;
   }
+
+  // Desktop clients authenticate via ?token=<bearer> in the URL
+  // because browser WebSocket APIs can't set custom headers.  Validate
+  // the token synchronously here (HMAC check only, no DB hit) so we
+  // know whether to accept the app:// origin AND so the downstream
+  // getPlayerFromUpgradeRequest can skip re-parsing the query string.
+  const tokenQueryParam = url.searchParams.get("token");
+  const bearerPayload = tokenQueryParam ? verifySessionToken(tokenQueryParam) : null;
+  const bearerUserId = bearerPayload?.userId ?? null;
 
   log.info("incoming connection", { path: url.pathname, gameId: gameId ?? null });
 
@@ -170,7 +170,7 @@ websocketServer.on("connection", (socket, request) => {
   });
 
   void (async () => {
-    if (!isAllowedOrigin(request.headers.origin)) {
+    if (!isAllowedOrigin(request.headers.origin, { hasValidDesktopToken: bearerUserId !== null })) {
       console.warn(`[ws] rejected connection from disallowed origin: ${request.headers.origin}`);
       socket.close();
       return;
@@ -183,7 +183,7 @@ websocketServer.on("connection", (socket, request) => {
     }
 
     if (url.pathname === "/api/ws/lobby") {
-      const player = await getPlayerFromUpgradeRequest(request);
+      const player = await getPlayerFromUpgradeRequest(request, { bearerUserId });
       if (!player) {
         console.warn(`[ws] unauthorized lobby connection attempt`);
         socket.close();
@@ -207,7 +207,7 @@ websocketServer.on("connection", (socket, request) => {
       return;
     }
 
-    const player = await getPlayerFromUpgradeRequest(request);
+    const player = await getPlayerFromUpgradeRequest(request, { bearerUserId });
     if (!player) {
       console.warn(`[ws] unauthorized connection attempt for ${gameId}`);
       sendJson(socket, {

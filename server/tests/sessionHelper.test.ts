@@ -309,6 +309,85 @@ describe("getPlayerFromUpgradeRequest", () => {
     assert.equal(result.kind, "guest");
     assert.equal(result.playerId, "anon-2");
   });
+
+  test("falls back to bearerUserId when no cookie session exists", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    stubLookupBetterAuthUser.mock.mockImplementation(() =>
+      Promise.resolve({
+        id: "desktop-1",
+        name: "desktopuser",
+        email: "dt@example.com",
+        image: null,
+        isAnonymous: null,
+        displayName: null,
+      }),
+    );
+    stubFindById.mock.mockImplementation(() =>
+      Promise.resolve(makeGameAccount({ _id: "desktop-1", displayName: "desktopuser" })),
+    );
+
+    const result = await getPlayerFromUpgradeRequest({ headers: {} } as IncomingMessage, {
+      bearerUserId: "desktop-1",
+    });
+
+    assert.ok(result);
+    assert.equal(result.kind, "account");
+    assert.equal(result.playerId, "desktop-1");
+    assert.equal(result.displayName, "desktopuser");
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 1);
+    assert.equal(stubLookupBetterAuthUser.mock.calls[0].arguments[0], "desktop-1");
+  });
+
+  test("cookie session wins over bearerUserId option", async () => {
+    stubGetSession.mock.mockImplementation(() =>
+      Promise.resolve(
+        makeSession({
+          id: "cookie-user",
+          name: "WebUser",
+          email: "web@example.com",
+          isAnonymous: true,
+        }),
+      ),
+    );
+
+    const result = await getPlayerFromUpgradeRequest({ headers: {} } as IncomingMessage, {
+      bearerUserId: "different-user",
+    });
+
+    assert.ok(result);
+    assert.equal(result.playerId, "cookie-user");
+    // Lookup should not have been called — cookie path short-circuits.
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
+  });
+
+  test("returns null when bearerUserId is supplied but user lookup returns null", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+    stubLookupBetterAuthUser.mock.mockImplementation(() => Promise.resolve(null));
+
+    const result = await getPlayerFromUpgradeRequest({ headers: {} } as IncomingMessage, {
+      bearerUserId: "ghost",
+    });
+
+    assert.equal(result, null);
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 1);
+  });
+
+  test("ignores bearerUserId when it is null or undefined", async () => {
+    stubGetSession.mock.mockImplementation(() => Promise.resolve(null));
+
+    const a = await getPlayerFromUpgradeRequest({ headers: {} } as IncomingMessage, {
+      bearerUserId: null,
+    });
+    assert.equal(a, null);
+
+    const b = await getPlayerFromUpgradeRequest({ headers: {} } as IncomingMessage, {
+      bearerUserId: undefined,
+    });
+    assert.equal(b, null);
+
+    // No lookup should have been attempted for null/undefined.
+    assert.equal(stubLookupBetterAuthUser.mock.callCount(), 0);
+  });
 });
 
 // ---- toPlayerIdentity edge cases (tested via getPlayerFromRequest) -------
