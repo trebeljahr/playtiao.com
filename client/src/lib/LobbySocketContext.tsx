@@ -56,9 +56,23 @@ export function LobbySocketProvider({
   }, []);
 
   const sendMessage = useCallback((message: LobbyClientMessage) => {
+    // Guard against an accidental circular reference sneaking in
+    // (e.g. a React element or DOM node passed through by mistake).
+    // A throw here would propagate out of whatever user action
+    // triggered the send and could blow up the page under whatever
+    // error boundary is above it.
+    let serialized: string;
+    try {
+      serialized = JSON.stringify(message);
+    } catch (err) {
+      console.error("[lobby] failed to serialize outbound message", err, {
+        type: (message as { type?: string }).type,
+      });
+      return;
+    }
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
+      socket.send(serialized);
     } else {
       pendingRef.current.push(message);
     }
@@ -85,10 +99,18 @@ export function LobbySocketProvider({
       socket.onopen = () => {
         reconnect.reset();
         // Flush any messages that were enqueued while the socket was down.
+        // Same try/catch wrapping as sendMessage — one bad message in the
+        // queue shouldn't poison the whole flush loop.
         const pending = pendingRef.current;
         pendingRef.current = [];
         for (const message of pending) {
-          socket.send(JSON.stringify(message));
+          try {
+            socket.send(JSON.stringify(message));
+          } catch (err) {
+            console.error("[lobby] failed to flush queued message", err, {
+              type: (message as { type?: string }).type,
+            });
+          }
         }
       };
 
@@ -99,8 +121,18 @@ export function LobbySocketProvider({
         } catch {
           return;
         }
+        // Isolate subscribers from each other: one handler throwing
+        // must not stop delivery to the others. Previously a bug in
+        // any single consumer would break every other subscriber on
+        // every subsequent message until page reload.
         for (const handler of subscribersRef.current) {
-          handler(payload);
+          try {
+            handler(payload);
+          } catch (err) {
+            console.error("[lobby] subscriber handler threw", err, {
+              type: (payload as { type?: unknown }).type,
+            });
+          }
         }
       };
 

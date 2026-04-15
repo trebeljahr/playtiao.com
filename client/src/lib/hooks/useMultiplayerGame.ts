@@ -251,7 +251,20 @@ export function useMultiplayerGame(
           return;
         }
 
-        const payload = JSON.parse(event.data as string) as ServerToClientMessage;
+        // Guard against a malformed frame from the server (or a proxy
+        // injecting something non-JSON). A throw here previously
+        // bubbled up as an unhandled error in the WebSocket event loop
+        // and could kill the game page.
+        let payload: ServerToClientMessage;
+        try {
+          payload = JSON.parse(event.data as string) as ServerToClientMessage;
+        } catch (err) {
+          logWebSocketDebug("parse-error", {
+            gameId: snapshot.gameId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return;
+        }
 
         if (payload.type === "snapshot") {
           logWebSocketDebug("snapshot", {
