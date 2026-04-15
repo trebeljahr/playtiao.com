@@ -16,12 +16,13 @@
 //   node scripts/dev.mjs --skip-infra    Don't auto-start docker infra
 //   npm run dev                          Random ports (client + server)
 //   npm run dev:parallel                 2 instances in parallel (random ports,
-//                                        per-port .next-<port>/ dist dirs,
-//                                        cleaned up on exit). For Redis queue /
-//                                        horizontal scaling testing — run with
-//                                        two browser profiles, each pointed at
-//                                        a different client port, to verify
-//                                        matchmaking works across instances.
+//                                        shared .next dir so Turbopack's
+//                                        font cache is shared). For Redis
+//                                        queue / horizontal scaling testing —
+//                                        run with two browser profiles, each
+//                                        pointed at a different client port,
+//                                        to verify matchmaking works across
+//                                        instances.
 //   npm run dev:parallel -- 3            Same, but with 3 instances (1-10).
 //   npm run dev:fixed                    Fixed ports (client + server)
 //   npm run dev:lan                      Fixed ports, accessible from LAN (for mobile testing)
@@ -30,8 +31,6 @@
 
 import { createServer } from "net";
 import { execSync, spawn } from "child_process";
-import { rm } from "fs/promises";
-import { resolve } from "path";
 
 const args = process.argv.slice(2);
 const fixedMode = args.includes("--fixed");
@@ -252,39 +251,13 @@ const child = spawn(
   { stdio: "inherit" },
 );
 
-// Cleanup per-port .next dirs on exit (parallel mode only). Next writes dev
-// artifacts into .next-<port>/dev/, so removing .next-<port>/ takes everything
-// including the lockfile. force:true makes it a no-op if the dir never existed.
-async function cleanup() {
-  if (!parallelMode) return;
-  console.log("\n  Cleaning up per-port dist dirs...");
-  for (const port of clientPorts) {
-    const dir = resolve("client", `.next-${port}`);
-    try {
-      await rm(dir, { recursive: true, force: true });
-      console.log(`    ✓ ${dir}`);
-    } catch (err) {
-      console.error(`    ✗ ${dir} — ${err.message}`);
-    }
-  }
-}
-
 // Forward SIGINT/SIGTERM so a single Ctrl+C stops everything
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => child.kill(sig));
 }
 
-// Run cleanup exactly once, on whichever terminal event fires first.
-let cleaningUp = false;
-async function exitWith(code) {
-  if (cleaningUp) return;
-  cleaningUp = true;
-  await cleanup();
-  process.exit(code ?? 1);
-}
-
-child.on("exit", (code) => exitWith(code));
+child.on("exit", (code) => process.exit(code ?? 1));
 child.on("error", (err) => {
   console.error(`Failed to spawn concurrently: ${err.message}`);
-  exitWith(1);
+  process.exit(1);
 });
