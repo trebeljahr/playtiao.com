@@ -554,6 +554,130 @@ Practical implication for scaling: you can run multiple `tiao-server` replicas a
 
 Deploys are graceful (Coolify rolls containers one at a time), but active matches will briefly reconnect when the replica they're pinned to is replaced.
 
+## Scaling and Multi-Node Topology
+
+This section is mostly for future reference. The current production deployment is Phase 0 below — one Hetzner VPS, all containers on one Docker daemon — and that's the right shape until something forces you off of it. Each phase below describes the next step and the actual decision trigger for taking it. Don't skip phases. Each phase's complexity buys a specific kind of resilience, and adding all of it at once means you can't tell which piece is responsible when something breaks.
+
+### Phase 0: one Hetzner box (current shape)
+
+What runs on the box:
+
+- **Coolify control plane** — the dashboard, API, and background workers
+- **`tiao-client`** container — Next.js custom server, port 80
+- **`tiao-server`** container — Express + WebSocket, port 3000
+- **MongoDB** — Coolify resource
+- **Redis** — Coolify resource (required since the server stopped falling back to in-memory mode)
+
+Browser → Cloudflare → Coolify Traefik → `tiao-client:80`. The Next.js custom server proxies `/api/*` and `/ws/*` to `BACKEND_UPSTREAM=http://tiao-server:3000` over Docker's internal bridge network — both containers share one Docker daemon, so the hostname `tiao-server` resolves via Docker's built-in DNS. Zero network hops outside the box.
+
+This is the right shape for a hobby project. Every container is one `docker logs` away. There is one failure boundary (the box) instead of N. **Don't move off this until something actually forces you to.**
+
+### Coolify across multiple Hetzner boxes
+
+When you do outgrow Phase 0, here's the model: Coolify's multi-server feature lets you connect additional Linux hosts to one Coolify dashboard via SSH. The thing to internalize is that **Coolify itself is single-control-plane**:
+
+- The dashboard / API / background workers run on ONE box (the "main" Coolify install).
+- Other boxes are added under Servers → Add Server, connected via SSH key.
+- Coolify SSHes into the remote boxes and runs `docker` commands directly. There is no Coolify daemon on the remote box — just Docker, sshd, and a Coolify-managed Traefik instance.
+
+So:
+
+> **N Hetzner boxes = N Docker daemons = N Coolify "Server" entries = 1 Coolify control plane.**
+
+You don't run Coolify-the-app on the other boxes; only one of them is the Coolify host, the rest are passive Docker hosts the control plane orchestrates remotely.
+
+Each box gets its own Traefik instance with its own Cloudflare-fronted certs.
+
+**Cloudflare wildcard cert constraint.** Cloudflare's free Universal SSL issues only single-level wildcard certs — `*.example.com` works, `*.api.example.com` does not. If you're using Universal SSL (the default), all Tiao subdomains have to be flat: `tiao.example.com`, `tiao-api.example.com`, `tiao-redis.example.com` — not nested ones like `api.tiao.example.com`. Cloudflare's paid Advanced Certificate Manager can issue deeper wildcards if you ever need them.
+
+### Cross-box networking
+
+Containers on different Coolify Servers can NOT see each other via Docker network names — different Docker daemons, no shared network unless you set up Swarm. Cross-box communication needs one of these, in order of preference for Tiao:
+
+1. **Hetzner Cloud private network** — free, in-region, ~0.1 ms latency. Create a network in the Hetzner console, attach all your boxes to it. Each box gets a stable `10.x.x.x` address. Set `BACKEND_UPSTREAM=http://10.0.0.5:3000` and `tiao-client` on box A reaches `tiao-server` on box B without going through the public internet, Cloudflare, or Traefik. **This is the right answer 95% of the time.** The only constraint: same Hetzner datacenter region (FSN1, NBG1, HEL1, etc. — each region is its own private-network domain).
+2. **Public hostname per service** — each app gets its own Coolify-managed subdomain → Traefik on the host that runs it → the container. Backend becomes `https://tiao-api.example.com`, frontend's `BACKEND_UPSTREAM` is set to that. Adds ~5 ms TLS handshake plus an extra hop. Works across regions. The proxy code in `client/server.mjs` doesn't care — `BACKEND_UPSTREAM` is just a URL.
+3. **Docker Swarm** — Coolify supports it. Lets you treat N boxes as one cluster with overlay networking. Heavyweight, somewhat experimental in Coolify, and adds complexity Tiao does not need. Skip unless you actually need cluster scheduling.
+
+### Scaling the Next.js client tier
+
+`client/server.mjs` is **fully stateless** — a pure proxy + static-file server with zero in-memory caches, no session state, no sticky-routing requirement. Adding a second `tiao-client` replica is free:
+
+- Coolify's Traefik load-balances between `tiao-client-1:80` and `tiao-client-2:80`
+- Both proxy requests to the same backend independently
+- No synchronization or state sharing needed between client replicas
+- Auth cookies (HttpOnly, issued by the backend) remain valid across all client instances
+- WebSocket clients can land on a different client replica on reconnect without consequence — the actual WebSocket state lives on `tiao-server` (see Realtime Limitation above), and the new client replica just opens a fresh upgrade-proxy to whichever backend is alive
+
+Where horizontal client scaling actually helps: zero-downtime rolling deploys (Coolify can replace one replica at a time without a brief outage gap) and hedging against a single frontend box dying. For raw throughput, the bottleneck is `tiao-server`, not Next.js — a single client replica handles way more than Tiao will ever need.
+
+### Scaling the backend tier
+
+The backend tier scales horizontally via Redis-backed shared state. See **Realtime Limitation** above for the specifics: matchmaking, locks, rate limiting, and cross-instance broadcasts go through Redis; WebSocket sockets and game timers stay per-process; sticky routing happens naturally via Traefik for the lifetime of one WS connection. Multiple `tiao-server` replicas all coordinate through one Redis instance.
+
+`npm run dev:parallel` exercises this exact path locally — N backends connected to one local Redis, two browser profiles playing each other across instances. If it works in `dev:parallel`, it works in production multi-replica.
+
+### Redis placement
+
+Redis is single-instance for any realistic Tiao deployment. One container, one box. **The right place to put it is the same box that runs Mongo** — treat Mongo + Redis as the "data tier":
+
+- Both are stateful
+- Both want fast disk
+- Both want backups
+- Both have a similar failure-domain blast radius
+
+Concentrating them gives you one well-defined "data box" to babysit (snapshots, monitoring, restore drills) and N stateless "app boxes" that are trivial to replace.
+
+When you go multi-box, the topology becomes:
+
+```
+                          Cloudflare
+                              │
+                              ▼
+        ┌───────────── Box A (app tier) ─────────────┐
+        │  tiao-client × N  →  tiao-server × N       │
+        └────────────┬────────────────┬──────────────┘
+                     │                │
+                     ▼                ▼
+              ┌── Box B (data tier) ──┐
+              │  Mongo  +  Redis      │
+              │  (Hetzner private net)│
+              └───────────────────────┘
+```
+
+The app-tier boxes scale horizontally. The data-tier box stays one machine. Both `BACKEND_UPSTREAM` (for `tiao-client` → `tiao-server`) and `REDIS_URL` / `MONGODB_URI` (for `tiao-server` → data tier) get set to private network IPs.
+
+**HA Redis options**, if you ever need them:
+
+- **Redis Sentinel** — 3 Redis nodes with automatic failover. Coolify doesn't have a built-in template, but you can deploy via compose.
+- **Hosted Redis** (Upstash, Redis Cloud, etc.) — outsource the resilience. Probably the right answer if you reach that point.
+- **Just accept the SPOF and have alerts** — probably what Tiao should do for the foreseeable future.
+
+### Failure states
+
+Failure modes worth thinking through, with mitigations:
+
+| What dies                        | Effect                                                                                                                                      | Mitigation                                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Single Hetzner box (Phase 0)** | Total outage                                                                                                                                | Daily snapshots + alerts + manual restore. Don't pretend you have HA when you don't.                                                                  |
+| **Redis**                        | Backend refuses to start; running multi-instance backends stop cross-broadcasting (a player on backend 1 stops seeing moves from backend 2) | Single Redis instance + monitoring. Restore from RDB snapshot on failure. Hosted Redis if you ever care about Redis-specific HA.                      |
+| **MongoDB**                      | Auth fails (better-auth sessions live in Mongo), persistence fails, full outage                                                             | Daily snapshots to S3/R2. Mongo replica set when you actually have users to lose — see Scaling MongoDB below.                                         |
+| **Backend box (multi-box era)**  | `tiao-client` gets ECONNREFUSED on `BACKEND_UPSTREAM` → users see 502                                                                       | Run ≥2 backend replicas behind Traefik. Each replica's WebSocket state is local but Redis covers the cross-instance gap.                              |
+| **Frontend box (multi-box era)** | Traefik can't reach `tiao-client` → 502 from Cloudflare's "no available server" page                                                        | Run ≥2 frontend replicas. Trivially safe because they're stateless.                                                                                   |
+| **Coolify control plane box**    | Existing containers on remote boxes keep running; you can't deploy or change settings until it's back                                       | Don't put critical services on the control plane box if you want maintenance-window-free control plane work. In practice: fine, just fix it manually. |
+| **Hetzner private network blip** | Backend can't reach Mongo / Redis → cascading errors                                                                                        | Hetzner private networks are very reliable in-region. If you're paranoid, monitor Mongo/Redis ping from each app box and page on sustained loss.      |
+| **Cloudflare outage**            | Site unreachable to most of the world                                                                                                       | Accept it. Cloudflare outages are global news; nothing you can do unless you go DNS-only or multi-edge.                                               |
+
+### A pragmatic scaling roadmap
+
+In order, with the actual decision trigger for each step:
+
+1. **Phase 0 (current)** — one Hetzner box, everything on it. Single failure boundary, simple to reason about, easy to debug. **Trigger to leave**: sustained CPU pressure, RAM exhaustion, or you've outgrown the biggest single Hetzner instance you're willing to pay for.
+2. **Phase 1: data tier split** — two boxes. Box A runs the app tier (`tiao-client` + `tiao-server`), Box B runs the data tier (Mongo + Redis). Connect via Hetzner private network. Same `BACKEND_UPSTREAM` shape, just `MONGODB_URI` and `REDIS_URL` now point at Box B's `10.x.x.x` addresses. **Trigger**: Mongo IO contention with the app processes, or a Mongo restart taking the app processes down with it.
+3. **Phase 2: app tier replicas** — run ≥2 `tiao-server` replicas, ideally on separate boxes for blast-radius reasons. Both connect to Box B's Redis + Mongo. Traefik load-balances the frontends; sticky routing for WebSocket sessions happens naturally because each WS stays pinned to its initial replica until disconnect. **Trigger**: rolling deploys are taking you down for too long, or you're CPU-bound on a single backend.
+4. **Phase 3: HA data tier** — Mongo replica set (3 nodes) + Redis Sentinel (3 nodes), or move both to hosted offerings. **Trigger**: you actually have users complaining about outages, OR you want zero-downtime version upgrades on Mongo. See Scaling MongoDB below for the full Mongo-side story.
+
+For Tiao, **Phase 0 is fine indefinitely**. Phase 1 is a nice mid-point. Beyond that is over-engineering for a hobby game unless it gets unexpectedly popular.
+
 ## Scaling MongoDB
 
 Mongo is the hardest piece of the stack to grow — but the good news is **you almost certainly never need to**. Tiao's Mongo workload is small even by hobby-game standards. This section lays out the realistic options and when each starts to make sense, so future-you doesn't have to re-derive it under pressure.
