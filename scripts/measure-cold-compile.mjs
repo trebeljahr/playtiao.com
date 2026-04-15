@@ -1,167 +1,241 @@
 #!/usr/bin/env node
 // Measure client cold-compile time for a given Next.js route.
 //
-// What it does:
-//   1. Clears the client's .next / .next-* dirs so every run starts cold
-//   2. Spawns `npm run dev` in the background, tears up the full dev stack
-//   3. Waits for the dev server to respond on its client port
-//   4. Issues a GET to the target route and times wall-clock TTFB
-//   5. Kills the dev server
-//   6. Prints the measurement
+// Spawns the client Next.js dev server DIRECTLY (skipping the
+// scripts/dev.mjs + concurrently + nodemon + npm wrapping chain)
+// in its own process group so we can reliably tear it down between
+// runs. Then GETs the target route and times wall-clock TTFB.
 //
 // Usage:
-//   node scripts/measure-cold-compile.mjs                    # default: /en/matchmaking
-//   node scripts/measure-cold-compile.mjs /en/lobby           # custom route
-//   node scripts/measure-cold-compile.mjs /en/matchmaking 3   # 3 repeat runs
-//   MEASURE_PARALLEL=1 node scripts/measure-cold-compile.mjs  # measure dev:parallel cold compile
+//   node scripts/measure-cold-compile.mjs                    # default: /matchmaking
+//   node scripts/measure-cold-compile.mjs /lobby              # custom route
+//   node scripts/measure-cold-compile.mjs /matchmaking 3      # 3 repeat runs
+//   NEXT_DEV_BUNDLER=webpack node scripts/measure-cold-compile.mjs /matchmaking
+//                                                             # force webpack
+//   MEASURE_QUIET=1 node scripts/measure-cold-compile.mjs     # silence child stderr
 //
 // Notes:
-//   - The first request pays the cold-compile cost. Subsequent requests to
-//     the SAME route are nearly instant because Next keeps the compiled
-//     chunks in memory. To measure cold compile accurately we MUST use a
-//     fresh dev server each run.
-//   - With N repeats we print the individual times + median + min/max so
-//     you can see noise floor vs signal.
-//   - The npm install step is NOT wiped. We're measuring Next's own cold
-//     compile, not dependency install.
+//   - Use DEFAULT-LOCALE-STRIPPED URLs (`/matchmaking` not
+//     `/en/matchmaking`). next-intl 307-redirects `/<default_locale>/x`
+//     to `/x`; measuring the redirect is not measuring the compile.
+//     The script follows redirects, so it would catch the compile
+//     eventually, but starting with the canonical URL is cleaner.
 //
-// Expected output shape:
+//   - The server side is NOT started. Only the client Next.js dev
+//     server is spawned. API calls will fail during SSR (the route
+//     may render with a network error in the component), but the
+//     compile time is what we care about — compile is independent
+//     of whether the server responds.
+//
+//   - Runs are fully isolated: fresh process group, fresh `.next`
+//     dir, random client + API ports (no collisions with any
+//     currently-running dev server), wait for the port to be FREE
+//     between runs (TIME_WAIT can hold a port for 30-60 s otherwise).
+//
+//   - First request pays the cold-compile cost. We never make a
+//     second request — the only relevant number is TTFB of GET /.
+//     With N repeats we start a FRESH dev server each run.
+//
+// Output:
 //   === cold-compile measurement ===
-//   route:    /en/matchmaking
-//   mode:     dev
-//   runs:     1
-//   [1] 48312 ms  (boot 1243 ms + compile 47069 ms)
-//   median:   48312 ms
-//   min..max: 48312..48312 ms
+//   route:   /matchmaking
+//   runs:    3
+//   bundler: turbopack (default)
+//   [1] boot 5932 ms + compile 17402 ms = 23334 ms
+//   [2] boot 5814 ms + compile 18015 ms = 23829 ms
+//   [3] boot 5907 ms + compile 17239 ms = 23146 ms
+//   median compile: 17402 ms  (min 17239, max 18015, stddev 338)
+//   median boot:    5907 ms
 
 import { spawn } from "child_process";
 import { rm, access } from "fs/promises";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
+import { createServer as createNetServer, connect } from "net";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
 const repoRoot = resolve(__dirname, "..");
 const clientDir = resolve(repoRoot, "client");
 
-const route = process.argv[2] ?? "/en/matchmaking";
+const route = process.argv[2] ?? "/matchmaking";
 const runs = Number.parseInt(process.argv[3] ?? "1", 10);
-const parallelMode = process.env.MEASURE_PARALLEL === "1";
+const bundler = process.env.NEXT_DEV_BUNDLER ?? "turbopack";
+const quiet = process.env.MEASURE_QUIET === "1";
 
 if (!Number.isFinite(runs) || runs < 1 || runs > 10) {
   console.error("runs must be 1..10");
   process.exit(1);
 }
 
-/** Delete every .next / .next-* dir under client/ so the next compile is cold. */
+// ─── utilities ────────────────────────────────────────────────────────
+
+/** Pick a free TCP port in the given range. Returns the port number. */
+function pickFreePort(min, max) {
+  return new Promise((res, rej) => {
+    const port = min + Math.floor(Math.random() * (max - min + 1));
+    const server = createNetServer();
+    server.once("error", () => res(pickFreePort(min, max))); // collision, retry
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => res(port));
+    });
+  });
+}
+
+/** Poll until a TCP port is free (nobody listening). */
+async function waitForPortFree(port, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const free = await new Promise((res) => {
+      const sock = connect(port, "127.0.0.1");
+      sock.once("connect", () => {
+        sock.destroy();
+        res(false);
+      });
+      sock.once("error", () => res(true));
+    });
+    if (free) return true;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return false;
+}
+
+/** Delete every .next / .next-* dir in client/ so the next compile is cold. */
 async function clearCaches() {
   const candidates = [".next"];
-  // In parallel mode, per-port dirs will be created. Zap anything matching.
   for (let p = 3100; p <= 3999; p++) candidates.push(`.next-${p}`);
   for (let p = 5100; p <= 5999; p++) candidates.push(`.next-${p}`);
-  const dirs = [];
+  let cleared = 0;
   for (const c of candidates) {
     const dir = resolve(clientDir, c);
     try {
       await access(dir);
-      dirs.push(dir);
+      await rm(dir, { recursive: true, force: true });
+      cleared++;
     } catch {
       /* missing → skip */
     }
   }
-  for (const dir of dirs) {
-    await rm(dir, { recursive: true, force: true });
-  }
-  if (dirs.length > 0) {
-    console.log(`  cleared ${dirs.length} cache dir(s)`);
-  }
+  if (cleared > 0) console.log(`  cleared ${cleared} cache dir(s)`);
 }
 
-/** Spawn `npm run dev` (or `npm run dev:parallel`) and resolve the dev URL + child. */
-function spawnDevServer() {
+// ─── dev server lifecycle ────────────────────────────────────────────
+
+/**
+ * Spawn `node server.mjs` in a new process group so we can kill the
+ * whole tree reliably. Returns { child, clientUrl, bootMs, stdout }.
+ */
+function spawnDevServer(clientPort, apiPort) {
   const bootStart = Date.now();
-  const npmArgs = parallelMode ? ["run", "dev:parallel"] : ["run", "dev"];
-  const child = spawn("npm", npmArgs, {
-    cwd: repoRoot,
+  const env = {
+    ...process.env,
+    PORT: String(clientPort),
+    API_PORT: String(apiPort),
+    NEXT_PUBLIC_API_PORT: String(apiPort),
+    NODE_ENV: "development",
+    NEXT_DEV_BUNDLER: bundler,
+  };
+  const child = spawn("node", ["server.mjs"], {
+    cwd: clientDir,
+    env,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
+    detached: true, // new process group — kill children with process.kill(-pgid, sig)
   });
 
   return new Promise((resolvePromise, reject) => {
-    let stderr = "";
     let stdout = "";
-
-    // Grab the first client URL we see in the dev.mjs banner. Matches both
-    // `Client: http://localhost:3100` (solo mode) and
-    // `[1] client → http://localhost:3100` (parallel mode).
-    const clientUrlRegex = /(?:Client:|client →)\s+(http:\/\/localhost:\d+)/;
-    let clientUrl = null;
+    let stderr = "";
     let resolved = false;
-
-    const onData = (chunk) => {
+    const onData = (src) => (chunk) => {
       const text = chunk.toString();
-      stdout += text;
-      if (!clientUrl) {
-        const m = text.match(clientUrlRegex);
-        if (m) clientUrl = m[1];
-      }
-      // Next 16 prints "Next.js ready on http://..." once dev server is live.
-      // Older versions print "Ready in Xms" or "✓ Ready in ...". Match any.
-      // In dev:parallel we want BOTH instances ready before measuring so
-      // the second cold-compile of /matchmaking on instance 2 doesn't race
-      // instance 1's boot.
-      if (clientUrl && /Next\.js ready on|Ready in|✓ Ready/.test(text) && !resolved) {
+      if (src === "stdout") stdout += text;
+      else stderr += text;
+      if (!quiet && src === "stderr") process.stderr.write(`    [child stderr] ${text}`);
+      // Next 16 prints "Next.js ready on http://..."; older: "Ready in Xms"
+      if (!resolved && /Next\.js ready on|Ready in|✓ Ready/.test(text)) {
         resolved = true;
         const bootMs = Date.now() - bootStart;
-        resolvePromise({ child, clientUrl, bootMs });
+        resolvePromise({
+          child,
+          clientUrl: `http://127.0.0.1:${clientPort}`,
+          bootMs,
+          getStdout: () => stdout,
+          getStderr: () => stderr,
+        });
       }
     };
-
-    child.stdout.on("data", onData);
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-      onData(chunk); // some Next versions emit "Ready in" on stderr
-    });
-
-    child.once("exit", (code) => {
+    child.stdout.on("data", onData("stdout"));
+    child.stderr.on("data", onData("stderr"));
+    child.once("exit", (code, signal) => {
       if (!resolved) {
         reject(
           new Error(
-            `dev server exited (code=${code}) before reporting a client URL\n` +
-              `stdout tail: ${stdout.slice(-500)}\n` +
-              `stderr tail: ${stderr.slice(-500)}`,
+            `dev server exited before ready (code=${code}, signal=${signal})\n` +
+              `stdout tail:\n${stdout.slice(-800)}\n` +
+              `stderr tail:\n${stderr.slice(-800)}`,
           ),
         );
       }
     });
-
-    // Safety timeout. The tsx cold-compile of the server alone is
-    // ~30-40s, and dev:parallel + font stagger pushes the total even
-    // higher. 4 minutes is a generous budget that'll catch a real
-    // hang while still tolerating a genuine cold boot.
+    // Safety timeout: longest legitimate boot I've seen is ~45 s, 180 s is
+    // generous.
     setTimeout(() => {
       if (!resolved) {
         try {
-          child.kill("SIGTERM");
+          process.kill(-child.pid, "SIGKILL");
         } catch {
           /* already dead */
         }
         reject(
           new Error(
-            "dev server did not become ready within 240 s\n" +
-              `stdout tail: ${stdout.slice(-1500)}`,
+            `dev server did not become ready within 180 s\n` +
+              `stdout tail:\n${stdout.slice(-1500)}\n` +
+              `stderr tail:\n${stderr.slice(-1500)}`,
           ),
         );
       }
-    }, 240_000).unref();
+    }, 180_000).unref();
   });
 }
 
 /**
+ * Kill the entire process group the child owns. Waits for the child
+ * to exit (up to 10 s), then ALSO waits for the bound port to be
+ * free so the next run can claim it without racing TIME_WAIT.
+ */
+async function teardown(child, clientPort) {
+  if (child.exitCode === null) {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      /* already dead */
+    }
+    await new Promise((res) => {
+      const hardKill = setTimeout(() => {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          /* already dead */
+        }
+      }, 5000);
+      child.once("exit", () => {
+        clearTimeout(hardKill);
+        res();
+      });
+      setTimeout(res, 10_000).unref(); // final escape
+    });
+  }
+  // Wait for the port to actually be free. TCP TIME_WAIT can linger
+  // otherwise.
+  await waitForPortFree(clientPort, 15_000);
+}
+
+// ─── HTTP timing ──────────────────────────────────────────────────────
+
+/**
  * GET the target route and return wall-clock time to fetch the final
- * (post-redirect) response body. We have to FOLLOW redirects because
- * next-intl strips the default locale (`/en/foo` → 307 → `/foo`); if
- * we stop at the 307 we measure the redirect response (<200 ms) not
- * the actual compile of the target route.
+ * (post-redirect) response body. Follows redirects manually (up to 5
+ * hops) so next-intl's `/en/x → /x` rewrite doesn't short-circuit
+ * the measurement.
  */
 async function timeRequest(baseUrl) {
   const url = baseUrl + route;
@@ -169,13 +243,10 @@ async function timeRequest(baseUrl) {
   let currentUrl = url;
   let response;
   let hops = 0;
-  // Manually chase redirects (up to 5 hops) so we can log each one.
-  // fetch's default `redirect: "follow"` would also work but doesn't
-  // give us visibility into the chain.
   while (true) {
     response = await fetch(currentUrl, { redirect: "manual" });
     if (response.status >= 300 && response.status < 400 && response.headers.get("location")) {
-      await response.text(); // drain
+      await response.text();
       hops++;
       if (hops > 5) break;
       const loc = response.headers.get("location");
@@ -189,72 +260,79 @@ async function timeRequest(baseUrl) {
   return { elapsed, status: response.status, finalUrl: currentUrl, hops };
 }
 
-/** Cleanly kill a spawned dev server tree. scripts/dev.mjs propagates SIGTERM. */
-function killTree(child) {
-  return new Promise((res) => {
-    let killed = false;
-    const done = () => {
-      if (killed) return;
-      killed = true;
-      res();
-    };
-    child.once("exit", done);
-    try {
-      child.kill("SIGTERM");
-    } catch {
-      done();
-    }
-    // Hard kill after 5 s if SIGTERM was ignored
-    setTimeout(() => {
-      if (!killed) {
-        try {
-          child.kill("SIGKILL");
-        } catch {
-          /* already dead */
-        }
-        done();
-      }
-    }, 5_000).unref();
-  });
+// ─── main ────────────────────────────────────────────────────────────
+
+function stddev(xs) {
+  if (xs.length <= 1) return 0;
+  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const sq = xs.map((x) => (x - mean) ** 2).reduce((a, b) => a + b, 0) / xs.length;
+  return Math.round(Math.sqrt(sq));
 }
 
 async function main() {
   console.log(`=== cold-compile measurement ===`);
-  console.log(`route:    ${route}`);
-  console.log(`mode:     ${parallelMode ? "dev:parallel" : "dev"}`);
-  console.log(`runs:     ${runs}`);
+  console.log(`route:   ${route}`);
+  console.log(`runs:    ${runs}`);
+  console.log(`bundler: ${bundler}`);
 
-  const results = [];
+  const compileTimes = [];
+  const bootTimes = [];
+
   for (let i = 1; i <= runs; i++) {
     await clearCaches();
-    const { child, clientUrl, bootMs } = await spawnDevServer();
+    const clientPort = await pickFreePort(3100, 3999);
+    const apiPort = await pickFreePort(5100, 5999);
+    let spawned;
     try {
-      const { elapsed, status, finalUrl, hops } = await timeRequest(clientUrl);
-      if (status >= 400) {
-        console.error(`[${i}] request failed: HTTP ${status} (final ${finalUrl})`);
-        results.push(null);
-      } else {
-        const compileMs = elapsed;
-        const hopNote = hops > 0 ? ` [${hops} redirect${hops === 1 ? "" : "s"} → ${finalUrl}]` : "";
-        console.log(
-          `[${i}] ${compileMs} ms  (boot ${bootMs} ms + compile ${compileMs} ms)${hopNote}`,
-        );
-        results.push(compileMs);
-      }
-    } finally {
-      await killTree(child);
+      spawned = await spawnDevServer(clientPort, apiPort);
+    } catch (err) {
+      console.error(`[${i}] ${err.message}`);
+      continue;
     }
+    const { child, clientUrl, bootMs } = spawned;
+    let result;
+    try {
+      result = await timeRequest(clientUrl);
+    } catch (err) {
+      console.error(`[${i}] fetch failed: ${err.message}`);
+      result = null;
+    }
+    await teardown(child, clientPort);
+
+    if (!result || result.status >= 400) {
+      const status = result?.status ?? "no-response";
+      console.error(`[${i}] request failed: ${status}`);
+      continue;
+    }
+    const compileMs = result.elapsed;
+    const hopNote =
+      result.hops > 0
+        ? ` [${result.hops} hop${result.hops === 1 ? "" : "s"} → ${result.finalUrl}]`
+        : "";
+    console.log(
+      `[${i}] boot ${bootMs} ms + compile ${compileMs} ms = ${bootMs + compileMs} ms${hopNote}`,
+    );
+    compileTimes.push(compileMs);
+    bootTimes.push(bootMs);
+
+    // Brief cooldown between runs so the OS finishes releasing FDs,
+    // threads, etc. Especially important when tests cascade.
+    if (i < runs) await new Promise((r) => setTimeout(r, 500));
   }
 
-  const ok = results.filter((r) => r !== null);
-  if (ok.length === 0) {
+  if (compileTimes.length === 0) {
     console.error("all runs failed");
     process.exit(1);
   }
-  const sorted = [...ok].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  console.log(`median:   ${median} ms`);
-  console.log(`min..max: ${sorted[0]}..${sorted[sorted.length - 1]} ms`);
+
+  const compileSorted = [...compileTimes].sort((a, b) => a - b);
+  const bootSorted = [...bootTimes].sort((a, b) => a - b);
+  const medCompile = compileSorted[Math.floor(compileSorted.length / 2)];
+  const medBoot = bootSorted[Math.floor(bootSorted.length / 2)];
+  console.log(
+    `median compile: ${medCompile} ms  (min ${compileSorted[0]}, max ${compileSorted[compileSorted.length - 1]}, stddev ${stddev(compileTimes)})`,
+  );
+  console.log(`median boot:    ${medBoot} ms`);
 }
 
 main().catch((err) => {

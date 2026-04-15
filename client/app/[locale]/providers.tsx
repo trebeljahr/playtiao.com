@@ -54,6 +54,13 @@ import { LobbyProviders } from "./LobbyProviders";
 // ssr: false on the auth dialog so we don't ship ~15kb of form JSX
 // through the server renderer when it's closed. The banners do render
 // server-side so they can have the right initial position class.
+//
+// We tried dynamic-importing LobbyProviders too (ssr: true) and it
+// was ~2× SLOWER on cold compile — `ssr: true` dynamic imports add
+// chunk-split overhead that only pays off if a meaningful fraction
+// of routes can skip loading the chunk. Every route via AppShell
+// still renders LobbyProviders, so there's no skipping benefit —
+// just pure split overhead. Keep it statically imported.
 
 const AuthDialog = dynamic(() => import("./AuthDialog").then((m) => m.AuthDialog), {
   ssr: false,
