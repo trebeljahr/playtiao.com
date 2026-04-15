@@ -197,7 +197,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
   }
 
   async scheduleClockTimer(roomId: string, delayMs: number, expectedTurn: string): Promise<void> {
-    const jobId = `clock:${roomId}`;
+    const jobId = `clock-${roomId}`;
     // Remove any existing timer for this room, then add with new delay
     await this.clockQueue.remove(jobId).catch(() => {});
     await this.clockQueue.add(
@@ -213,11 +213,11 @@ export class BullMQTimerScheduler implements TimerScheduler {
   }
 
   async cancelClockTimer(roomId: string): Promise<void> {
-    await this.clockQueue.remove(`clock:${roomId}`).catch(() => {});
+    await this.clockQueue.remove(`clock-${roomId}`).catch(() => {});
   }
 
   async scheduleAbandonTimer(roomId: string, playerId: string, delayMs: number): Promise<void> {
-    const jobId = `abandon:${roomId}:${playerId}`;
+    const jobId = `abandon-${roomId}-${playerId}`;
     await this.abandonQueue.add(
       "guest-abandon",
       { roomId, playerId },
@@ -231,11 +231,11 @@ export class BullMQTimerScheduler implements TimerScheduler {
   }
 
   async cancelAbandonTimer(roomId: string, playerId: string): Promise<void> {
-    await this.abandonQueue.remove(`abandon:${roomId}:${playerId}`).catch(() => {});
+    await this.abandonQueue.remove(`abandon-${roomId}-${playerId}`).catch(() => {});
   }
 
   async scheduleFirstMoveTimer(roomId: string, delayMs: number): Promise<void> {
-    const jobId = `first-move:${roomId}`;
+    const jobId = `first-move-${roomId}`;
     await this.firstMoveQueue.remove(jobId).catch(() => {});
     await this.firstMoveQueue.add(
       "first-move-timeout",
@@ -250,7 +250,7 @@ export class BullMQTimerScheduler implements TimerScheduler {
   }
 
   async cancelFirstMoveTimer(roomId: string): Promise<void> {
-    await this.firstMoveQueue.remove(`first-move:${roomId}`).catch(() => {});
+    await this.firstMoveQueue.remove(`first-move-${roomId}`).catch(() => {});
   }
 
   isPersistent(): boolean {
