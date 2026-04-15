@@ -1402,6 +1402,7 @@ export function MultiplayerGamePage() {
                                       className="min-w-0 flex-1 gap-3"
                                     >
                                       {auth?.player.kind === "account" &&
+                                        slot.player.kind === "account" &&
                                         slot.player.playerId !== auth?.player.playerId &&
                                         slot.player.playerId &&
                                         slot.player.displayName && (
@@ -1530,6 +1531,7 @@ export function MultiplayerGamePage() {
                                 scoreToWin={multiplayerSnapshot.state.scoreToWin}
                                 playerChildren={
                                   auth?.player.kind === "account" &&
+                                  seat?.player.kind === "account" &&
                                   !isYourSeat &&
                                   seat?.player.playerId &&
                                   seat?.player.displayName ? (
@@ -1892,6 +1894,7 @@ export function MultiplayerGamePage() {
                 nameClassName="font-semibold text-[#2b1e14]"
               >
                 {auth?.player.kind === "account" &&
+                  multiplayerSnapshot.seats[winner]!.player.kind === "account" &&
                   multiplayerSnapshot.seats[winner]!.player.playerId !== auth?.player.playerId &&
                   multiplayerSnapshot.seats[winner]!.player.playerId &&
                   multiplayerSnapshot.seats[winner]!.player.displayName && (
@@ -2055,6 +2058,7 @@ export function MultiplayerGamePage() {
                       className="gap-3"
                     >
                       {auth?.player.kind === "account" &&
+                        slot.player.kind === "account" &&
                         !isYou &&
                         slot.player.playerId &&
                         slot.player.displayName && (

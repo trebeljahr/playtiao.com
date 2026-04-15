@@ -1528,4 +1528,110 @@ describe("MultiplayerGamePage", () => {
     expect(eyeBtn).toBeInTheDocument();
     expect(eyeBtn).toHaveTextContent("2");
   });
+
+  // --- Report button gating ---
+  //
+  // Reporting only makes sense for registered accounts on both sides: the
+  // server rejects reports against guests (they have no GameAccount row),
+  // and guests can't submit reports either. The UI should match.
+
+  it("hides report button when the opponent is a guest", async () => {
+    const accountAuth: AuthResponse = {
+      player: {
+        kind: "account",
+        playerId: "account-aaa",
+        displayName: "Alice",
+      },
+    };
+
+    const authModule = await import("@/lib/AuthContext");
+    const useAuthSpy = vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: accountAuth,
+      authLoading: false,
+      onOpenAuth: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    } as unknown as ReturnType<typeof authModule.useAuth>);
+
+    const snapshot = makeMatchmakingSnapshot({
+      players: [
+        {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        {
+          player: { playerId: "guest-bbb", displayName: "Anonymous", kind: "guest" },
+          online: true,
+        },
+      ],
+      seats: {
+        white: {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        black: {
+          player: { playerId: "guest-bbb", displayName: "Anonymous", kind: "guest" },
+          online: true,
+        },
+      },
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    expect(screen.queryByRole("button", { name: "Report player" })).not.toBeInTheDocument();
+
+    useAuthSpy.mockRestore();
+  });
+
+  it("shows report button when the opponent is an account", async () => {
+    const accountAuth: AuthResponse = {
+      player: {
+        kind: "account",
+        playerId: "account-aaa",
+        displayName: "Alice",
+      },
+    };
+
+    const authModule = await import("@/lib/AuthContext");
+    const useAuthSpy = vi.spyOn(authModule, "useAuth").mockReturnValue({
+      auth: accountAuth,
+      authLoading: false,
+      onOpenAuth: vi.fn(),
+      onLogout: vi.fn(),
+      applyAuth: vi.fn(),
+    } as unknown as ReturnType<typeof authModule.useAuth>);
+
+    const snapshot = makeMatchmakingSnapshot({
+      players: [
+        {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        {
+          player: { playerId: "account-bbb", displayName: "Bob", kind: "account" },
+          online: true,
+        },
+      ],
+      seats: {
+        white: {
+          player: { playerId: "account-aaa", displayName: "Alice", kind: "account" },
+          online: true,
+        },
+        black: {
+          player: { playerId: "account-bbb", displayName: "Bob", kind: "account" },
+          online: true,
+        },
+      },
+    });
+
+    await setupMocks(snapshot);
+    render(<MultiplayerGamePage />);
+
+    // At least one "Report player" button should be present for the account opponent
+    const reportBtns = screen.getAllByRole("button", { name: "Report player" });
+    expect(reportBtns.length).toBeGreaterThan(0);
+
+    useAuthSpy.mockRestore();
+  });
 });
