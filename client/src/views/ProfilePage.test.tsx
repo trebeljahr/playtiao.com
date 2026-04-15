@@ -33,6 +33,19 @@ vi.mock("@/lib/api", async (importOriginal) => {
     updateAccountProfile: (...args: unknown[]) => mockUpdateAccountProfile(...args),
     uploadAccountProfilePicture: vi.fn(),
     deleteAccount: (...args: unknown[]) => mockDeleteAccount(...args),
+    // DataExportCard mounts unconditionally inside ProfilePage and fires
+    // listDataExports() in its mount effect. Without an explicit mock the
+    // `...actual` spread above pulls the real function through, which calls
+    // fetch() against window.location.origin — in jsdom that's
+    // http://localhost:3000, which under `npm run dev:fixed` is the running
+    // Next custom server and proxies straight to tiao-server. Every test
+    // that renders <ProfilePage /> then hammers the real
+    // /api/player/account/exports endpoint with a 401 (no session cookie).
+    // Stub all four export endpoints to keep tests offline.
+    listDataExports: vi.fn().mockResolvedValue({ exports: [] }),
+    createDataExport: vi.fn(),
+    getDataExportDownloadUrl: vi.fn(),
+    deleteDataExport: vi.fn(),
   };
 });
 
