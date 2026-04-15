@@ -18,7 +18,7 @@
  * electron-updater all land in commits 9+.
  */
 
-const { app, BrowserWindow, Menu, shell, protocol } = require("electron");
+const { app, BrowserWindow, Menu, shell, protocol, ipcMain } = require("electron");
 const path = require("node:path");
 
 const { registerAppProtocol, DESKTOP_PROTOCOL_SCHEME } = require("./src/protocol.cjs");
@@ -34,6 +34,7 @@ const {
   flushPendingDeepLinks,
   DEEP_LINK_SCHEME,
 } = require("./src/deepLink.cjs");
+const { initAnalytics, track, setEnabled: setAnalyticsEnabled } = require("./src/analytics.cjs");
 
 // Privileged scheme registration MUST run before app.whenReady() —
 // at startup Chromium builds its protocol table from whatever has
@@ -94,11 +95,15 @@ function bootstrap() {
   // first call rather than null.
   loadPersistedToken();
   registerAuthIpc();
+  initAnalytics();
+  registerAnalyticsIpc();
+  track("desktop:app_start", { packaged: app.isPackaged });
 
   mainWindow = createMainWindow({
     startUrl: `${DESKTOP_PROTOCOL_SCHEME}://tiao/en/`,
     devTools: !app.isPackaged,
   });
+  track("desktop:window_created");
 
   Menu.setApplicationMenu(buildMenu());
 
@@ -110,6 +115,15 @@ function bootstrap() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(`${DESKTOP_PROTOCOL_SCHEME}://`)) {
       void shell.openExternal(url);
+      // Record the host only — not the full URL — to avoid leaking
+      // game IDs or usernames into analytics.
+      let host = "unknown";
+      try {
+        host = new URL(url).host;
+      } catch {
+        /* keep fallback */
+      }
+      track("desktop:external_link_opened", { host });
       return { action: "deny" };
     }
     return { action: "allow" };
@@ -138,6 +152,19 @@ function bootstrap() {
   // the lobby stuck as a guest.
   win.webContents.once("did-finish-load", () => {
     flushPendingDeepLinks();
+  });
+}
+
+/**
+ * Minimal analytics IPC surface. The renderer calls
+ * `window.electron.analytics.setEnabled(bool)` when the OpenPanel
+ * consent banner state changes — main process persists the flag so
+ * the next cold start honors it.
+ */
+function registerAnalyticsIpc() {
+  ipcMain.handle("analytics:setEnabled", async (_event, enabled) => {
+    setAnalyticsEnabled(!!enabled);
+    return { ok: true };
   });
 }
 

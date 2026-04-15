@@ -78,4 +78,17 @@ contextBridge.exposeInMainWorld("electron", {
       return () => ipcRenderer.off("auth:error", listener);
     },
   },
+
+  analytics: {
+    /**
+     * Toggle main-process OpenPanel tracking on or off.  The renderer
+     * calls this whenever the user accepts / revokes the web
+     * OpenPanel consent banner so main-process events stay in sync
+     * with the user's stated preference.
+     *
+     * @param {boolean} enabled
+     * @returns {Promise<{ ok: true }>}
+     */
+    setEnabled: (enabled) => ipcRenderer.invoke("analytics:setEnabled", enabled),
+  },
 });
