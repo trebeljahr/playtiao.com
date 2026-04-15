@@ -37,6 +37,11 @@ const {
 } = require("./src/deepLink.cjs");
 const { initAnalytics, track, setEnabled: setAnalyticsEnabled } = require("./src/analytics.cjs");
 const { maybeInitUpdater } = require("./src/updater.cjs");
+const {
+  initGlitchtip,
+  captureException: captureGlitchtipException,
+  flush: flushGlitchtip,
+} = require("./src/glitchtip.cjs");
 
 // HMR dev mode: if TIAO_DEV_RENDERER_URL is set and we're unpackaged,
 // the renderer loads from that URL instead of `app://tiao/en/`.  Used
@@ -199,6 +204,11 @@ npm run dev                # launches Electron again</pre>
 }
 
 function bootstrap() {
+  // Initialize crash reporting FIRST so any failure in subsequent
+  // setup (protocol registration, token load, IPC wiring) still gets
+  // captured.  `initGlitchtip` is a no-op without a DSN and in dev
+  // mode, so normal development is unaffected.
+  initGlitchtip();
   registerAppProtocol();
   // Warm the token cache BEFORE registering IPC handlers so
   // auth:getToken returns the previously persisted value on the
@@ -309,3 +319,27 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) bootstrap();
 });
+
+// `before-quit` fires once, right before the app starts tearing
+// down windows and running `will-quit`.  Flushing Sentry here
+// catches in-flight captureException calls from the last 2 seconds
+// of runtime — without this, a crash that triggers quit would lose
+// the crash event it just reported.
+app.on("before-quit", async (event) => {
+  // We don't want to actually block the quit for more than ~2s —
+  // the flush helper has its own internal timeout, and we only
+  // preventDefault once (checked via a flag) so the second
+  // before-quit fires through normally.
+  if (glitchtipFlushed) return;
+  event.preventDefault();
+  try {
+    await flushGlitchtip(2000);
+  } catch {
+    /* best-effort */
+  } finally {
+    glitchtipFlushed = true;
+    app.quit();
+  }
+});
+
+let glitchtipFlushed = false;

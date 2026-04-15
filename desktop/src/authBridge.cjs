@@ -33,6 +33,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { randomUUID } = require("node:crypto");
 const { track } = require("./analytics.cjs");
+const { captureException: captureGlitchtipException } = require("./glitchtip.cjs");
 
 const TOKEN_FILE = "tiao-desktop-auth.enc";
 const STATE_TTL_MS = 5 * 60 * 1000;
@@ -87,6 +88,7 @@ function persistToken(token) {
     fs.writeFileSync(getTokenFilePath(), encrypted, { mode: 0o600 });
   } catch (err) {
     console.error("[authBridge] failed to persist encrypted token:", err);
+    captureGlitchtipException(err, { location: "authBridge.persistToken" });
   }
 }
 
@@ -258,6 +260,10 @@ async function handleAuthDeepLink(parsedUrl) {
   } catch (err) {
     console.error("[authBridge] exchange request failed:", err);
     track("desktop:auth_flow_failed", { reason: "network_error", provider: pending.provider });
+    captureGlitchtipException(err, {
+      location: "authBridge.handleAuthDeepLink.exchange",
+      provider: pending.provider,
+    });
     broadcastToRenderer("auth:error", { reason: "network_error" });
   }
 }
