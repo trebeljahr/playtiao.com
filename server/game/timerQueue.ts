@@ -326,16 +326,39 @@ export class BullMQMatchmakingSweepScheduler implements MatchmakingSweepSchedule
   }
 
   start(intervalMs: number): void {
-    // BullMQ repeatable job — only one instance picks up each occurrence
-    void this.queue.add(
-      "sweep",
-      {},
-      {
-        repeat: { every: intervalMs },
-        removeOnComplete: true,
-        removeOnFail: true,
-      },
-    );
+    // Reconcile the queue before (re-)arming the repeat schedule.
+    //
+    // Scenario: the server crashes mid-tick, leaving a handful of delayed
+    // sweep jobs in `bull:tiao-matchmaking-sweep:delayed` whose fire times
+    // are now in the past. On restart the new worker drains the backlog
+    // in a burst, and the BullMQ stalled-check races with the burst
+    // processing to produce a cascade of "Missing lock for job" errors
+    // (we saw this exact pattern earlier today).
+    //
+    // Since the sweep is idempotent and stateless, we can safely drop
+    // everything in waiting/delayed state on startup. The repeat schedule
+    // (stored separately under `bull:QUEUE:repeat`) is preserved by
+    // `drain` and will re-populate the delayed set on the very next tick.
+    void (async () => {
+      try {
+        await this.queue.drain(true);
+      } catch (err) {
+        console.error("[sweep] startup drain failed:", err);
+      }
+      try {
+        await this.queue.add(
+          "sweep",
+          {},
+          {
+            repeat: { every: intervalMs },
+            removeOnComplete: true,
+            removeOnFail: true,
+          },
+        );
+      } catch (err) {
+        console.error("[sweep] failed to arm repeat schedule:", err);
+      }
+    })();
   }
 
   stop(): void {
