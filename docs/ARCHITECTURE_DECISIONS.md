@@ -317,3 +317,34 @@ BullMQ adds ~2MB of dependencies, is well-maintained (5K+ GitHub stars), and has
 - Redis becomes a hard requirement for multi-instance deployments (already was, via ADR #2)
 - Added dependency: `bullmq`
 - Graceful shutdown must close BullMQ workers and Redis Pub/Sub subscribers
+
+---
+
+## 13. Cross-Platform Distribution Strategy
+
+> Investigation: [016-cross-platform-distribution.md](investigations/016-cross-platform-distribution.md)
+
+**Context:** Tiao needs to ship beyond the browser — on Steam (Windows, macOS, Linux), iOS App Store, and Google Play. The app is a Next.js 14 frontend with an Express/WebSocket backend. Nearly all UI logic is client-side (`use client`), with server features limited to i18n middleware and OG metadata generation. The goal is maximum code reuse with minimal platform-specific rewrites.
+
+**Decision:** Three-phase rollout:
+
+1. **PWA** — Complete the existing PWA shell (add service worker + install prompt). Immediate improvement, ~1-2 days.
+2. **Capacitor (static export)** — Wrap the app in Capacitor for iOS + Android. Use a separate `next.config.mobile.mjs` with `output: 'export'` that strips server-only features (i18n middleware, generateMetadata). Add push notifications and haptics to satisfy Apple Guideline 4.2.
+3. **Electron + Steamworks.js** — Wrap the frontend in Electron for Steam distribution. Integrate Steamworks SDK via `steamworks.js` for achievements, overlay, and friends. Optionally ship a standalone (non-Steam) desktop build for itch.io or direct download.
+
+**Why not Tauri:** Steam overlay has open issues, Steamworks integration is immature (no equivalent of `steamworks.js`), mobile DX not yet on par with desktop. Revisit when Tauri's Steam ecosystem matures.
+
+**Why not React Native / Flutter:** Both require near-complete UI rewrites. The WebView approach via Capacitor reuses ~95% of existing code. A card/board game doesn't need 60fps native rendering.
+
+**Why not Cordova:** Legacy predecessor to Capacitor, stagnating ecosystem. Capacitor is its successor by the same team and is strictly better.
+
+**Auth adaptation:** Electron cookies work natively. Capacitor requires a token-based auth bridge (short-lived JWT from `/auth/session-token` to establish WebView session) since mobile WebViews don't share cookies with the system browser.
+
+**Consequences:**
+
+- ~95% code reuse across web, mobile, and desktop
+- Two Next.js build configurations (web with SSR, mobile with static export)
+- One auth bridge endpoint for mobile OAuth flow
+- Electron wrapper + Steam integration is ~500-1000 lines of platform-specific code
+- Must maintain responsive design across 375px (mobile) through 1920px+ (desktop/Steam Big Picture)
+- App update cadence differs: web deploys instantly, mobile needs store release or OTA, Steam auto-updates
