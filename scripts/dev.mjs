@@ -293,13 +293,32 @@ const processes = [];
 const names = [];
 const colors = [];
 
+// In parallel mode, stagger the Nth client's startup by N * FONT_STAGGER_S
+// seconds so the first instance has time to populate its own Turbopack
+// persistent cache (and its Google Fonts fetches) before subsequent
+// instances start. Turbopack's native font loader has no retry — two
+// instances hitting Google Fonts on a cold cache at the same time can
+// race and one loses. Staggering sidesteps the race without needing a
+// font-response mock file. The first instance is not delayed.
+const FONT_STAGGER_S = parallelMode ? 8 : 0;
+
+// The tsx cold-compile of server/index.ts takes ~30-40s on first run
+// after `npm install` (it imports better-auth, mongoose, BullMQ, the
+// full game service module graph, etc.). In parallel mode two server
+// processes are fighting for CPU so each takes even longer. The
+// default 30s wait-for-port window is too tight. Bump to 120s in
+// parallel mode so clients don't give up before their paired server
+// finishes booting.
+const waitTimeout = parallelMode ? 120 : 30;
+
 for (let i = 0; i < clientPorts.length; i++) {
   const cPort = clientPorts[i];
   const sPort = apiPorts[i];
   const suffix = parallelMode ? `-${i + 1}` : "";
+  const stagger = i > 0 && parallelMode ? `sleep ${i * FONT_STAGGER_S} && ` : "";
 
   processes.push(
-    `"node scripts/wait-for-port.mjs ${sPort} && PORT=${cPort} API_PORT=${sPort} NEXT_PUBLIC_API_PORT=${sPort} npm --prefix client run dev"`,
+    `"node scripts/wait-for-port.mjs ${sPort} ${waitTimeout} && ${stagger}PORT=${cPort} API_PORT=${sPort} NEXT_PUBLIC_API_PORT=${sPort} npm --prefix client run dev"`,
   );
   processes.push(`"PORT=${sPort} npm --prefix server run dev"`);
 
@@ -323,13 +342,50 @@ const child = spawn(
   { stdio: "inherit" },
 );
 
-// Forward SIGINT/SIGTERM so a single Ctrl+C stops everything
+/**
+ * Next 16 auto-patches client/tsconfig.json on every boot, appending an
+ * entry for its distDir's types/ folder (e.g. `.next-3290/types/**\/*.ts`).
+ * In parallel mode each instance uses a different random distDir, so
+ * over a few runs tsconfig.json accumulates a pile of stale per-port
+ * entries that confuse `git status`. Revert the file on exit so the
+ * working tree stays clean — the user's workflow expects it.
+ *
+ * Only touches tsconfig.json if (a) we're in parallel mode (where the
+ * cruft is a real problem) and (b) `git status` says tsconfig.json is
+ * modified but nothing else in client/ is — so we don't stomp on a
+ * legitimate manual edit the user made while dev:parallel was running.
+ */
+async function cleanupTsconfig() {
+  if (!parallelMode) return;
+  try {
+    const status = execSync("git status --porcelain client/tsconfig.json", {
+      encoding: "utf8",
+    }).trim();
+    if (status.startsWith(" M") || status.startsWith("M ")) {
+      execSync("git checkout -- client/tsconfig.json", { stdio: "ignore" });
+      console.log("\n  ✓ reverted Next's per-port tsconfig.json additions");
+    }
+  } catch {
+    /* git not available / file not tracked — give up silently */
+  }
+}
+
+// Forward SIGINT/SIGTERM so a single Ctrl+C stops everything, then
+// clean up the tsconfig noise before the parent exits.
+let cleaningUp = false;
+async function exitWith(code) {
+  if (cleaningUp) return;
+  cleaningUp = true;
+  await cleanupTsconfig();
+  process.exit(code ?? 1);
+}
+
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => child.kill(sig));
 }
 
-child.on("exit", (code) => process.exit(code ?? 1));
+child.on("exit", (code) => exitWith(code));
 child.on("error", (err) => {
   console.error(`Failed to spawn concurrently: ${err.message}`);
-  process.exit(1);
+  exitWith(1);
 });

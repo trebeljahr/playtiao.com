@@ -12,7 +12,11 @@ test-results/
 
 # next.js
 **/.next/
-**/.next-desktop/
+# Suffixed Next dist dirs:
+#   .next-desktop     — static export for the Electron desktop build
+#   .next-<port>      — per-port persistent Turbopack cache in
+#                       scripts/dev.mjs dev:parallel mode
+**/.next-*/
 **/out/
 **/next-env.d.ts
 

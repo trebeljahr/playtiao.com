@@ -87,24 +87,31 @@ const nextConfig = {
         process.env.NEXT_PUBLIC_DESKTOP_API_URL || "https://api.playtiao.com",
     }),
   },
-  // Parallel dev mode (DEV_PARALLEL=1, set by scripts/dev.mjs): two settings
-  // need to flip so multiple Next 16 dev servers can run against the same
-  // project dir.
+  // Parallel dev mode (DEV_PARALLEL=1, set by scripts/dev.mjs):
   //
-  // 1. lockDistDir off — Next 16 normally takes an exclusive lockfile at
-  //    .next/dev/lock and refuses any second dev server in the same project,
-  //    regardless of port.
-  // 2. turbopackFileSystemCacheForDev off — Next 16.1+ enables Turbopack's
-  //    cross-session persistent build cache by default. The on-disk cache
-  //    database can only be opened by one Turbopack instance at a time; two
-  //    sharing the same .next/dev/cache crash with "Failed to open database".
-  //    Turning it off costs us the warm-cache speedup across restarts but
-  //    leaves HMR and the font cache (which lives elsewhere, at
-  //    .next/dev/internal/font/) intact — so concurrent Google Fonts
-  //    downloads still hit a single shared cache and don't race each other.
+  // Each parallel instance uses its OWN `distDir` (.next-<PORT>) so that
+  // Turbopack's persistent cache DB at <distDir>/dev/cache/turbopack/ is
+  // per-instance — no SQLite collision between two instances opening the
+  // same cache file. This lets us keep `turbopackFileSystemCacheForDev`
+  // enabled in parallel mode too, so cold compiles hit the warm per-port
+  // cache on subsequent restarts instead of paying the full ~50s cost
+  // every time.
+  //
+  // Gotcha: Turbopack's Google Fonts fetcher has no retry — if two
+  // instances request the same font URL concurrently on a fresh cache,
+  // one of them loses a rate-limiting race and fails to load the font.
+  // scripts/dev.mjs mitigates by staggering the instance startup with a
+  // short delay so the first instance populates its cache before the
+  // second one starts its cold compile.
+  //
+  // `lockDistDir` stays off in parallel mode because Next 16 otherwise
+  // refuses any second dev server in the same project dir, even with
+  // distinct distDirs.
+  ...(process.env.DEV_PARALLEL === "1" && process.env.PORT
+    ? { distDir: `.next-${process.env.PORT}` }
+    : {}),
   experimental: {
     lockDistDir: process.env.DEV_PARALLEL !== "1",
-    turbopackFileSystemCacheForDev: process.env.DEV_PARALLEL !== "1",
   },
   // Turbopack config (default bundler in Next.js 16 dev)
   turbopack: {
