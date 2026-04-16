@@ -27,7 +27,11 @@ test("spectator can view an active game without joining", async ({ browser }) =>
   await bobPage.goto(gameUrl);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
 
-  // Spectator (as guest) visits the game URL
+  // Spectator signs up (required — direct rooms now gate guests behind
+  // a forced signup modal, so bare guests never see the board).
+  const spectatorUsername = `spec_${Math.random().toString(36).slice(2, 7)}`;
+  await signUpViaAPI(spectatorPage, spectatorUsername, "password123");
+
   await spectatorPage.goto(gameUrl);
   // Spectator should see the game but not be a player
   // The board should be visible
@@ -62,7 +66,9 @@ test('spectator sees "Spectating" title and players see spectator badge', async 
   await bobPage.goto(gameUrl);
   await expect(bobPage.locator("text=Live match")).toBeVisible();
 
-  // Spectator visits the game
+  // Spectator signs up (direct rooms require an account) and visits
+  const spectatorUsername = `spec_badge_${Math.random().toString(36).slice(2, 7)}`;
+  await signUpViaAPI(spectatorPage, spectatorUsername, "password123");
   await spectatorPage.goto(gameUrl);
   await expect(spectatorPage.locator('[data-testid="cell-9-9"]')).toBeVisible();
 
