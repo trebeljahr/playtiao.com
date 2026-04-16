@@ -4,8 +4,8 @@
  * Three layers of gating before any event leaves the browser:
  *
  *   1. Build-time config — CLIENT_ID + API_URL env vars must be set.
- *   2. Build-time env gate — dev builds never pull the SDK in (see
- *      cold-compile note below).
+ *   2. Build-time env gate — dev builds don't pull the SDK in unless
+ *      NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV=true (see cold-compile note).
  *   3. Runtime user consent — ConsentProvider calls `enableTracking()`
  *      only after the user opts in via the cookie banner.
  *
@@ -16,6 +16,7 @@
  * Env vars (see client/.env.example):
  *   NEXT_PUBLIC_OPENPANEL_CLIENT_ID        (required to enable)
  *   NEXT_PUBLIC_OPENPANEL_API_URL          (required)
+ *   NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV    (optional, "true" to enable in dev)
  *
  * GDPR / consent:
  *   OpenPanel has no public runtime enable/disable toggle, so we fake one
@@ -34,24 +35,20 @@
  *   dynamic import is unreachable in dev and dead-code-eliminate the
  *   chunk entirely.
  *
- *   BREAKING from the previous file: `NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV`
- *   is no longer honored. It used to short-circuit the dev-disabled
- *   gate so a developer could smoke-test analytics locally, but it
- *   forced Turbopack to KEEP the SDK in the dev compile graph (the
- *   compound `NODE_ENV && !forceEnableInDev` check wasn't statically
- *   provable, so DCE bailed out and we ate ~2-3s of cold compile for
- *   a feature nobody uses outside production). If you really need to
- *   smoke-test OpenPanel locally, run `NODE_ENV=production next start`
- *   against a production build — same UX, zero cold-compile overhead.
+ *   `NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV=true` deliberately opts in to
+ *   the compile cost — both halves of the condition in `getOpenPanel()`
+ *   are inlined by Next, so when the flag IS set Turbopack sees a live
+ *   branch and correctly includes the SDK. When it's unset (the common
+ *   case), the branch collapses to `if (true) return null` and the
+ *   SDK chunk is dead-code-eliminated.
  *
- *   IMPORTANT: Keep the lazy-load pattern structurally IDENTICAL to
- *   glitchtip.ts's `getSentry()`: plain sync function, `process.env.NODE_ENV`
- *   check as the first statement, dynamic import at the bottom. Any
- *   deviation (async function, compound conditions, nesting) risks
- *   tripping Turbopack's DCE and re-inflating the cold compile. If
- *   you change this, run `node scripts/measure-cold-compile.mjs /privacy`
- *   and grep `.next/dev/static/chunks/` for "openpanel" to verify the
- *   chunk stays out of the dev bundle.
+ *   IMPORTANT: keep `getOpenPanel()` as a plain sync function with the
+ *   NODE_ENV check first and the `import()` at the bottom. Moving the
+ *   import into an async body or nesting it deeper defeats Turbopack's
+ *   DCE — verified empirically on Next 16.2.3. If you change this,
+ *   run `node scripts/measure-cold-compile.mjs /privacy` and grep
+ *   `.next/dev/static/chunks/` for "openpanel" to verify the chunk
+ *   stays out of the dev bundle.
  */
 
 /**
@@ -108,15 +105,15 @@ const isDesktop = process.env.NEXT_PUBLIC_PLATFORM === "desktop";
 //      CSP's `connect-src https:` allows the outbound request, and
 //      adblockers don't block a desktop binary's network traffic.
 const apiUrl = isProd && !isDesktop ? "/collect" : directApiUrl;
+const forceEnableInDev = process.env.NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV === "true";
 
 /**
- * True when the build has a valid OpenPanel configuration AND is a
- * production build. Used by `AnalyticsConsent` to decide whether the
- * cookie banner should appear at all. Always false in dev — the old
- * file's `NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV` escape hatch is gone
- * (see the file header's "Cold-compile note" for why).
+ * True when the build has a valid OpenPanel configuration AND the
+ * environment gate allows sending events. Does NOT take user consent
+ * into account — combine with the consent provider before tracking.
  */
-export const openPanelConfigured = Boolean(clientId) && Boolean(directApiUrl) && isProd;
+export const openPanelConfigured =
+  Boolean(clientId) && Boolean(directApiUrl) && (isProd || forceEnableInDev);
 
 // Cached lazy import. Populated on first `getOpenPanel()` call and
 // reused for subsequent calls. Stays null for the entire process
@@ -125,17 +122,18 @@ let openPanelPromise: Promise<typeof import("@openpanel/web")> | null = null;
 
 /**
  * Lazy-load @openpanel/web. Returns null (without touching the SDK)
- * when we're in a dev/test build or when the config env vars are
- * missing.
+ * when we're in a dev/test build without ENABLE_IN_DEV, or when the
+ * config env vars are missing.
  *
- * The `process.env.NODE_ENV !== "production"` check is first on
- * purpose — Next inlines it to a string literal at build time, which
- * lets Turbopack/webpack prove the dynamic import below is unreachable
- * in dev and dead-code-eliminate the chunk. See the file header
- * "Cold-compile note" for the full rationale.
+ * Both halves of the condition are inlined by Next at build time
+ * (`process.env.NODE_ENV` + `process.env.NEXT_PUBLIC_OPENPANEL_ENABLE_IN_DEV`),
+ * so when ENABLE_IN_DEV is unset the whole check collapses to
+ * `if (true && true) return null` and Turbopack dead-code-eliminates
+ * the dynamic import. When ENABLE_IN_DEV *is* set, the SDK loads as
+ * expected — a deliberate opt-in to the compile cost.
  */
 function getOpenPanel(): Promise<typeof import("@openpanel/web")> | null {
-  if (process.env.NODE_ENV !== "production") return null;
+  if (process.env.NODE_ENV !== "production" && !forceEnableInDev) return null;
   if (!openPanelConfigured) return null;
   return (openPanelPromise ??= import("@openpanel/web"));
 }
