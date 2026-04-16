@@ -32,6 +32,18 @@ const MIME_TYPES = {
   ".ico": "image/x-icon",
   ".webp": "image/webp",
   ".webm": "video/webm",
+  // Service worker bundles (e.g. /sw.js) must be served with a JS
+  // content type — Chromium refuses to register a worker whose
+  // script is delivered as application/octet-stream, which blocks
+  // Serwist from installing at all.
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".map": "application/json",
+  ".css": "text/css",
+  ".txt": "text/plain",
+  ".html": "text/html",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
 };
 
 const publicDir = resolve("./public");
@@ -72,7 +84,17 @@ export function servePublicFile(req, res, pathname) {
   // otherwise Cloudflare gzip-compresses the body but forwards the original
   // Content-Length, causing ERR_CONTENT_DECODING_FAILED in browsers.
   // no-transform is also set as a hint, though Cloudflare ignores it.
-  const binaryExts = new Set([".mp3", ".jpeg", ".jpg", ".png", ".webp", ".webm", ".ico"]);
+  const binaryExts = new Set([
+    ".mp3",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".webp",
+    ".webm",
+    ".ico",
+    ".woff",
+    ".woff2",
+  ]);
   const isBinary = binaryExts.has(ext);
 
   const headers = {

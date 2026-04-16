@@ -36,7 +36,7 @@ test.describe("Forfeit in multiplayer", () => {
     // Alice forfeits — click Forfeit to open the confirmation dialog, then confirm
     await alicePage.click('button:has-text("Forfeit")');
     // The custom Dialog appears with a second "Forfeit" button to confirm
-    const confirmDialog = alicePage.locator(".fixed.inset-0.z-\\[300\\]");
+    const confirmDialog = alicePage.locator(".animate-dialog-backdrop");
     await expect(confirmDialog).toBeVisible({ timeout: 3000 });
     await confirmDialog.locator('button:has-text("Forfeit")').click();
 

@@ -36,8 +36,8 @@ test("multiplayer rematch decline flow", async ({ browser }) => {
   }, gameId);
 
   // Wait for game-over dialog and dismiss it for both players
-  const aliceDialog = alicePage.locator(".fixed.inset-0.z-\\[300\\]");
-  const bobDialog = bobPage.locator(".fixed.inset-0.z-\\[300\\]");
+  const aliceDialog = alicePage.locator(".animate-dialog-backdrop");
+  const bobDialog = bobPage.locator(".animate-dialog-backdrop");
   await expect(aliceDialog).toBeVisible({ timeout: 5000 });
   await expect(bobDialog).toBeVisible({ timeout: 5000 });
   // Close dialogs by clicking "Back to lobby" then navigating back, OR press Escape

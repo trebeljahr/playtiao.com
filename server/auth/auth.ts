@@ -10,7 +10,14 @@ import { FRONTEND_URL, MONGODB_URI, TOKEN_SECRET, PORT } from "../config/envVars
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
 import { identify, track } from "../analytics/openpanel";
 
-const SALT_ROUNDS = 10;
+// Bcrypt is deliberately slow; 10 rounds is ~100ms which is fine in
+// production but adds up quickly in the e2e suite, where every test
+// signs up one or two fresh accounts and the cumulative hashing time
+// pushes better-auth's signup handler past Playwright's default
+// 10-second request timeout. Drop to 4 rounds (~3ms) when NODE_ENV is
+// "test" so the test-auth flow stays snappy while production keeps
+// the full 10-round cost.
+const SALT_ROUNDS = process.env.NODE_ENV === "test" ? 4 : 10;
 
 // Use a standalone MongoClient for better-auth — Mongoose's connection isn't
 // ready at module load time, but better-auth needs a client immediately.
@@ -38,8 +45,14 @@ export const auth = betterAuth({
   },
 
   emailVerification: {
-    sendOnSignUp: true,
+    // Disable email sends in NODE_ENV=test: better-auth awaits
+    // sendVerificationEmail as part of its signup handler, which in
+    // the e2e suite would otherwise hit Resend for every test user
+    // and inflate the test-auth round-trip from ~100ms to several
+    // seconds under load. Production keeps the real behaviour.
+    sendOnSignUp: process.env.NODE_ENV !== "test",
     sendVerificationEmail: async ({ user, url }) => {
+      if (process.env.NODE_ENV === "test") return;
       await sendVerificationEmail(user.email, url);
     },
   },

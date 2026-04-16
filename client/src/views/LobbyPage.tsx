@@ -509,7 +509,7 @@ function OnlineLobbyPage() {
                     <p className="text-sm text-center text-[#6e5b48]">
                       {t("customGameRequiresAccount")}
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" data-testid="lobby-auth-cta">
                       <Button
                         variant="outline"
                         className="flex-1 border-[#dcc7a2] hover:bg-[#faefd8]"

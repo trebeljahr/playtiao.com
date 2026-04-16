@@ -38,8 +38,8 @@ test("rematch creates a new game URL with fresh scores", async ({ browser }) => 
   }, originalGameId);
 
   // Wait for game-over dialog and dismiss it
-  const aliceDialog = alicePage.locator(".fixed.inset-0.z-\\[300\\]");
-  const bobDialog = bobPage.locator(".fixed.inset-0.z-\\[300\\]");
+  const aliceDialog = alicePage.locator(".animate-dialog-backdrop");
+  const bobDialog = bobPage.locator(".animate-dialog-backdrop");
   await expect(aliceDialog).toBeVisible({ timeout: 5000 });
   await expect(bobDialog).toBeVisible({ timeout: 5000 });
   await alicePage.keyboard.press("Escape");
@@ -56,9 +56,12 @@ test("rematch creates a new game URL with fresh scores", async ({ browser }) => 
   await expect(bobPage.locator('button:has-text("Accept Rematch")')).toBeVisible({ timeout: 5000 });
   await bobPage.click('button:has-text("Accept Rematch")');
 
-  // Both should be navigated to a new game
-  await expect(alicePage.locator("text=Live match")).toBeVisible({ timeout: 5000 });
-  await expect(bobPage.locator("text=Live match")).toBeVisible({ timeout: 5000 });
+  // Both should be navigated to a new game. The server creates a new
+  // GameRoom, both clients reconnect WebSockets, and the dashboard
+  // header re-renders — bump the wait so a slow new-room spin-up
+  // doesn't flake.
+  await expect(alicePage.locator("text=Live match")).toBeVisible({ timeout: 15_000 });
+  await expect(bobPage.locator("text=Live match")).toBeVisible({ timeout: 15_000 });
 
   // The new game URL should be different from the original
   const newAliceUrl = alicePage.url();

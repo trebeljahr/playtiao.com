@@ -33,12 +33,14 @@ test.describe("Spectate link always visible (#90)", () => {
     await bobPage.goto(gameUrl);
     await expect(bobPage.locator("text=Live match")).toBeVisible({ timeout: 10000 });
 
-    // The eye icon (spectate button) should be visible even with 0 spectators.
-    // It uses an SVG eye icon — look for the button that contains the eye path.
-    const eyeButton = alicePage.locator('button:has(svg path[d*="M2.062"])');
+    // The spectate button should be visible even with 0 spectators.
+    // When there are no spectators the button is labelled "Copy spectate link";
+    // when there are it switches to "{n} spectator(s)". Use aria-label so
+    // the test isn't coupled to the SVG path data.
+    const eyeButton = alicePage.getByRole("button", { name: "Copy spectate link" });
     await expect(eyeButton).toBeVisible({ timeout: 5000 });
 
-    // Click the eye icon — should copy spectate link to clipboard
+    // Click the spectate button — should copy the link to the clipboard
     await eyeButton.click();
 
     // Verify a toast appears confirming the link was copied
@@ -82,8 +84,11 @@ test.describe("Spectate link always visible (#90)", () => {
     await spectatorPage.goto(gameUrl);
     await expect(spectatorPage.locator('[data-testid="cell-9-9"]')).toBeVisible();
 
-    // Eye icon should now show count "1" for Alice
-    await expect(alicePage.locator('[title="1 spectator"]')).toBeVisible({ timeout: 5000 });
+    // Eye icon should now show count "1" for Alice (button label switches
+    // to "1 spectator" once the spectator joins the WebSocket).
+    await expect(alicePage.getByRole("button", { name: "1 spectator" })).toBeVisible({
+      timeout: 10_000,
+    });
 
     await aliceContext.close();
     await bobContext.close();

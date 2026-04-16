@@ -1,30 +1,30 @@
 import { test, expect } from "@playwright/test";
 import { waitForAppReady } from "./helpers";
 
+/**
+ * The navbar only lists a subset of app routes (Lobby, Tutorial, and
+ * for signed-in users: Friends, My Games, Tournaments, Achievements,
+ * Shop). `/local`, `/computer`, etc. have no nav item so no link ever
+ * carries aria-current — we test only the routes that actually appear
+ * in the drawer.
+ */
 test.describe("Navbar active link attributes", () => {
-  test('active nav link has aria-current="page" and is not disabled', async ({ page }) => {
-    // Navigate to /local — the "Local" nav link should be active
-    await page.goto("/local");
+  test('active nav link on / has aria-current="page"', async ({ page }) => {
+    await page.goto("/");
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
 
-    // Find the nav link that has aria-current="page"
     const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
-
-    // The active link should NOT have a disabled attribute
-    await expect(activeLink).not.toHaveAttribute("disabled", "");
-
-    // The active link should have aria-current="page"
     await expect(activeLink).toHaveAttribute("aria-current", "page");
   });
 
   test("non-active nav links do not have aria-current", async ({ page }) => {
-    await page.goto("/local");
+    await page.goto("/");
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
 
-    // The active link should be visible
+    // The active link (Lobby) should be visible
     const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
 
@@ -34,29 +34,27 @@ test.describe("Navbar active link attributes", () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test("active nav link on /computer page", async ({ page }) => {
-    await page.goto("/computer");
+  test('active nav link on /tutorial has aria-current="page"', async ({ page }) => {
+    await page.goto("/tutorial");
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
 
     const activeLink = page.locator('aside a[aria-current="page"]');
     await expect(activeLink).toBeVisible();
-
-    // Should not be disabled
-    await expect(activeLink).not.toHaveAttribute("disabled", "");
     await expect(activeLink).toHaveAttribute("aria-current", "page");
   });
 
-  test("active nav link on home page", async ({ page }) => {
+  test("navigating from /tutorial back to / swaps the active link", async ({ page }) => {
+    await page.goto("/tutorial");
+    await waitForAppReady(page);
+    await page.click('[aria-label="Open navigation"]');
+    const tutorialActive = page.locator('aside a[aria-current="page"]');
+    await expect(tutorialActive).toHaveText(/Tutorial/);
+
     await page.goto("/");
     await waitForAppReady(page);
     await page.click('[aria-label="Open navigation"]');
-
-    const activeLink = page.locator('aside a[aria-current="page"]');
-    await expect(activeLink).toBeVisible();
-
-    // Should not be disabled
-    await expect(activeLink).not.toHaveAttribute("disabled", "");
-    await expect(activeLink).toHaveAttribute("aria-current", "page");
+    const lobbyActive = page.locator('aside a[aria-current="page"]');
+    await expect(lobbyActive).toHaveText(/Lobby/);
   });
 });

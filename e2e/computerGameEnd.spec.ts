@@ -33,7 +33,7 @@ test.describe("Computer game end dialog", () => {
     await startGameAndForceWin(page);
 
     // Wait for the game-over dialog to appear (600ms delay in the component)
-    const dialog = page.locator(".fixed.inset-0.z-\\[300\\]");
+    const dialog = page.locator(".animate-dialog-backdrop");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
     // Check that the dialog shows the correct title
@@ -59,7 +59,7 @@ test.describe("Computer game end dialog", () => {
     await startGameAndForceWin(page);
 
     // Wait for dialog
-    const dialog = page.locator(".fixed.inset-0.z-\\[300\\]");
+    const dialog = page.locator(".animate-dialog-backdrop");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
     // Click "Back to lobby"
