@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { FaGithub, FaGoogle, FaDiscord } from "react-icons/fa";
 import { useAuth } from "@/lib/AuthContext";
 import { useLobbyMessage } from "@/lib/LobbySocketContext";
-import { authClient } from "@/lib/auth-client";
+import { getAuthClient } from "@/lib/auth-client";
 import { BackButton } from "@/components/BackButton";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -344,6 +344,7 @@ function LinkedAccounts({
       } catch {
         // sessionStorage unavailable (private mode, etc.) — ignore
       }
+      const authClient = await getAuthClient();
       const { error } = await authClient.linkSocial({
         provider,
         callbackURL: settingsURL,
@@ -365,6 +366,7 @@ function LinkedAccounts({
   async function handleUnlink(providerId: string) {
     setBusy(providerId);
     try {
+      const authClient = await getAuthClient();
       const { error } = await authClient.unlinkAccount({ providerId });
       if (error) {
         toastError(readableError(error));

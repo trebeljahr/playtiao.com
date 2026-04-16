@@ -17,7 +17,7 @@ const zenKaku = Zen_Kaku_Gothic_New({
 
 const zenOldMincho = Zen_Old_Mincho({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["500", "700"],
   variable: "--font-zen-old-mincho",
   display: "swap",
 });

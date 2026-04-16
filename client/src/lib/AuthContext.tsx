@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { AuthResponse, PlayerIdentity } from "@shared";
 import type { AuthDialogMode } from "@/components/Navbar";
-import { authClient } from "@/lib/auth-client";
+import { getAuthClient } from "@/lib/auth-client";
 import {
   login as loginWithUsername,
   getPlayerIdentity,
@@ -200,6 +200,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // subsequent better-auth getSession() call includes it in
         // Authorization: Bearer. Web build no-ops this.
         await refreshElectronTokenFromBridge();
+
+        // Lazy-load the better-auth client (first call pays the dynamic
+        // import; subsequent calls resolve from cache).
+        const authClient = await getAuthClient();
 
         // Check for an existing better-auth session
         const { data: session } = await authClient.getSession();
@@ -396,6 +400,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthDialogError(null);
 
     try {
+      const authClient = await getAuthClient();
       const { data, error } = await authClient.signUp.email({
         email: signupEmail,
         password: signupPassword,
@@ -437,6 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleForgotPassword = useCallback(async (email: string): Promise<boolean> => {
     try {
+      const authClient = await getAuthClient();
       const { error } = await authClient.requestPasswordReset({
         email,
         redirectTo: "/reset-password",
@@ -478,6 +484,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // errorCallbackURL and OAuthErrorHandler surfaces it as a toast, so the
       // user stays in context (e.g. inside a game) instead of being bounced
       // to a separate error page.
+      const authClient = await getAuthClient();
       const returnTo = window.location.origin + window.location.pathname;
       await authClient.signIn.social({
         provider,
@@ -529,6 +536,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // the React tree + in-memory caches so there's no need to manually
     // clear them beforehand.
     try {
+      const authClient = await getAuthClient();
       await authClient.signOut();
       // Create a new anonymous guest session after logout so the reloaded
       // page boots straight into guest mode (no flash of the auth dialog).

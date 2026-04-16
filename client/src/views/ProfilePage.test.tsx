@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@/test/navigation-mock";
 import type { AuthResponse } from "@shared";
 import { ProfilePage } from "./ProfilePage";
@@ -106,11 +106,15 @@ const accountAuth: AuthResponse = {
   },
 };
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
+const { mockAuthClient } = vi.hoisted(() => ({
+  mockAuthClient: {
     linkSocial: vi.fn().mockResolvedValue({ data: { url: "" } }),
     unlinkAccount: vi.fn().mockResolvedValue({ data: { status: true } }),
   },
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  getAuthClient: vi.fn().mockResolvedValue(mockAuthClient),
 }));
 
 vi.mock("@/lib/AuthContext", () => ({
@@ -368,19 +372,20 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
   // to an OAuthErrorHandler test, not here.
 
   it("passes callbackURL pointing to /profile when linking (#100)", async () => {
-    const { authClient } = await import("@/lib/auth-client");
-
     render(<ProfilePage />);
     // The providers mock returns ["credential"], so GitHub should be available to link
     fireEvent.click(await screen.findByRole("button", { name: /github/i }));
 
-    // linkSocial is called synchronously inside the click handler.
-    expect(authClient.linkSocial).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: "github",
-        callbackURL: "http://localhost/settings",
-      }),
-    );
+    // getAuthClient() is async (lazy-loaded), so linkSocial fires after
+    // a microtask. waitFor lets the promise resolve before we assert.
+    await waitFor(() => {
+      expect(mockAuthClient.linkSocial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "github",
+          callbackURL: "http://localhost/settings",
+        }),
+      );
+    });
   });
 
   it("stashes current pathname in sessionStorage before linking so the error handler can bounce back", async () => {
@@ -401,26 +406,26 @@ describe("ProfilePage OAuth linking (#98, #100)", () => {
   });
 
   it("keeps the link button in the linking state after linkSocial resolves successfully (no flicker back to idle before the OAuth redirect navigates away)", async () => {
-    const { authClient } = await import("@/lib/auth-client");
     // A successful linkSocial resolves with no error — the page is about to
     // be replaced by the OAuth provider redirect, so the button must stay
     // in "Linking…" until navigation happens, not snap back to its label.
-    vi.mocked(authClient.linkSocial).mockResolvedValueOnce({ data: { url: "" } } as never);
+    vi.mocked(mockAuthClient.linkSocial).mockResolvedValueOnce({ data: { url: "" } } as never);
 
     render(<ProfilePage />);
     fireEvent.click(await screen.findByRole("button", { name: /github/i }));
 
-    // linkSocial is called synchronously, then the button re-renders into
-    // the "Linking…" state after the await resolves. findByRole waits for
-    // that single async boundary.
-    expect(authClient.linkSocial).toHaveBeenCalled();
+    // getAuthClient() is async (lazy-loaded), so the click handler's
+    // linkSocial call resolves after a microtask. findByRole waits for
+    // the re-render into "Linking…" state.
+    await waitFor(() => expect(mockAuthClient.linkSocial).toHaveBeenCalled());
     expect(await screen.findByRole("button", { name: /linking/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^github$/i })).not.toBeInTheDocument();
   });
 
   it("clears the busy state when linkSocial resolves with an error", async () => {
-    const { authClient } = await import("@/lib/auth-client");
-    vi.mocked(authClient.linkSocial).mockResolvedValueOnce({
+    // mockAuthClient is the resolved value of getAuthClient() — use it
+    // directly rather than re-importing and double-awaiting.
+    vi.mocked(mockAuthClient.linkSocial).mockResolvedValueOnce({
       data: null,
       error: { code: "access_denied", message: "nope" },
     } as never);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { authClient } from "@/lib/auth-client";
+import { getAuthClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,7 @@ export function ResetPasswordPage() {
 
             setBusy(true);
             try {
+              const authClient = await getAuthClient();
               const { error: resetError } = await authClient.resetPassword({
                 newPassword: password,
                 token,
