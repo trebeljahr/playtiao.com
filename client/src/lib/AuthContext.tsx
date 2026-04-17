@@ -65,9 +65,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_CACHE_KEY = "tiao:auth-cache";
 
+// Cache the bootstrap identity in localStorage (not sessionStorage) so that
+// closing the tab doesn't force a full re-bootstrap on the next visit.
+// The better-auth session cookie is still the source of truth — this cache
+// only prevents a flash of the loading skeleton on cold starts and keeps the
+// "device remembers me as a guest" feel persistent across browser sessions.
+// Clean up the old sessionStorage key from prior versions so nothing stale
+// lingers during the rollout.
+if (typeof window !== "undefined") {
+  try {
+    sessionStorage.removeItem(AUTH_CACHE_KEY);
+  } catch {
+    /* best-effort */
+  }
+}
+
 function getCachedAuth(): AuthResponse | null {
   try {
-    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as AuthResponse;
   } catch {
@@ -78,9 +93,9 @@ function getCachedAuth(): AuthResponse | null {
 function setCachedAuth(auth: AuthResponse | null) {
   try {
     if (auth) {
-      sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(auth));
+      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(auth));
     } else {
-      sessionStorage.removeItem(AUTH_CACHE_KEY);
+      localStorage.removeItem(AUTH_CACHE_KEY);
     }
   } catch {
     /* best-effort */

@@ -305,7 +305,13 @@
     "loser": "Loser",
     "unknownPlayer": "Unknown",
     "rematchOffline": "Request Rematch",
-    "rematchOfflineDesc": "Your opponent is offline. They'll be notified when they come back."
+    "rematchOfflineDesc": "Your opponent is offline. They'll be notified when they come back.",
+    "guestUpgradeCtaTitle": "Add {opponent} as a friend",
+    "guestUpgradeCtaTitleNoOpponent": "Keep this match",
+    "guestUpgradeCtaBody": "Create an account to save this game to your history and send friend requests.",
+    "guestUpgradeCtaSignUp": "Sign up",
+    "guestUpgradeCtaLogIn": "Log in",
+    "guestUpgradeBanner": "You're playing as {name}. <link>Create an account</link> to save this game and add friends."
   },
   "config": {
     "difficulty": "Difficulty",

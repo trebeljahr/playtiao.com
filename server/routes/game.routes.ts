@@ -44,25 +44,6 @@ async function checkGuestGameLimit(player: PlayerIdentity, res: Response): Promi
   return true;
 }
 
-async function checkGuestCustomGameGate(
-  player: PlayerIdentity,
-  gameId: string,
-  res: Response,
-): Promise<boolean> {
-  if (player.kind !== "guest") return true;
-  const room = await GameRoom.findOne({ roomId: gameId })
-    .select("roomType")
-    .lean<Pick<IGameRoom, "roomType">>();
-  if (room && room.roomType === "direct") {
-    res.status(403).json({
-      code: "GUEST_CANNOT_JOIN_CUSTOM_GAME",
-      message: "Create an account or sign in to join a custom game.",
-    });
-    return false;
-  }
-  return true;
-}
-
 /**
  * Tournament games are not joinable by invite-link or game-ID sharing —
  * pairings are matched automatically by the tournament service. Anyone
@@ -316,10 +297,6 @@ router.post(
       return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
     }
 
-    if (!(await checkGuestCustomGameGate(player, req.params.gameId as string, res))) {
-      return;
-    }
-
     if (!(await checkTournamentJoinBlock(req.params.gameId as string, res))) {
       return;
     }
@@ -377,10 +354,6 @@ router.post("/games/:gameId/access", async (req: ExpressRequest, res: Response) 
 
   if (!isValidGameId(req.params.gameId as string)) {
     return res.status(400).json({ code: "INVALID_GAME_ID", message: "Invalid game ID." });
-  }
-
-  if (!(await checkGuestCustomGameGate(player, req.params.gameId as string, res))) {
-    return;
   }
 
   try {

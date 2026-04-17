@@ -258,45 +258,12 @@ export function MultiplayerGamePage() {
       }
     };
 
-    // Guests on a CUSTOM (direct) game can't join — the server will reject
-    // them with GUEST_CANNOT_JOIN_CUSTOM_GAME no matter what, and forcing
-    // them through the rules intro before we even tell them they need to
-    // sign in feels backwards. Probe the room type first via the read-only
-    // snapshot endpoint (no side effects); if it's a custom room, pop the
-    // auth modal and skip the tutorial check — once the guest signs in/up
-    // this effect will re-run with the new playerId and re-evaluate the
-    // tutorial against whichever account they landed on (new account that
-    // hasn't done the tutorial → rules modal; existing account that has →
-    // straight to join).
-    if (auth.player.kind === "guest") {
-      let cancelled = false;
-      void (async () => {
-        try {
-          const { snapshot } = await getMultiplayerGame(gameId);
-          if (cancelled) return;
-          if (snapshot.roomType === "direct") {
-            introDecisionPlayerIdRef.current = playerId;
-            onOpenAuth("signup", { forced: true });
-            return;
-          }
-        } catch {
-          // Probe failed (network error, 404, etc.) — fall through to the
-          // standard tutorial check so the existing error handling in the
-          // load-game effect takes over.
-        }
-        if (cancelled) return;
-        introDecisionPlayerIdRef.current = playerId;
-        runStandardIntroCheck();
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    // Signed-in account: no probe needed, the server will let us in.
+    // Guests and accounts alike go through the standard tutorial check —
+    // the server no longer gates custom/direct rooms behind signup. Guests
+    // are nudged towards an account via the post-game CTA instead.
     introDecisionPlayerIdRef.current = playerId;
     runStandardIntroCheck();
-  }, [auth, spectateOnly, gameId, onOpenAuth]);
+  }, [auth, spectateOnly, gameId]);
 
   // Close invite modal, scroll to board, and notify when both seats are filled.
   // Distinguish three cases on the first snapshot we observe:
@@ -389,18 +356,10 @@ export function MultiplayerGamePage() {
         if (!cancelled) {
           connectToRoom(response.snapshot);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
-          if (
-            err instanceof Error &&
-            "code" in err &&
-            (err as { code?: string }).code === "GUEST_CANNOT_JOIN_CUSTOM_GAME"
-          ) {
-            onOpenAuth("signup", { forced: true });
-          } else {
-            toast.error(tCommon("failedToLoadGame"));
-            router.push("/");
-          }
+          toast.error(tCommon("failedToLoadGame"));
+          router.push("/");
         }
       } finally {
         if (!cancelled) setMultiplayerBusy(false);
@@ -1697,6 +1656,22 @@ export function MultiplayerGamePage() {
                           </div>
                         ) : (
                           <div className="grid gap-2 border-t border-[#dbc6a2] pt-4">
+                            {auth?.player.kind === "guest" && (
+                              <div className="rounded-xl border border-[#d8c29c] bg-[#fffaf1] px-3 py-2 text-xs text-[#6e5b48]">
+                                {t.rich("guestUpgradeBanner", {
+                                  name: auth.player.displayName,
+                                  link: (chunks) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenAuth("signup")}
+                                      className="font-semibold text-[#8d5a3b] underline-offset-2 hover:underline"
+                                    >
+                                      {chunks}
+                                    </button>
+                                  ),
+                                })}
+                              </div>
+                            )}
                             {multiplayerSnapshot.rematch?.requestedBy.includes(
                               playerSeat as PlayerColor,
                             ) ? (
@@ -1936,6 +1911,48 @@ export function MultiplayerGamePage() {
                   after={after}
                   delta={delta}
                 />
+              );
+            })()}
+          {/* Guest upgrade nudge: high-intent moment right after the win/loss.
+              Only shows for seated guest players (not spectators, not accounts).
+              Opponent name personalises the CTA when available. */}
+          {auth?.player.kind === "guest" &&
+            isMultiplayerParticipant &&
+            playerSeat &&
+            (() => {
+              const opponentSeat =
+                multiplayerSnapshot?.seats[playerSeat === "white" ? "black" : "white"];
+              const opponentName = opponentSeat?.player.displayName;
+              return (
+                <div className="rounded-xl border border-[#d8c29c] bg-[#fff8ee] px-4 py-3 space-y-2">
+                  <p className="text-sm font-semibold text-[#2b1e14]">
+                    {opponentName
+                      ? t("guestUpgradeCtaTitle", { opponent: opponentName })
+                      : t("guestUpgradeCtaTitleNoOpponent")}
+                  </p>
+                  <p className="text-xs text-[#6e5b48]">{t("guestUpgradeCtaBody")}</p>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setGameOverDialogOpen(false);
+                        onOpenAuth("signup");
+                      }}
+                    >
+                      {t("guestUpgradeCtaSignUp")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setGameOverDialogOpen(false);
+                        onOpenAuth("login");
+                      }}
+                    >
+                      {t("guestUpgradeCtaLogIn")}
+                    </Button>
+                  </div>
+                </div>
               );
             })()}
           {isMultiplayerParticipant && connectionState === "connected" ? (

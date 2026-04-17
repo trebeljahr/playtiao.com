@@ -376,6 +376,59 @@ test("multiplayer routes create games, join open seats, and allow spectators", a
 // covered by matchmakingEdgeCases.test.ts; the REST route this test exercised
 // was removed to eliminate ghost queue entries.
 
+test("guests can join and access direct/custom games (previous gate removed)", async () => {
+  // Before this fix, guests hitting a direct room got 403
+  // GUEST_CANNOT_JOIN_CUSTOM_GAME. The gate looked the room up via
+  // GameRoom.findOne({ roomId }).select("roomType"); we force that lookup to
+  // return a direct room so that, if the gate were still in place, the
+  // handlers would return 403. A passing test here means guests flow
+  // straight through to the service.
+  const GameRoom = (await import("../models/GameRoom")).default;
+  const directRoomLookup = {
+    select: () => ({ lean: async () => ({ roomType: "direct" }) }),
+    lean: async () => ({ roomType: "direct" }),
+  };
+  (GameRoom as unknown as Record<string, unknown>).findOne = () => directRoomLookup;
+
+  const host = await createGuest("HostForDirect");
+  const joiner = await createGuest("JoinerAsGuest");
+  const watcher = await createGuest("GuestSpectator");
+
+  const created = await invokeRoute<{ snapshot: MultiplayerSnapshot }>(gameRoutes, {
+    method: "post",
+    path: "/games",
+    cookie: host.cookie,
+  });
+  assert.equal(created.status, 201);
+  const gameId = created.body.snapshot.gameId;
+
+  const joined = await invokeRoute<{ snapshot: MultiplayerSnapshot; code?: string }>(gameRoutes, {
+    method: "post",
+    path: "/games/:gameId/join",
+    params: { gameId },
+    cookie: joiner.cookie,
+  });
+  assert.equal(
+    joined.status,
+    200,
+    `Expected guest to join direct room, got ${joined.status} (${JSON.stringify(joined.body)})`,
+  );
+  assert.notEqual(joined.body.code, "GUEST_CANNOT_JOIN_CUSTOM_GAME");
+
+  const accessed = await invokeRoute<{ snapshot: MultiplayerSnapshot; code?: string }>(gameRoutes, {
+    method: "post",
+    path: "/games/:gameId/access",
+    params: { gameId },
+    cookie: watcher.cookie,
+  });
+  assert.equal(
+    accessed.status,
+    200,
+    `Expected guest to access direct room, got ${accessed.status} (${JSON.stringify(accessed.body)})`,
+  );
+  assert.notEqual(accessed.body.code, "GUEST_CANNOT_JOIN_CUSTOM_GAME");
+});
+
 test("multiplayer routes reject unauthenticated callers", async () => {
   const response = await invokeRoute<{ message: string }>(gameRoutes, {
     method: "get",

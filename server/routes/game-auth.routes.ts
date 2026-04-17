@@ -269,9 +269,13 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
     }
 
     // Delegate to better-auth's sign-in endpoint and get the raw response
-    // (which includes Set-Cookie headers)
+    // (which includes Set-Cookie headers). Forward the incoming request
+    // headers so better-auth sees the caller's current (anonymous) session
+    // cookie — this is what triggers the anonymous plugin's onLinkAccount
+    // hook, which migrates guest games to the account being signed into.
     const baResponse = await auth.api.signInEmail({
       body: { email, password },
+      headers: req.headers as any,
       asResponse: true,
     });
 

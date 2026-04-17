@@ -305,7 +305,13 @@
     "loser": "Perdedor",
     "unknownPlayer": "Desconocido",
     "rematchOffline": "Solicitar revancha",
-    "rematchOfflineDesc": "Tu oponente está desconectado. Se le notificará cuando vuelva."
+    "rematchOfflineDesc": "Tu oponente está desconectado. Se le notificará cuando vuelva.",
+    "guestUpgradeCtaTitle": "Añade a {opponent} como amig@",
+    "guestUpgradeCtaTitleNoOpponent": "Guarda esta partida",
+    "guestUpgradeCtaBody": "Crea una cuenta para guardar esta partida en tu historial y enviar solicitudes de amistad.",
+    "guestUpgradeCtaSignUp": "Crear cuenta",
+    "guestUpgradeCtaLogIn": "Iniciar sesión",
+    "guestUpgradeBanner": "Estás jugando como {name}. <link>Crea una cuenta</link> para guardar esta partida y añadir amig@s."
   },
   "config": {
     "difficulty": "Dificultad",
