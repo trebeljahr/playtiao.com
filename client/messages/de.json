@@ -1096,7 +1096,7 @@
   },
   "report": {
     "reportPlayer": "Spieler melden",
-    "title": "{name} melden",
+    "title": "Spieler melden",
     "description": "Wähle einen Grund für die Meldung dieses Spielers. Meldungen helfen uns, die Community sicher zu halten.",
     "reason_offensive_username": "Beleidigender oder unangemessener Benutzername",
     "reason_inappropriate_profile_picture": "Unangemessenes Profilbild",

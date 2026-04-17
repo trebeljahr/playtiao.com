@@ -224,7 +224,7 @@ export function PublicProfilePage() {
                           {tCommon("unfriend")}
                         </Button>
                       )}
-                      <ReportPlayerButton playerId={profileId} displayName={profile.displayName} />
+                      <ReportPlayerButton player={profile} />
                     </div>
                   )}
 

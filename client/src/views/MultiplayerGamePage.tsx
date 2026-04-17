@@ -1375,10 +1375,7 @@ export function MultiplayerGamePage() {
                                         slot.player.playerId !== auth?.player.playerId &&
                                         slot.player.playerId &&
                                         slot.player.displayName && (
-                                          <ReportPlayerButton
-                                            playerId={slot.player.playerId}
-                                            displayName={slot.player.displayName}
-                                          />
+                                          <ReportPlayerButton player={slot.player} />
                                         )}
                                     </PlayerIdentityRow>
                                   ) : (
@@ -1505,8 +1502,7 @@ export function MultiplayerGamePage() {
                                   seat?.player.playerId &&
                                   seat?.player.displayName ? (
                                     <ReportPlayerButton
-                                      playerId={seat.player.playerId}
-                                      displayName={seat.player.displayName}
+                                      player={seat.player}
                                       variant={tileVariant === "dark" ? "dark" : "light"}
                                     />
                                   ) : undefined
@@ -1888,10 +1884,7 @@ export function MultiplayerGamePage() {
                   multiplayerSnapshot.seats[winner]!.player.playerId !== auth?.player.playerId &&
                   multiplayerSnapshot.seats[winner]!.player.playerId &&
                   multiplayerSnapshot.seats[winner]!.player.displayName && (
-                    <ReportPlayerButton
-                      playerId={multiplayerSnapshot.seats[winner]!.player.playerId}
-                      displayName={multiplayerSnapshot.seats[winner]!.player.displayName!}
-                    />
+                    <ReportPlayerButton player={multiplayerSnapshot.seats[winner]!.player} />
                   )}
               </PlayerIdentityRow>
             </div>
@@ -2093,12 +2086,7 @@ export function MultiplayerGamePage() {
                         slot.player.kind === "account" &&
                         !isYou &&
                         slot.player.playerId &&
-                        slot.player.displayName && (
-                          <ReportPlayerButton
-                            playerId={slot.player.playerId}
-                            displayName={slot.player.displayName}
-                          />
-                        )}
+                        slot.player.displayName && <ReportPlayerButton player={slot.player} />}
                     </PlayerIdentityRow>
                     <div className="flex items-center gap-2">
                       {isFriend && (

@@ -1096,7 +1096,7 @@
   },
   "report": {
     "reportPlayer": "Report player",
-    "title": "Report {name}",
+    "title": "Report player",
     "description": "Select a reason for reporting this player. Reports help us keep the community safe.",
     "reason_offensive_username": "Offensive or inappropriate username",
     "reason_inappropriate_profile_picture": "Inappropriate profile picture",

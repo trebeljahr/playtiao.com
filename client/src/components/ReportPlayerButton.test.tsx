@@ -32,18 +32,21 @@ describe("ReportPlayerButton", () => {
   });
 
   it("renders a report button", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     expect(screen.getByTitle("Report player")).toBeInTheDocument();
   });
 
   it("opens the report dialog when clicked", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
-    expect(screen.getByText("Report alice")).toBeInTheDocument();
+    // Dialog is now open — PlayerIdentityRow inside shows the name, and the
+    // reason list is only rendered in the open dialog.
+    expect(screen.getByText("alice")).toBeInTheDocument();
+    expect(screen.getByText("Offensive or inappropriate username")).toBeInTheDocument();
   });
 
   it("shows reason options in the dialog", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     expect(screen.getByText("Offensive or inappropriate username")).toBeInTheDocument();
     expect(screen.getByText("Inappropriate profile picture")).toBeInTheDocument();
@@ -52,14 +55,14 @@ describe("ReportPlayerButton", () => {
   });
 
   it("disables Next when no reason is selected", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     const nextBtn = screen.getByText("Next");
     expect(nextBtn).toBeDisabled();
   });
 
   it("enables Next when a reason is selected", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Offensive or inappropriate username"));
     const nextBtn = screen.getByText("Next");
@@ -67,7 +70,7 @@ describe("ReportPlayerButton", () => {
   });
 
   it("goes to confirm step and calls reportPlayer on confirm", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Harassment or toxic behavior"));
     fireEvent.click(screen.getByText("Next"));
@@ -81,7 +84,7 @@ describe("ReportPlayerButton", () => {
   });
 
   it("back button returns from confirm step to choose step", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Harassment or toxic behavior"));
     fireEvent.click(screen.getByText("Next"));
@@ -92,14 +95,14 @@ describe("ReportPlayerButton", () => {
   });
 
   it("shows textarea when 'Other' is selected", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Other"));
     expect(screen.getByPlaceholderText("Please describe the issue...")).toBeInTheDocument();
   });
 
   it("requires details text when 'Other' is selected", () => {
-    render(<ReportPlayerButton playerId="p1" displayName="alice" />);
+    render(<ReportPlayerButton player={{ playerId: "p1", displayName: "alice" }} />);
     fireEvent.click(screen.getByTitle("Report player"));
     fireEvent.click(screen.getByText("Other"));
     const nextBtn = screen.getByText("Next");

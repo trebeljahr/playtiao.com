@@ -66,6 +66,9 @@ type PlayerIdentityRowProps = {
   friendVariant?: "dark" | "light";
   className?: string;
   nameClassName?: string;
+  /** Omit the inline (rating) badge even if `player.rating` is set. Used in contexts
+   *  like the report modal where the rating is noise, not useful information. */
+  hideRating?: boolean;
   children?: React.ReactNode;
 };
 
@@ -86,6 +89,7 @@ export function PlayerIdentityRow({
   friendVariant,
   className,
   nameClassName,
+  hideRating,
   children,
 }: PlayerIdentityRowProps) {
   const t = useTranslations("common");
@@ -105,7 +109,7 @@ export function PlayerIdentityRow({
     </>
   );
   const ratingBadge =
-    player.rating != null ? (
+    !hideRating && player.rating != null ? (
       <span className="shrink-0 text-xs font-normal opacity-60 tabular-nums">
         ({player.rating})
       </span>

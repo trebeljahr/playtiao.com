@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PlayerIdentityRow } from "@/components/PlayerIdentityRow";
 import { reportPlayer, ApiError, type ReportReason } from "@/lib/api";
 
 const REASONS: ReportReason[] = [
@@ -15,16 +16,22 @@ const REASONS: ReportReason[] = [
   "other",
 ];
 
+type ReportablePlayer = {
+  playerId?: string;
+  displayName?: string;
+  profilePicture?: string;
+  activeBadges?: string[];
+  rating?: number;
+};
+
 type ReportPlayerButtonProps = {
-  playerId: string;
-  displayName: string;
+  player: ReportablePlayer;
   variant?: "dark" | "light";
   className?: string;
 };
 
 export function ReportPlayerButton({
-  playerId,
-  displayName,
+  player,
   variant = "light",
   className,
 }: ReportPlayerButtonProps) {
@@ -34,6 +41,11 @@ export function ReportPlayerButton({
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
+  const playerId = player.playerId;
+  const displayName = player.displayName;
+  // Caller already gates on playerId + displayName being present, but keep a
+  // defensive check so the component never crashes on a half-populated seat.
+  if (!playerId || !displayName) return null;
 
   function handleOpen() {
     setStep("choose");
@@ -95,7 +107,18 @@ export function ReportPlayerButton({
         </svg>
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen} title={t("title", { name: displayName })}>
+      <Dialog open={open} onOpenChange={setOpen} title={t("title")}>
+        {/* Who is being reported — avatar + name + badge (no rating/elo,
+            no profile link; this is a moderation flow, not discovery). */}
+        <div className="mb-4 rounded-2xl border border-[#e3d0ab] bg-[#fffaf1] px-3 py-2">
+          <PlayerIdentityRow
+            player={player}
+            avatarClassName="h-10 w-10"
+            linkToProfile={false}
+            hideRating
+            nameClassName="text-base font-semibold text-[#2b1e14]"
+          />
+        </div>
         {step === "choose" ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">{t("description")}</p>

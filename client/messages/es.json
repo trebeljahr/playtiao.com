@@ -1096,7 +1096,7 @@
   },
   "report": {
     "reportPlayer": "Reportar jugador",
-    "title": "Reportar a {name}",
+    "title": "Reportar jugador",
     "description": "Selecciona un motivo para reportar a este jugador. Los reportes nos ayudan a mantener la comunidad segura.",
     "reason_offensive_username": "Nombre de usuario ofensivo o inapropiado",
     "reason_inappropriate_profile_picture": "Imagen de perfil inapropiada",
