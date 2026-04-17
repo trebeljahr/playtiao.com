@@ -66,17 +66,37 @@ export function ConsentBanner() {
     return () => clearTimeout(id);
   }, [visible, status]);
 
+  // Sequence the exit animation and the actual consent flip:
+  //   1. Flip `visible` off so the CSS transition starts fading the card.
+  //   2. Flip `dismissed` on so the render guard keeps us mounted through
+  //      the 300ms transition even after `status` changes away from
+  //      "pending" (see the second early-return below).
+  //   3. After the transition finishes, flip the consent state AND reset
+  //      `dismissed` back to false so the component actually unmounts.
+  //
+  // Resetting `dismissed` is the critical bit — without it, the banner's
+  // DOM stays mounted forever after the first accept/reject. The outer
+  // wrapper is pointer-events-none but the inner PaperCard is
+  // pointer-events-auto, so a left-mounted (invisible) card at the
+  // bottom of the viewport silently swallowed every click/tap in that
+  // rectangle. (Reported in prod after the consent flow: users couldn't
+  // click anything near the bottom of the screen after dismissing.)
   function handleGrant() {
     setVisible(false);
     setDismissed(true);
-    // Delay the actual state change so the exit animation plays.
-    setTimeout(grant, 300);
+    setTimeout(() => {
+      grant();
+      setDismissed(false);
+    }, 300);
   }
 
   function handleRevoke() {
     setVisible(false);
     setDismissed(true);
-    setTimeout(revoke, 300);
+    setTimeout(() => {
+      revoke();
+      setDismissed(false);
+    }, 300);
   }
 
   // Don't render at all if not configured, not hydrated, or already
