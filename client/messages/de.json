@@ -1001,7 +1001,7 @@
     "note": "Die Datei ist ein einzelnes JSON-Dokument. Zahlungsdaten liegen bei Stripe und sind nicht enthalten.",
     "request": "Export anfordern",
     "requestedToast": "Export angefordert — wir bereiten ihn im Hintergrund vor.",
-    "statusPreparing": "Dein Export wird vorbereitet… das dauert meist wenige Sekunden.",
+    "statusPreparing": "Dein Export wird vorbereitet… das dauert meist einige Minuten.",
     "statusReady": "Dein Export ist bereit. Der Download-Link läuft am {expiresAt} ab.",
     "download": "Herunterladen",
     "deleteConfirmTitle": "Export löschen?",

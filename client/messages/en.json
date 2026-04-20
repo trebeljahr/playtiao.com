@@ -1001,7 +1001,7 @@
     "note": "The file is a single JSON document. Payment records are held by Stripe and are not included.",
     "request": "Request export",
     "requestedToast": "Export requested — we'll prepare it in the background.",
-    "statusPreparing": "Preparing your export… this usually takes a few seconds.",
+    "statusPreparing": "Preparing your export… this usually takes a few minutes.",
     "statusReady": "Your export is ready. Download link expires on {expiresAt}.",
     "download": "Download",
     "deleteConfirmTitle": "Delete export?",

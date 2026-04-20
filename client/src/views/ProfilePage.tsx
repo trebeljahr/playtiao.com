@@ -120,11 +120,7 @@ function DataExportCard() {
 
   // Server pushes `export-update` on the lobby socket whenever a row
   // transitions state (pending → running → ready/failed). Splice the
-  // update straight into local state — no polling, no extra REST round-
-  // trips. If the card mounted before the socket had anything to say
-  // the initial load() above covers the cold start; if the socket is
-  // transiently down the next mount will refetch from REST. Either way
-  // we never fall back to setInterval polling.
+  // update straight into local state — this is the fast path.
   useLobbyMessage((payload) => {
     if (payload.type !== "export-update") return;
     const incoming = payload.export as UserExportRow | undefined;
@@ -138,6 +134,22 @@ function DataExportCard() {
       return next;
     });
   });
+
+  // Polling fallback while an export is actively being prepared. The WS
+  // broadcast above is best-effort — if the socket isn't connected when
+  // the worker broadcasts the `ready` transition (tab was backgrounded,
+  // transient disconnect, WS not yet opened at the moment the worker
+  // finished) the card would otherwise sit at "preparing…" forever even
+  // though the row in Mongo already flipped to "ready". Refetch every
+  // 5s while a pending/running row is in view; stop as soon as we see
+  // a terminal state.
+  const hasPending =
+    exports?.some((e) => e.status === "pending" || e.status === "running") ?? false;
+  useEffect(() => {
+    if (!isAccount || !hasPending) return;
+    const id = setInterval(() => void load(), 5_000);
+    return () => clearInterval(id);
+  }, [isAccount, hasPending, load]);
 
   async function handleRequest() {
     setBusy(true);
