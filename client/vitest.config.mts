@@ -28,6 +28,16 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Cap the worker pool locally so vitest doesn't fan out to
+    // `os.cpus().length - 1` (~10 on Rico's Mac) and starve the machine
+    // when dev servers / other worktrees are also running. 10 parallel
+    // jsdom workers compete for CPU hard enough that vitest's birpc
+    // times out (`[vitest-worker]: Timeout calling "onTaskUpdate"`) and
+    // kills an otherwise-green run.
+    //
+    // CI (ubuntu-latest has 4 cores, nothing else competing) keeps the
+    // default so it can use every core.
+    maxWorkers: process.env.CI ? undefined : 4,
     // 15s per test (up from the 5s vitest default). The AI engine tests
     // under src/lib/engine are CPU-heavy (individual tests run for 6-16
     // seconds of pure search) and share vitest's worker pool with the
