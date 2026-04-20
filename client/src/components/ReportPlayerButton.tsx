@@ -61,7 +61,11 @@ export function ReportPlayerButton({
   }
 
   async function handleSubmit() {
-    if (!reason) return;
+    // Re-check playerId inside the closure so TypeScript narrows it to
+    // `string` here. The early return above guarantees it at render time,
+    // but TS conservatively un-narrows closure captures across function
+    // boundaries.
+    if (!reason || !playerId) return;
     setBusy(true);
     try {
       await reportPlayer(playerId, reason, reason === "other" ? details : undefined);
