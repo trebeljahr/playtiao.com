@@ -24,6 +24,7 @@ import { request as httpsRequest } from "https";
 import { existsSync, statSync, createReadStream } from "fs";
 import { join, extname, resolve } from "path";
 import next from "next";
+import { buildGlitchtipEnvelopeTarget } from "./tunnel-envelope.mjs";
 
 const MIME_TYPES = {
   ".jpeg": "image/jpeg",
@@ -340,7 +341,8 @@ const httpServer = createServer((req, res) => {
 
   // GlitchTip/Sentry tunnel: /_e receives envelope POST from the Sentry
   // SDK and forwards to the real ingestion endpoint. The envelope header's
-  // first line contains the DSN, from which we extract the project ID.
+  // first line contains the DSN, from which we build the target URL +
+  // synthesized auth query params (see buildGlitchtipEnvelopeTarget).
   if (glitchtipUrl && url.pathname === "/_e") {
     // Buffer the body to parse the envelope header and extract the project ID.
     const chunks = [];
@@ -348,10 +350,7 @@ const httpServer = createServer((req, res) => {
     req.on("end", () => {
       const body = Buffer.concat(chunks);
       try {
-        const header = JSON.parse(body.toString().split("\n")[0]);
-        const dsnUrl = new URL(header.dsn);
-        const projectId = dsnUrl.pathname.replace(/^\//, "");
-        const targetPath = `/api/${projectId}/envelope/`;
+        const { targetPath } = buildGlitchtipEnvelopeTarget(body);
         proxyToTarget(
           // Wrap the buffered body as a readable-like object for proxyToTarget.
           // We override pipe to write the already-buffered body directly.
